@@ -223,6 +223,15 @@ waits for the means of a household, D2-129).
   household quern already quickening it up to 1.8x (D2-062) - and **7.9 h idle**; a mill would free spare hours only (C3.1's first design fell into the
   same trap). It waits until labour binds (a town's hands short at harvest) or comes as the lord's toll-taking mill (C10). The streams could drive one:
   0.08-0.23 m3/s at most (D2-124) is a small horizontal mill's water.
-- **C3.5 apprenticeship**: skill passed by working beside a master at a workshop (not only by being near: D2-062).
-- **C3.6 workshops of other crafts** (carpenter, tanner, cooper) as their goods are needed.
+- ~~**C3.5 household formation**~~ (done, D2-129, `07` §7e): a couple marries when what it brings keeps it to the next harvest.
+- **C3.6 household land, or working the land harder - measured in session 16, not yet chosen** (`place --land`, `_m2` saves, ten worlds): land
+  binds almost everywhere once worlds fill - at year 100 43 % of people live in villages whose arable within reach is under their need (0.5 ha a
+  head), at year 200 84 %, at year 300 91 % (149 of 171 villages; arable/need median 0.79; the median last harvest 0.86 of a year's bread, 0.76 in
+  villages under 0.8 of their need). Yet labour is idle: from the year-200 saves of seeds 5 and 4, a working person-day has 4.4-4.7 hours after the
+  household's chores, crops take 0.8-0.9 of them and 4.5-5 hours stay free. Two answers, each a phase: **working the land harder** (Boserup 1965:
+  under pressure more labour a hectare - tillage, weeding, manuring with the herds' dung - for yields at falling returns; it raises the land's
+  ceiling, so it changes the worlds' scale, D2-085) and **household land** (holdings inherited, landless households and labour for others, lords'
+  land and rents - C10; marriage on a holding, the NW European pattern, D2-129 "Open"; it changes who eats, not how much).
+- **C3.7 apprenticeship**: skill passed by working beside a master at a workshop (not only by being near: D2-062).
+- **C3.8 workshops of other crafts** (carpenter, tanner, cooper) as their goods are needed.
 Then C9.4 (cargo by sea) and C10.2 can be weighed again against the traffic.

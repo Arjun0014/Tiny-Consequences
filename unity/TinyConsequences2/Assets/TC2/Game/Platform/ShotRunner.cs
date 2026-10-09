@@ -250,7 +250,7 @@ namespace TC2.Game
                 // terrain patches, trees and people settle (real time: views rebuild on timers; no end-of-frame in batch mode)
                 yield return new WaitForSecondsRealtime(5f);
                 for (int i = 0; i < 5; i++) yield return null;
-                _pending = spec.Trim().Replace('@', '_').Replace('+', 'd'); _pendingW = width; _pendingH = height; _saved = false;
+                _pending = spec.Trim().Replace('@', '_').Replace('+', 'd').Replace(':', '-'); _pendingW = width; _pendingH = height; _saved = false;   // (':' - "forest:rain", W-FOREST - is no file name)
                 while (!_saved) yield return null;
             }
             foreach (var mn in new[] { "person", "home_cottage_g", "tree_broadleaf", "granary", "home_hall_g", "home_row_g", "home_two_g" })

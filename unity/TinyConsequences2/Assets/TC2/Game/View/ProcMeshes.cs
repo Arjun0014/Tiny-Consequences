@@ -12,6 +12,8 @@ namespace TC2.Game
             public readonly List<Vector3> N = new List<Vector3>();
             public readonly List<Color> C = new List<Color>();
             public readonly List<int> T = new List<int>();
+            /// <summary>A far form (W-FOREST): crowns of fewer, plain lumps - the silhouette without the detail.</summary>
+            public bool Far;
 
             public void Quad(Vector3 a, Vector3 b, Vector3 c, Vector3 d, Color col)
             {
@@ -98,6 +100,7 @@ namespace TC2.Game
             /// warmer or cooler, D2-084).</summary>
             public void Blob(Vector3 c, float r, float squash, float jitter, int seed, Color tint, bool low)
             {
+                low |= Far;
                 var rnd = new System.Random(seed);
                 int b0 = V.Count;
                 int points = low ? 12 : IcoPoints.Length;   // (low: the icosahedron itself, 20 faces)
@@ -121,6 +124,7 @@ namespace TC2.Game
             /// </summary>
             public void Crown(System.Random rnd, int n, float cy, float rx, float ry, float lumpMin, float lumpMax, float squash, float droop = 0f)
             {
+                if (Far) { int m = System.Math.Max(4, (n * 2 + 2) / 3); lumpMin *= (float)n / m * 0.75f; lumpMax *= (float)n / m * 0.75f; lumpMin = System.Math.Min(lumpMin, 0.7f); lumpMax = System.Math.Min(lumpMax, 0.8f); n = m; }
                 for (int k = 0; k < n; k++)
                 {
                     float u = (k + 0.5f) / n;
@@ -256,7 +260,14 @@ namespace TC2.Game
         }
 
         /// <summary>The kinds of the woods' trees near the camera (D2-084), each in <see cref="TreeVariants"/> variants.</summary>
-        public const int TreeRound = 0, TreeTall = 1, TreeWide = 2, TreeBirch = 3, TreeWillow = 4, TreeSpruce = 5, TreePine = 6, TreeKinds = 7, TreeVariants = 3;
+        public const int TreeRound = 0, TreeTall = 1, TreeWide = 2, TreeBirch = 3, TreeWillow = 4, TreeSpruce = 5, TreePine = 6, TreeKinds = 17, TreeVariants = 3;
+        /// <summary>The forms of W-FOREST (18 §8): firs (a narrow drooping spire), the treeline's krummholz (a low wind-shorn mat), the rain
+        /// forest's emergents (a tall pale bole under a broad flat crown) and its canopy trees (a dense dome on a straight bole), palms, umbrella
+        /// trees of the dry tropics (a forked trunk under a flat crown), alders of the carr (several stems, a low bushy crown), poplars of the
+        /// river galleries (a column), mangroves (stilt roots under a low dense crown) and snags (a dead trunk, bare and broken).</summary>
+        public const int TreeFir = 7, TreeKrumm = 8, TreeEmergent = 9, TreeRainCanopy = 10, TreePalm = 11, TreeUmbrella = 12, TreeAlder = 13, TreePoplar = 14, TreeMangrove = 15, TreeSnag = 16;
+        /// <summary>Whether a form's leaves are needles (drawn with the conifers' colours and their far form).</summary>
+        public static bool Needles(int kind) => kind == TreeSpruce || kind == TreePine || kind == TreeFir || kind == TreeKrumm;
 
         /// <summary>
         /// A tree of the woods near the camera (D2-084), its crown of radius ~1 (the draw scales it to its crown): round broadleaves
@@ -266,9 +277,9 @@ namespace TC2.Game
         /// tree; every crown is lumps of different sizes and shades, never one smooth ball. Leaves and needles white (the draw colours
         /// them by the season and the land's dryness); bark keeps its own.
         /// </summary>
-        public static Mesh ForestTree(int kind, int variant)
+        public static Mesh ForestTree(int kind, int variant, bool far = false)
         {
-            var b = new Builder();
+            var b = new Builder { Far = far };
             var rnd = new System.Random(7919 * (kind + 1) + 104729 * (variant + 1));
             float J(float lo, float hi) => lo + (hi - lo) * (float)rnd.NextDouble();
             Color bark = Lin(0.34f, 0.25f, 0.17f); bark.a = 0f;
@@ -336,6 +347,140 @@ namespace TC2.Game
                     }
                     break;
                 }
+                case TreeFir:
+                {
+                    // a narrow spire of many drooping tiers, darker below (the boreal and montane woods)
+                    b.Prism(0f, 0.6f, 0.06f, 5, bark);
+                    int tiers = 6 + (variant % 2);
+                    float y = J(0.35f, 0.5f), r = J(0.70f, 0.78f), top = J(4.8f, 5.4f);
+                    float step = (top - y) / (tiers + 0.4f);
+                    for (int k = 0; k < tiers; k++)
+                    {
+                        float shade = 0.56f + 0.44f * k / (tiers - 1f) + J(-0.05f, 0.05f);
+                        b.Cone(y, k == tiers - 1 ? top : y + step * 1.55f, r * J(0.94f, 1.04f), 6, new Color(shade, shade, shade, 1f));
+                        y += step; r *= J(0.80f, 0.86f);
+                    }
+                    break;
+                }
+                case TreeKrumm:
+                {
+                    // the treeline's krummholz: a low mat of needles shorn by the wind to one side, a crooked stem
+                    float lean = J(0f, 6.28f);
+                    var dir = new Vector3(Mathf.Cos(lean), 0f, Mathf.Sin(lean));
+                    b.Stick(Vector3.zero, dir * 0.35f + Vector3.up * 0.28f, 0.06f, 0.04f, 4, bark);
+                    for (int k = 0; k < 4; k++)
+                    {
+                        var c = dir * J(-0.2f, 0.75f) + new Vector3(J(-0.35f, 0.35f), J(0.20f, 0.38f), J(-0.35f, 0.35f));
+                        float sh = J(0.62f, 0.95f);
+                        b.Blob(c, J(0.38f, 0.55f), 0.45f, 0.22f, rnd.Next(), new Color(sh, sh, sh, 1f), false);
+                    }
+                    break;
+                }
+                case TreeEmergent:
+                {
+                    // a rain forest emergent: a tall pale bole on buttresses, limbs spreading at the top under a broad flat crown
+                    Color pale = Lin(0.58f, 0.53f, 0.44f); pale.a = 0f;
+                    float tr = J(3.4f, 4.0f);
+                    b.Prism(0f, tr, 0.075f, 6, pale);
+                    for (int k = 0; k < 4; k++) { float a = k * 1.57f + J(-0.3f, 0.3f); b.Stick(new Vector3(Mathf.Cos(a) * 0.26f, 0f, Mathf.Sin(a) * 0.26f), new Vector3(0f, 0.5f, 0f), 0.06f, 0.02f, 3, pale); }
+                    for (int k = 0; k < 4; k++) { float a = k * 1.57f + J(-0.4f, 0.4f); b.Stick(new Vector3(0f, tr * 0.9f, 0f), new Vector3(Mathf.Cos(a) * 0.80f, tr + J(0.25f, 0.45f), Mathf.Sin(a) * 0.80f), 0.05f, 0.025f, 4, pale); }
+                    b.Crown(rnd, 13, tr + J(0.40f, 0.50f), J(1.40f, 1.60f), J(0.20f, 0.26f), 0.30f, 0.52f, 0.42f);   // (wider and flatter than the canopy below it)
+                    break;
+                }
+                case TreeRainCanopy:
+                {
+                    // the rain forest's canopy: a dense, many-lumped dome on a straight pale bole
+                    Color pale = Lin(0.52f, 0.47f, 0.38f); pale.a = 0f;
+                    float tr = J(1.9f, 2.3f);
+                    b.Prism(0f, tr, 0.07f, 6, pale);
+                    for (int k = 0; k < 2; k++) { float a = J(0f, 6.28f); b.Stick(new Vector3(0f, tr * 0.85f, 0f), new Vector3(Mathf.Cos(a) * 0.5f, tr + 0.4f, Mathf.Sin(a) * 0.5f), 0.045f, 0.022f, 4, pale); }
+                    b.Crown(rnd, 14, tr + J(0.45f, 0.55f), J(1.10f, 1.22f), J(0.30f, 0.36f), 0.30f, 0.50f, 0.52f);   // (a broad, flat-topped cauliflower: never a ball)
+                    break;
+                }
+                case TreePalm:
+                {
+                    // a palm: a slender, curving ringed trunk, a head of long fronds arching out and down
+                    Color palmbark = Lin(0.54f, 0.48f, 0.38f); palmbark.a = 0f;
+                    float h = J(3.0f, 3.8f), lean = J(0.15f, 0.45f), la = J(0f, 6.28f);
+                    var mid = new Vector3(Mathf.Cos(la) * lean * 0.35f, h * 0.5f, Mathf.Sin(la) * lean * 0.35f);
+                    var top = new Vector3(Mathf.Cos(la) * lean, h, Mathf.Sin(la) * lean);
+                    b.Stick(Vector3.zero, mid, 0.075f, 0.06f, 5, palmbark);
+                    b.Stick(mid, top, 0.06f, 0.05f, 5, palmbark);
+                    int fronds = 8 + (variant % 2);
+                    for (int k = 0; k < fronds; k++)
+                    {
+                        float a = k * 6.2832f / fronds + J(-0.2f, 0.2f);
+                        var dir = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
+                        var side = new Vector3(-dir.z, 0f, dir.x) * J(0.16f, 0.22f);
+                        float reach = J(1.1f, 1.45f);
+                        Vector3 p1 = top + dir * (reach * 0.5f) + Vector3.up * J(0.18f, 0.32f), p2 = top + dir * reach + Vector3.down * J(0.25f, 0.55f);
+                        float sh = J(0.75f, 1.0f);
+                        var c = new Color(sh, sh, sh, 1f); var c2 = new Color(sh * 0.9f, sh * 0.9f, sh * 0.9f, 1f);
+                        b.TriUp(top, p1 + side, p1, c); b.TriUp(top, p1, p1 - side, c);
+                        b.TriUp(p1, p1 + side, p2, c2); b.TriUp(p1, p2, p1 - side, c2);
+                    }
+                    b.Blob(top + Vector3.down * 0.05f, 0.16f, 0.9f, 0.1f, rnd.Next(), new Color(0.7f, 0.7f, 0.7f, 1f), true);
+                    break;
+                }
+                case TreeUmbrella:
+                {
+                    // an umbrella tree of the dry tropics: a slender trunk forking high into limbs that hold a broad, flat, thin crown
+                    float tr = J(1.7f, 2.1f);
+                    b.Prism(0f, tr * 0.55f, 0.06f, 5, bark);
+                    for (int k = 0; k < 3; k++)
+                    {
+                        float a = k * 2.09f + J(-0.5f, 0.5f);
+                        b.Stick(new Vector3(0f, tr * 0.5f, 0f), new Vector3(Mathf.Cos(a) * 0.75f, tr + J(0.0f, 0.15f), Mathf.Sin(a) * 0.75f), 0.045f, 0.022f, 4, bark);
+                    }
+                    b.Crown(rnd, 10, tr + J(0.22f, 0.28f), J(1.30f, 1.45f), J(0.11f, 0.15f), 0.28f, 0.46f, 0.30f);
+                    break;
+                }
+                case TreeAlder:
+                {
+                    // an alder or willow of the carr: several stems from one stool, a low bushy crown
+                    for (int k = 0; k < 3; k++)
+                    {
+                        float a = k * 2.09f + J(-0.4f, 0.4f);
+                        b.Stick(new Vector3(Mathf.Cos(a) * 0.08f, 0f, Mathf.Sin(a) * 0.08f), new Vector3(Mathf.Cos(a) * J(0.25f, 0.4f), J(1.0f, 1.3f), Mathf.Sin(a) * J(0.25f, 0.4f)), 0.05f, 0.03f, 4, bark);
+                    }
+                    b.Crown(rnd, 8, J(1.45f, 1.6f), J(0.85f, 0.95f), J(0.55f, 0.65f), 0.32f, 0.5f, 0.85f);
+                    break;
+                }
+                case TreePoplar:
+                {
+                    // a poplar of the river's gallery: a narrow column of leaves on a pale trunk
+                    Color pale = Lin(0.48f, 0.44f, 0.38f); pale.a = 0f;
+                    float tr = J(0.8f, 1.0f);
+                    b.Prism(0f, tr + 1.0f, 0.07f, 5, pale);
+                    b.Crown(rnd, 8, tr + J(1.55f, 1.75f), J(0.36f, 0.42f), J(1.35f, 1.55f), 0.26f, 0.42f, 1.25f);
+                    break;
+                }
+                case TreeMangrove:
+                {
+                    // a mangrove of the warm coasts' and swamps' wet ground: arching stilt roots under a low dense crown
+                    float tr = J(0.9f, 1.1f);
+                    b.Prism(0.35f, tr, 0.07f, 5, bark);
+                    for (int k = 0; k < 6; k++)
+                    {
+                        float a = k * 1.047f + J(-0.3f, 0.3f);
+                        b.Stick(new Vector3(0f, 0.6f, 0f), new Vector3(Mathf.Cos(a) * J(0.45f, 0.6f), -0.05f, Mathf.Sin(a) * J(0.45f, 0.6f)), 0.035f, 0.025f, 3, bark);
+                    }
+                    b.Crown(rnd, 9, tr + J(0.5f, 0.6f), J(0.95f, 1.08f), J(0.42f, 0.5f), 0.32f, 0.52f, 0.7f);
+                    break;
+                }
+                case TreeSnag:
+                {
+                    // a snag: a dead trunk standing grey and broken, a few bare stubs (it keeps its own colour)
+                    Color dead = Lin(0.60f, 0.57f, 0.52f); dead.a = 0f;
+                    float tr = J(2.2f, 3.4f);
+                    b.Prism(0f, tr, 0.075f, 5, dead);
+                    for (int k = 0; k < 3; k++)
+                    {
+                        float a = J(0f, 6.28f), y = tr * J(0.45f, 0.85f);
+                        b.Stick(new Vector3(0f, y, 0f), new Vector3(Mathf.Cos(a) * J(0.3f, 0.55f), y + J(0.1f, 0.35f), Mathf.Sin(a) * J(0.3f, 0.55f)), 0.035f, 0.012f, 3, dead);
+                    }
+                    break;
+                }
                 default:   // TreePine
                 {
                     float tr = J(2.4f, 3.0f);
@@ -346,7 +491,7 @@ namespace TC2.Game
                     break;
                 }
             }
-            return b.Build("tc2-tree-" + kind + "-" + variant);
+            return b.Build("tc2-tree-" + kind + "-" + variant + (far ? "-far" : ""));
         }
 
         /// <summary>A broadleaf in winter (D2-079): trunk, boughs and twigs, bare (it takes the draw's colour: bark, or snow on it).</summary>

@@ -139,6 +139,22 @@ slices, unless a C-slice touches it directly) must deliver:
 - forests that look genuinely different by climate and ecology - the test: shots of four climates side by side must not be confusable.
 Real state where a meaningful difference cannot be drawn (`18` §5; e.g. stand age / disturbance kind per cell, forest composition as state).
 
+**W-FOREST pass 1 (session 16, D2-130) - still OPEN for Arjun's judgement.** Measured first (`place --woods`, five worlds at year 300): the
+wooded land is mostly hot (22-30 degC mean: 40-75 % of wooded cells) or cool (2-10 degC: 25-55 %), little between, moisture 0.3-0.9, true
+drylands rare, wet ground common - and seed 42's tropical forest was drawn as temperate lumps. Now (`Game/View/ForestTypes.cs`, `TerrainLod.
+PlaceForest`, `ProcMeshes.ForestTree`): each crown's **kind of wood** is read from the simulation's climate and water at its point - the cell's mean
+temperature at the point's height (lapse rate), moisture, soil and standing water, a stream's corridor: rain forest, dry tropical woodland, warm
+temperate, temperate broadleaf, cool mixed, boreal, treeline, wet carr or swamp, river gallery. **Ten new forms** (17 kinds x 3 variants): firs
+(narrow drooping spires), krummholz, rain forest emergents (a tall buttressed bole under a broad flat crown) and canopy trees (flat-topped
+cauliflowers), palms, umbrella trees of the dry tropics (a forked trunk under a flat crown), alders of the carr (several stems), poplars,
+mangroves (stilt roots), snags. **Stands have ages**: saplings, poles, mature trees and veterans by the crown's number; snags standing longer in the
+boreal woods and many where a fire passed in the last 30 years; edges and glades lower. **Openness by kind** (dry woodland and the treeline
+scattered, a carr's pools) and **stature** (the rain forest 1.45x, emergents above it; the treeline knee- to man-high). **Palettes by kind**: the rain
+forest's deep glossy greens, the dry tropics' olive, the carr's grey-greens, warm evergreens' dark olive, palms, birches' light leaves golden in
+autumn (4,096 colour groups). Camera views `forest:KIND[:low|:far]` frame the most wooded ground of a kind in the first village's half of the day.
+Shots `tc2/out/shots/wf2/sheet4.png` (rain, dry, mixed, boreal side by side), `wf2`, `wf3`. Not yet: the far canopy (the shader) by kind, ground
+cover by kind, stand age as state (only fire's is real; felling and windthrow leave none), a straight snow/no-snow seam seen on one boreal patch.
+
 ## 9. The civilisation made visible (D2-089)
 
 Done so far (D2-090-D2-097): works drawn from the structure table (granaries on staddles, barns, the smithy with smoke while a smith works,

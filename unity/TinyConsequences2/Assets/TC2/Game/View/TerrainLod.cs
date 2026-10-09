@@ -56,6 +56,8 @@ namespace TC2.Game
         // near: one instancer per kind and variant (ProcMeshes.ForestTree, D2-084: index kind x variants + variant); then the far forms
         const int NearForms = ProcMeshes.TreeKinds * ProcMeshes.TreeVariants;
         const int BroadFar = NearForms, ConFar = NearForms + 1, BareBroad = NearForms + 2;
+        /// <summary>Each form's own far form after these (W-FOREST: the far trees keep their kind's silhouette - a palm, an umbrella, a spire).</summary>
+        const int FarForms = NearForms + 3;
         const int MaxTrees = 640;
         /// <summary>The trees stand within this distance of the camera; the canopy hands over to them (the shader fades its crowns
         /// from 400 m to 300 m); the finest patches always reach past it.</summary>
@@ -66,7 +68,8 @@ namespace TC2.Game
         /// <summary>Tools (webperf): whether shrubs and boulders cast shadows.</summary>
         public static bool CoverShadows = true;
         readonly Plane[] _planes = new Plane[6];
-        static readonly Color[] LeafTints = new Color[512], ConiferTints = new Color[512], BareTints = new Color[512];
+        const int Groups = 4096;   // (shade, the leaves' season, snow, dryness, the palette: W-FOREST)
+        static readonly Color[] LeafTints = new Color[Groups], ConiferTints = new Color[Groups], BareTints = new Color[Groups];
         const int Grass = 0, Flowers = 1, Reeds = 2, Boulder = 3, Shrub = 4, Fern = 5, Cushion = 6, Stone = 7;
         // ground cover colours by kind and group (sRGB): grass from straw to lush (5 dry, 6 dune grass), petals, reeds, boulders,
         // shrubs (summer dark and light, olive, autumn russet and gold, winter twigs, evergreen), ferns (green, light, autumn bracken),
@@ -117,34 +120,55 @@ namespace TC2.Game
             _cover[Fern] = new Instancer(ProcMeshes.Fern(), inst, false);
             _cover[Cushion] = new Instancer(ProcMeshes.Cushion(), inst, false);
             _cover[Stone] = new Instancer(ProcMeshes.Stone(), inst, false);
-            _forest = new Instancer[NearForms + 3];
+            _forest = new Instancer[FarForms + ProcMeshes.TreeKinds];
             for (int k = 0; k < ProcMeshes.TreeKinds; k++)
                 for (int v = 0; v < ProcMeshes.TreeVariants; v++)
                     _forest[k * ProcMeshes.TreeVariants + v] = new Instancer(ProcMeshes.ForestTree(k, v), inst, true);
             _forest[BroadFar] = new Instancer(ProcMeshes.ForestBroad(1), inst, true);
             _forest[ConFar] = new Instancer(ProcMeshes.ForestConifer(1), inst, true);
             _forest[BareBroad] = new Instancer(ProcMeshes.ForestBare(), inst, true);
+            for (int k = 0; k < ProcMeshes.TreeKinds; k++) _forest[FarForms + k] = new Instancer(ProcMeshes.ForestTree(k, 0, true), inst, true);
             Tints();
         }
 
         /// <summary>
-        /// The trees' colours by group (shade 0-3, the leaves' season 0-7, snow 0-3, the climate's dryness 0-3): summer greens - olive
-        /// where the land is dry -, autumn's gold and rust, the bare boughs of winter, conifers dark and snow-dusted - the canopy
-        /// shader's own colours, so the woods hand over unseen.
+        /// The trees' colours by group (shade 0-3, the leaves' season 0-7, snow 0-3, the climate's dryness 0-3, the palette 0-7 - W-FOREST):
+        /// summer greens - olive where the land is dry -, autumn's gold and rust, the bare boughs of winter, conifers dark and snow-dusted - the
+        /// canopy shader's own colours, so the woods hand over unseen; and by the kind of wood, the rain forest's deep glossy greens, the dry
+        /// tropics' olive and grey-green, the carr's grey-greens, the warm evergreens' dark olive, palms' yellow-green, birches' light leaves.
         /// </summary>
         static void Tints()
         {
             var summer = new[] { new Color(0.25f, 0.40f, 0.21f), new Color(0.31f, 0.47f, 0.21f), new Color(0.38f, 0.51f, 0.22f), new Color(0.45f, 0.56f, 0.23f) };
             var autumn = new[] { new Color(0.78f, 0.60f, 0.21f), new Color(0.69f, 0.37f, 0.17f), new Color(0.80f, 0.50f, 0.16f), new Color(0.66f, 0.30f, 0.15f) };
             var needles = new[] { new Color(0.16f, 0.29f, 0.19f), new Color(0.19f, 0.33f, 0.21f), new Color(0.14f, 0.26f, 0.17f), new Color(0.21f, 0.35f, 0.22f) };
+            var rain = new[] { new Color(0.10f, 0.27f, 0.12f), new Color(0.15f, 0.33f, 0.13f), new Color(0.12f, 0.30f, 0.16f), new Color(0.22f, 0.38f, 0.14f) };
+            var dryTropic = new[] { new Color(0.29f, 0.38f, 0.17f), new Color(0.35f, 0.42f, 0.19f), new Color(0.25f, 0.34f, 0.16f), new Color(0.41f, 0.45f, 0.22f) };   // (olive-green: tan read as mushrooms)
+            var carr = new[] { new Color(0.26f, 0.38f, 0.25f), new Color(0.34f, 0.44f, 0.30f), new Color(0.42f, 0.50f, 0.34f), new Color(0.30f, 0.42f, 0.26f) };
+            var warm = new[] { new Color(0.17f, 0.27f, 0.14f), new Color(0.22f, 0.31f, 0.16f), new Color(0.28f, 0.36f, 0.19f), new Color(0.20f, 0.30f, 0.18f) };
+            var palm = new[] { new Color(0.27f, 0.42f, 0.16f), new Color(0.33f, 0.46f, 0.18f), new Color(0.24f, 0.38f, 0.15f), new Color(0.38f, 0.50f, 0.21f) };
+            var light = new[] { new Color(0.38f, 0.53f, 0.23f), new Color(0.45f, 0.58f, 0.25f), new Color(0.52f, 0.62f, 0.28f), new Color(0.42f, 0.56f, 0.26f) };
+            var gold = new[] { new Color(0.86f, 0.70f, 0.22f), new Color(0.90f, 0.76f, 0.28f), new Color(0.80f, 0.62f, 0.20f), new Color(0.88f, 0.66f, 0.18f) };
+            var willowAutumn = new[] { new Color(0.66f, 0.62f, 0.30f), new Color(0.60f, 0.55f, 0.26f), new Color(0.72f, 0.64f, 0.32f), new Color(0.56f, 0.50f, 0.24f) };
             var snow = new Color(0.88f, 0.90f, 0.94f);
-            for (int g = 0; g < 512; g++)
+            for (int g = 0; g < Groups; g++)
             {
-                int shade = g & 3, leaf = (g >> 2) & 7, sn = (g >> 5) & 3;
+                int shade = g & 3, leaf = (g >> 2) & 7, sn = (g >> 5) & 3, pal = (g >> 9) & 7;
                 float dry = ((g >> 7) & 3) / 3f;
                 float leaves = (leaf + 0.5f) / 8f;
                 float turn = Mathf.Clamp01((leaves - 0.1f) / 0.55f);
-                LeafTints[g] = Color.Lerp(Dry(summer[shade], dry * 0.8f, 1.6f, 0.015f, 0.90f, 0.60f), autumn[shade], turn);
+                Color c;
+                switch (pal)
+                {
+                    case 2: c = Dry(rain[shade], dry * 0.5f, 1.4f, 0.01f, 0.95f, 0.70f); break;                     // (no autumn in the tropics)
+                    case 3: c = Dry(dryTropic[shade], dry * 0.4f, 1.3f, 0.01f, 0.94f, 0.70f); break;
+                    case 4: c = Color.Lerp(Dry(carr[shade], dry * 0.6f, 1.4f, 0.01f, 0.92f, 0.70f), willowAutumn[shade], turn); break;
+                    case 5: c = Dry(warm[shade], dry * 0.6f, 1.4f, 0.01f, 0.93f, 0.70f); break;
+                    case 6: c = Dry(palm[shade], dry * 0.6f, 1.5f, 0.015f, 0.92f, 0.62f); break;
+                    case 7: c = Color.Lerp(Dry(light[shade], dry * 0.7f, 1.5f, 0.015f, 0.90f, 0.60f), gold[shade], turn); break;
+                    default: c = Color.Lerp(Dry(summer[shade], dry * 0.8f, 1.6f, 0.015f, 0.90f, 0.60f), autumn[shade], turn); break;
+                }
+                LeafTints[g] = c;
                 ConiferTints[g] = Color.Lerp(Dry(needles[shade], dry * 0.5f, 1.35f, 0f, 0.95f, 0.75f), snow, sn / 3f * 0.55f);
                 BareTints[g] = Color.Lerp(new Color(0.42f + 0.03f * shade, 0.35f + 0.02f * shade, 0.29f), snow, sn / 3f * 0.35f);
             }
@@ -650,6 +674,7 @@ namespace TC2.Game
         void PlaceForest(TC2.Core.Simulation.World w, Patch p)
         {
             p.TreeCount = 0;
+            var P = w.Planet;
             var pos = p.Pos; var wood = p.Wood; var land = p.Land;
             if (pos == null || wood == null || land == null) return;
             int V = N + 1;
@@ -688,34 +713,107 @@ namespace TC2.Game
                             Vector3 at = Vector3.Lerp(Vector3.Lerp(pos[a], pos[b], s), Vector3.Lerp(pos[c], pos[d], s), t);
                             float near = Mathf.Lerp(Mathf.Lerp(land[a].y, land[b].y, s), Mathf.Lerp(land[c].y, land[d].y, s), t);
                             if (num >= Canopy.Threshold(Canopy.Stands(wd.x, at, near))) continue;   // (the share as stands and glades: D2-084)
-                            bool con = Canopy.Conifer(num, wd.y);
-                            float r = Canopy.Radius[k] * Canopy.Spacing * (con ? 1f / 1.32f : 1f);
-                            float h = r * Canopy.Top(num) * (con ? 1.05f : 1.1f);
-                            // young trees where a fire burnt the woods in the last few decades: they grow back from short to full height
                             int cell = p.Cells[a];
-                            long burnt = w.Fire.BurnedAt[cell];
-                            if (burnt != 0) h *= Mathf.Clamp(0.35f + (float)((w.Now - burnt) / (double)SimTime.Year) / 40f, 0.35f, 1f);
-                            // its kind (D2-084): conifers are spruces, or pines where the land is dry or sandy; broadleaves are willows and
-                            // alders by a river's water, birches in the mixed woods of the cool lands, else tall, wide or round
+                            // the kind of wood here (W-FOREST, 18 §8): the climate at this height (the lapse rate over the point's height above its
+                            // cell's ground), the stream's corridor, the ground's wetness - the simulation's own climate and water
+                            float relHere = Mathf.Lerp(Mathf.Lerp(p.Rel[a], p.Rel[b], s), Mathf.Lerp(p.Rel[c], p.Rel[d], s), t);
+                            float over = (relHere - (float)((Ground.DrawnElev(P, cell) - P.SeaLevel) * Ground.VScale)) / (float)Ground.VScale;
+                            float tHere = ForestTypes.MeanTempAt(P.TMean[cell], over);
+                            int type = ForestTypes.Classify(tHere, P.Moist[cell], near, ForestTypes.Wetness(P, cell));
+                            // open woods leave some standing crowns out: the dry tropics' scattered trees, the treeline's, a carr's pools
+                            float open = ForestTypes.Openness(type);
+                            if (open > 0f && Frac(num * 17.17f) < open) continue;
                             float dryHere = Mathf.Lerp(Mathf.Lerp(land[a].x, land[b].x, s), Mathf.Lerp(land[c].x, land[d].x, s), t);
-                            float v = num * 3.71f - Mathf.Floor(num * 3.71f);
-                            int kind;
-                            if (con) kind = dryHere > 0.30f || p.Rel[a] < 8f || num * 5.7f - Mathf.Floor(num * 5.7f) < 0.18f ? ProcMeshes.TreePine : ProcMeshes.TreeSpruce;
-                            else if (near > 0.55f) kind = ProcMeshes.TreeWillow;
-                            else if (wd.y > 0.12f && v < 0.40f) kind = ProcMeshes.TreeBirch;
-                            else kind = v < 0.28f ? ProcMeshes.TreeTall : v < 0.52f ? ProcMeshes.TreeWide : ProcMeshes.TreeRound;
-                            int variant = Mathf.Clamp((int)((num * 9.13f - Mathf.Floor(num * 9.13f)) * ProcMeshes.TreeVariants), 0, ProcMeshes.TreeVariants - 1);
+                            float v = Frac(num * 3.71f), u = Frac(num * 5.7f);
+                            bool con = Canopy.Conifer(num, wd.y);
+                            long burnt = w.Fire.BurnedAt[cell];
+                            float sinceFire = burnt != 0 ? (float)((w.Now - burnt) / (double)SimTime.Year) : 1e9f;
+                            // the crown's age in its stand: saplings and poles where the canopy opens, the old trees' veterans, the dead's snags
+                            // (standing long in the boreal woods, many where a fire went through in the last decades)
+                            float age = Frac(num * 11.37f);
+                            float snagChance = (type == ForestTypes.Boreal || type == ForestTypes.Treeline ? 0.035f : type == ForestTypes.Rain ? 0.012f : 0.018f) + (sinceFire < 30f ? 0.16f * (1f - sinceFire / 30f) : 0f);
+                            int kind = TreeKindFor(type, v, u, con, dryHere, p.Rel[a], tHere);
+                            if (Frac(num * 23.9f) < snagChance) kind = ProcMeshes.TreeSnag;
+                            float r = Canopy.Radius[k] * Canopy.Spacing * (ProcMeshes.Needles(kind) ? 1f / 1.32f : kind == ProcMeshes.TreePoplar ? 0.85f : 1f);
+                            float h = r * Canopy.Top(num) * (ProcMeshes.Needles(kind) ? 1.05f : 1.1f) * ForestTypes.Stature(type);
+                            if (kind == ProcMeshes.TreeEmergent) h *= 1.25f;
+                            if (kind != ProcMeshes.TreeSnag)
+                            {
+                                if (age < 0.08f) { r *= 0.26f; h *= 0.36f; }          // a sapling (slender: wide and low it read as a cushion)
+                                else if (age < 0.22f) { r *= 0.55f; h *= 0.75f; }     // a pole
+                                else if (age > 0.955f) { r *= 1.22f; h *= 1.14f; }    // a veteran
+                            }
+                            // the stand's edge and its glades: lower, bushier trees where the wood thins out
+                            if (wd.x < 0.35f) h *= 0.82f + 0.18f * wd.x / 0.35f;
+                            // young trees where a fire burnt the woods in the last few decades: they grow back from short to full height
+                            if (burnt != 0 && kind != ProcMeshes.TreeSnag) h *= Mathf.Clamp(0.35f + sinceFire / 40f, 0.35f, 1f);
+                            int variant = Mathf.Clamp((int)(Frac(num * 9.13f) * ProcMeshes.TreeVariants), 0, ProcMeshes.TreeVariants - 1);
                             byte form = (byte)(kind * ProcMeshes.TreeVariants + variant);
                             p.Trees[p.TreeCount] = Matrix4x4.TRS(at, PlanetGeo.Upright(at, num * 2617f), new Vector3(r, h, r));
                             p.TreeKind[p.TreeCount] = form;
-                            int shade = (int)((num * 5.31f - Mathf.Floor(num * 5.31f)) * 4f) & 3;   // (the shader's hue)
+                            int shade = (int)(Frac(num * 5.31f) * 4f) & 3;   // (the shader's hue)
                             int leaf = Mathf.Clamp((int)(wd.z * 8f), 0, 7), snowB = Mathf.Clamp((int)(wd.w * 4f), 0, 3);
-                            float dry = Mathf.Lerp(Mathf.Lerp(land[a].x, land[b].x, s), Mathf.Lerp(land[c].x, land[d].x, s), t);
-                            int dryB = Mathf.Clamp(Mathf.RoundToInt(dry * 3f), 0, 3);
-                            p.TreeGroup[p.TreeCount] = (ushort)(shade | (leaf << 2) | (snowB << 5) | (dryB << 7));
+                            int dryB = Mathf.Clamp(Mathf.RoundToInt(dryHere * 3f), 0, 3);
+                            p.TreeGroup[p.TreeCount] = (ushort)(shade | (leaf << 2) | (snowB << 5) | (dryB << 7) | (Palette(kind, type) << 9));
                             p.TreeCount++;
                         }
                 }
+        }
+
+        static float Frac(float x) => x - Mathf.Floor(x);
+
+        /// <summary>
+        /// The form a crown takes in its kind of wood (W-FOREST): rain forest - emergents over a dense canopy, palms; the dry tropics - umbrella
+        /// trees, spreading trees, palms; warm temperate - dark rounded evergreens, spreading oaks, pines and columns of cypress; temperate
+        /// broadleaf - beech and lime domes, tall hornbeams, spreading oaks, birches, a few conifers on the ridges; cool mixed - spruces, firs and
+        /// pines with birches; boreal - firs and spruces, pines on dry ground, birches; the treeline - krummholz; wet ground - mangroves in the
+        /// warm lands, alders and willows elsewhere; a river's gallery - poplars and willows, palms and canopy trees in the warm lands.
+        /// `v`, `u` the crown's own numbers; `con` whether the canopy's conifer share makes it a conifer.
+        /// </summary>
+        static int TreeKindFor(int type, float v, float u, bool con, float dry, float rel, float tMean)
+        {
+            switch (type)
+            {
+                case ForestTypes.Rain: return v < 0.11f ? ProcMeshes.TreeEmergent : v < 0.19f ? ProcMeshes.TreePalm : ProcMeshes.TreeRainCanopy;
+                case ForestTypes.DryTropic: return v < 0.55f ? ProcMeshes.TreeUmbrella : v < 0.78f ? ProcMeshes.TreeWide : v < 0.88f ? ProcMeshes.TreePalm : ProcMeshes.TreeRound;
+                case ForestTypes.WarmTemperate: return v < 0.40f ? ProcMeshes.TreeRound : v < 0.62f ? ProcMeshes.TreeWide : v < 0.82f ? ProcMeshes.TreePine : ProcMeshes.TreePoplar;
+                case ForestTypes.Broadleaf:
+                    if (con) return dry > 0.30f || rel < 8f || u < 0.18f ? ProcMeshes.TreePine : ProcMeshes.TreeSpruce;
+                    return v < 0.18f ? ProcMeshes.TreeBirch : v < 0.40f ? ProcMeshes.TreeTall : v < 0.62f ? ProcMeshes.TreeWide : ProcMeshes.TreeRound;
+                case ForestTypes.Mixed:
+                    if (con) return dry > 0.30f || u < 0.20f ? ProcMeshes.TreePine : u < 0.55f ? ProcMeshes.TreeSpruce : ProcMeshes.TreeFir;
+                    return v < 0.50f ? ProcMeshes.TreeBirch : v < 0.70f ? ProcMeshes.TreeTall : ProcMeshes.TreeRound;
+                case ForestTypes.Boreal:   // (pines only on dry ground: a flat crown on a bare bole reads as a palm in the snow)
+                    if (con || v < 0.80f) return dry > 0.45f ? ProcMeshes.TreePine : u < 0.55f ? ProcMeshes.TreeFir : ProcMeshes.TreeSpruce;
+                    return ProcMeshes.TreeBirch;
+                case ForestTypes.Treeline: return v < 0.80f ? ProcMeshes.TreeKrumm : ProcMeshes.TreeFir;
+                case ForestTypes.Wet:
+                    if (tMean >= 18f) return v < 0.70f ? ProcMeshes.TreeMangrove : ProcMeshes.TreePalm;
+                    return v < 0.60f ? ProcMeshes.TreeAlder : v < 0.88f ? ProcMeshes.TreeWillow : ProcMeshes.TreeBirch;
+                default:   // Gallery
+                    if (tMean >= 18f) return v < 0.35f ? ProcMeshes.TreePalm : ProcMeshes.TreeRainCanopy;
+                    return v < 0.42f ? ProcMeshes.TreePoplar : v < 0.80f ? ProcMeshes.TreeWillow : ProcMeshes.TreeAlder;
+            }
+        }
+
+        /// <summary>The trees' palettes: 0 temperate leaves (summer greens, autumn), 1 needles, 2 the rain forest's deep glossy greens, 3 the dry
+        /// tropics' olive and grey-green, 4 the carr's and the gallery's grey-greens (willows and alders, yellowing in autumn), 5 the warm
+        /// temperate evergreens' dark olive, 6 palms' yellow-green, 7 the light leaves of birches and poplars (golden in autumn).</summary>
+        static int Palette(int kind, int type)
+        {
+            if (ProcMeshes.Needles(kind)) return 1;
+            if (kind == ProcMeshes.TreePalm) return 6;
+            if (kind == ProcMeshes.TreeMangrove || kind == ProcMeshes.TreeRainCanopy || kind == ProcMeshes.TreeEmergent) return 2;
+            if (kind == ProcMeshes.TreeUmbrella) return 3;
+            if (kind == ProcMeshes.TreeBirch || kind == ProcMeshes.TreePoplar) return type == ForestTypes.WarmTemperate ? 5 : 7;
+            switch (type)
+            {
+                case ForestTypes.Rain: return 2;
+                case ForestTypes.DryTropic: return 3;
+                case ForestTypes.Wet: case ForestTypes.Gallery: return 4;
+                case ForestTypes.WarmTemperate: return 5;
+                default: return 0;
+            }
         }
 
         static Vector2 Proj(Vector3 p, int ax, float sc, float off) =>
@@ -743,9 +841,10 @@ namespace TC2.Game
                     {
                         int g = p.TreeGroup[t];
                         int form = p.TreeKind[t], kind = form / ProcMeshes.TreeVariants;
-                        if (kind == ProcMeshes.TreeSpruce || kind == ProcMeshes.TreePine) _forest[close ? form : ConFar].Add(g, ConiferTints[g], p.Trees[t]);
+                        if (ProcMeshes.Needles(kind)) _forest[close ? form : FarForms + kind].Add(g, ConiferTints[g], p.Trees[t]);
+                        else if (kind == ProcMeshes.TreeSnag) _forest[close ? form : FarForms + kind].Add(g, BareTints[g], p.Trees[t]);   // (a dead tree keeps its own grey)
                         else if (((g >> 2) & 7) >= 7) _forest[BareBroad].Add(g, BareTints[g], p.Trees[t]);
-                        else if (!close) _forest[BroadFar].Add(g, LeafTints[g], p.Trees[t]);
+                        else if (!close) _forest[FarForms + kind].Add(g, LeafTints[g], p.Trees[t]);
                         else _forest[form].Add(g, LeafTints[g], p.Trees[t]);
                     }
                     ForestDrawn += p.TreeCount;

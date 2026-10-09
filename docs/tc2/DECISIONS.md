@@ -3715,3 +3715,32 @@ and universal marriage); the NW European pattern (late marriage after the harves
 **Open.** Household land and holdings (marriage on a holding; the NW European pattern); life-cycle service (the unmarried young working in other
 households); hunger is still 17 % of deaths - the hungry gap before the harvest (famine foods, the ration's floor of 0.45, the store's prudence)
 is the next thing to measure; the base courting rate gives a younger marriage age (20-21) than medieval NW Europe's (mid-20s).
+
+## D2-130 — 2026-10-09 — W-FOREST pass 1: kinds of wood read from the climate, their forms, ages and colours (presentation)
+
+**Context.** Arjun (8 Oct, W-FOREST, `18` §8): forests and biomes read as the same trees recoloured; open since, deferred behind the civilisation
+slices, which the roadmap says it follows (`25` §1). Measured first (`place --woods`, five worlds at year 300): the wooded land is mostly hot (22-30
+degC annual mean: 40-75 % of wooded cells) or cool (2-10 degC: 25-55 %), little between; moisture 0.3-0.9; true drylands rare; wet ground common
+(8-35 %). The woods were drawn as seven forms chosen by a conifer share from temperature, a river's corridor and a mixed-woods birch rule - seed
+42's tropical forest as temperate broadleaf lumps of two greens, all of one height.
+**Decision.** Presentation only (the woods' share and where they stand stay `PlanetState.Forest`; nothing in Core changes). (a) **The kind of wood**
+(`Game/View/ForestTypes.cs`) at each crown from the simulation's climate and water: the cell's mean temperature at the point's height (the lapse
+rate over its height above the cell's ground), the moisture index, soil and standing water, a stream's corridor - treeline (under -1.5 degC), river
+gallery, wet carr or swamp, rain forest (20+ degC, moisture 0.55+), dry tropical woodland, warm temperate (14-20), temperate broadleaf (8-14), cool
+mixed (3-8), boreal. (b) **Ten new forms** (`ProcMeshes.ForestTree`, 17 kinds x 3 variants): fir, krummholz, rain forest emergent and canopy tree,
+palm, umbrella tree, alder, poplar, mangrove, snag; each kind of wood its own make-up of forms (`TerrainLod.TreeKindFor`). (c) **Stand structure**:
+saplings, poles, mature trees and veterans by the crown's number; snags (more in the boreal woods; many for 30 years after a fire - the fire is real
+state); lower trees at a stand's edge and glades; openness by kind (dry woodland 45 % of crowns out, the treeline 55 %, a carr 20 %); stature by kind
+(the rain forest 1.45x, its emergents 1.25x above that; the treeline 0.32x). (d) **Palettes by kind** (eight; 4,096 colour groups): the rain forest's
+deep glossy greens, the dry tropics' olive, the carr's grey-greens, warm evergreens' dark olive, palms, birches' light leaves golden in autumn.
+(e) **Far forms**: every form has its own far mesh (fewer, plainer lumps), so a palm, an umbrella or a spire keeps its silhouette to 440 m (the old
+far forms were one round crown and one cone). (f) Camera views `forest:KIND[:low|:far]` (the most wooded ground of a kind in the first village's
+half of the day) for the four-climates test.
+**Evidence.** Shots `tc2/out/shots/wf2/sheet4.png` (rain forest, dry tropical woodland, cool mixed, boreal side by side - no longer confusable),
+`wf3` (umbrella trees, snags), `wf4/forest.png` (seed 42's forest: tropical to its far trees). Two faults found in the shots and fixed: umbrella
+trees read as beige mushrooms (a short trunk, tan crowns: now a forked trunk twice as tall under an olive crown); boreal pines (a bare bole under a
+flat crown) read as palms in the snow (pines now only on dry boreal ground). Web: Web test 6/6 (`tc2/out/webtest/s16web4`, bit-identical; seed 42's forest views 80-83 fps, against 60-67 before the pass - the machine's load varies: no measurable cost).
+**Open (W-FOREST stays open for Arjun's judgement in real shots).** The far canopy beyond 440 m (the terrain shader) still colours woods by conifer
+share, season and dryness only; ground cover by kind of wood; stand age as state (only fire's is real; felling and windthrow leave none); the dry
+tropics' ground drawn lush where moisture is 0.5; a straight snow/no-snow seam on one boreal patch; perhaps too many bare boles between the rain
+forest's flat crowns.

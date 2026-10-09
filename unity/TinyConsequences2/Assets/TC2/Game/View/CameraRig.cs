@@ -341,13 +341,19 @@ namespace TC2.Game
             }
             if (view.StartsWith("forest"))
             {
-                // the most wooded land within 6 km of the first village, no closer than 600 m to any village (D2-079)
+                // the most wooded land within 6 km of the first village, no closer than 600 m to any village (D2-079); "forest:KIND" (W-FOREST):
+                // the most wooded land of that kind of wood anywhere on the planet (rain, dry, warm, broadleaf, mixed, boreal, treeline, wet,
+                // gallery), seen from 260 m ("forest:KIND:low" 95 m, ":far" 900 m)
                 var P = w.Planet;
+                string[] kindOf = view.Split(':');
+                int want = kindOf.Length > 1 ? System.Array.IndexOf(ForestTypes.Names, kindOf[1]) : -1;
+                if (kindOf.Length > 1 && want < 0) Debug.Log("[TC2] no kind of wood called " + kindOf[1]);
                 int best = -1; double bv = 0;
                 for (int c = 0; c < P.Cells; c++)
                 {
                     if (!P.IsLand(c) || P.Forest[c] <= bv) continue;
-                    if (Vec3d.ArcDistance(P.Grid.Center[c], d, P.Radius) > 6000) continue;
+                    if (want >= 0) { if (ForestTypes.OfCell(P, c) != want || System.Math.Abs(Wrap(P.Grid.Center[c].Longitude - d.Longitude)) > 0.9) continue; }   // (in the first village's half of the day: its hour lights the shot)
+                    else if (Vec3d.ArcDistance(P.Grid.Center[c], d, P.Radius) > 6000) continue;
                     bool near = false;
                     for (int sid2 = w.Settlements.First(); sid2 != 0; sid2 = w.Settlements.Next(sid2))
                         if (Vec3d.ArcDistance(w.Settlements.Get(sid2).Anchor, P.Grid.Center[c], P.Radius) < 600) { near = true; break; }
@@ -355,7 +361,9 @@ namespace TC2.Game
                     bv = P.Forest[c]; best = c;
                 }
                 if (best >= 0) d = P.Grid.Center[best];
-                LookAt(d, view == "forestfar" ? 900 : view == "forestlow" ? 95 : 260);
+                if (want >= 0) Debug.Log("[TC2] forest view " + kindOf[1] + ": cell " + best + " forest " + bv.ToString("0.00") + (best >= 0 ? " mean " + P.TMean[best].ToString("0.0") + " degC, moisture " + P.Moist[best].ToString("0.00") : ""));
+                bool low = view == "forestlow" || view.EndsWith(":low"), far = view == "forestfar" || view.EndsWith(":far");
+                LookAt(d, far ? 900 : low ? 95 : 260);
                 return;
             }
             if (view.StartsWith("river"))
@@ -431,6 +439,8 @@ namespace TC2.Game
             _shake = Mathf.Clamp01(strength);
             _shakeFade = _shake / Mathf.Max(0.3f, seconds);
         }
+
+        static double Wrap(double a) => a > System.Math.PI ? a - 2 * System.Math.PI : a < -System.Math.PI ? a + 2 * System.Math.PI : a;
 
         public void LookAt(Vec3d dir, double altitude)
         {

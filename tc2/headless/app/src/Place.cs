@@ -49,6 +49,44 @@ namespace TC2.Headless
             }
             if (a.Has("splits")) { Splits(w); return 0; }
             if (a.Has("marriage")) { Marriage(w); return 0; }
+            if (a.Has("woods"))
+            {
+                // (W-FOREST survey) the wooded land's climate: cells with forest over 0.25 by annual mean temperature and by moisture, and how
+                // many lie by a stream or on wet ground; the hectares in each
+                var P = w.Planet;
+                int[] tb = new int[10], mb = new int[10]; double[] tha = new double[10];
+                int n = 0, stream = 0, wet = 0, cold = 0, warm = 0, dry = 0;
+                for (int c = 0; c < P.Cells; c++)
+                {
+                    if (!P.IsLand(c) || P.Forest[c] <= 0.25f) continue;
+                    n++;
+                    double t = P.TMean[c];
+                    int ti = Math.Max(0, Math.Min(9, (int)Math.Floor((t + 10.0) / 4.0)));   // (-10..30 degC in 4-degree bands)
+                    tb[ti]++; tha[ti] += P.AreaHa(c) * P.Forest[c];
+                    mb[Math.Max(0, Math.Min(9, (int)(P.Moist[c] * 10)))]++;
+                    if (P.IsStream(c)) stream++;
+                    if (P.SoilWater[c] > 0.8f || P.LakeDepth[c] > 0f) wet++;
+                    if (t < 3) cold++; if (t >= 14) warm++; if (P.Moist[c] < 0.3f) dry++;
+                }
+                Console.WriteLine("wooded cells " + n + "; by mean temperature -10..30 in 4-degree bands: " + string.Join(" ", tb) + "; forest ha " + string.Join(" ", System.Array.ConvertAll(tha, x => x.ToString("0"))));
+                Console.WriteLine("  by moisture 0..1 in tenths: " + string.Join(" ", mb) + "; by a stream " + stream + ", wet ground " + wet + "; under 3 degC " + cold + ", 14 degC or more " + warm + ", moisture under 0.3 " + dry);
+                return 0;
+            }
+            if (a.Has("land"))
+            {
+                // (household land survey) each village: people, households, the hectares its people need (at the base field a head), its arable
+                // within reach, its fields this year, and its last harvest in years of its people's bread; then the world by how hard land binds
+                Console.WriteLine("sid,people,households,need_ha,arable_ha,field_ha,harvest_years,hard");
+                for (int lsid = w.Settlements.First(); lsid != 0; lsid = w.Settlements.Next(lsid))
+                {
+                    var s = w.Settlements.Get(lsid);
+                    if (!s.Inhabited || s.Population == 0) continue;
+                    double need = s.Population * w.Config.FieldHaPerPerson;
+                    double years = s.LastHarvest / (s.Population * (double)SimTime.DaysPerYear);
+                    Console.WriteLine(lsid + "," + s.Population + "," + w.HouseholdsOf(lsid).Count + "," + need.ToString("0.0") + "," + s.ArableHa.ToString("0.0") + "," + s.FieldHa.ToString("0.0") + "," + years.ToString("0.00") + "," + (Holdings.Hard(in s) ? 1 : 0));
+                }
+                return 0;
+            }
             if (a.Has("binding"))
             {
                 // (C10.3 survey) each village: households and people; bound to its first household (the household itself and its following); the

@@ -4,6 +4,12 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 16, second context, W-FOREST pass 1 (D2-130, presentation only)** - measured first: the wooded land is mostly hot (22-30 degC) or cool
+  (2-10 degC), and seed 42's tropical forest was drawn as temperate lumps. Now each crown's kind of wood is read from the simulation's climate and
+  water at its point (rain forest, dry tropical woodland, warm temperate, broadleaf, cool mixed, boreal, treeline, wet carr, river gallery); ten new
+  forms (firs, krummholz, emergents, rain forest canopy, palms, umbrella trees, alders, poplars, mangroves, snags), stand ages (saplings, poles,
+  veterans, snags after fire), openness and stature by kind, eight palettes, far forms per kind; camera views `forest:KIND`. Shots `wf2/sheet4.png`
+  (four climates no longer confusable), Web test s16web4 6/6 (forest views 80-83 fps). W-FOREST stays open for Arjun's judgement.
 - **Session 16, second context, later** - Web test s16web 6/6 on C10.3 (bit-identical; family plurals fixed in every page). Then the next slice
   chosen by measurement: **there is no famine amid plenty** (D2-126 corrected: at 95 % of ~40,000 hard-times hunger deaths the households with grain
   could spare under a quarter of what the grainless needed; the store held under a day's food in 69 %; deaths 5-12 days before the harvest) - hunger
