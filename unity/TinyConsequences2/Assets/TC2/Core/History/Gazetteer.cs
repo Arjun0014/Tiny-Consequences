@@ -58,6 +58,15 @@ namespace TC2.Core.History
             }
             sb.Append(s.Population).Append(" people in ").Append(hl.Count).Append(" households: ").Append(houses).Append(houses == 1 ? " house" : " houses")
               .Append(footed > 0 ? " (" + footed + " on stone footings)" : "").Append(", ").Append(huts).Append(huts == 1 ? " hut" : " huts").Append(camps > 0 ? ", " + camps + " in camps" : "").Append(".\n");
+            if (!Society.Leaders.Off && s.HeadHh != 0 && w.Households.Exists(s.HeadHh))
+            {
+                // its first household and its headman (C10.2): who follows them and why
+                int f = Society.Leaders.Following(w, sid, s.HeadHh, out int kin, out int owing, out int fed);
+                sb.Append("Its first household: the ").Append(w.History.NameOf(EntityRef.Household(s.HeadHh))).Append("s, followed by ").Append(f).Append(f == 1 ? " household" : " households")
+                  .Append(" (").Append(kin).Append(" of kin, ").Append(owing).Append(" owing them grain, ").Append(fed).Append(" fed by them or lent to lately)");
+                if (s.Head != 0 && w.People.Exists(s.Head)) sb.Append("; first among its people ").Append(w.History.NameOf(EntityRef.Person(s.Head))).Append(", ").Append(F(w.People.Get(s.Head).AgeYears(w.Now), "0")).Append(", since ").Append(Year(s.HeadSince));
+                sb.Append(".\n");
+            }
             if (s.Wall == 2) sb.Append("Walled: a palisade ").Append(F(2.0 * DMath.PI * (double)s.WallR, "0")).Append(" m round").Append(s.OldR > 0f ? ", an older ring inside" : "").Append(".\n");
             else if (s.Wall == 1) sb.Append("Raising a palisade.\n");
             // its streets and their core (C13.1-C13.3): rows of narrow town houses on the divided plots, the market place its traders widened

@@ -117,6 +117,12 @@ namespace TC2.Core.History
                     return e.ArgA == TC2.Core.Places.Structures.PlankBoat
                         ? "The " + subj + "s of " + place + " built a boat of planks in the boat shed" + (e.Other.IsNone ? "" : ", " + other + " leading the work") + ": four can row it out to the open sea's shoals."
                         : "The " + subj + "s of " + place + " hollowed a dugout from a trunk of the woods" + (e.Other.IsNone ? "" : ", " + other + " leading the work") + ": the open sea holds more fish than the shore.";
+                case HistoryKind.VillageSplit:
+                    return Cap(subj) + " and the " + obj + "s would not follow " + (e.Other.IsNone ? "the new first among them" : other) + ": " + e.ArgA + " households, " + e.ArgB + " people of " + place +
+                           ", bound to them by kin, by grain owed or given, went with them to make a village of their own.";
+                case HistoryKind.HeadmanRose:
+                    return Cap(subj) + " became first among the people of " + place + (e.ArgB == 1 && !e.Other.IsNone ? ", after " + other + " of the same household" : e.ArgB == 2 && !e.Other.IsNone ? " in the place of " + other : "") +
+                           ": " + e.ArgA + (e.ArgA == 1 ? " household follows" : " households follow") + " the " + obj + "s - kin, those who owe them grain, those they fed or lent to lately.";
                 case HistoryKind.CartMade:
                     return "The " + subj + "s of " + place + " made " + (e.ArgA == TC2.Core.Places.Carts.Ox ? "an ox cart" : "a handcart") + (e.Other.IsNone ? "" : ", " + other + " shaping its wheels") +
                            ": what they carried - their traders' loads along a worn way, wood and stone from far off - had been more than their backs could take.";

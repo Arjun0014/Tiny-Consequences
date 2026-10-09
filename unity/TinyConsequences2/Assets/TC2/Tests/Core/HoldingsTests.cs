@@ -233,7 +233,7 @@ namespace TC2.Tests.Core
                 var runs = new List<string>();
                 foreach (bool off in new[] { true, false })
                 {
-                    Holdings.Off = off; Holdings.MeansOff = true;
+                    Holdings.Off = off; Holdings.MeansOff = true; Holdings.HardOff = true; TC2.Core.Society.Leaders.Off = true;   // (the accounting alone: no hard times, no headmen)
                     try
                     {
                         var w = TestWorlds.Make(917);
@@ -253,7 +253,7 @@ namespace TC2.Tests.Core
                         runs.Add(sb.ToString());
                         if (!off) { Console.WriteLine((coarse ? "COARSE" : "lived") + ": fed from common " + w.Metrics.CommonFedFu.ToString("0") + ", kin " + w.Metrics.KinFu.ToString("0") + ", lent " + w.Metrics.LoanFu.ToString("0") + ", repaid " + w.Metrics.RepaidFu.ToString("0")); Assert.Greater(w.Metrics.LoanFu, 0, "loans made"); }
                     }
-                    finally { Holdings.Off = false; Holdings.MeansOff = false; }
+                    finally { Holdings.Off = false; Holdings.MeansOff = false; Holdings.HardOff = false; TC2.Core.Society.Leaders.Off = false; }
                 }
                 Assert.AreEqual(runs[0], runs[1], (coarse ? "COARSE" : "lived") + ": the same world with and without the households' account");
             }

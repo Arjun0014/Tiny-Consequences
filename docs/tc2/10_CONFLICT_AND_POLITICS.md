@@ -122,6 +122,42 @@ same choices at the lived rate (measured, as visits and trade are). Long runs ar
   band carries home answers the tributary's wrong, so a wrong is avenged once; the lord's own watch, walls and taking back read only what
   was done to it. Ten seeds: no change in people; lords answered three times in 3,000 world-years, as most tributaries answer first.
 
+## 12c. Implemented: standing and the village's first household (C10.2: D2-127)
+Built on C3.3 (D2-126: household grain, loans recorded as debts, gifts). `Core/Society/Leaders.cs`.
+- **A household's following**: the village's households bound to it - its close kin households (parents', children's, siblings'), the
+  households that owe it grain, and those it fed in hard times or lent to in the last eight years (Sahlins' big man, whose gifts and loans
+  make followers; the elders' standing of kin; a patron-client tie outlives the debt - without it the season's debts, repaid at each
+  harvest, made the following swing and the place change hands every four to fifteen years, 83 % of the time to another household). Read
+  from the debts table, the kin links and `Household.Patron`/`PatronAt` (the household it last turned to); never stored.
+- **The first household and the headman**: weighed every year after the harvest and when the place falls vacant (a death, a move): the
+  household with the largest following (ties: more grain, then the lower id) is the village's first; its eldest grown member (18+, able)
+  is first among the people (`Settlement.Head`, `HeadHh`, `HeadSince`, `HeadEvent`). An incumbent household keeps the place while its
+  following is at least half the largest (`Hold` 0.5: a rival must be followed by more than twice as many; village headmen mostly held the
+  place for life); at a death the place passes within the household while it still qualifies - standing
+  that is inherited (claims pass to heirs) makes lines of headmen. History: `HeadmanRose` (the first; within the household after the dead;
+  another household rose).
+- **What it does**: in hard times (C3.3c) its grain opens to the village's hungry down to the village's ration, after their kin and
+  before anyone's loans - a gift; those it fed follow it (`Holdings.Draw`). **Tribute** paid to a lord village is its first household's
+  grain (the lord's own store), not the village's common grain (`Conflict.Harvested`): what a lordship takes makes its first household rich.
+- Pages: the settlement page's overview ("Its first household: the Xs, followed by N households (K of kin, D owing them grain, F fed by
+  them in hard times); first among its people Name, age, since year Y"), the person page ("First among the people of V since year Y").
+  Headless: `leaders:` line, `--nohead` (reproduces `_h5` exactly), `--notribhead` (headmen without the tribute rule).
+- Research grounding (session 16): big men rarely hold more than ~80 core followers and their successions are contested (Henrich, Chudek &
+  Boyd 2015); villages split at ~127-158 (Alberti 2014, Hutterite fission data) or ~200 people (Chagnon) unless integrated, with elites and
+  formal ritual above ~500 (Bandy 2004) - the basis for C10.3, fission along rival followings.
+
+## 12d. Implemented: a contested succession splits a village (C10.3: D2-128)
+- **Measured first** (`place --binding`, the `_l3` saves at years 100/200/300): the share of a village's households bound to its first household
+  (it and its following) falls with size - median 43 % under 100 people, 24 % at 100-200, 20 % at 200-400, 8 % at 400+ - and the largest
+  following among the unbound reaches 34 households (p90) and up to 90 in towns: scalar stress (Johnson 1982), the condition of fission.
+- **The trigger is an event, not a rate**: at a vacancy (the first among the people died or left), once the new first is weighed, the household
+  with the largest following among those not bound to it - counting itself and only its unbound followers, none of them setting out - will not
+  follow when that following is at least half the first's (`Hold`) and a village's worth (6 households, 20 people): it leads them away to found
+  a village at the best place the village knows (`Migration.Split`: a party with the split's record as its cause; households with a birth near
+  stay). No place known, no split. History: `VillageSplit` (92), its cause the death. Sahlins: conflict at a big man's passing; villages fission
+  past ~130-200 people unless their people are bound together (Alberti 2014; Chagnon).
+- `--nosplit` gives C10.2 alone on the same binary.
+
 ## 13. Civilisation depth (D2-089)
 
 Force, fortification, war and sieges are designed in `23_MILITARY_AND_WAR.md` (fighters as persistent people, arms as goods, training,

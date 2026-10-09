@@ -1,35 +1,47 @@
 # TC2 Session handoff
 
-## Session 16 (9 Oct 2026, from 09:11 IST; Control Room, Resource Governor MEDIUM: CPU 70 %, RAM 85 %, two heavy jobs) - C3.3 the household's grain, debts, makers paid, hard times (D2-126)
+## Session 16 (9 Oct 2026, from 09:11 IST; Control Room, Resource Governor MEDIUM: CPU 70 %, RAM 85 %, two heavy jobs) - C3.3 the household's grain, debts, makers paid, hard times (D2-126); C10.2 the village's first household (D2-127)
 
 ### Exact state (keep current)
-- **C3.3a-c committed (D2-126, sim version 62; `26` §2c the design and result)**: `Core/Places/Holdings.cs` (bins `Household.Grain`, the village's
-  `Settlement.Common`, the debts table `World.Holdings`; `Reconcile`, `Harvest` by mouths + `Repay`, `Put`, `Draw`/`Provide`, `Take`, `Split`,
-  `Close`, `Inherit`, `SetOut`, `Arrive`, `Found`; makers paid: `Made`/`Out`/`Price`/`CanBuy`/`Commission`/`Levy`, `Household.WaresDue/PotsDue`;
-  hard times `Hard` (ration < `Contract` 0.7), `Available`; pages `Line`/`VillageLine`; tools `HungerTally`). Hooks in SettlementSystem (harvest,
-  Food, DieOut, MoveTo), AgentSystem (two store meals, the open hearth), WildFood/Livestock (own produce), Migration (set out, arrive),
-  WorldGenerator (`Found`), Weaving/Pottery (made, taken), Forge (commission), Trade.Add (sold abroad), Architecture.Means (own grain), Biography
-  (home), Gazetteer ("Grain:"). Headless: `--nohold` (= `_s3` exactly), `--holdmeansoff`, `--nopay`, `--nohard`; lines `hold:`, `makers paid:`,
-  `hunger by household:`; `place --households` (grain, owes, owed), `place --debts`; tools ledger `--ledgeryears F`.
-- **Verified**: `HoldingsTests` 12/12 (the accounting moves nothing at both resolutions; save with debts continues the same); full suite 326/326
-  (one premise moved: `ArchitectureTests` reads the household's own grain); Unity configure 0 errors (metas committed). Ten seeds 300 y DEEP, runs
-  `tc2/out/civ/s*_h1` (bins), `_h2` (+ makers, takers owing), `_h3` (+ hard times), `_h4` (makers as far as grain pays, `--nohard`), `_h5` (the slice;
-  saves 100/200/300) - D2-126 has the numbers. Cost: +0.4 % from the same save (lower envelope of four runs each).
-- Web build of this code and Web test: NOT YET (next).
+- **C3.3a-c committed 889263b (D2-126, sim version 62; `26` §2c)**: `Core/Places/Holdings.cs` - household bins and the village's common grain in one
+  granary, the moral economy and debts, makers paid in kind as far as the taker's grain pays, the village's levy, sharing contracting in hard times.
+  Headless: `hold:`, `makers paid:`, `hunger by household:`, `place --households/--debts`, `--nohold` (= `_s3`), `--holdmeansoff`, `--nopay`,
+  `--nohard`, `--ledgeryears`. Runs `tc2/out/civ/s*_h1`..`_h5` (`_h5` the slice; saves 100/200/300).
+- **C10.3 IN PROGRESS (committed as such with C10.2; D2-128 to write; sim version 64; `10` §12d)**: `Leaders.Contest` at a vacancy (`Weigh(...,
+  vacancy: true)` from `Day`), `Migration.Split` (a faction's party to the best known site, the split's record as its cause), `HistoryKind.VillageSplit`
+  92, metrics `Splits/SplitHouseholds`, `--nosplit` (reproduces `_l3` exactly, checked on seed 4), tools `--contests` (`contests:` line). First
+  version measured (`_l4`, ten seeds vs `_l3`): at par (people x1.02, foundings x0.975) but only 10 splits in 3,000 world-years - the tally on seed 6:
+  of 205 vacancies, 107 no unbound rival of 6+ households, 42 rival under half the first's following, and of ~50 that qualified **49 failed only for
+  want of a known place** (villages scout only when land is short). **Then built, not yet run over ten seeds: the pending split** - a faction that
+  would not follow and knows no place looks for land (`Settlement.SplitHh/SplitCause/SplitSince`; `Migration.WantsScout`/`ScoutsDue` also for a
+  pending faction; `Migration.KnowsSite`; `Leaders.Pending` daily: goes when a place is known and it still qualifies, gives up after `SplitYears`
+  3). `LeadersTests` 7/7, `HoldingsTests` 12/12; full suite NOT yet run on C10.3; `LeadersTests.cs.meta` NOT yet made (run Unity configure).
+- **C10.2 built and measured (D2-127 written, sim version 63; `10` §12c); the full suite passed on it: 331/331**:
+  `Core/Society/Leaders.cs` (followings of kin, debtors and clients - `Household.Patron/PatronAt`, set by gifts in hard times and by loans; the first
+  household and headman `Settlement.Head/HeadHh/HeadSince/HeadEvent`, `Hold` 0.5, weighed yearly at `Migration.DecideDay` and at a vacancy
+  (`Leaders.Day` daily); the first household's gifts in hard times in `Holdings.Draw`; tribute to the lord's first household in
+  `Conflict.Harvested`; `HistoryKind.HeadmanRose` 91; pages in Gazetteer.Overview and Biography.Identity). Headless: `leaders:` line, `place
+  --leaders`, `place --binding` (C10.3 survey), `--nohead` (= `_h5` exactly), `--notribhead`. `LeadersTests` 5/5, `HoldingsTests` 12/12 (its identity
+  test now switches hard times and headmen off). Runs `_l1` (Hold 0.67, no tribute rule), `_l2` (+ tribute), `_l3` (the slice; saves 100/200/300).
+  `Conflict.FitAt` made public (tests).
+- **The Web build in `tc2/web-build/web` is of an intermediate state** (Unity imported C10.2 sources mid-build): rebuild before any Web test.
 - Scratchpad (session 16): `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/c30873bf-a161-4a50-b46c-76e150e4ddf3/scratchpad`
-  (`wrun.sh`, `hold.py`, `forms.py`, `ly.py`, `lycf.py`; copies in `tc2/out/tools/`).
+  (`wrun.sh`, `hold.py`, `forms.py`, `leaders.py`, `ly.py`, `lycf.py`, `patch.py` - a line-ending-aware replace: `python patch.py FILE OLD NEW`;
+  copies in `tc2/out/tools/`). Shell heredocs with backslashes or nested quotes break here: write texts to files.
 
 ### Next, in order
-1. Web build (`node tc2/scripts/unity.mjs build-web --jobs 3`, ~11 min, RAM ~85 % while it runs) and Web test (`node tc2/scripts/webtest.mjs --tag
-   s16web`): the person page (shots 5b-5d) shows "Its own grain in the village's granary...", the place page (5e) the "Grain:" line.
-2. **C10.2 standing and the village's first household** (chosen from the evidence: C3.3's claims have no consumer; `10` §4/§6.6 plan leaders from
-   prestige - generosity in famine, kin, deeds, age): standing from households that owe it, what it gave unreckoned, its kin households, its head's
-   age and deeds; the headman the head of the leading household (incumbent until clearly outstood); the headman's household opens its grain to the
-   village's hungry in hard times (renewing standing) and the headman leads the village's bands by their own boldness; succession from inherited
-   claims. Research notes: fission thresholds ~127-158 (Alberti 2014, Hutterites), ~200 (Chagnon), elites and ritual above ~500 (Bandy 2004); big men
-   rarely hold more than ~80 core followers (Henrich, Chudek & Boyd 2015). Village fission by rival followings is C10.3.
-3. Open from D2-126: debts' consequences (work for creditors, flight), the hungry taking from their own village's store, household land, households'
-   own trade; D2-125's unmet iron ask; D2-123 floods; W-FOREST.
+1. Unity configure (`LeadersTests.cs.meta`), then ten seeds of the pending-split version (`BIN=bin_l5 TAG=_l5 ... --contests` in `EXTRA`), compare with
+   `_l3` (= `--nosplit`): splits, foundings, village sizes (`bash sizes.sh _l5 300` - the repo build reads only saves of its own sim version), people
+   at par; the full suite; D2-128 (draft the evidence from the numbers above and the run); docs; commit "C10.3 closed".
+2. (done: C10.2 committed with C10.3 in progress) **C10.3 a contested succession splits a village** (evidence D2-127: binding to the first household falls with size, 43 % of households under 100
+   people, 8 % at 400+; unbound rival followings up to 90 households): at a vacancy, if the largest following among households not bound to the new
+   first household is at least `Hold` of the first's, at least a party's worth, and the village knows a good site, the rival household leads its
+   unbound following away to found a village (Sahlins: conflict at leadership transitions; Alberti 2014, Chagnon - fission past ~130-200 people
+   unless integrated). Reuse `Migration.NewParty` with the site; history: the split, caused by the death. Measure: foundings, village sizes (towns
+   kept only where integrated?), people at par, conflict; `--nosplit` control.
+3. Web build + Web test (C3.3 + C10.2 + C10.3): the person/place pages show the grain and first-household lines (shots 5b-5f).
+4. Open: the headman deciding tribute, walls or bands; the hungry taking from their own village's store; debts' work and flight; household land;
+   D2-125's unmet iron ask; D2-123 floods; W-FOREST.
 
 ## Session 15 (8 Oct 2026 19:54 IST - 9 Oct; Control Room run #31 session 5) - C4.2 carts closed (D2-122), nobody in the water (D2-123), crossings surveyed (D2-124), C1.4b the village smith (D2-125)
 

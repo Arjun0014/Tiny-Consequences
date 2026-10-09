@@ -50,6 +50,8 @@ namespace TC2.Core.History
                   .Append(w.Members(p.Household).Count).Append(" people)");
             }
             sb.Append(".\n");
+            if (w.Settlements.Exists(p.Home) && w.Settlements.Get(p.Home).Head == pid && !Society.Leaders.Off)
+                sb.Append("First among the people of ").Append(Place(w, p.Home)).Append(" since ").Append(Year(w.Settlements.Get(p.Home).HeadSince)).Append(" (theirs is the household most of the village follows: its kin, those who owe it grain, those it fed or lent to lately).\n");
             return sb.ToString();
         }
 

@@ -3583,3 +3583,41 @@ and they ran beside other jobs.
 **Open.** Debts have no consequence yet beyond repayment (no work for a creditor, no flight from debt, no standing); land is the commune's (the
 harvest by mouths) - household fields, inheritance of land and labour for others wait until land binds; trade between villages is still the
 village's own (grain sold falls on every bin by its share); the hungry poor never take from their own village's store at night (only neighbours').
+
+## D2-127 — 2026-10-09 — Standing and the village's first household: followings, headmen, the lord's tribute (C10.2)
+
+**Context.** C3.3 (D2-126) made claims real - households owe each other grain, one household owed by up to 159 others - but nothing read them;
+villages had no leaders (only the boldest leading a band) and lordships rarely held (0-2 a world). `10` §4/§6.6 plans leaders from prestige
+(generosity in famine, kin, deeds, age). Research (session 16): big men turn surplus into followers through gifts and loans, rarely holding more
+than ~80 core followers, their successions contested (Sahlins 1963; Henrich, Chudek & Boyd 2015); villages split at ~127-158 (Alberti 2014,
+Hutterite fission data) or ~200 people (Chagnon) unless integrated, with elites and formal ritual above ~500 (Bandy 2004).
+**Decision.** `Core/Society/Leaders.cs` (sim version 63). (a) **A household's following** = the village's households bound to it: its close kin
+households, those that owe it grain (the debts table), those it fed in hard times in the last eight years (`Household.Patron/PatronAt`) - read,
+never stored. (b) **The first household and the headman**, weighed yearly after the harvest and at a vacancy: the household with the largest
+following (ties: more grain, then the lower id) - unless the incumbent's following is still 0.67 of it (`Hold`); its eldest grown, able member
+(18+) is first among the people (`Settlement.Head/HeadHh/HeadSince/HeadEvent`); at a death the place passes within the household while it still
+qualifies; `HistoryKind.HeadmanRose` (91: the first; within the household after the dead; another household rose). (c) **What it does**: in hard
+times (D2-126 c) the first household's grain opens to the village's hungry down to the village's ration, after kin and before loans - a gift, and
+those fed follow it; **tribute** paid to a lord village is its first household's grain (the lord's own store), not the village's common grain.
+Pages: the settlement overview ("Its first household: the Xs, followed by N households (K of kin, D owing them grain, F fed by them in hard
+times); first among its people Name, age, since year Y"), the person identity ("First among the people of V since year Y"). Headless: `leaders:`
+line, `place --leaders`, `--nohead` (reproduces `_h5` exactly), `--notribhead`.
+(d) A loan makes the lender the borrower's patron (`Holdings.Lend` sets `Patron`): the patron-client tie outlives the debt; `Hold` 0.5.
+**Evidence.** `LeadersTests` 5 (the household most follow gives the first and its eldest; an incumbent is not unseated by a hair but is by more
+than twice; at a death the place passes within the household; in hard times the first household feeds the hungry down to the village's ration as
+a gift and they follow it, nothing opens with `--nohead`; tribute to the lord village's first household, the common grain with `--notribhead`; a
+lived and a COARSE village find their first and save it). Seed 4, 100 years: `--nohead` reproduces `_h5` report for report. **Ten seeds, 300 years
+DEEP** against `_h5`: `_l1` (headmen, `--notribhead`, `Hold` 0.67): people x0.971 (t -0.5), hunger deaths a thousand person-years x1.07 (t 2.2:
+the first household spreads its grain thinly in long hard times, partly undoing the triage of D2-126 c), raids x0.61 (t -2.3: fewer fit people
+below the hunger line that raises bands); headship changed hands every 4-15 years, 83 % of the time to another household - the season's debts,
+repaid at each harvest just before the yearly weighing, made the following swing. `_l2` (+ tribute to the lord's household): lord households
+rich (Bristead's first household 428 days of grain, followed by 41 of 69 households, 35 of them fed by it). `_l3` (the slice: patron ties from
+loans, `Hold` 0.5): people x1.033 (t 1.0), births and deaths a thousand at par, hunger deaths x1.07 (t 0.9), famines x1.10 (t 1.6), raids x0.82
+(t -0.6); 3,762 headmen risen over ten worlds (19 % within the household after a death, against 13 %; 77 % another household), the place held 4-12
+years on average at year 300 - headmen are the eldest (often 60-75) and a patriarch's death breaks his children's households' kin link to his
+(lineage segmentation; big men's places are not inherited); first households fed the hungry 294k FU. **Binding falls with size** (`place
+--binding`, the `_l3` saves at years 100/200/300, 402 village-ages): households bound to the first household (it and its following) median 43 %
+in villages under 100 people, 24 % at 100-200, 20 % at 200-400, 8 % at 400+; the largest following among the unbound p90 6/14/23/34 households,
+up to 90 - scalar stress, the evidence for C10.3. Cost: none measurable (a person-day x0.90 in the noise).
+**Open.** C10.3: a contested succession (an unbound rival's following near the new first's) splits the village - the rival leads its following
+away to a known site; the headman does not yet decide tribute, walls or bands; the hungry poor do not take from their own village's store.

@@ -142,6 +142,38 @@ namespace TC2.Core.Places
             }
         }
 
+        /// <summary>Whether a village knows a good place to found a village at now (the best of its lore, looked at again).</summary>
+        public bool KnowsSite(int sid) => BestSite(sid, out _) >= 0;
+
+        /// <summary>
+        /// A faction of a village sets out together to found a village at the best place the village knows (C10.3: a contested succession, `Leaders`);
+        /// households with a birth near stay. False when no good place is known or none can go.
+        /// </summary>
+        public bool Split(int sid, List<int> households, long cause)
+        {
+            var w = _w;
+            int site = BestSite(sid, out _);
+            if (site < 0) return false;
+            _scratch.Clear();
+            for (int i = 0; i < households.Count; i++)
+            {
+                int hid = households[i];
+                if (!w.Households.Exists(hid)) continue;
+                ref var hh = ref w.Households.Get(hid);
+                if (hh.Party != 0 || hh.Settlement != sid || hh.Dissolved != 0) continue;
+                var mem = w.Members(hid); bool near = mem.Count == 0;
+                for (int k = 0; k < mem.Count; k++) { ref var p = ref w.People.Get(mem[k]); if (p.Alive && p.PregDue != 0 && p.PregDue - w.Now < 12 * SimTime.Day) near = true; }
+                if (!near) _scratch.Add(hid);
+            }
+            if (_scratch.Count < MinHouseholds) return false;
+            int pid = NewParty(sid, site, 0);
+            ref var party = ref w.Parties.Get(pid);
+            party.Event = cause;   // (its setting out is recorded with this as its cause)
+            for (int i = 0; i < _scratch.Count; i++) w.Households.Get(_scratch[i]).Party = pid;
+            w.Settlements.Get(sid).Lore.Forget(site);
+            return true;
+        }
+
         /// <summary>A party that sets out the next morning at the village's seven o'clock.</summary>
         int NewParty(int sid, int site, int dest)
         {
@@ -270,7 +302,7 @@ namespace TC2.Core.Places
             w.Holdings.SetOut(sid, _leaving, food);   // (their own grain first; what they cannot carry left to the village; debts lapse: C3.3)
             party.Food = food;
             // why they go: the famine they remember, the hunger or the rationing now, else their own choice for more land
-            long cause = s.FamineEvent != 0 && s.Memory > 0.3 ? s.FamineEvent : (s.HungerEvent != 0 ? s.HungerEvent : s.RationEvent);
+            long cause = party.Event != 0 ? party.Event : s.FamineEvent != 0 && s.Memory > 0.3 ? s.FamineEvent : (s.HungerEvent != 0 ? s.HungerEvent : s.RationEvent);   // (a split's own record: C10.3)
             if (party.Site >= 0)
                 party.Event = w.Record(new HistoryEvent
                 {
@@ -436,7 +468,7 @@ namespace TC2.Core.Places
         /// <summary>Whether a village wants someone to go and look at the land beyond: pressed, and knowing no good place.</summary>
         public bool WantsScout(in Settlement s)
         {
-            if (!s.Inhabited || _w.Now - s.Founded < SimTime.Years(3) || Pressure(in s) < 0.12) return false;
+            if (!s.Inhabited || _w.Now - s.Founded < SimTime.Years(3) || (Pressure(in s) < 0.12 && s.SplitHh == 0)) return false;   // (or a faction looks for land: C10.3)
             if (_w.Now - s.ScoutAt < 6 * SimTime.Day) return false;   // someone went lately
             s.Lore.Best(out float q);
             return q < 0.6f;
@@ -449,7 +481,7 @@ namespace TC2.Core.Places
         public int ScoutsDue(in Settlement s, int days, out long first)
         {
             first = 0;
-            if (!s.Inhabited || _w.Now - s.Founded < SimTime.Years(3) || Pressure(in s) < 0.12) return 0;
+            if (!s.Inhabited || _w.Now - s.Founded < SimTime.Years(3) || (Pressure(in s) < 0.12 && s.SplitHh == 0)) return 0;
             s.Lore.Best(out float q);
             if (q >= 0.6f) return 0;
             first = Math.Max(_w.Now, s.ScoutAt + 6 * SimTime.Day);

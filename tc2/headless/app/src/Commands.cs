@@ -141,6 +141,10 @@ namespace TC2.Headless
             if (a.Has("holdmeansoff")) TC2.Core.Places.Holdings.MeansOff = true;
             if (a.Has("nopay")) TC2.Core.Places.Holdings.PayOff = true;   // (C3.3a alone: makers are not paid)
             if (a.Has("nohard")) TC2.Core.Places.Holdings.HardOff = true;   // (C3.3a-b: sharing never contracts in hard times)
+            if (a.Has("nohead")) TC2.Core.Society.Leaders.Off = true;   // (C3.3 alone: no first household, no headman)
+            if (a.Has("notribhead")) TC2.Core.Society.Leaders.TributeOff = true;   // (C10.2 headmen alone: tribute to the lord village's common grain)
+            if (a.Has("nosplit")) TC2.Core.Society.Leaders.SplitOff = true;   // (C10.2 alone: a contested succession never splits a village)
+            if (a.Has("contests")) TC2.Core.Society.Leaders.ContestTally = new double[9];   // (C10.3: why contested successions did not split)
             TC2.Core.Places.Holdings.HungerTally = new double[7];   // (C3.3c: who dies of hunger - by the household's own grain, debts and kin)   // (C3.3: the accounting alone - Means reads the village's granary as before)
             if (a.Has("nosmithcrew")) TC2.Core.Places.Forge.CrewOff = true;   // (C1.4b against the smithy before it in one binary: every smith at it, no practice)
             if (a.Has("carttally")) TC2.Core.Diagnostics.CartTally.T = new double[12];   // (C4.2 closing: why carts begun are given up)
@@ -558,6 +562,29 @@ namespace TC2.Headless
                                         if (maker) { mkH++; mkG += w.Households.Get(hl2[i]).Grain; mkN += mem2.Count; } else { otG += w.Households.Get(hl2[i]).Grain; otN += mem2.Count; }
                                     }
                                 }
+                                {
+                                    // the first households and their headmen (C10.2): villages led, the following of the first household against the village's
+                                    // households, how long the place has been held, how it changed hands over the run, grain the first households fed the hungry with
+                                    int led = 0, lvVillages = 0; double fol = 0, hhs = 0, lvYears = 0, lvMost = 0; var shares = new System.Collections.Generic.List<double>();
+                                    for (int sid2 = w.Settlements.First(); sid2 != 0; sid2 = w.Settlements.Next(sid2))
+                                    {
+                                        var st2 = w.Settlements.Get(sid2);
+                                        if (!st2.Inhabited || w.HouseholdsOf(sid2).Count == 0) continue;
+                                        lvVillages++;
+                                        if (st2.HeadHh == 0) continue;
+                                        led++;
+                                        int f2 = TC2.Core.Society.Leaders.Following(w, sid2, st2.HeadHh, out _, out _, out _);
+                                        fol += f2; hhs += w.HouseholdsOf(sid2).Count; lvYears += (w.Now - st2.HeadSince) / (double)TC2.Core.Foundation.SimTime.Year;
+                                        shares.Add(f2 / (double)w.HouseholdsOf(sid2).Count); if (f2 > lvMost) lvMost = f2;
+                                    }
+                                    shares.Sort();
+                                    var mt2 = w.Metrics;
+                                    Console.WriteLine("leaders: " + led + " of " + lvVillages + " villages have a headman; the first household's following " + F(fol / Math.Max(1, led), "0.0") + " households of " + F(hhs / Math.Max(1, led), "0.0") +
+                                                      " (share median " + (shares.Count > 0 ? F(100 * shares[shares.Count / 2], "0") : "-") + " %, most " + F(lvMost, "0") + "), held " + F(lvYears / Math.Max(1, led), "0.0") + " years; headmen risen " + mt2.Headmen +
+                                                      " (within the household " + mt2.HeadsWithin + ", another household " + mt2.HeadsRisen + "); fed the hungry in hard times " + F(mt2.HeadFedFu, "0") + " FU; splits " + mt2.Splits + " (" + mt2.SplitHouseholds + " households)");
+                                }
+                                var ct = TC2.Core.Society.Leaders.ContestTally;
+                                if (ct != null) Console.WriteLine("contests: vacancies " + F(ct[0], "0") + "; no unbound rival of 6+ households " + F(ct[1], "0") + ", rival under half the first's following " + F(ct[2], "0") + ", too few people " + F(ct[3], "0") + ", looked for land " + F(ct[4], "0") + ", splits " + F(ct[5], "0") + "; mean rival " + F(ct[7] / Math.Max(1, ct[0]), "0.0") + " vs first " + F(ct[8] / Math.Max(1, ct[0]), "0.0") + " households");
                                 var ht = TC2.Core.Places.Holdings.HungerTally;
                                 if (ht != null) Console.WriteLine("hunger by household: own grain none " + F(ht[0], "0") + ", under 5 days " + F(ht[1], "0") + ", 5-20 " + F(ht[2], "0") + ", 20+ " + F(ht[3], "0") + "; in villages whose sharing had contracted " + F(ht[4], "0") + ", in households in debt " + F(ht[5], "0") + ", with no close kin in the village " + F(ht[6], "0"));
                                 Console.WriteLine("makers paid: households paid makers " + F(mt.MakersPaidFu, "0") + " FU, makers earned " + F(mt.MakersEarnedFu, "0") + " (owed besides " + F(mt.MakersOwedFu, "0") + "), smiths " + F(mt.SmithsEarnedFu, "0") +

@@ -24,6 +24,54 @@ namespace TC2.Headless
             if (a.Has("crossings")) { Crossings(w); return 0; }
             if (a.Has("overlaps")) { Overlaps(w, a.Int("sid", 0)); return 0; }
             if (a.Has("layout")) { Layout(w, a.Int("sid", 0) != 0 ? a.Int("sid", 0) : PickPlace(w, "big")); return 0; }
+            if (a.Has("leaders"))
+            {
+                // (C10.2) each village: its households, its first household's following and grain (days of its food), how long it has held the place,
+                // whether the village is a lord (and of how many) and the first household's house
+                for (int lsid = w.Settlements.First(); lsid != 0; lsid = w.Settlements.Next(lsid))
+                {
+                    var s = w.Settlements.Get(lsid);
+                    if (!s.Inhabited) continue;
+                    int tribs = 0;
+                    for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o)) if (w.Settlements.Get(o).Inhabited && w.Settlements.Get(o).Lord == lsid) tribs++;
+                    string line = "  #" + lsid + " " + w.History.NameOf(EntityRef.Settlement(lsid)).PadRight(14) + " " + w.HouseholdsOf(lsid).Count.ToString().PadLeft(3) + " households" + (tribs > 0 ? ", lord of " + tribs : "") + (s.Lord != 0 ? ", pays tribute" : "");
+                    if (s.HeadHh != 0 && w.Households.Exists(s.HeadHh))
+                    {
+                        int f = TC2.Core.Society.Leaders.Following(w, lsid, s.HeadHh, out int kin, out int owing, out int fed);
+                        var hh = w.Households.Get(s.HeadHh);
+                        double need = System.Math.Max(1e-9, w.SettlementSys.HouseholdNeed(s.HeadHh));
+                        string form = hh.Building != 0 && w.Buildings.Exists(hh.Building) ? Architecture.Describe(w.Buildings.Get(hh.Building).Form, false) : "(no house)";
+                        line += ": first the " + w.History.NameOf(EntityRef.Household(s.HeadHh)) + "s, following " + f + " (kin " + kin + ", owing " + owing + ", fed " + fed + "), grain " + (hh.Grain / need).ToString("0") + " d, held " + ((w.Now - s.HeadSince) / (double)SimTime.Year).ToString("0.0") + " y, means " + Architecture.Means(w, s.HeadHh).ToString("0.00") + ", " + form;
+                    }
+                    Console.WriteLine(line);
+                }
+                return 0;
+            }
+            if (a.Has("binding"))
+            {
+                // (C10.3 survey) each village: households and people; bound to its first household (the household itself and its following); the
+                // largest following among the households not bound to it, counted over the unbound only (a rival faction), and that rival's kin/debt mix
+                Console.WriteLine("sid,households,people,bound,rival,rival_hid,lord,tributary");
+                for (int bsid = w.Settlements.First(); bsid != 0; bsid = w.Settlements.Next(bsid))
+                {
+                    var s = w.Settlements.Get(bsid);
+                    if (!s.Inhabited || w.HouseholdsOf(bsid).Count == 0) continue;
+                    var all = TC2.Core.Society.Leaders.All(w, bsid);
+                    var bound = new System.Collections.Generic.HashSet<int>();
+                    if (s.HeadHh != 0) { bound.Add(s.HeadHh); if (all.TryGetValue(s.HeadHh, out var fs)) foreach (var h in fs) bound.Add(h); }
+                    int rival = 0, rhid = 0;
+                    var hl = w.HouseholdsOf(bsid);
+                    for (int i = 0; i < hl.Count; i++)
+                    {
+                        if (bound.Contains(hl[i]) || !all.TryGetValue(hl[i], out var f2)) continue;
+                        int n = 1; foreach (var h in f2) if (!bound.Contains(h)) n++;
+                        if (n > rival) { rival = n; rhid = hl[i]; }
+                    }
+                    int lordOf = 0; for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o)) if (w.Settlements.Get(o).Inhabited && w.Settlements.Get(o).Lord == bsid) lordOf++;
+                    Console.WriteLine(bsid + "," + hl.Count + "," + s.Population + "," + bound.Count + "," + rival + "," + rhid + "," + lordOf + "," + (s.Lord != 0 ? 1 : 0));
+                }
+                return 0;
+            }
             if (a.Has("debts"))
             {
                 // (C3.3) every debt: debtor and creditor, their villages, whether they still stand, how much and since when

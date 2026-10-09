@@ -135,6 +135,15 @@ namespace TC2.Core.Places
         /// <summary>The households of a village close kin to this one (pages and tools: built afresh, never the day's cache).</summary>
         public static List<int> KinOf(World w, int sid, int hid)
         {
+            var kin = KinMap(w, sid);
+            if (!kin.TryGetValue(hid, out var mine)) return new List<int>();
+            mine.Sort();
+            return mine;
+        }
+
+        /// <summary>Every household of a village and its close kin households there (built afresh; lists unsorted).</summary>
+        public static Dictionary<int, List<int>> KinMap(World w, int sid)
+        {
             var kin = new Dictionary<int, List<int>>(); var sibs = new Dictionary<int, List<int>>();
             var res = w.Residents(sid);
             for (int i = 0; i < res.Count; i++)
@@ -152,9 +161,7 @@ namespace TC2.Core.Places
                 }
             }
             foreach (var kv in sibs) for (int a = 0; a < kv.Value.Count; a++) for (int b = a + 1; b < kv.Value.Count; b++) Link(kin, kv.Value[a], kv.Value[b]);
-            if (!kin.TryGetValue(hid, out var mine)) return new List<int>();
-            mine.Sort();
-            return mine;
+            return kin;
         }
 
         // ------------------------------------------------------------------ the store's account
@@ -325,6 +332,21 @@ namespace TC2.Core.Places
                 }
             }
             if (fu <= 1e-9) return asked;
+            // in hard times the village's first household opens its grain to the hungry down to the village's ration - and they follow it (C10.2)
+            if (hard)
+            {
+                int first = Society.Leaders.First(in s);
+                if (first != 0 && first != hid && w.Households.Exists(first) && w.Households.Get(first).Settlement == sid && (kin == null || !kin.Contains(first)))
+                {
+                    double t = DMath.Min(fu, Spare(first, s.Ration));
+                    if (t > 0)
+                    {
+                        w.Households.Get(first).Grain -= t; fu -= t; w.Metrics.HeadFedFu += t;
+                        ref var me = ref w.Households.Get(hid); me.Patron = first; me.PatronAt = w.Now;
+                    }
+                }
+                if (fu <= 1e-9) return asked;
+            }
             // a loan: from those it owes already (they lent before), then the households with the most to spare
             for (int j = FirstOf(hid); j >= 0 && j < _debts.Count && _debts[j].Debtor == hid && fu > 1e-9; j++)
             {
@@ -752,6 +774,7 @@ namespace TC2.Core.Places
 
         void Lend(int debtor, int creditor, double fu)
         {
+            { ref var dh = ref _w.Households.Get(debtor); dh.Patron = creditor; dh.PatronAt = _w.Now; }   // (the household it turned to: the tie outlives the debt - C10.2)
             int i = Find(debtor, creditor);
             if (i >= 0) { var d = _debts[i]; d.Fu += fu; _debts[i] = d; }
             else _debts.Insert(~i, new Debt { Debtor = debtor, Creditor = creditor, Fu = fu, Since = _w.Now });

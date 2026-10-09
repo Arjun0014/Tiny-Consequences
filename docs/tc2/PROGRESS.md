@@ -4,6 +4,14 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 16, later** - **C10.2 standing and the village's first household (D2-127, sim version 63)**: a household's following (its close kin
+  households, those that owe it grain, those it fed in hard times or lent to lately - the patron tie outlives the debt); the household most follow is
+  the village's first and its eldest grown member first among its people, kept until a rival is followed by more than twice as many, passing within
+  the household at a death while it still qualifies; in hard times the first household's grain opens to the hungry (a gift; they follow it); tribute to
+  a lord village is its first household's grain. Pages (settlement overview, person identity), `HeadmanRose` events, `leaders:` line, `place
+  --leaders`, `place --binding`, `--nohead` (= `_h5`), `--notribhead`. Ten seeds against `_h5`: people x1.03 (t 1.0), vital rates at par; headship
+  turns over every 4-12 years (the eldest lead; a patriarch's death breaks his children's households' links); binding to the first household falls
+  with size (43 % of households under 100 people, 8 % at 400+): the evidence for C10.3 (a contested succession splits a village). `LeadersTests` 5.
 - **Session 16 (9 Oct 2026, from 09:11 IST; Control Room, Resource Governor MEDIUM)** - **C3.3 exchange between households, first slices (D2-126,
   sim version 62)**: measured first - the session-13 rule (the harvest by each household's crop work) is an artefact of the COARSE schedule (residents
   walked in id order: households with no member of 16-59 "brought in" 64 FU a member against 40 for young couples); divided by mouths households are

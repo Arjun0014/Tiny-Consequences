@@ -997,7 +997,7 @@ namespace TC2.Core.Society
         }
 
         /// <summary>A village's fit grown people at home.</summary>
-        int FitAt(int sid, long now)
+        public int FitAt(int sid, long now)
         {
             var w = _w;
             var res = w.Residents(sid);
@@ -1298,6 +1298,7 @@ namespace TC2.Core.Society
             s.Granary -= pay;
             ref var l = ref w.Settlements.Get(lord);
             l.Granary += pay;
+            if (!Leaders.Off && !Leaders.TributeOff && l.HeadHh != 0) w.Holdings.Put(l.HeadHh, lord, pay);   // (the lord's own: its first household's grain - C10.2)
             w.Record(new HistoryEvent
             {
                 Kind = HistoryKind.TributePaid, Time = now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid), Object = EntityRef.Settlement(lord),

@@ -163,6 +163,10 @@ namespace TC2.Core.Places
         public byte SmithShort;         // days this year its smithies' places could not do the day's work it wanted (C1.4b)
         public byte SmithMore;          // it wants another smithy (weighed yearly, C1.4b)
         public double Common;           // FU of its granary that are the village's own, not any household's: what it was given, paid or sold (C3.3, `Holdings`)
+        public int Head, HeadHh;        // first among its people (the headman) and the household with the largest following (C10.2, `Society.Leaders`; 0 none)
+        public long HeadSince, HeadEvent;   // since when (or when last weighed with none) and the record of their rise
+        public int SplitHh;             // a household that would not follow the new first and looks for land for its following (C10.3; 0 none)
+        public long SplitCause, SplitSince;   // the death that opened that succession; when they would not follow
 
         public float SquareX, SquareY, FieldX, FieldY, WoodX, WoodY, WellX, WellY;
 
@@ -230,6 +234,8 @@ namespace TC2.Core.Places
             w.Int(Kiln); w.Long(PotEvent); w.Double(Pots); w.Double(Jars); w.Float(PotsOut); w.Float(PotsSold); w.Float(HearthShort); w.Double(PotBar); w.Int(PotBarId);   // (C3.2, sim version 59)
             w.Double(SmithBar); w.Int(SmithBarId); w.Byte(Smithies); w.Byte(SmithShort); w.Byte(SmithMore);   // (C1.4b, sim version 61)
             w.Double(Common);   // (C3.3, sim version 62)
+            w.Int(Head); w.Int(HeadHh); w.Long(HeadSince); w.Long(HeadEvent);   // (C10.2, sim version 63)
+            w.Int(SplitHh); w.Long(SplitCause); w.Long(SplitSince);   // (C10.3, sim version 64)
         }
 
         public static Settlement Read(BinReader r)
@@ -251,6 +257,8 @@ namespace TC2.Core.Places
             s.Kiln = r.Int(); s.PotEvent = r.Long(); s.Pots = r.Double(); s.Jars = r.Double(); s.PotsOut = r.Float(); s.PotsSold = r.Float(); s.HearthShort = r.Float(); s.PotBar = r.Double(); s.PotBarId = r.Int();
             s.SmithBar = r.Double(); s.SmithBarId = r.Int(); s.Smithies = r.Byte(); s.SmithShort = r.Byte(); s.SmithMore = r.Byte();
             s.Common = r.Double();
+            s.Head = r.Int(); s.HeadHh = r.Int(); s.HeadSince = r.Long(); s.HeadEvent = r.Long();
+            s.SplitHh = r.Int(); s.SplitCause = r.Long(); s.SplitSince = r.Long();
             return s;
         }
 
@@ -272,6 +280,8 @@ namespace TC2.Core.Places
             h.Add(Kiln); h.Add(PotEvent); h.Add(Pots); h.Add(Jars); h.Add(PotsOut); h.Add(PotsSold); h.Add(HearthShort); h.Add(PotBar); h.Add(PotBarId);
             h.Add(SmithBar); h.Add(SmithBarId); h.Add(Smithies); h.Add(SmithShort); h.Add(SmithMore);
             h.Add(Common);
+            h.Add(Head); h.Add(HeadHh); h.Add(HeadSince); h.Add(HeadEvent);
+            h.Add(SplitHh); h.Add(SplitCause); h.Add(SplitSince);
         }
 
         internal static void WriteV(BinWriter w, Vec3d v) { w.Double(v.X); w.Double(v.Y); w.Double(v.Z); }
@@ -308,9 +318,11 @@ namespace TC2.Core.Places
         public byte CartNeed;        // its traders' trips with a back's load too small, counted while they come within two years of each other
         public double Grain;         // FU of its own grain in its village's granary: its share of the harvests, its own produce, what it was repaid (C3.3, `Holdings`)
         public double WaresDue, PotsDue;   // its makers' make in the village's store not yet paid for: wares, kg of ware (C3.3b, `Holdings.Out`)
+        public int Patron;           // the household that fed it in hard times (it follows it for some years: C10.2, `Society.Leaders`; 0 none)
+        public long PatronAt;        // when
 
-        public void Write(BinWriter w) { w.Int(Id); w.Int(Settlement); w.Float(HomeX); w.Float(HomeY); w.Double(Larder); w.Long(Formed); w.Long(Dissolved); w.Int(FamilyName); w.Byte(Shelter); w.Float(Build); w.Int(Party); w.Double(Ready); w.Float(Water); w.Float(Indoor); w.Float(Gear); w.Int(Building); w.Int(Boat); w.Byte(Rebuild); w.Float(Wares); w.Float(Pots); w.Byte(CartKind); w.Byte(CartState); w.Float(CartHours); w.Long(CartAt); w.Byte(CartNeed); w.Double(Grain); w.Double(WaresDue); w.Double(PotsDue); }
-        public static Household Read(BinReader r) => new Household { Id = r.Int(), Settlement = r.Int(), HomeX = r.Float(), HomeY = r.Float(), Larder = r.Double(), Formed = r.Long(), Dissolved = r.Long(), FamilyName = r.Int(), Shelter = r.Byte(), Build = r.Float(), Party = r.Int(), Ready = r.Double(), Water = r.Float(), Indoor = r.Float(), Gear = r.Float(), Building = r.Int(), Boat = r.Int(), Rebuild = r.Byte(), Wares = r.Float(), Pots = r.Float(), CartKind = r.Byte(), CartState = r.Byte(), CartHours = r.Float(), CartAt = r.Long(), CartNeed = r.Byte(), Grain = r.Double(), WaresDue = r.Double(), PotsDue = r.Double() };
-        public void Hash(ref StateHasher h) { h.Add(Id); h.Add(Settlement); h.Add(HomeX); h.Add(HomeY); h.Add(Larder); h.Add(Formed); h.Add(Dissolved); h.Add(FamilyName); h.Add(Shelter); h.Add(Build); h.Add(Party); h.Add(Ready); h.Add(Water); h.Add(Indoor); h.Add(Gear); h.Add(Building); h.Add(Boat); h.Add(Rebuild); h.Add(Wares); h.Add(Pots); h.Add(CartKind); h.Add(CartState); h.Add(CartHours); h.Add(CartAt); h.Add(CartNeed); h.Add(Grain); h.Add(WaresDue); h.Add(PotsDue); }
+        public void Write(BinWriter w) { w.Int(Id); w.Int(Settlement); w.Float(HomeX); w.Float(HomeY); w.Double(Larder); w.Long(Formed); w.Long(Dissolved); w.Int(FamilyName); w.Byte(Shelter); w.Float(Build); w.Int(Party); w.Double(Ready); w.Float(Water); w.Float(Indoor); w.Float(Gear); w.Int(Building); w.Int(Boat); w.Byte(Rebuild); w.Float(Wares); w.Float(Pots); w.Byte(CartKind); w.Byte(CartState); w.Float(CartHours); w.Long(CartAt); w.Byte(CartNeed); w.Double(Grain); w.Double(WaresDue); w.Double(PotsDue); w.Int(Patron); w.Long(PatronAt); }
+        public static Household Read(BinReader r) => new Household { Id = r.Int(), Settlement = r.Int(), HomeX = r.Float(), HomeY = r.Float(), Larder = r.Double(), Formed = r.Long(), Dissolved = r.Long(), FamilyName = r.Int(), Shelter = r.Byte(), Build = r.Float(), Party = r.Int(), Ready = r.Double(), Water = r.Float(), Indoor = r.Float(), Gear = r.Float(), Building = r.Int(), Boat = r.Int(), Rebuild = r.Byte(), Wares = r.Float(), Pots = r.Float(), CartKind = r.Byte(), CartState = r.Byte(), CartHours = r.Float(), CartAt = r.Long(), CartNeed = r.Byte(), Grain = r.Double(), WaresDue = r.Double(), PotsDue = r.Double(), Patron = r.Int(), PatronAt = r.Long() };
+        public void Hash(ref StateHasher h) { h.Add(Id); h.Add(Settlement); h.Add(HomeX); h.Add(HomeY); h.Add(Larder); h.Add(Formed); h.Add(Dissolved); h.Add(FamilyName); h.Add(Shelter); h.Add(Build); h.Add(Party); h.Add(Ready); h.Add(Water); h.Add(Indoor); h.Add(Gear); h.Add(Building); h.Add(Boat); h.Add(Rebuild); h.Add(Wares); h.Add(Pots); h.Add(CartKind); h.Add(CartState); h.Add(CartHours); h.Add(CartAt); h.Add(CartNeed); h.Add(Grain); h.Add(WaresDue); h.Add(PotsDue); h.Add(Patron); h.Add(PatronAt); }
     }
 }

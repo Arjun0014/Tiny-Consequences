@@ -86,6 +86,8 @@ namespace TC2.Core.History
         OreGaveOut = 82,
         OreTaken = 83,
         BoatBuilt = 85,         // a household made a boat (Subject the household, Object the boat, Other who led the making; C9.1)
+        VillageSplit = 92,      // a household would not follow a village's new first and led its following away to found a village (Subject its eldest, Object the household, Other the new first among the people; ArgA households, ArgB people; Cause1 the death that opened the succession; C10.3)
+        HeadmanRose = 91,       // someone became first among a village's people (Subject the person, Object their household, Other the one before; Magnitude and ArgA the households following theirs; ArgB 0 the first, 1 within the same household, 2 another household rose; Cause1 the one before's death; C10.2)
         CartMade = 90,          // a household made a cart (Subject the household, Other who made it; ArgA 1 a handcart, 2 an ox cart; C4.2)
         HomeCleared = 89,       // a house standing in a street or lane, the green or market place, or across a ring was taken down - left empty, or its household moved out to build anew on a free lot (Subject the household that lived in it last, Object the house; ArgA 1 a street or lane, 2 the green or market place, 3 a ring, 4 a river; ArgB 1 its household moved out; C13.3, D2-118)
         HomeRebuilt = 88,       // a household rebuilt its house as its people build now (Subject the household, Object the house; ArgA the plan built, ArgB the one before; D2-114)
@@ -240,7 +242,9 @@ namespace TC2.Core.History
                 case HistoryKind.BoatBuilt:
                 case HistoryKind.BoatLost:
                 case HistoryKind.CartMade:
+                case HistoryKind.HeadmanRose:
                 case HistoryKind.Scouted: return Tier.Local;
+                case HistoryKind.VillageSplit: return Tier.Historical;
                 case HistoryKind.PartySetOut: return Tier.Historical;
                 case HistoryKind.HerdHuntedOut: return Tier.Local;
                 case HistoryKind.ColdHomes: return Tier.Local;
@@ -329,6 +333,8 @@ namespace TC2.Core.History
                 case HistoryKind.CallAnswered: b = 8; break;
                 case HistoryKind.BoatBuilt: b = 3; break;
                 case HistoryKind.CartMade: b = 2; break;
+                case HistoryKind.HeadmanRose: b = 12; break;
+                case HistoryKind.VillageSplit: b = 25; break;
                 case HistoryKind.BoatLost: b = 6; break;
                 case HistoryKind.PartySetOut: b = 20; break;
                 case HistoryKind.Scouted: b = 2; break;
