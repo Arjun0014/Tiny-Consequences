@@ -144,5 +144,68 @@ namespace TC2.Tests.Core
             }
             Assert.Inconclusive("no widow married into a neighbouring village in these worlds");
         }
+        // ---------------------------------------------------------------- a living: the household's niche (C3.5b)
+        [Test]
+        public void ALivingIsTheLandAndHandsACoupleWouldHaveAtTheLastHarvest()
+        {
+            var w = TestWorlds.Make(1641);
+            int sid = w.Settlements.First();
+            int woman = Widow(w, sid), man = Widower(w, sid, woman);
+            Assume.That(woman != 0 && man != 0 && w.People.Get(woman).Household != w.People.Get(man).Household, "a widow and a widower of two households");
+            int hw = w.People.Get(woman).Household, hm = w.People.Get(man).Household;
+            { ref var s = ref w.Settlements.Get(sid); s.LastHarvest = 1000; s.ArableHa = 20; }
+            { ref var a = ref w.Households.Get(hw); a.Land = 0; }
+            { ref var b = ref w.Households.Get(hm); b.Land = 0; }
+            double none = w.SettlementSys.CoupleLiving(sid, woman, man);
+            // the labour's half by their two hands over the village's, against the two of them's year
+            double all = 0; var hl = w.HouseholdsOf(sid);
+            for (int i = 0; i < hl.Count; i++) if (w.Households.Get(hl[i]).Party == 0) all += w.Holdings.Hands(hl[i]);
+            double hands = w.Holdings.HandOf(woman) + w.Holdings.HandOf(man);
+            double need = (w.Agents.DailyNeed(in w.People.Get(woman), w.Now) + w.Agents.DailyNeed(in w.People.Get(man), w.Now)) * SimTime.DaysPerYear;
+            Assert.AreEqual(1000 * (1.0 - Holdings.LandShare) * hands / all / need, none, 1e-9, "landless: their hands' share of the harvest");
+            // his family holds land: his portion comes with him
+            { ref var b = ref w.Households.Get(hm); b.Land = 10; }
+            double portion = w.Holdings.PortionFor(hm);
+            Assert.Greater(portion, 0.0);
+            double landed = w.SettlementSys.CoupleLiving(sid, woman, man);
+            Assert.AreEqual(none + 1000 * Holdings.LandShare * portion / 20.0 / need, landed, 1e-9, "and the land's half by the hectares they would hold");
+            // a village yet to bring in a harvest gives nothing to judge by
+            { ref var s = ref w.Settlements.Get(sid); s.LastHarvest = 0; }
+            Assert.AreEqual(1.0, w.SettlementSys.CoupleLiving(sid, woman, man));
+        }
+
+        [Test]
+        public void WithTheNicheACoupleWithoutALivingWaitsUntilItsGrainCarriesTheShortfall()
+        {
+            foreach (bool niche in new[] { true, false })
+            {
+                SettlementSystem.NicheOn = niche;
+                try
+                {
+                    var w = Eager(1611);
+                    int sid = w.Settlements.First();
+                    int woman = Widow(w, sid), man = Widower(w, sid, 0);
+                    Assume.That(woman != 0 && man != 0, "a widow and a widower");
+                    // premise: nobody holds land, a poor last harvest (their hands keep them a fraction of a year), a year and a fifth of grain each
+                    for (int s = w.Settlements.First(); s != 0; s = w.Settlements.Next(s))
+                    {
+                        var hl = w.HouseholdsOf(s);
+                        for (int i = 0; i < hl.Count; i++) { ref var hh = ref w.Households.Get(hl[i]); hh.Land = 0; }
+                        ref var st = ref w.Settlements.Get(s); st.LastHarvest = 0.2 * st.Population * SimTime.DaysPerYear;
+                        Grain(w, s, 1.2 * SimTime.DaysPerYear);
+                    }
+                    double living = w.SettlementSys.CoupleLiving(w.People.Get(man).Home, woman, man);
+                    Assume.That(living < 0.5, "premise: no living");
+                    w.AdvanceTo(w.Now + SimTime.Days(2));
+                    if (!niche) { Assert.AreNotEqual(0, w.People.Get(woman).Partner, "C3.5 alone: a year's grain and they marry"); continue; }
+                    Assert.AreEqual(0, w.People.Get(woman).Partner, "no living, and their grain would not carry the shortfall: the match waits");
+                    // grain enough to carry the shortfall for the niche's years: they marry
+                    for (int s = w.Settlements.First(); s != 0; s = w.Settlements.Next(s)) Grain(w, s, (SettlementSystem.NicheYears + 0.5) * SimTime.DaysPerYear);
+                    w.AdvanceTo(w.Now + SimTime.Days(2));
+                    Assert.AreNotEqual(0, w.People.Get(woman).Partner, "with grain to carry them until they find their feet, they marry");
+                }
+                finally { SettlementSystem.NicheOn = false; }
+            }
+        }
     }
 }

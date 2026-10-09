@@ -4,6 +4,9 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 16, fourth context ended (10 Oct, ~04:00 IST, at Arjun's request)**: the soil (C3.6f) is committed as work in progress with seven of ten
+  seeds measured; its last three seeds, the full suite and the niche runs (C3.5b) did not run - the machine's RAM stayed over the 75 % ceiling from
+  other applications from 00:48 on. The niche's tests and a `PortionFor` fix are committed uncompiled. SESSION_HANDOFF "Next, in order" 1 resumes it.
 - **Session 16, fourth context - C3.6f the soil (D2-139, sim version 74; work in progress: seven of ten seeds, full suite pending)**: the fields
   have a heart - they tire with the crops they bear, rest and the herds' dung give back, villages rest a share by what their crops have shown, new
   land comes in fresh, the people judge their land by what it bears. `--nosoil` reproduces `_k2` exactly. Worlds carry x0.55-0.7 of their people

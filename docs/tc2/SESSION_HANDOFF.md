@@ -31,6 +31,11 @@ incumbent, the same person stays first with nothing recorded; and a household's 
   `d2137.md`, `d2138.md`). **Resource Governor LOW since 23:10 (CPU 50 %, RAM 75 %, one heavy job)**; the machine's RAM sits at 80-90 % from other
   applications (Chrome, WebView, other Claude sessions): `gate.sh CMD` runs a command once RAM is under 72 %; `webgate.sh TAG` (build + Web test).
 
+**SESSION ENDED 10 Oct 2026 ~04:00 IST at Arjun's request** (Resource Governor LOW: CPU 50 %, RAM 75 %, one heavy job). From 00:48 to the end the
+machine's RAM stayed at 74-90 % from other applications, so the gated queue below never started: **the last three `_s2` seeds (7, 8, 42), the full
+suite on the soil and the niche runs were NOT run**; the queue was stopped. The niche's two new tests (`HouseholdFormationTests`) and a one-line
+fix in `Holdings.PortionFor` (a household's last member takes all it holds) are committed but **not compiled or run** - build and run them first.
+
 ### Later in this context (10 Oct, 00:00-01:40 IST) - the 900-year check, the soil (C3.6f, D2-139, committed as work in progress), the niche measurement
 - **900 years with C3.6e, seed 4** (`s4_l9k.csv`; PROGRESS): hunger 8.7-11.2 a 1,000 person-years in centuries 300-600 (sim 70: 1.0-5.1), births
   40-42 (29-36): the old's grip on the land had been a preventive check; a plague at 746-753 (~9,000 dead) then post-plague plenty. Seed 42 not run.
@@ -45,12 +50,15 @@ incumbent, the same person stays first with nothing recorded; and a household's 
   couple would hold + labour's half by their hands, at the village's last harvest, against their year's need), `NicheOn`/`NicheYears` (`--niche`,
   `--nicheyears N`: marry when the living keeps them or their grain carries the shortfall N years), `NicheTally` (`--nichetally`), `Holdings.HandOf`,
   `Holdings.PortionFor`.
-- **Queued (gated on RAM, scratchpad)**: `q_s2.sh` (last 3 seeds) -> `q_suite.sh` (full suite of the working tree -> `suite_s2.txt`) -> `q_n1.sh`
-  (`_n0`: seeds 4, 42 with `--nichetally`, must equal `_s2`; `_n1`: ten seeds `--niche`). Logs `q_*.log`.
+- **Was queued, never ran, stopped at the session's end** (copies in `tc2/out/tools/`): `q_s2.sh` (the last 3 `_s2` seeds) -> `q_suite.sh` (the full
+  suite) -> `q_n1.sh` (`_n0`: seeds 4, 42 with `--nichetally`, must equal `_s2`; `_n1`: ten seeds `--niche`). Expected times when memory allows:
+  ~5 min, ~15 min, ~20-22 min (one job at a time; gate each on RAM under ~66 % with `gwrun.sh`, which waits per seed).
 
 ### Next, in order
-1. When the queue ends: check `suite_s2.txt` (all pass?), `q_n1.log` (`_n0` = `_s2`; the niche tallies), `python cmp.py s2 n1 <ten seeds>` and the
-   absolute rates (years 200-299: hunger, births, deaths a 1,000 person-years; `_k2` 4.7/42.2/32.8, `_s2` 9.3/42.3/38.1 on seven seeds).
+1. Build the headless host and run `HouseholdFormationTests` (the two niche tests are uncompiled), then the three missing `_s2` seeds
+   (`BIN=<build> TAG=_s2 SNAP=100,200,300 EXTRA="--gaptally --landtally --landholds" bash gwrun.sh 7 8 42` - the binary must have the niche OFF: it
+   is off by default), the full suite once, then `_n0`/`_n1` as in `q_n1.sh`; compare `python cmp.py s2 n1 <ten seeds>` and the absolute rates (years
+   200-299: hunger, births, deaths a 1,000 person-years; `_k2` 4.7/42.2/32.8, `_s2` 9.3/42.3/38.1 on seven seeds).
 2. **Close D2-139 (the soil)**: its final ten-seed numbers into DECISIONS and PROGRESS, the full suite's result; commit.
 3. **C3.5b the niche** (`--niche`): if births answer the land (hunger a person-year back toward `_k2`'s, people at par or fewer), make it the rule
    (D2-140, `--noniche` the control), tests (a couple with a living marries; a landless couple waits unless its grain carries the shortfall), docs.

@@ -215,7 +215,10 @@ child's household (else a land-short one with hands) with its land and grain: th
 build's catch-up ran out of memory: **traced (D2-137)** - a Living catch-up of a small world is ACTIVITY (headless `run --seed 42 --years 96` is the
 browser's world), two parties had founded villages on one cell, and visitors walked the way of no length between them forever; a party now joins a
 village standing at its place, a way of no length arrives where it goes, the travel index sweeps stale legs. Then **D2-138**: a headman gone to live
-with their child stays first (no vacancy to contest), and a household's followers follow the household that took it in.
+with their child stays first (no vacancy to contest), and a household's followers follow the household that took it in. Then **C3.6f the soil
+(D2-139, work in progress)**: the fields tire, rest and the herds' dung give back; worlds carry ~0.6 of their people - but births do not answer
+the poorer land and hunger a person-year rises x1.9: the marriage rule (C3.5) does not bind. Next: **C3.5b the niche** (a couple marries when its
+land and hands keep it; measured code in place, off by default) - SESSION_HANDOFF "Session 16, fourth context", "Next, in order".
 
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at

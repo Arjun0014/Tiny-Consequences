@@ -736,7 +736,8 @@ namespace TC2.Core.Places
             if (LandOff || !_w.Households.Exists(family)) return 0.0;
             var w = _w;
             ref var a = ref w.Households.Get(family);
-            if (!w.Settlements.Exists(a.Settlement) || w.Members(family).Count <= 1) return 0.0;   // (the last to leave takes it all: Close - reckoned as the whole)
+            if (!w.Settlements.Exists(a.Settlement)) return 0.0;
+            if (w.Members(family).Count <= 1) return a.Land;   // (the last to leave takes it all: Close)
             ref var s = ref w.Settlements.Get(a.Settlement);
             double head = SettlementSystem.HaPerHead(w, in s) * (1.0 + 0.5 * s.Memory);
             double spare = a.Land - (w.Members(family).Count - 1) * head;
