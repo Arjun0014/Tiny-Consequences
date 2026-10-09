@@ -135,11 +135,74 @@ busiest hand does 38-49 % of a smithy's hours (6 % before) and a smithy-year has
 towns of seed 4 keep two); iron smelted x0.59 / x1.05 / x2.08 by world, iron traded 22 -> 9 t - seed 4's exporter can no longer smelt beyond its
 places for buyers it cannot see (open: an unmet ask, and the bloomery at the ore with its own crew, C5.3c).
 
+## 2c. C3.3 The household's grain, what households owe, makers paid in kind (D2-126)
+
+**What the worlds said before any code** (session 16; the tools ledger extended to household-years with their kin households -
+`run --ledger Y --ledgeryears F`, seed 4 `_s3` from year 200, 56,240 household-years; `ly.py`/`lycf.py` in the session scratchpad):
+- **"Who brings in the harvest" is an artefact of the labour schedule.** Dividing the harvest by each household's crop work (the session-13 survey's
+  rule) made households with *no* member of 16-59 bring in 64 FU a member against 40 for young couples, households of the old 2x what they eat and
+  workshop makers 0.3-0.7x - because a COARSE day walks the village's residents in id order and the oldest fill the whole crop need before the
+  young reach the fields (lived days spread it more evenly). Takers had *more* workers a member (0.60) than givers (0.52). Property built on that
+  split would make an artefact into wealth.
+- **Divided by mouths** (the commune's law for fields worked in common), households are mostly self-sufficient year to year: deficits fall to 8 %
+  of what they eat, largely covered by their own carry-over; differences come from what each brings home of its own (milk and meat of its beasts,
+  its catch), from household formation and growth, and from work for others. Kin households exist for 82 % of households; kin could cover 43 % of
+  the survey's deficits.
+
+**Design** (`Core/Places/Holdings.cs`; one physical granary as before - this is whose grain it holds and what is owed):
+- **Bins and the common grain**: `Household.Grain` (FU) in the village's granary and `Settlement.Common` (the village's own). The harvest is shared
+  among its households by their mouths as it comes in (households setting out take no share); what a household brings home beyond its larder - its
+  beasts' milk and meat, its catch - is its own; the first store (world generation) by mouths; a married child takes their mouth's share of the
+  parents' grain (same village); an heir takes the grain, the debts and the claims of a household that died out (none: the village's, debts lapse);
+  households setting out carry their own grain first (the old rule's amount; what they cannot carry is left to the village; their debts lapse); a
+  party's food is its households' at their new home.
+- **The account** (`Reconcile`, daily before the larders and at a harvest): an outflow nobody drew (rot, theft, a sale, relief or tribute given, a
+  visitor's meal) is borne by all who keep grain in the store by their shares; an inflow nobody brought (bought, given, paid, returned, tribute
+  received) is the village's common grain.
+- **The moral economy** (`Draw`, the daily larder fill - the village's ration as before): its own grain, then the common grain (unreckoned: the
+  village feeds those who lack), then what its close kin can spare beyond their own needs until the next harvest and six days (a gift, unreckoned;
+  kin = its members' parents', children's and siblings' households), then a loan from those it owes already and the households with most to spare
+  (`Debt`: debtor, creditor, FU, since); what is still wanting the village's ration takes from every bin by its share. Repaid after each harvest
+  from what a debtor holds beyond a year's needs and six days, the oldest debt first (`Repay`). A meal taken straight from the store (an empty
+  larder) is its own grain, then the common grain (`Take`).
+- **Makers paid in kind** (C3.3b): a maker's make (`Household.WaresDue`, `PotsDue`) is theirs in the village's store until someone takes it; a
+  household that takes wares or kiln pots pays their makers, by their shares of what is theirs in store, **the food of the maker-days it took**
+  (`Price`: a ware at the village's best loom's pace, a kg of ware at its best potter's - a day's bread for a day's work) from its own grain, and
+  takes no more than its grain pays (`CanBuy`: no credit - with takers owing, every taker owed a sliver to every maker and the debts table held
+  206k entries; a household short of grain makes its own goods or cooks on the full wood); goods nobody here made (bought in) were the village's and
+  their worth goes to its common grain. What the village uses in
+  common - jars stood in its granaries, a smith's hours at its tools and arms (`Commission`, at the smithy or the open hearth), wares and ware it
+  sells abroad - it pays from its common grain, then by a **levy** on every household's grain by its share (the smith's own excepted): the first tax.
+  Common duties anyone does (the fields, wood, building, quarrying, mining, charcoal) are not paid: the commune's.
+- **Means** (D2-114) reads the household's own grain on D2-114's scale (FU against 365 a member - D2-114 read days of a 365-day year where a TC2
+  year is 48; kept so the plans keep their calibration).
+- Pages: the person page's home section ("Its own grain in the village's granary: N days' food...; It owes ... to the Xs and N other households,
+  since year Y; It is owed ... by N households it lent to"), the settlement page's "Grain:" line (its households' and its own grain, the spread
+  from least to most a household, its debts and to whom most). Headless: `hold:` and `makers paid:` lines, `place --households` (grain, owes,
+  owed), `place --debts`, `--nohold` (the store as before: reproduces `_s3` exactly), `--holdmeansoff` (the accounting alone), `--nopay`.
+- **Hard times** (C3.3c; Dirks 1980 - in a mild shortage sharing widens, in a deep and lasting one it contracts to the household and close kin):
+  below a village ration of 0.7 (`Contract`), a larder and a meal from the store get only the household's own grain, the common grain, what its kin
+  spare down to the village's ration and loans of true spare (`Provide`, `Available`); nobody's own need is taken.
+- **Done when**: the accounting moves no grain (with D2-114's means it reproduces `--nohold`); debts are run up in need and repaid from surplus;
+  makers' households are paid by those who take their make; ten seeds at par in people and food; tests at both resolutions.
+
+**Result (D2-126, ten seeds, each step against the last on the same binary, the slice against `_s3`):** people x0.976 (t -0.6), vital rates at
+par, hunger deaths x0.96; the accounting alone moves nothing; makers paid as far as takers' grain pays: home making x1.19, ware traded x1.38 (unsold at
+home, it goes abroad); hard times: famines x1.22-1.25 (more villages lose someone to hunger while their store holds others' grain - Sen's famine
+amid plenty), hunger deaths x0.90-0.95, takings, blows and raids x0.5-0.9 (fewer stores run dry), relief x1.1-1.6. At year 300 grain a member
+spreads Gini 0.51-0.77; 6,458 of 15,979 households owe (mostly a season's credit: seed 4's median debt is 0.8 years old); creditors are small
+households of elders with grain and beasts, one owed by up to 159; makers' households hold more grain a member than the others in all ten worlds;
+98 % of hunger deaths fall in households with no grain of their own. Open: debts' consequences (work, flight, standing), household land, households'
+own trade, taking from one's own village's store.
+
 ## 3. Later slices
 - ~~**C3.1b more looms for towns**~~ (done, D2-120): another shed where the households drain the store most of a year with fibre to weave and
   the people in wares would outwear the looms; eight more makers a shed, each at the shed nearest home; towns of 500+ carry 2-4.
 - ~~**C3.2 the potter's kiln**~~ (built, §2, D2-121).
-- **C3.3 exchange between households** - **surveyed in session 13, deferred as a phase of its own**: a household's holdings (its own grain,
+- ~~**C3.3 exchange between households**~~ - **first slices built in session 16 (§2c, D2-126)**: household grain by mouths, the moral economy,
+  debts, makers paid in kind, hard times. The session-13 survey below is kept for its numbers (its rule - the harvest by crop work - was found to be
+  an artefact of the COARSE schedule). Still open of the phase: household land and labour for others, debts' consequences, households' own trade.
+  Session 13's survey: **surveyed in session 13, deferred as a phase of its own**: a household's holdings (its own grain,
   wares, beasts) and payment in kind for what it takes - the makers paid; real household wealth replacing D2-114's `Means`. Measured with a
   tools ledger (`run --ledger 250`: each household's share of the harvest by its crop work, its wild food and herd produce, against what its
   larder drew from the store; seed 4, years 250-300, 5,861 households; the run is the same run): **the village's store moves 31 % of all the

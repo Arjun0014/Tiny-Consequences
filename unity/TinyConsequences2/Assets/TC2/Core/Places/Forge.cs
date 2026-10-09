@@ -360,6 +360,7 @@ namespace TC2.Core.Places
             ref var b = ref w.Buildings.Get(smithy);
             b.Use = (float)(b.Use + used);
             w.Metrics.SmithyHours += used;
+            w.Holdings.Commission(sid, p.Household, used);   // (the village pays its smith a day's food for a day's work: C3.3b)
             TC2.Core.Diagnostics.HouseLedger.Craft(w, p.Household, used);   // (tools: whose hours the smithy's were; null in the game)
             TC2.Core.Diagnostics.CraftTally.Add(TC2.Core.Diagnostics.CraftTally.Smithy, p.Id, used, w, sid);
             p.SkSmith = (float)DMath.Min(1.0, p.SkSmith + SkillRate * used);   // (their practised hand: their role is read from it, C1.4b)

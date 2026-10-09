@@ -487,7 +487,7 @@ namespace TC2.Core.Places
                 hh.Larder += keep; fu -= keep;
                 TC2.Core.Diagnostics.HouseLedger.Bring(w, p.Household, home, keep, fu);
             }
-            if (fu > 0 && w.Settlements.Exists(home)) w.Settlements.Get(home).Granary += fu;
+            if (fu > 0 && w.Settlements.Exists(home)) { w.Settlements.Get(home).Granary += fu; w.Holdings.Put(p.Household, home, fu); }   // (its catch is its own: C3.3)
         }
     }
 

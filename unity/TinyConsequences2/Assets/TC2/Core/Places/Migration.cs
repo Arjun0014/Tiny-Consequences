@@ -43,7 +43,7 @@ namespace TC2.Core.Places
         public const double ScoutMin = 2000, ScoutMax = 4200;   // m: how far a scout goes to look
 
         World _w;
-        readonly List<int> _scratch = new List<int>(), _cells = new List<int>(), _leaving = new List<int>();
+        readonly List<int> _scratch = new List<int>(), _cells = new List<int>(), _leaving = new List<int>(), _arrived = new List<int>();
 
         /// <summary>Tools: the yearly weighing - villages weighed, the sums of their pressure, crowding, short rations and famine memory,
         /// those pressed, the households that could go and those that chose to; null in the game.</summary>
@@ -267,6 +267,7 @@ namespace TC2.Core.Places
             double share = s.Population > 0 ? (double)people / s.Population : 0;
             double food = DMath.Min(s.Granary * share, CarryDays * people * w.Config.FoodPerAdultDay);
             s.Granary -= food;
+            w.Holdings.SetOut(sid, _leaving, food);   // (their own grain first; what they cannot carry left to the village; debts lapse: C3.3)
             party.Food = food;
             // why they go: the famine they remember, the hunger or the rationing now, else their own choice for more land
             long cause = s.FamineEvent != 0 && s.Memory > 0.3 ? s.FamineEvent : (s.HungerEvent != 0 ? s.HungerEvent : s.RationEvent);
@@ -326,6 +327,7 @@ namespace TC2.Core.Places
             }
             ref var d = ref w.Settlements.Get(dest);
             d.Granary += party.Food;
+            _arrived.Clear();
             for (int hid = w.Households.First(); hid != 0; hid = w.Households.Next(hid))
             {
                 ref var hh = ref w.Households.Get(hid);
@@ -333,7 +335,9 @@ namespace TC2.Core.Places
                 hh.Party = 0;
                 if (hh.Dissolved != 0) continue;
                 Rehome(hid, dest);
+                _arrived.Add(hid);
             }
+            w.Holdings.Arrive(dest, _arrived, party.Food);   // (the food they carried is theirs at their new home: C3.3)
             w.Parties.Remove(pid);
         }
 

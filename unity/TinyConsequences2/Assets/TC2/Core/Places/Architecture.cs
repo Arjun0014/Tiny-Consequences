@@ -72,7 +72,9 @@ namespace TC2.Core.Places
         /// house), and the years of food in its village's granary (one and a half at most: a village with grain in hand frees its people's hours).
         /// Session 9's first measure (beasts, a larder against a month, clothes against people) put nearly every household of a world between 1.0
         /// and 1.5 - a household's larder holds days (the grain is the village's), clothes were capped at its need and herds are rare late - so every
-        /// house was the same cottage. Early villages with grain and herds in hand build better than the crowded ones of later centuries.
+        /// house was the same cottage. Early villages with grain and herds in hand build better than the crowded ones of later centuries. Since C3.3
+        /// (D2-126) the grain is the household's own in the village's store, on the same scale (FU against 365 a member: D2-114 read days of a 365-day
+        /// year where TC2's year is 48 - kept, so the plans keep their calibration; it rarely passes 0.3).
         /// </summary>
         public static double Means(World w, int hid)
         {
@@ -90,7 +92,8 @@ namespace TC2.Core.Places
             for (int i = 0; i < mem.Count; i++) { double age = w.People.Get(mem[i]).AgeYears(w.Now); if (age >= 15.0 && age < 60.0) hands++; }
             double labour = DMath.Min(0.9, 0.3 * DMath.Max(0.0, hands - 1.0));
             double store = 0;
-            if (w.Settlements.Exists(hh.Settlement))
+            if (!Holdings.Off && !Holdings.MeansOff) store = DMath.Min(1.5, hh.Grain / DMath.Max(1.0, n * w.Config.FoodPerAdultDay * 365.0));   // (its own grain since C3.3, on D2-114's scale)
+            else if (w.Settlements.Exists(hh.Settlement))
             {
                 ref var s = ref w.Settlements.Get(hh.Settlement);
                 store = DMath.Min(1.5, s.Granary / DMath.Max(1.0, s.Population * w.Config.FoodPerAdultDay * 365.0));

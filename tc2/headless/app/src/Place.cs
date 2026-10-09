@@ -24,6 +24,17 @@ namespace TC2.Headless
             if (a.Has("crossings")) { Crossings(w); return 0; }
             if (a.Has("overlaps")) { Overlaps(w, a.Int("sid", 0)); return 0; }
             if (a.Has("layout")) { Layout(w, a.Int("sid", 0) != 0 ? a.Int("sid", 0) : PickPlace(w, "big")); return 0; }
+            if (a.Has("debts"))
+            {
+                // (C3.3) every debt: debtor and creditor, their villages, whether they still stand, how much and since when
+                for (int i = 0; i < w.Holdings.DebtCount; i++)
+                {
+                    var d = w.Holdings.DebtAt(i);
+                    string H(int h) { if (!w.Households.Exists(h)) return "#" + h + " (gone)"; var x = w.Households.Get(h); return "#" + h + " v" + x.Settlement + (x.Dissolved != 0 ? " dissolved" : "") + (x.Party != 0 ? " on the move" : "") + " n" + w.Members(h).Count + " grain " + x.Grain.ToString("0"); }
+                    Console.WriteLine("  " + H(d.Debtor) + " owes " + H(d.Creditor) + ": " + d.Fu.ToString("0") + " FU since year " + (d.Since / (double)SimTime.Year).ToString("0.0"));
+                }
+                return 0;
+            }
             if (a.Has("households")) { ListHouseholds(w, a.Int("sid", 0) != 0 ? a.Int("sid", 0) : PickPlace(w, "big")); return 0; }
             int sid = a.Int("sid", 0);
             if (sid == 0) sid = PickPlace(w, a.Get("pick", "big"));
@@ -392,7 +403,7 @@ namespace TC2.Headless
         {
             var hl = w.HouseholdsOf(sid);
             ref var s = ref w.Settlements.Get(sid);
-            Console.WriteLine("#" + sid + " " + w.History.NameOf(EntityRef.Settlement(sid)) + " " + s.Population + " people, granary " + s.Granary.ToString("0") + " FU");
+            Console.WriteLine("#" + sid + " " + w.History.NameOf(EntityRef.Settlement(sid)) + " " + s.Population + " people, granary " + s.Granary.ToString("0") + " FU (common " + s.Common.ToString("0") + ")");
             for (int i = 0; i < hl.Count; i++)
             {
                 var hh = w.Households.Get(hl[i]);
@@ -406,8 +417,15 @@ namespace TC2.Headless
                 string form = hh.Building != 0 && w.Buildings.Exists(hh.Building) ? Architecture.Describe(w.Buildings.Get(hh.Building).Form, true) : "(no house)";
                 double dx = hh.HomeX - s.SquareX, dy = hh.HomeY - s.SquareY;
                 Console.WriteLine("  hh " + hl[i] + " n " + n + " (" + adults + "+" + kids + ") larder " + (hh.Larder / month).ToString("0.00") + " mo, gear/n " + (hh.Gear / System.Math.Max(1, n)).ToString("0.00") +
+                                  ", grain " + hh.Grain.ToString("0") + " (" + (hh.Grain / System.Math.Max(1.0, w.SettlementSys.HouseholdNeed(hl[i]))).ToString("0") + " d)" + Debts(w, hl[i]) +
                                   ", cattle " + cattle + " small " + small + ", boat " + (hh.Boat != 0 ? 1 : 0) + ", formed " + ((w.Now - hh.Formed) / (double)SimTime.Year).ToString("0") + " y, from square " + System.Math.Sqrt(dx * dx + dy * dy).ToString("0") + " m, means " + Architecture.Means(w, hl[i]).ToString("0.00") + ": " + form);
             }
+        }
+
+        static string Debts(World w, int hid)
+        {
+            double owes = w.Holdings.Owes(hid, out int to), owed = w.Holdings.Owed(hid, out int by);
+            return (owes > 0 ? ", owes " + owes.ToString("0") + " to " + to : "") + (owed > 0 ? ", owed " + owed.ToString("0") + " by " + by : "");
         }
 
         /// <summary>An inhabited place by a kind: the most people, the most iron sold lately, the most wrongs held over its ore.</summary>

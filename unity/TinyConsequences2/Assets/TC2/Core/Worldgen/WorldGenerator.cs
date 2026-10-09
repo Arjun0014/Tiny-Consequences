@@ -356,6 +356,7 @@ namespace TC2.Core.Worldgen
             // stores to see the founders through to their first harvest
             ref var st = ref w.Settlements.Get(sid);
             st.Granary = st.Population * cfg.FoodPerAdultDay * 70;
+            w.Holdings.Found(sid);   // (its households' own, by their mouths: C3.3)
             st.Woodstore = st.Population * 4;
             st.Fibre = st.Population * 1.5; st.Hides = st.Population * 0.5;   // fibre and hides put by (D2-063)
             w.SettlementSys.ClaimInitialFields(sid, st.Population * cfg.FieldHaPerPerson);

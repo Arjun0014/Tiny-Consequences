@@ -143,13 +143,14 @@ namespace TC2.Core.Places
             if (Off || members <= 0) return 0;
             double want = members * PerHead - hh.Pots;
             if (want <= 1e-9 || FiresOwn(w, s.Id, Best(w, hid))) return 0;
-            double take = DMath.Min(want, s.Pots);
+            double take = DMath.Min(DMath.Min(want, s.Pots), w.Holdings.CanBuy(s.Id, hid, Holdings.Pots));   // (as far as its own grain pays the potters: C3.3)
             if (take > 0)
             {
                 s.Pots -= take;
                 hh.Pots = (float)(hh.Pots + take);
                 s.PotsOut = (float)(s.PotsOut + take);
                 w.Metrics.PotsDrawn += take;
+                w.Holdings.Out(s.Id, hid, Holdings.Pots, take);   // (paid for in grain to its potters: C3.3b)
             }
             return want - take;
         }
@@ -165,7 +166,7 @@ namespace TC2.Core.Places
             if (Off) return;
             if (s.Jars > 0) s.Jars *= days == 1 ? 1.0 - JarBreak / SimTime.DaysPerYear : SettlementSystem.Keep(JarBreak / SimTime.DaysPerYear, days);
             double set = DMath.Min(JarsWanted(in s), s.Pots);
-            if (set > 1e-9) { s.Pots -= set; s.Jars += set; w.Metrics.JarsSet += set; }
+            if (set > 1e-9) { s.Pots -= set; s.Jars += set; w.Metrics.JarsSet += set; w.Holdings.Out(sid, 0, Holdings.Pots, set); }   // (the village pays its potters for its jars: C3.3b)
         }
 
         // ---------------------------------------------------------------- the kiln
@@ -278,6 +279,7 @@ namespace TC2.Core.Places
             if (made <= 0) return 0;
             s.Woodstore = DMath.Max(0.0, s.Woodstore - made * WoodPerKg);
             s.Pots += made;
+            w.Holdings.Made(p.Household, Holdings.Pots, made);   // (the potter's until it is taken: C3.3b)
             ref var b = ref w.Buildings.Get(kiln);
             b.Use = (float)(b.Use + used); b.Stock = (float)(b.Stock + made);
             p.SkPot = (float)DMath.Min(1.0, p.SkPot + SkillRate * used);

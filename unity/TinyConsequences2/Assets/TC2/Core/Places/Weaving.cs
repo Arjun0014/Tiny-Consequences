@@ -218,6 +218,7 @@ namespace TC2.Core.Places
             if (made <= 0) return 0;
             s.Fibre = DMath.Max(0.0, s.Fibre - made * Goods.MaterialPerGood);
             s.Wares += made;
+            w.Holdings.Made(p.Household, Holdings.Wares, made);   // (the maker's until a household takes it: C3.3b)
             ref var b = ref w.Buildings.Get(shed);
             b.Use = (float)(b.Use + used); b.Stock = (float)(b.Stock + made);
             p.SkCraft = (float)DMath.Min(1.0, p.SkCraft + SkillRate * used);
@@ -237,11 +238,13 @@ namespace TC2.Core.Places
             if (s.Wares <= 1e-9 || members <= 0) return;
             double want = members * Goods.Target - hh.Gear;
             if (want <= 1e-9) return;
-            double take = DMath.Min(want, s.Wares);
+            double take = DMath.Min(DMath.Min(want, s.Wares), w.Holdings.CanBuy(s.Id, hh.Id, Holdings.Wares));   // (as far as its own grain pays its makers: C3.3)
+            if (take <= 1e-9) return;
             s.Wares -= take;
             hh.Gear = (float)(hh.Gear + take); hh.Wares = (float)(hh.Wares + take);
             s.WaresOut = (float)(s.WaresOut + take);
             w.Metrics.WaresDrawn += take;
+            w.Holdings.Out(s.Id, hh.Id, Holdings.Wares, take);   // (paid for in grain to its makers: C3.3b)
         }
 
         /// <summary>The share of the village's people its wares - its households' and its store's - would keep in wares.</summary>

@@ -240,6 +240,8 @@ namespace TC2.Core.History
             if (hh.Building != 0 && w.Buildings.Exists(hh.Building)) sb.Append(" raised in ").Append(Year(w.Buildings.Get(hh.Building).Built));
             sb.Append(". Larder ").Append(F(hh.Larder, "0")).Append(" days' food, ").Append(F(hh.Ready, "0.0")).Append(" made ready; water ").Append(F(hh.Water, "0")).Append(" l; ")
               .Append(hh.Indoor < Hearth.Comfort - 0.5 ? F(hh.Indoor, "0") + " C indoors" + (hh.Indoor < Hearth.ChillLine ? ", cold" : "") : "warm enough indoors").Append("; clothes and tools ").Append(F((double)hh.Gear / System.Math.Max(1, w.Members(p.Household).Count), "0.00")).Append(" a head").Append(hh.Wares > 0.05f ? " (" + F((double)hh.Wares / System.Math.Max(1, w.Members(p.Household).Count), "0.00") + " of it wares from a weaver's shed)" : "").Append(".\n");
+            // its grain in the village's granary and what it owes or is owed (C3.3)
+            if (!Holdings.Off) sb.Append(Holdings.Line(w, p.Household));
             // its pots (C3.2): fired by its own hands where it has clay, from a kiln, or none - and the wood its cooking burns for it
             {
                 bool own = Pottery.FiresOwn(w, hh.Settlement, Pottery.Best(w, p.Household));

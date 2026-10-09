@@ -252,6 +252,7 @@ namespace TC2.Core.Places
             if (hh.Dissolved != 0) return;
             int sid = hh.Settlement;
             int heir = Heir(hid, lastPid, sid);
+            w.Holdings.Inherit(hid, heir, sid);   // (its grain, debts and claims to the heir: C3.3)
             Homes.Leave(w, hid);
             Boats.Leave(w, hid, heir);   // (the heir takes the boat, else it is left on the beach: C9.1)
             if (heir != 0)
@@ -348,6 +349,7 @@ namespace TC2.Core.Places
                 s.Granary += yield;
                 s.LastHarvest = yield;
                 TC2.Core.Diagnostics.HouseLedger.Harvest(w, s.Id, yield);   // (tools: the harvest by whose work it was; null in the game)
+                w.Holdings.Harvest(s.Id, yield);   // (shared among its households by their mouths; the year's debts repaid: C3.3)
                 if (Structures.RotTally != null) Structures.RotTally[2] += yield;
                 // and the flax grown on a corner of the fields: fibre for clothes and cordage (D2-063)
                 s.Fibre += s.FieldHa * FibrePerHa * DMath.Clamp01(s.ExpectedHarvest > 0 ? yield / s.ExpectedHarvest : 1.0);
@@ -506,6 +508,7 @@ namespace TC2.Core.Places
             double cover = days == 1 ? 2.0 : days + 1.0;   // (the larders hold the step's meals and a day more: two days for a day)
             double total = daily * cover * ration;
             double share = total > 0 ? Math.Min(1.0, s.Granary / total) : 1.0;
+            w.Holdings.Reconcile(s.Id);   // (whose grain the store holds: what went out or came in since, by no household's hand - C3.3)
             for (int i = 0; i < hhs.Count; i++)
             {
                 int hid = hhs[i];
@@ -514,6 +517,7 @@ namespace TC2.Core.Places
                 if (want <= 0) continue;
                 double give = Math.Min(want, want * share);
                 give = Math.Min(give, s.Granary);
+                give = w.Holdings.Provide(s.Id, hid, give, toHarvest);   // (its own grain, the common grain, its kin's spare, a loan; in hard times no more: C3.3)
                 hh.Larder += give; s.Granary -= give;
                 TC2.Core.Diagnostics.HouseLedger.Draw(w, hid, s.Id, give);
             }
@@ -669,6 +673,7 @@ namespace TC2.Core.Places
                 if (p.Reserve <= 0f)
                 {
                     // the body's reserve is spent: they die of hunger, the village's famine their cause
+                    Holdings.HungerDeath(w, sid, p.Household);   // (tools: whose household; null in the game)
                     w.Agents.Kill(ref p, FamineCause(sid), 2);
                     w.Metrics.HungerDeaths++;
                     if (HungerBy != null && sid < HungerBy.Length) HungerBy[sid]++;
@@ -801,6 +806,7 @@ namespace TC2.Core.Places
             else if (share >= 0.8) p.HungryFrom = 0;
             if (p.Reserve <= 0f)
             {
+                Holdings.HungerDeath(w, sid, p.Household);   // (tools: whose household; null in the game)
                 w.Agents.Kill(ref p, FamineCause(sid), 2);
                 w.Metrics.HungerDeaths++;
                 if (HungerBy != null && sid < HungerBy.Length) HungerBy[sid]++;
@@ -921,7 +927,9 @@ namespace TC2.Core.Places
             int old = p.Household;
             if (old != 0 && w.Households.Exists(old))
             {
+                double needP = w.Agents.DailyNeed(in p, w.Now), needOld = HouseholdNeed(old);   // (their mouth's share of its grain comes along: C3.3)
                 w.Members(old).Remove(pid);
+                w.Holdings.Split(old, hid, needOld > 0 ? needP / needOld : 1.0);
                 ref var oh = ref w.Households.Get(old);
                 // a share of the old larder comes along
                 int left = w.Members(old).Count;
@@ -937,6 +945,7 @@ namespace TC2.Core.Places
                 w.Households.Get(hid).Wares = (float)(w.Households.Get(hid).Wares + wares);
                 if (left == 0) { w.Households.Get(hid).Pots = (float)(w.Households.Get(hid).Pots + (double)oh.Pots); oh.Pots = 0f; }   // (the hearth's pots go with its last: C3.2)
                 if (left == 0 && oh.CartState == Carts.Made && w.Households.Get(hid).CartState != Carts.Made) { ref var nh = ref w.Households.Get(hid); nh.CartKind = oh.CartKind; nh.CartState = Carts.Made; nh.CartAt = oh.CartAt; oh.CartState = Carts.NoCart; }   // (and its cart: C4.2)
+                if (left == 0) w.Holdings.Close(old, hid);   // (its debts and claims go with its last: C3.3)
                 if (left == 0) { Homes.Leave(w, old); Boats.Leave(w, old, hid); oh.Dissolved = w.Now; w.History.EndEntity(EntityRef.Household(old), w.Now); w.HouseholdsOf(oh.Settlement).Remove(old); w.Stock.Inherit(old, hid); }
                 else w.Stock.Endow(old, hid);   // and a share of the herd (D2-048)
             }

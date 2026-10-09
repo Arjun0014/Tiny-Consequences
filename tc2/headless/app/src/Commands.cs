@@ -134,8 +134,14 @@ namespace TC2.Headless
             if (a.Has("seashort")) TC2.Core.Places.Trade.SeaShort = new double[3];   // (C9.4 survey: relief by sea bound by the boats' room)
             if (a.Has("noweave")) TC2.Core.Places.Weaving.Off = true;
             if (a.Has("waresflow")) TC2.Core.Places.Trade.WaresFor = new double[6];
-            if (a.Has("ledger")) { TC2.Core.Diagnostics.HouseLedger.By = new System.Collections.Generic.Dictionary<int, double[]>(); TC2.Core.Diagnostics.HouseLedger.From = (long)a.Int("ledger", 250) * TC2.Core.Foundation.SimTime.Year; }   // (C3.3 survey: what each household brings in and draws)
+            if (a.Has("ledger")) { TC2.Core.Diagnostics.HouseLedger.By = new System.Collections.Generic.Dictionary<int, double[]>(); TC2.Core.Diagnostics.HouseLedger.From = (long)a.Int("ledger", 250) * TC2.Core.Foundation.SimTime.Year; }
+            if (a.Has("ledgeryears")) TC2.Core.Diagnostics.HouseLedger.Years = new System.Collections.Generic.List<double[]>();   // (C3.3 design: household-years with their kin, written to the named csv)   // (C3.3 survey: what each household brings in and draws)
             if (a.Has("nocarts")) TC2.Core.Places.Carts.Off = true;   // (C4.2 against C3.2 in one binary: no carts)
+            if (a.Has("nohold")) TC2.Core.Places.Holdings.Off = true;   // (C3.3 against C1.4b in one binary: the village's store as before - no bins, no debts)
+            if (a.Has("holdmeansoff")) TC2.Core.Places.Holdings.MeansOff = true;
+            if (a.Has("nopay")) TC2.Core.Places.Holdings.PayOff = true;   // (C3.3a alone: makers are not paid)
+            if (a.Has("nohard")) TC2.Core.Places.Holdings.HardOff = true;   // (C3.3a-b: sharing never contracts in hard times)
+            TC2.Core.Places.Holdings.HungerTally = new double[7];   // (C3.3c: who dies of hunger - by the household's own grain, debts and kin)   // (C3.3: the accounting alone - Means reads the village's granary as before)
             if (a.Has("nosmithcrew")) TC2.Core.Places.Forge.CrewOff = true;   // (C1.4b against the smithy before it in one binary: every smith at it, no practice)
             if (a.Has("carttally")) TC2.Core.Diagnostics.CartTally.T = new double[12];   // (C4.2 closing: why carts begun are given up)
             if (a.Has("crafttally")) { var ct = new System.Collections.Generic.Dictionary<int, double>[TC2.Core.Diagnostics.CraftTally.Kinds]; for (int k = 0; k < ct.Length; k++) ct[k] = new System.Collections.Generic.Dictionary<int, double>(); TC2.Core.Diagnostics.CraftTally.By = ct; var vy = new System.Collections.Generic.Dictionary<long, double>[TC2.Core.Diagnostics.CraftTally.Kinds]; for (int k = 0; k < vy.Length; k++) vy[k] = new System.Collections.Generic.Dictionary<long, double>(); TC2.Core.Diagnostics.CraftTally.VillageYear = vy; }   // (roles from practice: whose hours at each craft)
@@ -512,6 +518,66 @@ namespace TC2.Headless
                                                   " % of the grain in granaries; villages half sealed or more " + sealedV + " (" + sealedNoKiln + " without a kiln); ware in stores " + F(ware, "0") + " kg; hearths firing their own pots " + hhOwn + ", in kiln pots " + hhKiln + ", without " + hhNone);
                                 var pf = TC2.Core.Places.Trade.PotsFor;
                                 if (pf != null) Console.WriteLine("pots traded for: " + F(pf[0], "0") + " kg (" + F(pf[6], "0") + " from kiln villages to villages without, " + F(pf[7], "0") + " to villages with no clay) for grain " + F(pf[1], "0") + " FU, fibre " + F(pf[2], "0") + " kg, hides " + F(pf[3], "0") + ", metal/iron " + F(pf[4], "0") + " kg, wares " + F(pf[5], "0"));
+                            }
+                            {
+                                // the household's grain and what households owe (C3.3): grain held a member in days of a grown person's food, the share of the
+                                // richest tenth, the Gini of grain a member over households, debts, and the year's flows since the start
+                                var per = new System.Collections.Generic.List<double>(); double binSum = 0, commonSum = 0, granSum = 0; int hhN = 0;
+                                for (int sid2 = w.Settlements.First(); sid2 != 0; sid2 = w.Settlements.Next(sid2))
+                                {
+                                    var st2 = w.Settlements.Get(sid2);
+                                    if (!st2.Inhabited) continue;
+                                    commonSum += st2.Common; granSum += st2.Granary;
+                                    var hl2 = w.HouseholdsOf(sid2);
+                                    for (int i = 0; i < hl2.Count; i++) { var h2 = w.Households.Get(hl2[i]); int n2 = w.Members(hl2[i]).Count; if (n2 == 0) continue; hhN++; binSum += h2.Grain; per.Add(h2.Grain / n2); }
+                                }
+                                per.Sort();
+                                double gini = 0, tot = 0; for (int i = 0; i < per.Count; i++) { tot += per[i]; gini += (2.0 * (i + 1) - per.Count - 1) * per[i]; }
+                                gini = tot > 0 ? gini / (per.Count * tot) : 0;
+                                double top = 0; for (int i = (int)(0.9 * per.Count); i < per.Count; i++) top += per[i];
+                                string PQ(double q) => per.Count > 0 ? F(per[Math.Min(per.Count - 1, (int)(q * per.Count))], "0") : "-";
+                                int debtors = 0, creditors = 0, maxBy = 0; double debt = 0; var by = new System.Collections.Generic.Dictionary<int, int>(); int lastD = 0;
+                                for (int i = 0; i < w.Holdings.DebtCount; i++) { var d = w.Holdings.DebtAt(i); debt += d.Fu; if (d.Debtor != lastD) { debtors++; lastD = d.Debtor; } by.TryGetValue(d.Creditor, out int c0); by[d.Creditor] = c0 + 1; }
+                                creditors = by.Count; foreach (var kv in by) if (kv.Value > maxBy) maxBy = kv.Value;
+                                var mt = w.Metrics;
+                                Console.WriteLine("hold: " + hhN + " households hold " + F(binSum, "0") + " FU, the villages' common grain " + F(commonSum, "0") + " (granaries " + F(granSum, "0") + "); grain a member p10/50/90 " + PQ(0.1) + "/" + PQ(0.5) + "/" + PQ(0.9) +
+                                                  " FU, richest tenth " + F(100 * top / Math.Max(1e-9, tot), "0") + " %, Gini " + F(gini, "0.00") + "; debts " + w.Holdings.DebtCount + " (" + F(debt, "0") + " FU) of " + debtors + " households to " + creditors + " (most debtors to one " + maxBy + ")" +
+                                                  "; fed from common grain " + F(mt.CommonFedFu, "0") + ", given by kin " + F(mt.KinFu, "0") + ", lent " + F(mt.LoanFu, "0") + ", repaid " + F(mt.RepaidFu, "0") + ", lapsed " + F(mt.DebtVoidFu, "0") + " FU; unshared in hard times " + F(mt.UnsharedFu, "0") + " FU");
+                                // makers paid in kind (C3.3b): what households paid makers, what makers earned (and were owed), smiths' pay, the villages' levies; and
+                                // the makers' households against the others: grain a member
+                                double mkG = 0, mkN = 0, otG = 0, otN = 0; int mkH = 0;
+                                for (int sid2 = w.Settlements.First(); sid2 != 0; sid2 = w.Settlements.Next(sid2))
+                                {
+                                    if (!w.Settlements.Get(sid2).Inhabited) continue;
+                                    var hl2 = w.HouseholdsOf(sid2);
+                                    for (int i = 0; i < hl2.Count; i++)
+                                    {
+                                        var mem2 = w.Members(hl2[i]); bool maker = false;
+                                        for (int j = 0; j < mem2.Count; j++) { var q2 = w.People.Get(mem2[j]); if (q2.Alive && (q2.SkCraft >= 0.3f || q2.SkPot >= 0.3f || q2.SkSmith >= 0.3f)) maker = true; }
+                                        if (mem2.Count == 0) continue;
+                                        if (maker) { mkH++; mkG += w.Households.Get(hl2[i]).Grain; mkN += mem2.Count; } else { otG += w.Households.Get(hl2[i]).Grain; otN += mem2.Count; }
+                                    }
+                                }
+                                var ht = TC2.Core.Places.Holdings.HungerTally;
+                                if (ht != null) Console.WriteLine("hunger by household: own grain none " + F(ht[0], "0") + ", under 5 days " + F(ht[1], "0") + ", 5-20 " + F(ht[2], "0") + ", 20+ " + F(ht[3], "0") + "; in villages whose sharing had contracted " + F(ht[4], "0") + ", in households in debt " + F(ht[5], "0") + ", with no close kin in the village " + F(ht[6], "0"));
+                                Console.WriteLine("makers paid: households paid makers " + F(mt.MakersPaidFu, "0") + " FU, makers earned " + F(mt.MakersEarnedFu, "0") + " (owed besides " + F(mt.MakersOwedFu, "0") + "), smiths " + F(mt.SmithsEarnedFu, "0") +
+                                                  "; the villages paid from common grain " + F(mt.CommonPaidFu, "0") + " and levies " + F(mt.LevyFu, "0") + " FU; households of practised makers " + mkH + ": grain a member " + F(mkG / Math.Max(1, mkN), "0") + " FU against " + F(otG / Math.Max(1, otN), "0") + " for the others");
+                            }
+                            var hy0 = TC2.Core.Diagnostics.HouseLedger.Years;
+                            if (hy0 != null && a.Get("ledgeryears") != null)
+                            {
+                                using (var lf = new System.IO.StreamWriter(a.Get("ledgeryears")))
+                                {
+                                    lf.WriteLine("year,sid,hid,harvest,brought,ate,members,workers,kids,old,craft,kin");
+                                    foreach (var r in hy0)
+                                    {
+                                        var lsb = new System.Text.StringBuilder();
+                                        for (int k = 0; k < 11; k++) lsb.Append(r[k].ToString(k == 0 ? "0.000" : k <= 2 || (k >= 6 && k <= 9) ? "0" : "0.0", System.Globalization.CultureInfo.InvariantCulture)).Append(',');
+                                        for (int k = 11; k < r.Length; k++) { if (k > 11) lsb.Append(';'); lsb.Append(((int)r[k]).ToString(System.Globalization.CultureInfo.InvariantCulture)); }
+                                        lf.WriteLine(lsb.ToString());
+                                    }
+                                }
+                                Console.WriteLine("ledger years: " + hy0.Count + " household-years written to " + a.Get("ledgeryears"));
                             }
                             var hl0 = TC2.Core.Diagnostics.HouseLedger.By;
                             if (hl0 != null)

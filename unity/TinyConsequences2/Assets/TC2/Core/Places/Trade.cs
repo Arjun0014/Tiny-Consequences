@@ -99,8 +99,9 @@ namespace TC2.Core.Places
         }
 
         static double Stock(ref Settlement s, byte g) => g == Grain ? s.Granary : g == Metal ? s.Metal : g == Fibre ? s.Fibre : g == Iron ? s.Iron : g == Wares ? s.Wares : g == Pots ? s.Pots : s.Hides;
-        static void Add(ref Settlement s, byte g, double q)
+        void Add(ref Settlement s, byte g, double q)
         {
+            if (q < 0 && (g == Wares || g == Pots)) _w.Holdings.Out(s.Id, 0, g == Wares ? Holdings.Wares : Holdings.Pots, -q);   // (sold: the village pays its makers: C3.3b)
             if (g == Grain) s.Granary += q; else if (g == Metal) s.Metal += q; else if (g == Fibre) s.Fibre += q; else if (g == Hides) s.Hides += q;
             else if (g == Iron) { s.Iron += q; if (q < 0) s.IronSold = (float)((double)s.IronSold - q); }   // (iron parted with: its smiths make that much more for the next buyers, C5.3b)
             else if (g == Wares) { s.Wares += q; if (q < 0) s.WaresSold = (float)((double)s.WaresSold - q); }   // (wares parted with: its makers make that much more, C3.1)

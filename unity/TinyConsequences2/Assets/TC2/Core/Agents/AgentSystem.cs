@@ -583,8 +583,9 @@ namespace TC2.Core.Agents
                         w.Learning.Practice(ref p, Knowledge.Tech.Quern, hours);
                         double fromLarder = Math.Min(made, hh.Larder);
                         hh.Larder -= fromLarder;
-                        double fromStore = Math.Min(made - fromLarder, s.Granary);
+                        double fromStore = Math.Min(made - fromLarder, DMath.Min(s.Granary, w.Holdings.Available(p.At, p.Household)));   // (in hard times its own grain and the common's only: C3.3c)
                         s.Granary -= fromStore;
+                        w.Holdings.Take(p.At, p.Household, fromStore);   // (its own grain first: C3.3)
                         double done = fromLarder + fromStore;
                         hh.Ready += done;
                         s.Woodstore = DMath.Max(0.0, s.Woodstore - done * Hearth.CookFuel * Pottery.CookFactor(w, p.Household));   // (in fired pots, its own or a kiln's: D2-063, C3.2)
@@ -651,6 +652,7 @@ namespace TC2.Core.Agents
             Mining.Smelt(ref s, kg);
             w.Metrics.MetalKg += kg;
             p.SkSmith = (float)DMath.Min(1.0, p.SkSmith + Forge.SkillRate * h);   // (the open hearth's hours make a smith too: C1.4b)
+            w.Holdings.Commission(p.Home, p.Household, h);   // (paid by the village as at the smithy: C3.3b)
             w.Learning.Practice(ref p, Knowledge.Tech.Metal, h);
             return hours - h;
         }
@@ -818,8 +820,9 @@ namespace TC2.Core.Agents
             if (got < need - 1e-9 && p.At != 0 && (coarse || !home))
             {
                 ref var s = ref w.Settlements.Get(p.At);
-                double take = Math.Min(need - got, s.Granary);
+                double take = Math.Min(need - got, DMath.Min(s.Granary, w.Holdings.Available(p.At, p.Household)));   // (in hard times its own grain and the common's only: C3.3c)
                 s.Granary -= take; got += take;
+                w.Holdings.Take(p.At, p.Household, take);   // (one of its own: its grain first; a visitor's meal is the village's: C3.3)
             }
             double share = need > 0 ? got / need : 1.0;
             p.Ate = (float)(p.Ate + got);   // the body's account is kept once a day (Demography)

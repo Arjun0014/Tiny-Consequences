@@ -1,5 +1,36 @@
 # TC2 Session handoff
 
+## Session 16 (9 Oct 2026, from 09:11 IST; Control Room, Resource Governor MEDIUM: CPU 70 %, RAM 85 %, two heavy jobs) - C3.3 the household's grain, debts, makers paid, hard times (D2-126)
+
+### Exact state (keep current)
+- **C3.3a-c committed (D2-126, sim version 62; `26` §2c the design and result)**: `Core/Places/Holdings.cs` (bins `Household.Grain`, the village's
+  `Settlement.Common`, the debts table `World.Holdings`; `Reconcile`, `Harvest` by mouths + `Repay`, `Put`, `Draw`/`Provide`, `Take`, `Split`,
+  `Close`, `Inherit`, `SetOut`, `Arrive`, `Found`; makers paid: `Made`/`Out`/`Price`/`CanBuy`/`Commission`/`Levy`, `Household.WaresDue/PotsDue`;
+  hard times `Hard` (ration < `Contract` 0.7), `Available`; pages `Line`/`VillageLine`; tools `HungerTally`). Hooks in SettlementSystem (harvest,
+  Food, DieOut, MoveTo), AgentSystem (two store meals, the open hearth), WildFood/Livestock (own produce), Migration (set out, arrive),
+  WorldGenerator (`Found`), Weaving/Pottery (made, taken), Forge (commission), Trade.Add (sold abroad), Architecture.Means (own grain), Biography
+  (home), Gazetteer ("Grain:"). Headless: `--nohold` (= `_s3` exactly), `--holdmeansoff`, `--nopay`, `--nohard`; lines `hold:`, `makers paid:`,
+  `hunger by household:`; `place --households` (grain, owes, owed), `place --debts`; tools ledger `--ledgeryears F`.
+- **Verified**: `HoldingsTests` 12/12 (the accounting moves nothing at both resolutions; save with debts continues the same); full suite 326/326
+  (one premise moved: `ArchitectureTests` reads the household's own grain); Unity configure 0 errors (metas committed). Ten seeds 300 y DEEP, runs
+  `tc2/out/civ/s*_h1` (bins), `_h2` (+ makers, takers owing), `_h3` (+ hard times), `_h4` (makers as far as grain pays, `--nohard`), `_h5` (the slice;
+  saves 100/200/300) - D2-126 has the numbers. Cost: +0.4 % from the same save (lower envelope of four runs each).
+- Web build of this code and Web test: NOT YET (next).
+- Scratchpad (session 16): `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/c30873bf-a161-4a50-b46c-76e150e4ddf3/scratchpad`
+  (`wrun.sh`, `hold.py`, `forms.py`, `ly.py`, `lycf.py`; copies in `tc2/out/tools/`).
+
+### Next, in order
+1. Web build (`node tc2/scripts/unity.mjs build-web --jobs 3`, ~11 min, RAM ~85 % while it runs) and Web test (`node tc2/scripts/webtest.mjs --tag
+   s16web`): the person page (shots 5b-5d) shows "Its own grain in the village's granary...", the place page (5e) the "Grain:" line.
+2. **C10.2 standing and the village's first household** (chosen from the evidence: C3.3's claims have no consumer; `10` §4/§6.6 plan leaders from
+   prestige - generosity in famine, kin, deeds, age): standing from households that owe it, what it gave unreckoned, its kin households, its head's
+   age and deeds; the headman the head of the leading household (incumbent until clearly outstood); the headman's household opens its grain to the
+   village's hungry in hard times (renewing standing) and the headman leads the village's bands by their own boldness; succession from inherited
+   claims. Research notes: fission thresholds ~127-158 (Alberti 2014, Hutterites), ~200 (Chagnon), elites and ritual above ~500 (Bandy 2004); big men
+   rarely hold more than ~80 core followers (Henrich, Chudek & Boyd 2015). Village fission by rival followings is C10.3.
+3. Open from D2-126: debts' consequences (work for creditors, flight), the hungry taking from their own village's store, household land, households'
+   own trade; D2-125's unmet iron ask; D2-123 floods; W-FOREST.
+
 ## Session 15 (8 Oct 2026 19:54 IST - 9 Oct; Control Room run #31 session 5) - C4.2 carts closed (D2-122), nobody in the water (D2-123), crossings surveyed (D2-124), C1.4b the village smith (D2-125)
 
 ### Exact state (keep current)

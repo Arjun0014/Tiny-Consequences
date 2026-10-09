@@ -736,7 +736,7 @@ namespace TC2.Core.Places
                 hh.Larder += keep; fu -= keep;
                 TC2.Core.Diagnostics.HouseLedger.Bring(w, hid, sid, keep, fu);
             }
-            if (fu > 0) w.Settlements.Get(sid).Granary += fu;
+            if (fu > 0) { w.Settlements.Get(sid).Granary += fu; w.Holdings.Put(hid, sid, fu); }   // (its own beasts' milk and meat: C3.3)
         }
 
         /// <summary>

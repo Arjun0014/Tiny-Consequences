@@ -3520,3 +3520,66 @@ x0.88; boatwrights 15-51 a world. Shots `tc2/out/shots/c14b` (Fomthaenstead #20,
 **Open.** A village sells iron only from what its places spare beyond its own people: demand it cannot meet is not seen (no unmet ask), so an
 exporter's smiths do not grow with their buyers - the bloomery at the ore with its own crew (C5.3c, work at a distance) is where iron towns
 belong. The open hearth (a village without a smithy) still lets every smith smelt at home; apprenticeship beside a master (C3.5).
+
+## D2-126 — 2026-10-09 — The household's grain, what households owe, makers paid in kind, sharing in hard times (C3.3)
+
+**Context.** C3.3 (exchange between households) was surveyed in session 13 and deferred as a phase: the village's store moved 31 % of the food
+households drew. Measured again before any code (session 16; the tools ledger extended to household-years with their kin households, `run
+--ledger Y --ledgeryears F`, seed 4 `_s3` from year 200, 56,240 household-years): (1) dividing the harvest by each household's crop work - the
+survey's rule - is an artefact of the COARSE labour schedule (residents walked in id order: the oldest fill the crop need, households with no member
+of 16-59 "brought in" 64 FU a member against 40 for young couples; net takers had more workers a member than givers, 0.60 against 0.52) - property
+built on it would make the scheduler's order into wealth; (2) divided by mouths (the commune's law for fields worked in common) households are
+mostly self-sufficient year to year (deficits 8 % of what they eat, mostly covered by their own carry-over); differences come from their own beasts
+and catches, household formation and growth, and work for others; (3) 82 % of households have close kin households in their village; kin could
+cover 43 % of the survey's deficits.
+**Decision.** One physical granary as before; whose grain it holds and what is owed (`Core/Places/Holdings.cs`, `Household.Grain/WaresDue/PotsDue`,
+`Settlement.Common`, `World.Holdings` with the debts table, sim version 62):
+(a) **Bins and the account**: the harvest shared among a village's households by their mouths as it comes in; what a household brings home beyond
+its larder (its beasts' milk and meat, its catch) is its own; the first store by mouths; a married child takes their mouth's share of the parents'
+grain; heirs take grain, debts and claims (no heir: the village's grain, the debts lapse); parties carry their own grain first (the old amount) and
+their debts lapse; a party's food is its households' at the new home. Daily `Reconcile`: outflows nobody drew (rot, theft, sales, relief and
+tribute given, visitors' meals) are borne by all holders by their shares; inflows nobody brought (bought, given, paid, returned, tribute) are the
+village's common grain.
+(b) **The moral economy** (`Draw`, the larder fill at the village's ration as before): own grain; the common grain (unreckoned); close kin's spare
+beyond their own needs to the next harvest and six days (a gift, unreckoned); a loan from those it owes already and the households with the most
+to spare (`Debt`, repaid after each harvest from what the debtor holds beyond a year's needs, oldest first); what is still wanting falls on all by
+their shares. Meals straight from the store: own grain, then the common grain (`Take`).
+(c) **Makers paid in kind**: a maker's make is theirs in the store until taken; a household that takes wares or kiln pots pays their makers the food of
+the maker-days it took (`Price`: a day's bread for a day's work at the workshop) from its own grain - and takes no more than its grain pays
+(`CanBuy`: no credit; a household short of grain makes its own goods or cooks on the full wood); goods bought in were
+the village's (their worth to its common grain); the village pays for what it uses in common (jars, a smith's hours for its tools and arms at the
+smithy or the open hearth, wares and ware it sells abroad) from its common grain, then by a **levy** on every household's grain by its share (the
+smith's own excepted). Common duties anyone does (fields, wood, building, quarrying, mining, charcoal) are the commune's, unpaid.
+(d) **Hard times** (C3.3c; Dirks 1980): below a village ration of 0.7 (`Contract`) sharing contracts - a larder and a meal from the store get only
+the household's own grain, the common grain, what its kin spare down to the village's ration, and loans of true spare; nobody's need is taken.
+(e) `Architecture.Means` reads the household's own grain on D2-114's scale (365 FU a member: kept so the plans keep their calibration).
+Pages: the person page's home section, the settlement page's "Grain:" line. Headless: `hold:`, `makers paid:`, `hunger by household:` lines;
+`place --households` (grain, owes, owed), `place --debts`; `--nohold` (reproduces `_s3` exactly), `--holdmeansoff`, `--nopay`, `--nohard`.
+**Evidence.** `HoldingsTests` 12 (the first store and the harvest by mouths, a catch its own; the larder's order own -> common -> kin -> loan, a loan
+only from spare; repayment oldest first from a year's surplus; losses borne by shares, inflows the village's; an heir's grain, debts and claims;
+**the accounting moves nothing** - lived and COARSE, with each village's grain premised into one household so kin gifts and loans flow, the same
+world as `--nohold`; a save with debts continues the same; makers paid by their shares, no grain no wares, bought-in goods the village's; the
+village's jars and smith's hours from its common grain then a levy with the smith excepted; hard times: kin down to the ration, others keep their
+needs, the rest unshared). Seed 4, 100 years: with `--holdmeansoff` every report line equals `--nohold`, which reproduces `_s3` exactly. **Ten
+seeds, 300 years DEEP**, each step against the last on the same mechanics: `_h1` (bins, moral economy, own-grain means) vs `_s3`: people x0.997
+(t -0.07), births and deaths at par; `_h2` (+ makers paid, takers owing) at par, but 205,835 debts in the table (a taker owed every maker a sliver,
+79,601 in one world); `_h4` (makers paid as far as the taker's grain pays, `--nohard`) vs `_h2`: debts 37,398, home making x1.19 (t 4.2), ware
+traded x1.38 (t 3.8: unsold at home, it goes abroad), trades x1.22, hunger deaths x0.92 (t -3.1), people at par; `_h3`/`_h5` (+ hard times) vs
+`_h2`/`_h4`: people x0.995/x0.999, famines x1.25 (t 3.8)/x1.22 (t 2.4), hunger deaths x0.90/x0.95, takings x0.83/x0.87 (t -2), raids x0.48/x0.69,
+wounds x0.74/x0.79, relief x1.61 (t 5.2)/x1.11 - more villages lose someone to hunger while their store still holds others' grain ("famine amid
+plenty", Sen 1981), neighbours' relief comes to them, and fewer villages run dry and raid. **The slice (`_h5`) against `_s3`**: people over years
+200-299 x0.976 (t -0.6), births and deaths a thousand at par, hunger deaths x0.96, famines x1.28 (t 2.5), blows x0.71 (t -2.6), takings x0.83, watch
+nights x0.73, trades x1.24, ware traded x1.28, relief x1.37, foundings x1.07, markets 98 -> 102; house plans small/cottage/long/two/hall/row
+34/27/7/26/1/5 -> 37/28/8/22/0/6 % (means by the household's own grain, not its village's). At year 300 over ten worlds: 15,979 households hold 2.36M
+FU, the villages 170k; grain a member p10/p50/p90 0-10/8-59/34-211 FU, Gini 0.51-0.77, the richest tenth 38-69 %; 45,947 debts (942k FU) of 6,458
+households to 3,126, one household owed by up to 159; over the run 5.76M FU fed from common grain, 1.84M given by kin, 4.09M lent, 1.72M repaid,
+1.34M lapsed (households that left or died out without heirs); households paid makers 4.87M FU, makers earned 5.63M (owed 17k), smiths 84k; the
+villages paid 511k from common grain and 327k by levies; practised makers' households hold more grain a member than the others in all ten worlds
+(1.1-2.7x). Hunger deaths (36,580): 98 % in households with no grain of their own, 92 % in households in debt, 32 % with no close kin in their
+village. Seed 4's debts at year 300 are mostly a season's (median 0.8 years old, a debtor owing a median 30 FU); creditors are small households of
+elders with grain and beasts. **Cost**: from the same year-200 save, 24 years four times each: 8,151-8,565 ms without the accounting, 8,180-8,437
+ms with it (+0.4 % at the lower envelope); the 300-year runs cost more a person-day (x1.18 against `_s3`) because the worlds diverge (more villages)
+and they ran beside other jobs.
+**Open.** Debts have no consequence yet beyond repayment (no work for a creditor, no flight from debt, no standing); land is the commune's (the
+harvest by mouths) - household fields, inheritance of land and labour for others wait until land binds; trade between villages is still the
+village's own (grain sold falls on every bin by its share); the hungry poor never take from their own village's store at night (only neighbours').

@@ -85,8 +85,11 @@ views shows the differentiation; every structure is clickable; headless runs at 
 ### C3 professions and exchange, by slices (`26`): ~~C3.1 the weaver's shed and the village's wares~~ (done, D2-119: wares last longer than homespun,
 the village's best weavers make them at a shed in larger places, households take them, they are traded - trade x3, home making hours x0.28); ~~C3.1b more sheds where a town's
 looms cannot keep up~~ (done, D2-120); ~~C3.2 the potter's kiln, jars and hearths' pots of real clay~~ (done, D2-121: 84 kilns in 169 villages over
-ten worlds, pottery most of the world's trade, markets x3.6); C3.3 exchange between households - surveyed and deferred as a phase (`26` §3: the
-village's store moves 31 % of the food households draw; household property needs a moral economy, household fields, debt, inheritance);
+ten worlds, pottery most of the world's trade, markets x3.6); ~~C3.3a-c exchange between households~~ (done, D2-126, `26` §2c: each household's
+grain in the village's store - the harvest by mouths, its own produce its own -, the moral economy (own grain, the village's common grain, kin's
+gifts, loans recorded as debts and repaid from surplus), makers paid in kind as far as the taker's grain pays, the village's levy for jars and the
+smith's work, sharing contracting to the household and its kin in hard times - famines x1.25, hunger deaths x0.9-0.95, fewer takings and raids,
+people at par; open: household land, debts' consequences, households' own trade);
 ~~C1.4b the village smith~~ (done, D2-125, `26` §2b: a smithy's four places for its best smiths by craft and practice, practice quickening the hand,
 another smithy only where the steady need outruns the places, smiths and boatwrights read from their work - before, every copper-competent person
 worked at the smithy in turn, up to 355 hands a smithy-year, and 5,730 people were "smiths"); C3.4 the mill, C3.5 apprenticeship, C3.6 other
