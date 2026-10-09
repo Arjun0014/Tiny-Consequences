@@ -376,6 +376,7 @@ namespace TC2.Core.Places
             t[d <= 0.01 ? 0 : d < 5 ? 1 : d < 20 ? 2 : 3]++;
             if (w.Holdings.Owes(hid, out _) > 0.05) t[5]++;
             if (KinOf(w, sid, hid).Count == 0) t[6]++;
+            if (t.Length > 15) { ref var lh = ref w.Households.Get(hid); double lw = w.Holdings.LandWant(hid); t[lh.Land < 0.05 ? 13 : lh.Land < lw - 0.05 ? 14 : 15]++; }   // (by its land: C3.6e survey)
             if (!w.Settlements.Exists(sid) || !Hard(in w.Settlements.Get(sid))) return;
             t[4]++;
             ref var s = ref w.Settlements.Get(sid);

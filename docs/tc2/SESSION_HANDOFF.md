@@ -43,11 +43,17 @@ landless choose to go but in full lands find nowhere, and the land concentrates:
 4. (done: **C3.6d who leaves**, D2-135 - each household weighs its own land; aggregates at par, land concentrates; runs `s*_d1`, `s4_d1v` = `--villageleave`;
    the DEEP guard reads its two worlds' herds together.)
 5. (done: Web build + Web test `s16web8` 6/6 of C3.6b-d; the full suite.)
-6. **Next: life-cycle service (C3.6e)** - the NW European institution Hajnal ties to late marriage: the unmarried young of landless and land-short
-   households live and work in landed households (a mouth fed there, its hands counted there, a wage in grain saved for its marriage). Measure first
-   (a `place` probe on the `_d1` saves): unmarried 15-29 by their household's land; food a mouth by land; hands against land in landed households;
-   hunger deaths by land (extend `Holdings.HungerDeath` with the household's land). Then the smallest real slice. Alternatives: debts' consequences
-   (creditors taking land - concentration - or labour), partible customs by tradition (C11), a land market.
+6. **Measured for the next slice (no code yet; `place --landless`, the `hunger deaths by the household's land` line - runs `s4/42/7/5_g2`, years
+   200-260 from the `_d1` saves)**: landless households are 26-63 % of all, ~3.0-3.4 people, 2.0-2.4 hands, 2-17 days of their own grain;
+   households holding their want are small and old (1.5-1.8 people, ~1 hand) with 2.6-5.7x their want in land and 207-1,594 days of grain. Hunger
+   falls on the landless and land-short (95-99 % of hunger deaths). **Service has no economic driver yet**: the commune works all fields together, so
+   a land-rich household needs no hands (its land's half comes regardless) and a servant's keep (~48 FU a year) exceeds a hand's share (~40).
+   **Famine amid plenty is partly emerging** (ten worlds, hard-times hunger deaths): by mouths (`_s3`) the holders' spare covered under a quarter of
+   the grainless' need at 98 % of them (store under a day's food 80 %); with land (`_d1`) under a quarter at 77 %, a quarter or more at 23 %,
+   store over a day's food at 64 %. Candidates, in order: (a) **work for grain** - households with grain to spare hire the hungry for their own
+   projects (rebuilding, carts, boats) at a day's bread for a day's work (C3.3b's makers' price), so the landless earn in hard times and the rich
+   build; (b) alms by standing in hard times (beyond the first household's, C10.2); (c) each household works its own holding and hires hands - the
+   deep version that would give service an economic base; then debts' consequences, partible customs (C11), a land market.
 
 ## Session 16, second context (9 Oct 2026, 12:22-16:00 IST; Control Room run #39 session 2, Resource Governor MEDIUM) - C10.3 closed (D2-128); C3.5 household formation (D2-129); W-FOREST pass 1 (D2-130)
 

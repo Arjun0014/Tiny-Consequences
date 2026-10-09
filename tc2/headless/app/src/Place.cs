@@ -50,6 +50,7 @@ namespace TC2.Headless
             if (a.Has("splits")) { Splits(w); return 0; }
             if (a.Has("marriage")) { Marriage(w); return 0; }
             if (a.Has("heirs")) { Heirs(w); return 0; }
+            if (a.Has("landless")) { Landless(w); return 0; }
             if (a.Has("woods"))
             {
                 // (W-FOREST survey) the wooded land's climate: cells with forest over 0.25 by annual mean temperature and by moisture, and how
@@ -130,6 +131,50 @@ namespace TC2.Headless
             if (sid == 0) { Console.WriteLine("no place to pick"); return 1; }
             Console.Write(Gazetteer.All(w, sid));
             return 0;
+        }
+
+        /// <summary>
+        /// `place --load SAVE --landless` (service survey, C3.6e): households by their land - none, short of their want, their want - with their people,
+        /// the unmarried of 15-29 among them, children, hands, and their own grain a mouth in days; and the landed households' hands against their land.
+        /// </summary>
+        static void Landless(World w)
+        {
+            long now = w.Now;
+            string[] cls = { "landless", "short", "their want" };
+            var n = new double[3]; var people = new double[3]; var young = new double[3]; var youngM = new double[3]; var kids = new double[3]; var hands = new double[3]; var grainDays = new double[3]; var land = new double[3]; var want = new double[3];
+            var hpaList = new System.Collections.Generic.List<double>();
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                if (!w.Settlements.Get(sid).Inhabited) continue;
+                var hl = w.HouseholdsOf(sid);
+                for (int i = 0; i < hl.Count; i++)
+                {
+                    int hid = hl[i];
+                    var mem = w.Members(hid);
+                    if (mem.Count == 0) continue;
+                    var hh = w.Households.Get(hid);
+                    double wt = w.Holdings.LandWant(hid);
+                    int c = hh.Land < 0.05 ? 0 : hh.Land < wt - 0.05 ? 1 : 2;
+                    n[c]++; people[c] += mem.Count; land[c] += hh.Land; want[c] += wt;
+                    double hd = w.Holdings.Hands(hid); hands[c] += hd;
+                    double need = w.SettlementSys.HouseholdNeed(hid);
+                    grainDays[c] += need > 0 ? hh.Grain / need : 0;
+                    for (int k = 0; k < mem.Count; k++)
+                    {
+                        var p = w.People.Get(mem[k]);
+                        double age = p.AgeYears(now);
+                        if (age < 15) kids[c]++;
+                        else if (age < 30 && p.Partner == 0) { young[c]++; if (!p.IsFemale) youngM[c]++; }
+                    }
+                    if (c > 0 && hh.Land > 0) hpaList.Add(hd / hh.Land);
+                }
+            }
+            double all = n[0] + n[1] + n[2];
+            for (int c = 0; c < 3; c++)
+                Console.WriteLine("households " + cls[c] + ": " + n[c] + " (" + (100 * n[c] / Math.Max(1, all)).ToString("0") + " %), people " + people[c] + " (" + (people[c] / Math.Max(1, n[c])).ToString("0.00") + " each), unmarried 15-29 " + young[c] + " (men " + youngM[c] + "), children under 15 " + kids[c] +
+                                  ", hands " + (hands[c] / Math.Max(1, n[c])).ToString("0.00") + " each, own grain " + (grainDays[c] / Math.Max(1, n[c])).ToString("0") + " days a household's food, land " + (land[c] / Math.Max(1e-9, want[c])).ToString("0.00") + " of their want");
+            hpaList.Sort();
+            if (hpaList.Count > 0) Console.WriteLine("  landed households' hands a hectare p10/50/90 " + hpaList[hpaList.Count / 10].ToString("0.00") + "/" + hpaList[hpaList.Count / 2].ToString("0.00") + "/" + hpaList[9 * hpaList.Count / 10].ToString("0.00"));
         }
 
         /// <summary>
