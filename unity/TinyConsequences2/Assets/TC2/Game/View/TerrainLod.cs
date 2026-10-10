@@ -207,6 +207,7 @@ namespace TC2.Game
             _roadTimer -= Time.unscaledDeltaTime;
             if (_roadTimer <= 0 || _roadWorld != Host.WorldVersion) { _roadTimer = 10f; _roadWorld = Host.WorldVersion; BuildRoads(w); }
             VolcanoShape.SetTime(w.Now); // cone ages (the cones change only with the relief)
+            Shader.SetGlobalFloat(YearId, (float)System.Math.Floor(w.Now / (double)SimTime.Year));   // (which strips rest: Terrain.shader)
             Select(w);
             BuildSome(w);
             Show();
@@ -894,6 +895,7 @@ namespace TC2.Game
             }
         }
 
+        static readonly int YearId = Shader.PropertyToID("_TC2Year");
         static readonly Color Earth = new Color(0.56f, 0.47f, 0.35f), Trodden = new Color(0.52f, 0.54f, 0.34f), Road = new Color(0.58f, 0.50f, 0.38f);
         static readonly Color Beaten = new Color(0.69f, 0.62f, 0.49f);   // (a training ground's dust, paler than ploughland: D2-114)
         // roads: the villages' own routes, smoothed, indexed by the cells they pass (rebuilt now and then)
@@ -913,6 +915,15 @@ namespace TC2.Game
             var pts = new System.Collections.Generic.List<Vec3d>();
             var tmp = new System.Collections.Generic.List<Vec3d>();
             w.Ways.Collect(w.Now, _ways);
+            // the villages' squares (their bare earth): a road is not drawn over the square - the market's cross and the well stand there
+            _squares.Clear();
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                ref var st = ref w.Settlements.Get(sid);
+                if (!st.Inhabited) continue;
+                Vec3d c = st.LocalToSphere(st.SquareX, st.SquareY, P.Radius);
+                _squares.Add(new Vector4((float)c.X, (float)c.Y, (float)c.Z, (float)(TC2.Core.Places.Footprints.SquareEarth(in st) - 1.0)));
+            }
             for (int i = 0; i < _ways.Count; i++)
             {
                 var way = _ways[i];
@@ -923,8 +934,9 @@ namespace TC2.Game
                 // how it is drawn: a track faint and narrow, a path, a road broad and dark (and a little more with every walk between)
                 float worn = state >= 3 ? 1f : state == 2 ? 0.62f + 0.3f * Mathf.Clamp01((float)((way.Use - TC2.Core.Agents.Ways.Path) / (TC2.Core.Agents.Ways.Road - TC2.Core.Agents.Ways.Path)))
                                                        : 0.25f + 0.3f * Mathf.Clamp01((float)((way.Use - TC2.Core.Agents.Ways.Track) / (TC2.Core.Agents.Ways.Path - TC2.Core.Agents.Ways.Track)));
-                // Chaikin twice: a track that bends, not a chain of straight cell-to-cell legs
-                pts.Clear(); pts.AddRange(r.Pts);
+                // Chaikin twice: a track that bends, not a chain of straight cell-to-cell legs - in a village along the street it leaves by (WayLines:
+                // before, from the village's centre straight across its lots to the next cell's centre)
+                pts.Clear(); pts.AddRange(TC2.Core.Agents.WayLines.Of(w, r));
                 for (int it = 0; it < 2; it++)
                 {
                     tmp.Clear(); tmp.Add(pts[0]);
@@ -939,11 +951,27 @@ namespace TC2.Game
                 for (int k = 0; k + 1 < pts.Count; k++)
                 {
                     Vec3d p0 = pts[k], p1 = pts[k + 1];
+                    if (OnSquare(P, (p0 + p1).Normalized)) continue;
                     int c0 = P.Grid.CellOf(p0);
                     AddRoad(P, c0, p0, p1, worn);
                     for (int q = 0; q < 8; q++) AddRoad(P, P.Grid.Nbr8[c0 * 8 + q], p0, p1, worn);
                 }
             }
+        }
+
+        readonly System.Collections.Generic.List<Vector4> _squares = new System.Collections.Generic.List<Vector4>();
+
+        /// <summary>Whether a point lies on a village's square (its bare earth, less a metre).</summary>
+        bool OnSquare(PlanetState P, Vec3d d)
+        {
+            for (int i = 0; i < _squares.Count; i++)
+            {
+                var q = _squares[i];
+                double dot = q.x * d.X + q.y * d.Y + q.z * d.Z;
+                if (dot < 0.999) continue;
+                if (System.Math.Acos(System.Math.Min(1.0, dot)) * P.Radius < q.w) return true;
+            }
+            return false;
         }
 
         void AddRoad(PlanetState P, int cell, Vec3d a, Vec3d b, float worn)
@@ -988,18 +1016,39 @@ namespace TC2.Game
             public int Lines;   // (streets and their back lanes: C13.1, C13.2)
             public double Sx, Sy;
             public double Market;   // the market place's radius (C13.3; 0 none)
+            public double SquareEarth;   // the square's bare earth (m): streets are drawn from its edge
+            // buildings standing in a street's or lane's band (a street laid through up to three houses that stood in its line, C13.3, or
+            // a work in it): the band is not drawn through them - it stops at the walls and goes on past (session 17, the visual truth audit)
+            public readonly System.Collections.Generic.List<Vector4> Blocks = new System.Collections.Generic.List<Vector4>();   // (centre x, y, face, plan or -1 - radius)
         }
         readonly System.Collections.Generic.List<Ground1> _ground = new System.Collections.Generic.List<Ground1>();
 
         static void ReadGround(TC2.Core.Simulation.World w, int sid, Ground1 g)
         {
             ref var s = ref w.Settlements.Get(sid);
-            g.Sx = s.SquareX; g.Sy = s.SquareY; g.Market = s.MarketR;
+            g.Sx = s.SquareX; g.Sy = s.SquareY; g.Market = s.MarketR; g.SquareEarth = TC2.Core.Places.Footprints.SquareEarth(in s) - 1.0;
             g.Lines = TC2.Core.Places.Streets.Lines(in s);
             for (int i = 0; i < g.Lines; i++)
             {
                 TC2.Core.Places.Streets.Line(in s, i, out double ox, out double oy, out double ux, out double uy, out _);
                 g.Ox[i] = ox; g.Oy[i] = oy; g.Ux[i] = ux; g.Uy[i] = uy; g.Reach[i] = 0;
+            }
+            g.Blocks.Clear();
+            if (g.Lines > 0)
+            {
+                var bl = w.BuildingsOf(sid);
+                for (int i = 0; i < bl.Count; i++)
+                {
+                    ref var b = ref w.Buildings.Get(bl[i]);
+                    if (TC2.Core.Places.Homes.RuinLeft(in b, w.Now) <= 0 || TC2.Core.Places.Boats.IsBoat(b.Kind)) continue;
+                    bool home = TC2.Core.Places.Structures.IsHome(b.Kind);
+                    double reach = home ? TC2.Core.Places.Footprints.Reach(TC2.Core.Places.Footprints.PlanOf(in b)) : TC2.Core.Places.Footprints.WorkR(b.Kind);
+                    if (!TC2.Core.Places.Streets.On(in s, b.X, b.Y, reach + 4.0)) continue;
+                    double bf = TC2.Core.Places.Footprints.FaceOf(in s, in b);
+                    int bp = home ? TC2.Core.Places.Footprints.PlanOf(in b) : -1;
+                    if (TC2.Core.Places.Footprints.OpenScale(in s, b.X, b.Y, bf, bp, reach) >= 1.0) continue;   // (its walls keep out of the drawn bands)
+                    g.Blocks.Add(new Vector4(b.X, b.Y, (float)bf, home ? bp : -1f - (float)reach));
+                }
             }
             var hhs = w.HouseholdsOf(sid);
             if (g.Hx.Length < hhs.Count) { int n = hhs.Count * 2; g.Hx = new float[n]; g.Hy = new float[n]; g.Tx = new float[n]; g.Ty = new float[n]; }
@@ -1042,7 +1091,29 @@ namespace TC2.Game
                 earth = Mathf.Max(earth, (1f - Edge(1.0f, 2.6f, (float)dp)) * 0.85f);
             }
             // its streets and lanes (C13.1, C13.2): beaten by everyone living along them, from the green (a lane from its first house) out past
-            // the last house that fronts each
+            // the last house that fronts each - but not through a building that stands in the line: there the street stops at its walls
+            float blocked = 1f;
+            for (int k = 0; k < g.Blocks.Count; k++)
+            {
+                Vector4 bk = g.Blocks[k];
+                double d;
+                if (bk.w <= -1f) d = System.Math.Max(0.0, System.Math.Sqrt((x - bk.x) * (x - bk.x) + (y - bk.y) * (y - bk.y)) + 1.0 + bk.w);   // (a work's disc: radius -(w + 1))
+                else
+                {
+                    d = double.MaxValue;
+                    int plan = (int)bk.w;
+                    double fx = System.Math.Cos(bk.z), fy = System.Math.Sin(bk.z), ux = -fy, uy = fx;
+                    for (int r = 0; r < TC2.Core.Places.Footprints.Count(plan); r++)
+                    {
+                        TC2.Core.Places.Footprints.Rect(plan, r, out double cx, out double cz, out double hx, out double hz);
+                        double ox = bk.x + ux * cx + fx * cz, oy = bk.y + uy * cx + fy * cz;
+                        double lx = System.Math.Abs((x - ox) * ux + (y - oy) * uy) - hx, lz = System.Math.Abs((x - ox) * fx + (y - oy) * fy) - hz;
+                        double dd = System.Math.Sqrt(System.Math.Max(0.0, lx) * System.Math.Max(0.0, lx) + System.Math.Max(0.0, lz) * System.Math.Max(0.0, lz));
+                        if (dd < d) d = dd;
+                    }
+                }
+                blocked = Mathf.Min(blocked, Edge(0.6f, 2.4f, (float)d));
+            }
             for (int i = 0; i < g.Lines; i++)
             {
                 double reach = g.Reach[i];
@@ -1050,9 +1121,11 @@ namespace TC2.Game
                 double ux = g.Ux[i], uy = g.Uy[i];
                 double px = x - g.Ox[i], py = y - g.Oy[i];
                 double along = px * ux + py * uy;
-                if (along < (i % 3 == 0 ? 0.0 : TC2.Core.Places.Streets.LaneStart - 10.0) || along > reach + 8.0) continue;
+                // (a lane from where the simulation lines it and keeps it clear - Streets.Line's LaneStart - 4: drawn from LaneStart - 10 before session
+                // 17, its first metres ran over the houses standing there)
+                if (along < (i % 3 == 0 ? g.SquareEarth : TC2.Core.Places.Streets.LaneStart - 4.0) || along > reach + 8.0) continue;   // (a street from the square's edge)
                 double off = System.Math.Abs(-px * uy + py * ux);
-                earth = Mathf.Max(earth, (1f - Edge(2.2f, 3.8f, (float)off)) * 0.9f * (1f - Edge((float)reach, (float)reach + 8f, (float)along)));
+                earth = Mathf.Max(earth, (1f - Edge(2.2f, 3.8f, (float)off)) * 0.9f * (1f - Edge((float)reach, (float)reach + 8f, (float)along)) * blocked);
             }
             bare = earth;
             return Color.Lerp(col, Earth, earth);

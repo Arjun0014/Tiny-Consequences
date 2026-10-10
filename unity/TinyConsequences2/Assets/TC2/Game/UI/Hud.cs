@@ -72,7 +72,7 @@ namespace TC2.Game
                 if (!fw.People.Exists(_follow) || !fw.People.Get(_follow).Alive) _follow = 0;
                 else
                 {
-                    var d = fw.Agents.PositionAt(fw.People.Get(_follow), Host.RenderTime);
+                    Presence.Of(fw, in fw.People.Get(_follow), Host.RenderTime, out var d, out _, out _, out _);   // (where they are drawn)
                     Rig.Lat = d.Latitude; Rig.Lon = d.Longitude;
                 }
             }
@@ -88,8 +88,8 @@ namespace TC2.Game
             for (int id = w.People.First(); id != 0; id = w.People.Next(id))
             {
                 ref var p = ref w.People.Get(id);
-                if (!p.Alive || p.Act == ActivityKind.Sleep || p.Act == ActivityKind.Infant) continue;
-                Vector3 pos = PlanetGeo.Surface(w.Planet, w.Agents.PositionAt(p, t));
+                if (!p.Alive || !Presence.Of(w, in p, t, out var pd, out _, out _, out _)) continue;   // (as they are drawn: the asleep and those indoors are not)
+                Vector3 pos = PlanetGeo.Surface(w.Planet, pd);
                 Vector3 sp = cam.WorldToScreenPoint(pos);
                 if (sp.z < 0) continue;
                 float d = Vector2.Distance(mp, sp);

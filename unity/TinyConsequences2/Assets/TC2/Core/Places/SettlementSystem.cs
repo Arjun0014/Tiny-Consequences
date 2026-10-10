@@ -1085,13 +1085,13 @@ namespace TC2.Core.Places
                     for (int k = 0; k < _men.Count; k++)
                     {
                         int m = _men[k], at = w.People.Get(m).Home;   // (they will live in his village: its store, its harvest)
-                        double days = CoupleDays(at, pid, m);
-                        if (days < ToHarvest(at) + Holdings.Reserve) continue;
-                        // a living (C3.5b, `--niche`): the land they would hold and the hands they would give keep a household of two a year, else what
+                        double bring = CoupleDays(at, pid, m);
+                        if (bring < ToHarvest(at) + Holdings.Reserve) continue;
+                        // a living (C3.5b, D2-140): the land they would hold and the hands they would give keep a household of two a year, else what
                         // they bring carries the shortfall for `NicheYears` (Hajnal's niche: no holding, no marriage - a little later for those with grain)
                         if (NicheOn && !Holdings.LandOff)
                         {
-                            double living = CoupleLiving(at, pid, m), years = days / SimTime.DaysPerYear;
+                            double living = CoupleLiving(at, pid, m), years = bring / SimTime.DaysPerYear;
                             if (living < 1.0 && years < (1.0 - living) * NicheYears) { if (NicheTally != null) NicheTally[12]++; continue; }
                         }
                         _men[keep++] = m;
@@ -1255,9 +1255,9 @@ namespace TC2.Core.Places
         }
 
         // ---------------------------------------------------------------- a living: the household's niche (C3.5b)
-        /// <summary>Tools and the next slice (`--niche`): a couple marries only when the land they would hold and the hands they would give keep them a
-        /// year at the village's last harvest, or what they bring carries the shortfall for `NicheYears`.</summary>
-        public static bool NicheOn;
+        /// <summary>The household's niche (C3.5b, D2-140): a couple marries only when the land they would hold and the hands they would give keep them a
+        /// year at the village's last harvest, or what they bring carries the shortfall for `NicheYears`. `--noniche` (false): C3.5's rule alone.</summary>
+        public static bool NicheOn = true;
         /// <summary>The years of a shortfall what a couple brings must carry before they marry without a living (C3.5b).</summary>
         public static double NicheYears = 4.0;
         /// <summary>Tools (null in the game): marriages by the couple's living (of a year's bread: under a half, to three quarters, to one, one or

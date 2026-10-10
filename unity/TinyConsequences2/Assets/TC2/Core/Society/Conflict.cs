@@ -1143,6 +1143,9 @@ namespace TC2.Core.Society
         }
 
         /// <summary>The ring a palisade would run on: outside the village's farthest home, its yards and its store (25-170 m).</summary>
+        /// <summary>`--nowallworks`: a ring is laid clear of homes only (before session 17), on the same binary.</summary>
+        public static bool WallWorksOff;
+
         public double WallRadius(int sid)
         {
             var w = _w;
@@ -1194,8 +1197,16 @@ namespace TC2.Core.Society
             for (int i = 0; i < bl.Count; i++)
             {
                 ref var b = ref w.Buildings.Get(bl[i]);
-                if (!Places.Structures.IsHome(b.Kind) || Places.Homes.RuinLeft(in b, w.Now) <= 0) continue;
+                if (Places.Homes.RuinLeft(in b, w.Now) <= 0) continue;
                 double dx = (double)b.X - s.SquareX, dy = (double)b.Y - s.SquareY;
+                if (!Places.Structures.IsHome(b.Kind))
+                {
+                    // (session 17) a work standing where the ring would run - a training ground beyond the homes - is no more crossed than a home: the
+                    // posts had run through the beaten ground (14 such in seed 4's world at year 300). Boats and works far out (quarries, mines) are not near.
+                    if (WallWorksOff || Places.Boats.IsBoat(b.Kind)) continue;
+                    if (DMath.Abs(DMath.Sqrt(dx * dx + dy * dy) - r) < Places.Footprints.WorkR(b.Kind) + 1.5) n++;
+                    continue;
+                }
                 if (DMath.Abs(DMath.Sqrt(dx * dx + dy * dy) - r) < Places.Footprints.Reach(Places.Footprints.PlanOf(in b)) + 1.5) n++;
             }
             var hl = w.HouseholdsOf(sid);

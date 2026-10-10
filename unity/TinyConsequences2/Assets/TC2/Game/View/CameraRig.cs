@@ -391,7 +391,14 @@ namespace TC2.Game
                     if (st.Inhabited && st.Population > bp) { bp = st.Population; most = s2; }
                 }
                 if (most != 0) d = w.Settlements.Get(most).Anchor;
-                LookAt(d, view == "townclose" ? 260 : 900);
+                // (townlow 95 m, townstreet 35 m: over its square, a little off it along its first street - its people at work and its streets)
+                if (most != 0 && (view == "townlow" || view == "townstreet"))
+                {
+                    ref var ts = ref w.Settlements.Get(most);
+                    double off = view == "townstreet" ? 30.0 : 45.0, a0 = ts.StreetN > 0 ? ts.StreetAt(0) : 0.0;
+                    d = ts.LocalToSphere(ts.SquareX + System.Math.Cos(a0) * off, ts.SquareY + System.Math.Sin(a0) * off, w.Planet.Radius);
+                }
+                LookAt(d, view == "townclose" ? 260 : view == "townlow" ? 95 : view == "townstreet" ? 35 : 900);
                 return;
             }
             if (view.StartsWith("scar"))

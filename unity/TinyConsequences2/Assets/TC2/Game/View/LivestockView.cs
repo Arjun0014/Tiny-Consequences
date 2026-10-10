@@ -114,14 +114,35 @@ namespace TC2.Game
                     ref var h = ref w.Households.Get(hid);
                     var mine = w.BeastsOf(hid);
                     if (mine.Count == 0 || h.Party != 0) continue;
-                    // the pen behind the home (away from the square), sized to the herd
+                    // the pen: the yard pen behind its home where it has free ground for one (WorldObjectsView draws its fences - on ground its
+                    // neighbours, the streets and the green leave free: session 17; before, a second ring of fences was laid away from the square
+                    // whatever stood there - in a street town along the street, into the next house); else a ring behind the home, away from the
+                    // square, sized to the herd
                     double ax = h.HomeX - s.SquareX, ay = h.HomeY - s.SquareY;
                     double al = System.Math.Sqrt(ax * ax + ay * ay);
                     if (al < 1e-3) { ax = 0; ay = -1; al = 1; }
                     ax /= al; ay /= al;
                     double penR = (2.6 + 0.55 * System.Math.Sqrt(mine.Count)) * ex;
                     double px = h.HomeX + ax * (6.0 + penR), py = h.HomeY + ay * (6.0 + penR);
-                    Fence(P, in s, px, py, penR, hid, ex);
+                    bool yard = false; double yx0 = 0, yx1 = 0, yz0 = 0, yz1 = 0, yf = 0, ybx = 0, yby = 0, yex = 1;
+                    if (h.Building != 0 && w.Buildings.Exists(h.Building) && WorldObjectsView.Instance != null && WorldObjectsView.Instance.YardPen(h.Building, out float room))
+                    {
+                        ref var hb = ref w.Buildings.Get(h.Building);
+                        int form = Architecture.Has(hb.Form) ? hb.Form : Architecture.Pack(Architecture.Cottage, Architecture.Gable, Architecture.Straw, Architecture.Daub, false, 0);
+                        int plan = Architecture.PlanOf(form);
+                        float W = hb.Kind < Construction.House ? 4.6f : WorldObjectsView.PlanW[plan];
+                        int across = plan == Architecture.Hall ? 4 : 3;
+                        // (as WorldObjectsView.Pen lays it: 2.1 m sections, two deep, behind the home - at the scale the home is drawn)
+                        yex = Mathf.Min(Mathf.Clamp(Vector3.Distance(Rig.Cam.transform.position, At(P, in s, s.SquareX, s.SquareY)) / 900f, 1f, 1.6f), room);
+                        yz0 = -W / 2.0 - 3.2 - 0.5; yz1 = -W / 2.0 - 3.2 - 2 * 2.1 + 0.5; yx0 = -across * 2.1 / 2.0 + 0.5; yx1 = -yx0;
+                        yf = Footprints.FaceOf(in s, in hb); ybx = hb.X; yby = hb.Y;
+                        yard = true;
+                    }
+                    // (the ring only on free ground - no building, street or square under its fences; else no pen is drawn and the beasts stand
+                    // the night behind the home)
+                    bool ring = !yard && Footprints.DiscFree(w, sid, h.Building, px, py, penR / ex);
+                    if (ring) Fence(P, in s, px, py, penR, hid, ex);
+                    else if (!yard) { px = h.HomeX + ax * 6.5; py = h.HomeY + ay * 6.5; penR = 2.0 * ex; }
                     for (int j = 0; j < mine.Count; j++)
                     {
                         var b = w.Beasts.Get(mine[j]);
@@ -131,6 +152,13 @@ namespace TC2.Game
                         double ang = j * 2.39996323, rr = PenSpacing[kind] * ex * System.Math.Sqrt(j + 0.5);
                         rr = System.Math.Min(rr, penR - 0.6 * ex);
                         double nx = px + System.Math.Cos(ang) * rr, ny = py + System.Math.Sin(ang) * rr;
+                        if (yard)
+                        {
+                            // its place in the yard pen: spread over it by a stable key (in the home's frame, then the village's)
+                            double mx = (yx0 + (yx1 - yx0) * KeyedRng.Unit(KeyedRng.Mix(bk + 11))) * yex, mz = (yz1 + (yz0 - yz1) * KeyedRng.Unit(KeyedRng.Mix(bk + 12))) * yex;
+                            double cf = System.Math.Cos(yf), sf = System.Math.Sin(yf);
+                            nx = ybx - sf * mx + cf * mz; ny = yby + cf * mx + sf * mz;
+                        }
                         double dx, dy;
                         if (kind == Livestock.Pig)
                         {

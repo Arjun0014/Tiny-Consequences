@@ -49,6 +49,8 @@ namespace TC2.Headless
             }
             if (a.Has("splits")) { Splits(w); return 0; }
             if (a.Has("near")) { Near(w); return 0; }
+            if (a.Has("roads")) { RoadAudit(w, a.Int("sid", 0), a.Double("ex", 1.6), a.Int("show", 0), a.Has("rawways"), a.Get("feature"), a.Has("works")); return 0; }
+            if (a.Has("still")) { StillAudit(w, a); return 0; }
             if (a.Has("heads")) { Heads(w); return 0; }
             if (a.Has("marriage")) { Marriage(w); return 0; }
             if (a.Has("heirs")) { Heirs(w); return 0; }
@@ -74,6 +76,45 @@ namespace TC2.Headless
                 }
                 Console.WriteLine("wooded cells " + n + "; by mean temperature -10..30 in 4-degree bands: " + string.Join(" ", tb) + "; forest ha " + string.Join(" ", System.Array.ConvertAll(tha, x => x.ToString("0"))));
                 Console.WriteLine("  by moisture 0..1 in tenths: " + string.Join(" ", mb) + "; by a stream " + stream + ", wet ground " + wet + "; under 3 degC " + cold + ", 14 degC or more " + warm + ", moisture under 0.3 " + dry);
+                // (W-FOREST pass 2) by the view's kind of wood at the cell's own height (Game/View/ForestTypes.Classify): land cells, how many carry
+                // woods (share over 0.05), the woods' share among them (quartiles), wooded ha, burnt in the last 30 years
+                string[] kn = { "rain", "dry", "warm", "broadleaf", "mixed", "boreal", "treeline", "wet", "gallery" };
+                var shares = new System.Collections.Generic.List<float>[9]; var land = new int[9]; var ha = new double[9]; var burnt = new int[9];
+                for (int k = 0; k < 9; k++) shares[k] = new System.Collections.Generic.List<float>();
+                for (int c = 0; c < P.Cells; c++)
+                {
+                    if (!P.IsLand(c)) continue;
+                    float t = P.TMean[c], m = P.Moist[c], wetv = Math.Max(P.SoilWater[c], P.LakeDepth[c] > 0f ? 1f : 0f);
+                    int kind = t < -1.5f ? 6 : (P.IsStream(c) && t > 1f) ? 8 : (wetv > 0.8f && t > 0f) ? 7 : t >= 20f ? (m >= 0.55f ? 0 : 1) : t >= 14f ? (m < 0.40f ? 1 : 2) : t >= 8f ? 3 : t >= 3f ? 4 : 5;
+                    land[kind]++;
+                    if (P.Forest[c] > 0.05f) { shares[kind].Add(P.Forest[c]); ha[kind] += P.AreaHa(c) * P.Forest[c]; if (w.Fire.BurnedAt[c] != 0 && w.Now - w.Fire.BurnedAt[c] < 30 * SimTime.Year) burnt[kind]++; }
+                }
+                Console.WriteLine("  by kind of wood (land cells; wooded over 0.05; the woods' share q25/median/q75 among them; wooded ha; burnt in 30 y):");
+                for (int k = 0; k < 9; k++)
+                {
+                    var l = shares[k]; l.Sort();
+                    string q(double f) => l.Count > 0 ? l[Math.Min(l.Count - 1, (int)(f * l.Count))].ToString("0.00") : "-";
+                    Console.WriteLine("    " + kn[k].PadRight(10) + " land " + land[k].ToString().PadLeft(6) + "  wooded " + l.Count.ToString().PadLeft(6) + "  share " + q(0.25) + "/" + q(0.5) + "/" + q(0.75) + "  ha " + ha[k].ToString("0").PadLeft(8) + "  burnt " + burnt[k]);
+                }
+                // the climate of the cool kinds: annual mean, seasonal swing, the summer (mean + swing), moisture - and the share by the summer's warmth
+                var byW = new double[8]; var nW = new int[8];
+                double[] tm2 = new double[9], amp = new double[9], mo = new double[9]; int[] nk = new int[9];
+                for (int c = 0; c < P.Cells; c++)
+                {
+                    if (!P.IsLand(c)) continue;
+                    float t = P.TMean[c], m = P.Moist[c], wetv = Math.Max(P.SoilWater[c], P.LakeDepth[c] > 0f ? 1f : 0f);
+                    int kind = t < -1.5f ? 6 : (P.IsStream(c) && t > 1f) ? 8 : (wetv > 0.8f && t > 0f) ? 7 : t >= 20f ? (m >= 0.55f ? 0 : 1) : t >= 14f ? (m < 0.40f ? 1 : 2) : t >= 8f ? 3 : t >= 3f ? 4 : 5;
+                    tm2[kind] += t; amp[kind] += P.TAmp[c]; mo[kind] += m; nk[kind]++;
+                    double summer = t + P.TAmp[c];
+                    int b = Math.Max(0, Math.Min(7, (int)Math.Floor((summer - 2.0) / 4.0)));   // (summer 2-34 degC in 4-degree bands)
+                    if (P.FieldOwner[c] == 0 && m > 0.45f) { byW[b] += P.Forest[c]; nW[b]++; }
+                }
+                var sbk = new System.Text.StringBuilder("  climate by kind (mean degC / swing / moisture):");
+                for (int k = 0; k < 9; k++) if (nk[k] > 0) sbk.Append(" " + kn[k] + " " + (tm2[k] / nk[k]).ToString("0.0") + "/" + (amp[k] / nk[k]).ToString("0.0") + "/" + (mo[k] / nk[k]).ToString("0.00"));
+                Console.WriteLine(sbk.ToString());
+                var sbw = new System.Text.StringBuilder("  woods' mean share on unfarmed land with moisture over 0.45, by the summer (mean + swing) 2-34 degC in 4-degree bands:");
+                for (int b = 0; b < 8; b++) sbw.Append(" " + (nW[b] > 0 ? (byW[b] / nW[b]).ToString("0.00") : "-") + "(" + nW[b] + ")");
+                Console.WriteLine(sbw.ToString());
                 return 0;
             }
             if (a.Has("land"))

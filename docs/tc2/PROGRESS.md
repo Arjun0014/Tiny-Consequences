@@ -4,6 +4,26 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 17 (10 Oct 2026, from 05:04 IST; Control Room, Resource Governor LOW) - the soil and the niche closed; the visual truth audit
+  (`docs/tc2/27_VISUAL_TRUTH.md`)**. (1) **D2-139 the soil closed**: HEAD had not compiled (the niche code shadowed `days`; a tools `sb`) - fixed;
+  the last three seeds on the soil's binary; ten seeds against `_k2`: people at year 300 x0.59, births a person-year x0.99, hunger a person-year
+  x1.80 (6.2 -> 9.2 a 1,000). (2) **D2-140 the household's niche adopted (sim version 75)**: a couple marries when its land and hands keep it a
+  year at the last harvest, or its grain carries the shortfall four years; ten seeds against the soil alone (`_n1` vs `_s2`): hunger a person-year
+  x0.68 (t -3.2: back to 6.5), births x0.94, deaths x0.93, famines x0.70, people at par; women's first marriage 20.4-22.7, ever married by 45-59
+  74-100 %, marriages move to the weeks after the harvest. The niche test's premise (4.5 years of grain - a granary holds two) fixed. (3) **People
+  standing still** (Arjun's playtest): measured with `place --still` - 98.4 % of the people drawn in daylight stood still (field hands for 3.75 h
+  at one spot; cooks and eaters inside their walls); about half were working, a quarter idle at home, a fifth children at play. Fixed by
+  `Core/Agents/Presence.cs` (where, facing where, doing what - one answer for the view, picking, following and the audit) and sixteen poses in the
+  person shader: now 28-32 % neither move nor work (the idle seated at their doors, pauses), eating and cooking indoors. (4) **Houses on roads**:
+  measured with `place --roads` (twenty saves) - the simulation's ground nearly clean, the drawing not: ways between villages drawn across the lots
+  (seed 4 year 300: 286 homes cut), far enlargement ignoring streets, lanes drawn 6 m early, livestock pens laid over streets and neighbours (81 of
+  168 into another home), gates toward neighbours' centres, rings astride training grounds, works 1 m off streets. Fixed: `WayLines` (ways in by
+  the street, round the edge, through passed villages by their streets; corner anchors against Chaikin; no road over a square) - homes cut by a way
+  286 -> 1 (seed 4), 136 -> 0 (seed 42); `Footprints.OpenScale` in `Room`; lanes from 26 m; pens in the yard pen or a free ring (0 collisions);
+  gates at the drawn ways; **simulation changes**: rings clear of works (`--nowallworks`), works `Streets.Width` off a street's line
+  (`--noworkclear`). (5) Fallow drawn at its true share, rotating by year. (6) W-FOREST pass 2 begun: the simulation itself holds little cool
+  forest (median woods share of wooded boreal cells 0.08-0.16, broadleaf 0.09-0.24; none at the treeline) - tree suitability ramps on the annual
+  mean (-1..8 degC), not summer warmth. **Unity side not yet compiled or shot** (the machine stayed at 76-89 % RAM).
 - **Session 16, fourth context ended (10 Oct, ~04:00 IST, at Arjun's request)**: the soil (C3.6f) is committed as work in progress with seven of ten
   seeds measured; its last three seeds, the full suite and the niche runs (C3.5b) did not run - the machine's RAM stayed over the 75 % ceiling from
   other applications from 00:48 on. The niche's tests and a `PortionFor` fix are committed uncompiled. SESSION_HANDOFF "Next, in order" 1 resumes it.

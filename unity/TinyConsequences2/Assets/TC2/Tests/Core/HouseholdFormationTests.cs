@@ -177,6 +177,8 @@ namespace TC2.Tests.Core
         [Test]
         public void WithTheNicheACoupleWithoutALivingWaitsUntilItsGrainCarriesTheShortfall()
         {
+            double custom = SettlementSystem.NicheYears;
+            bool was = SettlementSystem.NicheOn;
             foreach (bool niche in new[] { true, false })
             {
                 SettlementSystem.NicheOn = niche;
@@ -199,12 +201,13 @@ namespace TC2.Tests.Core
                     w.AdvanceTo(w.Now + SimTime.Days(2));
                     if (!niche) { Assert.AreNotEqual(0, w.People.Get(woman).Partner, "C3.5 alone: a year's grain and they marry"); continue; }
                     Assert.AreEqual(0, w.People.Get(woman).Partner, "no living, and their grain would not carry the shortfall: the match waits");
-                    // grain enough to carry the shortfall for the niche's years: they marry
-                    for (int s = w.Settlements.First(); s != 0; s = w.Settlements.Next(s)) Grain(w, s, (SettlementSystem.NicheYears + 0.5) * SimTime.DaysPerYear);
-                    w.AdvanceTo(w.Now + SimTime.Days(2));
+                    // where the custom asks grain to carry the shortfall for one year (premise: the granaries hold about two years, so more
+                    // grain than that cannot be given - the surplus rots), the year and a fifth they bring carries it: they marry
+                    SettlementSystem.NicheYears = 1.0;
+                    w.AdvanceTo(w.Now + SimTime.Days(4));
                     Assert.AreNotEqual(0, w.People.Get(woman).Partner, "with grain to carry them until they find their feet, they marry");
                 }
-                finally { SettlementSystem.NicheOn = false; }
+                finally { SettlementSystem.NicheOn = was; SettlementSystem.NicheYears = custom; }
             }
         }
     }

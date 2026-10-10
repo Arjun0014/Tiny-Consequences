@@ -38,7 +38,7 @@ namespace TC2.Game
         Instancer[] _trees;
         Material _mat;
         float _treeTimer, _placeTimer;
-        public int PeopleDrawn, TreesDrawn, BoatsAfloat;
+        public int PeopleDrawn, PeopleBusy, TreesDrawn, BoatsAfloat;   // (PeopleBusy: drawn at work or on the move - Presence.Busy)
         public static int Off;   // tools (webperf): parts not drawn - 1 trees, 2 people, 4 buildings and yards
         public static bool ShowGround;   // tools (shots -tc2ground): each home's ground as the simulation holds it (C13.3), a red plate under it
 
@@ -70,8 +70,21 @@ namespace TC2.Game
             new Color(0.45f, 0.33f, 0.24f), new Color(0.50f, 0.58f, 0.42f), new Color(0.76f, 0.55f, 0.30f), new Color(0.42f, 0.44f, 0.48f),
         };
 
+        /// <summary>The view (one in the scene): LivestockView pens the animals in the yard pens drawn here.</summary>
+        public static WorldObjectsView Instance;
+
+        /// <summary>The yard pen behind a home as drawn (D2-118: only on ground its neighbours, the streets and the green leave free), and how much
+        /// larger than life its home may be drawn far off (its room); false where the home has no free ground for one or is not read yet.</summary>
+        public bool YardPen(int bid, out float room)
+        {
+            var pl = PlotOf(bid);
+            room = pl != null ? pl.Room : 1f;
+            return pl != null && pl.Pen;
+        }
+
         void Start()
         {
+            Instance = this;
             _mat = Materials.Load("Instanced");
             _mat.enableInstancing = true;
             _people = new Instancer(Models.Get("person", ProcMeshes.Person), _mat, true);
@@ -284,6 +297,8 @@ namespace TC2.Game
         }
 
         readonly System.Collections.Generic.List<double> _gates = new System.Collections.Generic.List<double>();
+        readonly System.Collections.Generic.List<TC2.Core.Agents.Way> _wallWays = new System.Collections.Generic.List<TC2.Core.Agents.Way>();
+        int _wallWaysAt = -1;
 
         /// <summary>
         /// A village's palisade (D2-074): stretches of posts round the ring its people laid out, with gates where the roads leave
@@ -307,16 +322,40 @@ namespace TC2.Game
             int stretches = Mathf.Max(8, (int)(2.0 * System.Math.PI * r / 2.0));
             int set = (int)(stretches * share);
             if (set == 0) return;
-            // the gates: toward each neighbour within a day's walk, where its road leaves
+            // the gates: where its streets run out through the ring, and where each worn way out of it crosses the ring as it is drawn
+            // (WayLines; session 17 - before, toward each neighbour's centre, and a road could run into the posts); a village no way reaches
+            // keeps a gate toward each neighbour within a day's walk
             _gates.Clear();
-            for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
+            for (int k = 0; k < s.StreetN; k++) _gates.Add(s.StreetAt(k));
+            if (_wallWaysAt != Time.frameCount) { _wallWaysAt = Time.frameCount; w.Ways.Collect(w.Now, _wallWays); }
+            for (int i = 0; i < _wallWays.Count; i++)
             {
-                if (o == sid || !w.Settlements.Get(o).Inhabited) continue;
-                ref var t = ref w.Settlements.Get(o);
-                if (Vec3d.ArcDistance(s.Anchor, t.Anchor, P.Radius) > 6000) continue;
-                s.SphereToLocal(t.Anchor, P.Radius, out double ox, out double oy);
-                _gates.Add(System.Math.Atan2(oy - s.SquareY, ox - s.SquareX));
+                var way = _wallWays[i];
+                if (way.A != sid && way.B != sid) continue;
+                var route = w.Routes.Get(w, way.A, way.B);
+                if (route == null) continue;
+                var line = TC2.Core.Agents.WayLines.Of(w, route);
+                for (int k = 0; k + 1 < line.Length; k++)
+                {
+                    s.SphereToLocal(line[k], P.Radius, out double ax, out double ay);
+                    s.SphereToLocal(line[k + 1], P.Radius, out double bx, out double by);
+                    double da = System.Math.Sqrt((ax - s.SquareX) * (ax - s.SquareX) + (ay - s.SquareY) * (ay - s.SquareY));
+                    double db = System.Math.Sqrt((bx - s.SquareX) * (bx - s.SquareX) + (by - s.SquareY) * (by - s.SquareY));
+                    if ((da - r) * (db - r) > 0) continue;
+                    double f = System.Math.Abs(db - da) > 1e-9 ? (r - da) / (db - da) : 0.0;
+                    double cx = ax + (bx - ax) * f, cy = ay + (by - ay) * f;
+                    _gates.Add(System.Math.Atan2(cy - s.SquareY, cx - s.SquareX));
+                }
             }
+            if (_gates.Count == 0)
+                for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
+                {
+                    if (o == sid || !w.Settlements.Get(o).Inhabited) continue;
+                    ref var t = ref w.Settlements.Get(o);
+                    if (Vec3d.ArcDistance(s.Anchor, t.Anchor, P.Radius) > 6000) continue;
+                    s.SphereToLocal(t.Anchor, P.Radius, out double ox, out double oy);
+                    _gates.Add(System.Math.Atan2(oy - s.SquareY, ox - s.SquareX));
+                }
             double gateHalf = 3.0 / r;   // (a gate some six metres wide)
             float cond = condition;
             Color timber = Color.Lerp(new Color(0.62f, 0.62f, 0.60f, 1f), Color.white, cond);
@@ -1145,7 +1184,7 @@ namespace TC2.Game
         {
             var P = w.Planet;
             _people.Clear(); _afloat.Clear(); _afloatP.Clear(); _hulls.Clear(); _handcarts.Clear(); _oxcarts.Clear(); _cartLoads.Clear(); _oxen.Clear();
-            PeopleDrawn = 0; BoatsAfloat = 0;
+            PeopleDrawn = 0; PeopleBusy = 0; BoatsAfloat = 0;
             float waterR = (float)(P.Radius + Ground.WaterHeight(P, P.SeaLevel));
             double t = Host.RenderTime;
             float camDist = Rig != null && Rig.Cam != null ? Vector3.Distance(Rig.Cam.transform.position, Rig.FocusPoint) : 5000f;
@@ -1177,7 +1216,7 @@ namespace TC2.Game
                             var hull = _hullAt[hi];
                             int seat = ++_hullSeats[hi];
                             Vector3 aft = hull.rotation * Vector3.back * ((seat & 1) == 1 ? 0.9f : -0.9f) * ((seat + 1) >> 1) * hull.scale;
-                            _people.Add(dyeF, Dyes[dyeF], Matrix4x4.TRS(hull.pos + hull.pos.normalized * (0.25f * hull.scale) + aft, hull.rotation, Vector3.one * (1.2f * hull.scale)), 0f, 0f);
+                            _people.Add(dyeF, Dyes[dyeF], Matrix4x4.TRS(hull.pos + hull.pos.normalized * (0.25f * hull.scale) + aft, hull.rotation, Vector3.one * (1.2f * hull.scale)), 0f, Presence.Row);
                             PeopleDrawn++;
                             continue;
                         }
@@ -1199,28 +1238,30 @@ namespace TC2.Game
                         if (_hullAt.Count == _hulls.Count) { _hullAt.Add(default); _hullSeats.Add(0); }
                         _hullAt[_hulls.Count] = (bpos, brot, bex); _hullSeats[_hulls.Count] = 0;
                         _hulls[boat] = _hulls.Count;
-                        _people.Add(dyeF, Dyes[dyeF], Matrix4x4.TRS(bpos + bup * (0.25f * bex), brot, Vector3.one * (1.2f * bex)), 0f, 0f);
+                        _people.Add(dyeF, Dyes[dyeF], Matrix4x4.TRS(bpos + bup * (0.25f * bex), brot, Vector3.one * (1.2f * bex)), 0f, Presence.Row);
                         PeopleDrawn++;
                         continue;
                     }
                 }
+                // where they are drawn, which way they face and what their body does - from what they are doing (Presence: the field hand hoes
+                // along the rows, the woodcutter swings, the herder walks with the herd, neighbours turn to each other; indoors, not drawn)
+                if (!Presence.Of(w, in p, t, out d, out Vec3d face, out byte pose, out bool moving)) continue;
+                pos = PlanetGeo.Surface(P, d);
                 float sc = (age < 12 ? 0.55f + age * 0.038f : 1f) * PeopleScale(pos);   // a little larger than life, to be read
                 int dye = (int)(KeyedRng.Mix((ulong)id * 0x2545F4914F6CDD1DUL) % (ulong)Dyes.Length);
-                // walking: on a road, or the walk at the start of a step; they face where they go
-                bool walking = p.Step == StepKind.Travel || (p.Step == StepKind.Local && t < p.TA);
                 float yaw = (id * 53) % 360;
-                if (walking)
                 {
-                    Vec3d ahead = w.Agents.PositionAt(p, t + 20.0);
-                    Vector3 dirTo = PlanetGeo.Surface(P, ahead) - pos;
                     Vector3 up = pos.normalized;
-                    Vector3 flat = Vector3.ProjectOnPlane(dirTo, up);
+                    Vector3 flat;
+                    if (face.X == 0 && face.Y == 0 && face.Z == 0) flat = Vector3.ProjectOnPlane(PlanetGeo.Surface(P, w.Agents.PositionAt(p, t + 20.0)) - pos, up);   // (on the move: where they go)
+                    else flat = Vector3.ProjectOnPlane(PlanetGeo.ToVector(face), up);
                     if (flat.sqrMagnitude > 1e-6f) yaw = Vector3.SignedAngle(Vector3.ProjectOnPlane(PlanetGeo.Upright(pos, 0) * Vector3.forward, up), flat, up);
                 }
-                _people.Add(dye + (walking ? 100 : 0), Dyes[dye], Matrix4x4.TRS(pos, PlanetGeo.Upright(pos, yaw), Vector3.one * sc), 0f, walking ? 1f : 0f);
+                _people.Add(dye + (moving ? 100 : 0), Dyes[dye], Matrix4x4.TRS(pos, PlanetGeo.Upright(pos, yaw), Vector3.one * sc), 0f, pose);
                 PeopleDrawn++;
+                if (Presence.Busy(pose) || moving) PeopleBusy++;
                 byte cart = WithCart(w, in p);
-                if (cart != Carts.None) DrawCart(in p, pos, yaw, sc, walking, cart);
+                if (cart != Carts.None) DrawCart(in p, pos, yaw, sc, moving && (pose == Presence.Walk || pose == Presence.Carry), cart);
             }
         }
     }

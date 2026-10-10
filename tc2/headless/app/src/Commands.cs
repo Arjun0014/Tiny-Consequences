@@ -167,7 +167,10 @@ namespace TC2.Headless
             if (a.Has("nosoil")) TC2.Core.Places.SettlementSystem.SoilOff = true;   // (C3.6f against D2-138 in one binary: the fields never tire)
             if (a.Has("norest")) TC2.Core.Places.SettlementSystem.RestOff = true;   // (the fields tire, nobody rests them)
             if (a.Has("nodung")) TC2.Core.Places.SettlementSystem.DungOff = true;   // (the herds' dung gives nothing back)
-            if (a.Has("niche")) { TC2.Core.Places.SettlementSystem.NicheOn = true; if (a.Has("nicheyears")) TC2.Core.Places.SettlementSystem.NicheYears = a.Double("nicheyears", 4); }   // (C3.5b candidate: a couple marries when it has a living)
+            if (a.Has("noniche")) TC2.Core.Places.SettlementSystem.NicheOn = false;
+            if (a.Has("nowallworks")) TC2.Core.Society.Conflict.WallWorksOff = true;
+            if (a.Has("noworkclear")) TC2.Core.Places.Footprints.WorkClearOff = true;   // (session 17 against D2-139/140 in one binary: works 1 m off a street's line)   // (session 17 against D2-139/140 in one binary: a ring laid clear of homes only)   // (D2-140 against D2-139 in one binary: C3.5's rule alone - a couple marries on its grain)
+            if (a.Has("nicheyears")) TC2.Core.Places.SettlementSystem.NicheYears = a.Double("nicheyears", 4);   // (C3.5b: the years of a shortfall a couple's grain must carry)
             if (a.Has("nichetally")) TC2.Core.Places.SettlementSystem.NicheTally = new double[13];   // (C3.5b survey: marriages by the couple's living and what it brought)   // (D2-138 against D2-137 in one binary: a headman's move is a vacancy, clients' ties lapse)   // (D2-137 against C3.6e in one binary: a party founds at its place even where a village now stands)
             if (a.Has("nocarts")) TC2.Core.Places.Carts.Off = true;   // (C4.2 against C3.2 in one binary: no carts)
             if (a.Has("nohold")) TC2.Core.Places.Holdings.Off = true;   // (C3.3 against C1.4b in one binary: the village's store as before - no bins, no debts)
@@ -669,10 +672,10 @@ namespace TC2.Headless
                                 {
                                     // (C3.5b survey: marriages by the couple's living at the village's last harvest and what it brought)
                                     string[] liv = { "living under a half", "to three quarters", "to one", "one or more" };
-                                    var sb = new StringBuilder("marriages by the couple's living (of a year's bread) and what it brought (under a year / to two / more):");
-                                    for (int li = 0; li < 4; li++) sb.Append("  ").Append(liv[li]).Append(' ').Append(F(ntl[li * 3], "0")).Append('/').Append(F(ntl[li * 3 + 1], "0")).Append('/').Append(F(ntl[li * 3 + 2], "0"));
-                                    sb.Append(";  matches a living turned away ").Append(F(ntl[12], "0"));
-                                    Console.WriteLine(sb.ToString());
+                                    var nsb = new StringBuilder("marriages by the couple's living (of a year's bread) and what it brought (under a year / to two / more):");
+                                    for (int li = 0; li < 4; li++) nsb.Append("  ").Append(liv[li]).Append(' ').Append(F(ntl[li * 3], "0")).Append('/').Append(F(ntl[li * 3 + 1], "0")).Append('/').Append(F(ntl[li * 3 + 2], "0"));
+                                    nsb.Append(";  matches a living turned away ").Append(F(ntl[12], "0"));
+                                    Console.WriteLine(nsb.ToString());
                                 }
                                 if (mtl != null) { double mn = mtl[0] + mtl[1] + mtl[2] + mtl[3] + mtl[4]; Console.WriteLine("marriages by what the couple brought (years of their bread): under a quarter " + F(mtl[0], "0") + ", to a half " + F(mtl[1], "0") + ", to one " + F(mtl[2], "0") + ", to two " + F(mtl[3], "0") + ", more " + F(mtl[4], "0") + " (mean " + F(mtl[6] / Math.Max(1.0, mn), "0.00") + "); in villages whose sharing had contracted " + F(mtl[5], "0") + "; matches that waited for the means of a household " + F(mtl[7], "0")); }
                                 if (ht != null && ht.Length > 15) Console.WriteLine("hunger deaths by the household's land: none " + F(ht[13], "0") + ", short of its want " + F(ht[14], "0") + ", its want " + F(ht[15], "0"));

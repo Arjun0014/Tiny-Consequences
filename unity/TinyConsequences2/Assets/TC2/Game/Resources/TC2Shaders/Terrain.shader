@@ -41,6 +41,7 @@ Shader "TC2/Terrain"
             float _TC2CloudShell;
             float4 _TC2FogColor;
             float _TC2FogDensity;
+            float _TC2Year;   // the world's year (whole years since it began): which strips rest turns with it
             float _TC2SeaRadius;
 
             struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; half4 color : COLOR; float2 uv0 : TEXCOORD0; float2 uv1 : TEXCOORD1; float4 uv2 : TEXCOORD2; float4 uv3 : TEXCOORD3; float2 uv4 : TEXCOORD4; };
@@ -77,17 +78,24 @@ Shader "TC2/Terrain"
                 float2 g = q / sz;
                 g.x += floor(g.y) * 0.37;
                 float2 cell = floor(g), f = frac(g);
-                float h = Hash21(cell), h2 = Hash21(cell + 17.31);
-                half worked = h2 < farm.z * 1.15 ? 1.0h : 0.0h;
+                float h = Hash21(cell), h2 = frac(Hash21(cell + 17.31) + _TC2Year * 0.618034);
+                // the share of strips sown is the village's own (its fields against its arable: what it rests - the soil, D2-139 - and what
+                // it leaves unclaimed); which strips rest turns from year to year, so a strip lies fallow every few years (session 17: before,
+                // 1.15 x the share was drawn worked - most of the rest hidden - and the same strips always lay fallow)
+                half worked = h2 < farm.z ? 1.0h : 0.0h;
                 half furAmp = saturate(1.0 - dist / 650.0);
                 half fur = 0.5h + 0.5h * sin(q.x * 6.2831 / 1.45 + h * 6.28);
                 float edge = min(min(f.x, 1.0 - f.x) * sz.x, min(f.y, 1.0 - f.y) * sz.y);
                 half hedge = (1.0h - smoothstep(0.5, 1.5, edge)) * saturate(1.2 - dist / 2500.0);
-                half3 fallow = lerp(crop, half3(0.13h, 0.21h, 0.07h), 0.75h);
+                // fallow: rough grazed grass and weeds - and in the growing season some of it ploughed bare (the fallow's summer ploughing)
+                half3 fallow = lerp(crop, half3(0.16h, 0.22h, 0.08h), 0.75h);
+                half stage = (half)floor(farm.w);
+                half ploughed = (stage > 1.5h && stage < 2.5h && Hash21(cell + 41.7 + _TC2Year) < 0.35) ? 1.0h : 0.0h;
+                fallow = lerp(fallow, half3(0.30h, 0.22h, 0.13h), ploughed * 0.85h);
                 half3 plot = lerp(fallow, crop * (0.84h + 0.30h * h) * (1.0h - 0.16h * furAmp + 0.16h * furAmp * fur), worked);
                 plot = lerp(plot, half3(0.045h, 0.085h, 0.025h), hedge * 0.85h);
                 // a pixel wider than a strip sees the field's average, not a moire of strips (px: metres per pixel)
-                half3 mean = lerp(fallow, crop * 0.99h, saturate(farm.z * 1.15h));
+                half3 mean = lerp(fallow, crop * 0.99h, saturate(farm.z));
                 return lerp(plot, mean, smoothstep(0.18, 0.45, px / sz.x));
             }
 

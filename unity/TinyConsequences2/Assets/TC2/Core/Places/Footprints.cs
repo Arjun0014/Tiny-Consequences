@@ -484,7 +484,10 @@ namespace TC2.Core.Places
 
         /// <summary>
         /// How much larger than life a standing building may be drawn (scaled about its centre, as its neighbours are) before its ground meets
-        /// another's (the view's exaggeration at a distance, D2-118: never pushes a house into its neighbour) - at most `cap`, at least 1.
+        /// another's (the view's exaggeration at a distance, D2-118: never pushes a house into its neighbour) - at most `cap`, at least 1 - and
+        /// before it reaches the open ground the view draws (session 17, the visual truth audit: far off, homes were drawn up to 1.6x into their
+        /// streets): the trodden band of a street or lane (`DrawnLine` either side of its line, from the square - a lane from `LaneStart` - 10 m),
+        /// the square's or market place's bare earth (`DrawnSquare`), the palisade's posts.
         /// </summary>
         public static double Room(World w, int sid, int bid, double cap)
         {
@@ -493,7 +496,7 @@ namespace TC2.Core.Places
             bool ah = Structures.IsHome(a.Kind);
             int ap = ah ? PlanOf(in a) : 0;
             double af = FaceOf(in s, in a), ar = ah ? Reach(ap) : WorkR(a.Kind);
-            double best = cap;
+            double best = DMath.Min(cap, OpenScale(in s, a.X, a.Y, af, ah ? ap : -1, ar));
             var bl = w.BuildingsOf(sid);
             for (int i = 0; i < bl.Count; i++)
             {
@@ -513,6 +516,57 @@ namespace TC2.Core.Places
                 if (e < best) best = e;
             }
             return DMath.Max(1.0, best);
+        }
+
+        /// <summary>m either side of a street's or lane's line that the view draws as trodden earth (its half strength: VillageGround's
+        /// 1 - Edge(2.2, 3.8)); the square's bare earth (Edge(9, 15)) and a market place's (its radius less 3 m).</summary>
+        public const double DrawnLine = 3.0, DrawnSquare = 12.0;
+
+        /// <summary>The square's or market place's bare earth as drawn (m round the square).</summary>
+        public static double SquareEarth(in Settlement s) => s.MarketR > 0f ? DMath.Max(DrawnSquare, s.MarketR - 3.0) : DrawnSquare;
+
+        /// <summary>
+        /// The largest scale about its centre at which a building's ground (a home's rectangles by `plan`, or a work's disc of radius `reach` when
+        /// plan is -1) keeps out of the open ground the view draws: each street's and lane's trodden band where it is drawn, the square's or market
+        /// place's earth, the palisade's ring of posts (the side the building stands on). 1e9 when nothing near limits it.
+        /// </summary>
+        public static double OpenScale(in Settlement s, double x, double y, double face, int plan, double reach)
+        {
+            double best = 1e9;
+            double fx = DMath.Cos(face), fy = DMath.Sin(face), ux = -fy, uy = fx;
+            int lines = Streets.Lines(in s);
+            for (int i = 0; i < lines; i++)
+            {
+                if (Streets.Shut(in s, i)) continue;
+                Streets.Line(in s, i, out double ox, out double oy, out double lx, out double ly, out _);
+                double from = Streets.IsLane(i) ? Streets.LaneStart - 4.0 : 0.0;
+                double rx = x - ox, ry = y - oy, along = rx * lx + ry * ly, off = -rx * ly + ry * lx;
+                if (along + 2.5 * reach < from) continue;   // (short of where the line is drawn, even drawn larger)
+                double nx = -ly, ny = lx, D = off;
+                if (D < 0) { D = -D; nx = -nx; ny = -ny; }   // (the normal from the line toward the building)
+                if (plan < 0) { if (reach > 1e-9) best = DMath.Min(best, (D - DrawnLine) / reach); continue; }
+                for (int r = 0; r < Count(plan); r++)
+                {
+                    Rect(plan, r, out double cx, out double cz, out double hx, out double hz);
+                    double cn = (ux * cx + fx * cz) * nx + (uy * cx + fy * cz) * ny;   // (the rectangle's centre offset toward the building's side)
+                    double rn = hx * DMath.Abs(ux * nx + uy * ny) + hz * DMath.Abs(fx * nx + fy * ny);
+                    if (rn - cn > 1e-9) best = DMath.Min(best, (D - DrawnLine) / (rn - cn));
+                }
+            }
+            double dx = x - s.SquareX, dy = y - s.SquareY, d = DMath.Sqrt(dx * dx + dy * dy);
+            double ext = plan < 0 ? reach : Reach(plan);
+            if (ext > 1e-9)
+            {
+                best = DMath.Min(best, (d - SquareEarth(in s)) / ext);
+                double ring = s.Wall == 1 || s.Wall == 2 ? s.WallR : 0.0;
+                for (int k = 0; k < 2; k++)
+                {
+                    double R = k == 0 ? ring : s.OldR;
+                    if (R < 5.0) continue;
+                    best = DMath.Min(best, (d < R ? R - 0.6 - d : d - R - 0.6) / ext);
+                }
+            }
+            return best;
         }
 
         /// <summary>The largest factor two homes scaled about their centres keep apart by: the least over their rectangles' pairs of the most over the
@@ -616,6 +670,46 @@ namespace TC2.Core.Places
         /// the streets and lanes, the green and its market place (unless it is a work of the green: a market, the village's first well and granary
         /// keep their spots), and the ring.
         /// </summary>
+        /// <summary>
+        /// Whether a disc of the village's ground (a pen of the view's, LivestockView) is free: no building's ground there (`exceptBid` its own home
+        /// excepted), no street or lane as drawn (`DrawnLine` either side, where lined), not the square's earth. Reads only.
+        /// </summary>
+        public static bool DiscFree(World w, int sid, int exceptBid, double x, double y, double r)
+        {
+            ref var s = ref w.Settlements.Get(sid);
+            var bl = w.BuildingsOf(sid);
+            for (int i = 0; i < bl.Count; i++)
+            {
+                if (bl[i] == exceptBid) continue;
+                ref var b = ref w.Buildings.Get(bl[i]);
+                if (Homes.RuinLeft(in b, w.Now) <= 0 || Boats.IsBoat(b.Kind)) continue;
+                double dx = (double)b.X - x, dy = (double)b.Y - y;
+                if (Structures.IsHome(b.Kind))
+                {
+                    int bp = PlanOf(in b);
+                    double rr = r + Reach(bp);
+                    if (dx * dx + dy * dy >= rr * rr) continue;
+                    double bf = FaceOf(in s, in b);
+                    for (int q = 0; q < Count(bp); q++)
+                    {
+                        Rect(bp, q, out double qx, out double qz, out double qhx, out double qhz);
+                        if (BoxDisc(b.X, b.Y, bf, qx, qz, qhx, qhz, x, y, r, 0.0)) return false;
+                    }
+                }
+                else
+                {
+                    double rr = r + WorkR(b.Kind);
+                    if (dx * dx + dy * dy < rr * rr) return false;
+                }
+            }
+            double sx = (double)s.SquareX - x, sy = (double)s.SquareY - y, sr = SquareEarth(in s) + r;
+            if (sx * sx + sy * sy < sr * sr) return false;
+            return !Streets.On(in s, x, y, r + DrawnLine);
+        }
+
+        /// <summary>`--noworkclear`: a work keeps 1 m off a street's or lane's line (before session 17), on the same binary.</summary>
+        public static bool WorkClearOff;
+
         public static bool WorkFits(World w, int sid, double x, double y, byte kind, double extra, bool green)
         {
             ref var s = ref w.Settlements.Get(sid);
@@ -657,7 +751,9 @@ namespace TC2.Core.Places
                 double qx = (double)s.SquareX - x, qy = (double)s.SquareY - y, gr = Green(in s) + wr;
                 if (qx * qx + qy * qy < gr * gr) return false;
             }
-            if (Streets.On(in s, x, y, wr + 1.0)) return false;
+            // (as a home: its ground `Streets.Width` off a street's or lane's line - session 17: 1 m before, and kilns, sheds, barns stood a metre or
+            // two into the street as drawn)
+            if (Streets.On(in s, x, y, wr + (WorkClearOff ? 1.0 : Streets.Width))) return false;
             if (WetDisc(w, in s, x, y, wr)) return false;   // (nor on a river: D2-118)
             return !Structures.OnRing(in s, x, y, wr + 2.5);
         }

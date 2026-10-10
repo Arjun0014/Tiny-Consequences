@@ -314,7 +314,7 @@ namespace TC2.Game
             var wild = FindAnyObjectByType<WildlifeView>();
             if (wild != null) Debug.Log("[TC2] wildlife drawn " + wild.Drawn + " (herds " + wild.HerdsDrawn + ")");
             var objs = FindAnyObjectByType<WorldObjectsView>();
-            if (objs != null) Debug.Log("[TC2] people drawn " + objs.PeopleDrawn + ", boats afloat " + objs.BoatsAfloat);
+            if (objs != null) Debug.Log("[TC2] people drawn " + objs.PeopleDrawn + " (at work or on the move " + objs.PeopleBusy + "), boats afloat " + objs.BoatsAfloat);
             var stock = FindAnyObjectByType<LivestockView>();
             if (stock != null) Debug.Log("[TC2] livestock drawn " + stock.Drawn + " |" + stock.Why);
         }

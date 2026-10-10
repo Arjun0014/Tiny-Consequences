@@ -1,5 +1,37 @@
 # TC2 Session handoff
 
+## Session 17 (10 Oct 2026, from 05:04 IST; Control Room, Resource Governor LOW: CPU 50 %, RAM 75 %, one heavy job) - the soil and the niche closed (D2-139, D2-140); the visual truth audit (`27_VISUAL_TRUTH.md`)
+
+Arjun's prompt (10 Oct): finish the soil, test the niche, then a **real-game audit** - people standing still, houses on roads, can the world be read
+without a panel - then **W-FOREST pass 2**, then the roadmap; presentation and simulation advance together from now on.
+
+### Exact state (keep current)
+- **Code (uncommitted at the time of writing - commit first if a context ends)**: HEAD f09da10 + the compile fixes (SettlementSystem `bring`,
+  Commands `nsb`), the niche on by default (`SettlementSystem.NicheOn = true`, `--noniche`; sim version 75), `Core/Agents/Presence.cs`,
+  `Core/Agents/WayLines.cs`, `Footprints.OpenScale/SquareEarth/DiscFree/DrawnLine`, `Footprints.WorkClearOff` (`--noworkclear`),
+  `Conflict.WallWorksOff` (`--nowallworks`), the view (WorldObjectsView people via Presence, gates, `Instance`/`YardPen`; LivestockView pens;
+  TerrainLod roads via WayLines, no road over a square, streets from the square's edge, lanes from 26 m, blocked streets, `_TC2Year`; Hud picking
+  and follow via Presence; CameraRig `townlow`/`townstreet`; ShotRunner logs busy people), shaders (Instanced: `TC2Pose`, sixteen poses, shadow
+  pass posed; Terrain: fallow at its true share, rotating), headless tools (`place --still`, `place --roads [--show K] [--feature F] [--works]
+  [--rawways]`, `place --woods` by kind of wood and by summer warmth), HouseholdFormationTests fixed. **The Unity side has not been compiled.**
+- **Runs** (`tc2/out/civ`): `s7/s8/s42_s2` (the soil's last seeds), `s4/s42_n0` (= `_s2`), `s*_n1` (the niche, ten seeds), `s5_v1` (= `_s2`: the
+  view code changes nothing); queue 3 (`scratchpad/q3.sh`, log `q3.log`): controls `_c0` (`--noniche --nowallworks --noworkclear` must = `_s2`),
+  `_c1` (`--nowallworks --noworkclear` must = `_n1`), ten seeds `_v3` (the final binary), `cmp_n1_v3.txt`, then the full suite (`suite_v3.txt`).
+- Scratchpad: `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/9bd81d71-36cd-4497-a09b-0b3d9ad0e072/scratchpad` (`bld.sh`
+  BIN/TESTS/GATE builds and tests; `gwrun.sh`; `q1-3.sh`; `v75.py` sets a save's sim version; `sv/` v75 copies of the `_s2` saves for the audits;
+  `rates.py TAG seeds`; `p_*.py` patches).
+
+### Next, in order
+1. Queue 3's results: the controls byte-identical, `_v3` against `_n1` at par (only rings and works' clearance differ), the full suite - then
+   **commit** (D2-139 closed, D2-140, the audit tools, the view and shader changes, the docs).
+2. **The Unity compile and real shots** (one heavy job, when RAM allows): `node tc2/scripts/unity.mjs shots --tag s17a --load <a v75 save>
+   --hour 10 --views townlow,townstreet,low,close,village` - people at work, ways along streets, pens, gates, fallow; fix what the shots show.
+3. **W-FOREST pass 2**: the simulation's cool woods are thin because tree suitability ramps on the annual mean (`PlanetSystems.GrowVegetation`:
+   SmoothStep(-1, 8, TMean)); measure with `place --woods` (summer = TMean + TAmp) and consider suitability by summer warmth (a simulation change,
+   ten seeds); then the presentation: ground cover by kind of wood, rain forest closure and layers, the dry tropics' dry season, edges.
+4. The soil's 900-year check (seeds 4, 42), the Web build and Web test.
+5. B of the stillness audit: adults idle 21-24 % of daylight - `timeuse` by age; the scheduler's work (service, own holdings, repairs) vs leisure.
+
 ## Session 16, fourth context (9 Oct 2026, from 21:33 IST; Control Room run #39 session 4, Resource Governor MEDIUM) - the Web catch-up's out-of-memory traced and fixed (D2-137); a headman gone to live with their child (D2-138)
 
 **The blocker of the third context is resolved (D2-137).** The previous context compared the browser's catch-up with headless `run --coarse` and

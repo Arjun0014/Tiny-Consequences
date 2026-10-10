@@ -4046,3 +4046,41 @@ is answered by death. Before the soil it was already so (hunger 14 % of deaths);
 hand - so that births answer what the land bears; then the soil's 900-year check. Later: herds grazing the stubble and the fallow (the commons:
 today they graze only off the fields), legumes and the three-field course as knowledge (C11), manure carted to a household's own holding, beasts
 bought with grain.
+**Closed (session 17, with D2-140).** The last three seeds (7, 8, 42) run on the same binary; ten seeds `_s2` against `_k2`: people at year 300
+x0.59 (t -8.3), years 200-299 x0.67 (t -6.0), years 100-199 x0.92 (t -1.5); births a person-year x0.99 (t -2.0: 41.6 -> 41.1 a 1,000), deaths
+x1.07 (t 3.0: 35.5 -> 38.5), **hunger a person-year x1.80 (t 2.7: 6.2 -> 9.2 a 1,000)**, wounds a person-year x2.96 (t 3.6), famines x1.54 (t 5.4),
+run time x0.88. The soil does what it should (the worlds' scale of D2-085/D2-089, fallow by experience) and the population answered it only by
+dying: the soil is kept together with the niche (D2-140), which supplies the preventive answer. The headless build of HEAD did not compile at the
+session-16 handoff (the niche's measurement code shadowed the marriage loop's `days`; a tools `sb`): fixed; the rebuilt binary reproduces `_s2`
+exactly with the niche off (seeds 4, 42 annals byte-identical, `_n0`).
+
+## D2-140 — 2026-10-10 — The household's niche: a couple marries when its land and hands keep it, or its grain carries the shortfall (C3.5b)
+
+**Context.** D2-139: with the soil the worlds carry ~0.6 of their people, but births did not answer (41.6 -> 41.1 a 1,000 person-years) and hunger
+a person-year rose x1.8: C3.5's rule (a couple marries when what it brings of its households' grain keeps it to the next new grain) never binds -
+couples bring two years of bread on average (seed 4: 8,635 marriages, 83 matches ever waited). The medieval north-west's check was the niche
+(Hajnal 1965, 1982; Razi 1980; Ohlin): no holding, no household; a couple married when it had a living - land, or a place as hands - and the
+landless married later or not at all. Measured first (`--nichetally`, behaviour unchanged): at the marriages of `_s2`, the couple's living (below)
+was a year's bread or more for 72 % (seed 4) and 62 % (seed 42); under three quarters of a year for 10 % and 17 %.
+**Decision.** (sim version 75) `SettlementSystem.CoupleLiving`: a couple's living in the village they would live in (his), at its last harvest,
+in years of the two of them's bread: **the land's half by the hectares they would hold** (his family's portion - what its land spares beyond its
+remaining people's want, C3.6b - and hers if her family is of the village; land does not travel) over the village's arable, **plus the labour's
+half by their two hands** over all its hands (C3.6c's shares). A match passes C3.5's rule as before and then **the niche**: a living of a year or
+more, or what they bring carries the shortfall for `NicheYears` 4 (grain in hand buys the time to find their feet; a granary holds about two
+years, so a couple with no living waits). Wild food, herds and crafts are not counted: a niche is a holding or a place in the fields. A village
+yet to bring in its first harvest has nothing to judge by (no check). `--noniche` keeps C3.5's rule alone (reproduces `_s2` exactly);
+`--nicheyears N`; `--nichetally` (marriages by living and what they brought; matches turned away).
+**Evidence.** Tests: `HouseholdFormationTests.ALivingIsTheLandAndHandsACoupleWouldHaveAtTheLastHarvest` (the labour's half by their hands, the
+land's half by the portion they would hold, no harvest no check) and `...WithTheNicheACoupleWithoutALivingWaitsUntilItsGrainCarriesTheShortfall`
+(no living and a year and a fifth of grain: the match waits where C3.5 alone marries them; where the custom asks one year's carry, they marry -
+the test's first premise had given 4.5 years of grain, which a granary cannot hold: the surplus rotted in a day). **Ten seeds, 300 years DEEP**
+(`_n1`, the niche, against `_s2`, the same binary's soil with C3.5 alone): **hunger a person-year x0.68 (t -3.2: 9.2 -> 6.5 a 1,000, `_k2` before
+the soil 6.2)**, births a person-year x0.94 (t -3.1: 41.1 -> 38.4), deaths a person-year x0.93 (t -3.3: 38.5 -> 35.1), famines x0.70 (t -2.3),
+people at year 300 x0.96 (t -1.6), years 200-299 x0.94; wounds a person-year x1.09 (t 1.1, not lower), foundings x1.11 (t 1.9). **The marriage
+pattern stays plausible** (`place --marriage` at year 300, women): age at first marriage 20.4-22.0 -> 20.4-22.7; ever married by 45-59 90-100 % ->
+74-100 % (three worlds 74-85 %); and marriages moved toward the weeks after the harvest (in its first 12 days 26-34 % -> 30-45 %), the season they
+were held in pre-industrial England - not written anywhere: a living is judged at the harvest. The preventive check now answers the land: the
+soil's worlds at ~0.56 of `_k2`'s people with hunger a person-year back to where it was before the soil.
+**Open.** Wounds a person-year stay ~x2 of `_k2`'s (scarcity's takings and raids in the soil's tighter worlds); service and wage-hands (a place in
+a landed household as a living), the land market, partible customs (C11), herds on the fallow.
+
