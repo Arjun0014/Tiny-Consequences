@@ -1,55 +1,49 @@
 # TC2 Session handoff
 
-## Session 17, second context (10 Oct 2026, from 06:46 IST; Control Room run #48 session 2, Resource Governor LOW) - queue 3 closed, the Unity side compiled and shot, D2-141 attributed; W-FOREST pass 2's ten seeds; the garden designed
+## Session 17, second context (10 Oct 2026, 06:46-12:35 IST; Control Room run #48 session 2; Resource Governor LOW, HIGH from ~12:00) - queue 3 closed, the Unity side compiled and shot, D2-141, D2-142 the woods, D2-143 the garden
 
-### Exact state (keep current; 10 Oct ~12:15 IST)
-- **main** (HEAD 6289fba): a9571e0 (queue 3 closed, Unity compiled and shot, `Conflict.PastWorks`, `ShotRunner` lived day, `unity.mjs cc`, tools),
-  fd4dd80 (docs), **6289fba D2-142 trees by the growing season's warmth** (`--oldwoods`) **+ DECISIONS D2-141, D2-142** + probes `place --crofts`
-  (the free ground behind each home, 2 m cells, and the strips' estimate), `--housing`, `--seasons` (a year's rain and soil water by kind of wood).
-  **Full suite 366/366** on the woods' source (`scratchpad/suite_v5.txt`). Uncommitted, not ours: `.claude/launch.json`, `Assets/Resources.meta`.
-- **Worktree `C:/Game Dev/tc-garden`, branch `tc2-garden`** (13a44d5 the garden + 662cf32 merge of main): **C3.7a the household's garden** -
-  `Core/Places/Gardens.cs` (the croft: three 2 m-row columns behind the house and two rows of 4 m columns beside each end, free of the near
-  buildings, the green and the streets - ~0.76 of the exact free ground; measured when the home changes or every fifth year; dug and weeded in
-  the sowing and growing (0.10 + 0.12 h a m2), gathered from the ripening (0.06 h a m2), 0.03 FU a m2 a year x how well kept x the season's
-  growth, into the larder), `Household.Garden/GardenWork/GardenFu/GardenAt` (**sim version 76**, the save format grows), `ActivityKind.Garden` 37,
-  `WhyCode.Garden` 48, the lived choice (0.32-0.54, below the fields and the meals) and the coarse day's slot (after the fields), `Presence` (hoe,
-  stoop to gather), `HistoryText`, the view's beds on the croft's own strips (`WorldObjectsView`; `Hands` removed), `Footprints.InLine` internal,
-  `--nogarden`, the report's `gardens:` line, `GardenTests` 4/4 (premise: the fields sown first - in the sowing's first days every hand is in
-  them). Its Unity C# compiles (`scratchpad/mkccw.py` + `ccw/`). **Running (q8)**: tests, the control `--nogarden` = `_w1` (seed 4), ten seeds
-  `_g1` in three lanes, `cmp_w1_g1.txt`, time use over a lived year with and without (`tu48_s4_g1/w1.txt`).
-- **Prepared, not applied**: W-FOREST pass 2b (`scratchpad/p_drytropics.py`: the rain belt follows the sun in the outer tropics, `--oldrain`;
-  `p_drytropics_view.py`: the dry woodland's leaf fall from the soil's own water). The seasons survey (seed 42 `_w1`) shows why: the dry tropics'
-  soil sits at 0.15-0.25 in every season - no dry season in the state.
-- Runs (`tc2/out/civ`): `_v4` (D2-141 final), `_v5b` (the ring rule alone), `_w0`/`_w1` (D2-142), `_g0`/`_g1` (the garden, running). Shots:
-  `s17a` (a loaded save before its lived day), `s17b`/`s17c` (a lived morning: town and first village), `s17d` (the forests after D2-142).
-- Scratchpad `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/99349ac7-e0ce-4d12-9feb-ababb56ffd48/scratchpad`: `bld.sh`
-  (main) and `bldw.sh` (the worktree), `gwrun.sh`, `cmp.py`, `rates.py`, `decades.py`, `shots.sh` (`SHOTX=`), `sheet.py`, `l9.sh` (the 900-year
-  check), `webgate.sh TAG`, `bench.sh`, `q8.sh`, `sv/` (v75 copies of `_n1` saves), `d2141.md`/`d2142.md` (as written into DECISIONS).
-- **Resource Governor is HIGH since ~12:00** (CPU 90 %, RAM 92 %, up to three heavy jobs, never two builds or suites at once): queues gate at
-  RAM 88 %; the seeds run in three lanes.
-- **Rules that bit**: stopping a background `cd X && bash q.sh > log` task leaves the script running - start queues with `exec bash q.sh > log`
-  and kill a chain's parent to detach later steps; a local named like an enclosing one (`sid`) fails the headless build (CS0136); Bash heredocs
-  mangle quotes in patch scripts - write them with the Write tool; a v76 binary cannot read v75 saves (the household grows three floats and an
-  int) - run tools on v75 saves with a v75 binary (`bin_p`).
+### Exact state at the handoff (12:35 IST) - nothing running
+- **main HEAD 93ad626** (clean but for `.claude/launch.json` and `Assets/Resources.meta`, not ours): a9571e0 (queue 3 closed, Unity compiled and shot,
+  `Conflict.PastWorks`, `ShotRunner` waits for a loaded world's lived day and takes `--village town`, `unity.mjs cc`, `timeuse --daylight --stages`,
+  `place --sheds`, `test` takes the rule switches), 6289fba (**D2-142** trees by the growing season's warmth, `--oldwoods`; DECISIONS D2-141/D2-142;
+  probes `place --crofts/--housing/--seasons`), 1d5f37b + merge 93ad626 (**D2-143 C3.7a the household's garden**, sim version 76, `--nogarden`).
+- **Verified on 93ad626**: the headless build, GardenTests 4/4, DefenceTests 8/8, `node tc2/scripts/unity.mjs cc` (Unity C# compiles). On the
+  garden branch's identical code: HouseholdWork 4, Determinism 6, Coarse 3, CatchUpPlan 2, DeepTime 8; ten seeds `_g1` at par; control `--nogarden` =
+  `_w1`. **The full suite last ran on the woods' source (366/366, before the garden) - run it once on 93ad626.** **No real shots of the gardens yet**
+  (the view's beds on the croft are compiled, not seen). **The save format is v76**: v75 saves (all earlier runs) load only in an older binary.
+- **Prepared, not applied**: W-FOREST pass 2b (`tc2/out/tools/s17b/p_drytropics.py` - the rain belt follows the sun in the outer tropics,
+  `--oldrain`; `p_drytropics_view.py` - the dry woodland's leaf fall from the soil's own water). `place --seasons` (seed 42 `_w1`): the dry tropics'
+  soil water sits at 0.15-0.25 in every season - no dry season in the state.
+- Runs (`tc2/out/civ`): `_v4` (D2-141 final), `_v5b` (the ring rule alone), `_w0`/`_w1` (D2-142), `_g0`/`_g1`/`_g3` (D2-143; `_g1` saves at 100/200/300 are
+  v76). Shots: `s17a` (a loaded save before its lived day), `s17b`/`s17c` (a lived morning: the town, the first village), `s17d` (forests after D2-142).
+- **Tools copied to `tc2/out/tools/s17b/`** (copy them into the new scratchpad and set `S=`/`SCR=`): `bld.sh` (main headless; BIN, TESTS, GATE),
+  `gwrun.sh` (seed runs; GATE, EXTRA), `cmp.py A B seeds`, `rates.py TAG seeds`, `decades.py A B` (people by 20-year spans), `shots.sh TAG SAVE VIEWS
+  [HOUR]` (`SHOTX="--village town"`), `sheet.py` (contact sheets), `l9.sh` (the 900-year check: `BIN= TAG= bash l9.sh SEED`), `webgate.sh TAG`,
+  `bench.sh`, `pt.py`, `v75.py`, `mkcc.py`, `q8.sh` (the pattern: build, control, ten seeds in three lanes), `p_drytropics*.py`, `d214x.md`.
+- **Resource Governor HIGH since ~12:00**: CPU 90 %, RAM 92 %, up to three heavy jobs, never two builds or suites at once; the machine's other
+  applications hold RAM at 65-96 %: gate heavy jobs on RAM < 88 %; seeds may run in three lanes (`q8.sh`).
+- **Rules that bit this context**: a background `cd X && bash q.sh > log` task, when stopped, leaves the script running (and a stale copy
+  re-reads an edited script) - start queues with `exec bash q.sh > log` and kill a chain's parent to detach its later steps; a local named like an
+  enclosing one (`sid`, `gh`) fails the headless build (CS0136); write patch scripts with the Write tool (heredocs mangle quotes); a v76 binary
+  cannot read v75 saves; wall time is not cost on this machine (compare the reports' `events` counts, or time back to back).
 
 ### Findings of this context
 - D2-141 (DECISIONS): ten seeds `_v4` vs `_n1` at par in rates; the street clearance makes a people wave (x1.02-1.07 over years 140-199, x0.95
-  over 280-299), attributed with `_v5b` (the ring rule alone: none); its mechanism not found (`--housing`: no fewer households camping). Boats
-  lost x1.68 = `_n1`'s luck. Road audits: works in palisades 13 -> 0 (seed 4), works in lanes 9 -> 0.
-- D2-142 (DECISIONS): people x1.10, per-person rates at par, events x1.017; boreal woods +50 %; the boreal and mixed shot views now find woods.
-  The dry tropics and the wet woods still read alike.
-- Real shots (`27` §8): on a lived morning 2,155 of 3,001 people drawn are busy. Adults idle ~7 of 12 daylight hours outside the harvest.
-- The kitchen gardens drawn behind every house were worked by nobody: C3.7a makes them real (above).
+  over 280-299), attributed by elimination (`_v5b`), mechanism not found (`--housing`: no fewer households camping); boats lost x1.68 was `_n1`'s luck.
+- D2-142: people x1.10, per-person rates at par, events x1.017; boreal woods +50 %; the boreal and mixed shot views now find woods; the dry tropics
+  and the wet woods still read alike (no dry season in the state).
+- D2-143: gardens real - 83-86 % of households at year 300 (mean ~130 m2), a lived year 0.3 of 12 daylight hours in them, nearly all from idling,
+  under 1 % of the food; ten seeds at par. Adults idle 3.9-4.6 of 12 daylight hours over a lived year (the year's first days up to 7).
+- Real shots (`27` §8): a lived morning shows 2,155 of 3,001 people drawn busy; poses, ways along streets, gardens and pens read.
 
 ### Next, in order
-1. q8's results: the control byte-identical, `_g1` vs `_w1` (people, hunger, run time), the gardens' line in the reports, time use with and
-   without (does idle daylight fall, do adults garden in season?) - then D2-143, docs (`26` §2h built), merge `tc2-garden` into main, commit;
-   real shots of gardens (a lived morning, `--village town` and the first village).
-2. The 900-year check (`l9.sh` seeds 4 and 42 on the final binary) and the Web build and test (`webgate.sh s17web2`) - the save format changed
-   (v76): the Web game starts new worlds.
-3. W-FOREST pass 2b (apply both patches, `--oldrain` control = the final binary, ten seeds, `--seasons` before/after, shots of the dry tropics in
-   the wet and the dry season).
-4. Then the threshing floor and the muck (`26` §2h, C3.7b/c), the remaining visual-truth items (`27` §6-§8).
+1. The full suite once on 93ad626; then **real shots of the gardens** on a lived morning (`shots.sh` with a v76 save, e.g. `s4_g1/world_y300.tc2`;
+   town views with `SHOTX="--village town"`; read the log's "at work or on the move") - beds on the crofts, people hoeing behind their houses.
+2. **The 900-year check** (`l9.sh` seeds 4 and 42 on the final binary, `TAG=g1`) and **the Web build and test** (`webgate.sh s17web2`; the Web game
+   starts new worlds - v76).
+3. **W-FOREST pass 2b**: apply both patches, `--oldrain` = the final binary (byte-identical), ten seeds, `--seasons` before and after, shots of the
+   dry tropics in the wet and the dry season and of four climates side by side.
+4. Then C3.7b the threshing floor and C3.7c the muck (`26` §2h), and the remaining visual-truth items (`27` §6-§8).
 
 ## Session 17 (10 Oct 2026, from 05:04 IST; Control Room, Resource Governor LOW: CPU 50 %, RAM 75 %, one heavy job) - the soil and the niche closed (D2-139, D2-140); the visual truth audit (`27_VISUAL_TRUTH.md`)
 

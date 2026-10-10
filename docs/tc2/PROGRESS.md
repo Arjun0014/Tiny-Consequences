@@ -11,15 +11,19 @@
   the editor, half a minute), then the real game: shots of a loaded save had shown everyone standing at their doors ("at work or on the move 0")
   - the save lived its days only from its next midnight; `ShotRunner` now waits for the lived day (`--village town` for the town's own hour);
   on a lived morning 2,155 of 3,001 people drawn are busy, with poses, ways along streets, gardens and pens (`27` §8). (3) The full suite
-  365/366: DefenceTests' palisade test traced year by year - the soil's leaner worlds (D2-139) make its town raise a third ring at year 25,
+  365/366, then 366/366: DefenceTests' palisade test traced year by year - the soil's leaner worlds (D2-139) make its town raise a third ring at year 25,
   legitimately; the test now checks the old ring's yearly rot (8/8); the determinism lint caught four float subtractions (fixed). (4) **D2-141's
   street clearance makes a people wave** (x1.02-1.07 over years 140-199, x0.95 over 280-299, t -3.7) - attributed with ten seeds of the ring rule
   alone (`_v5b`: none); the ring rule now passes a work only where that costs no home (`Conflict.PastWorks`, `_v4`). (5) **Adults idle ~7 of 12
-  daylight hours** outside the harvest (`timeuse --daylight --stages`, new) and the kitchen gardens drawn behind every house are worked by nobody:
-  C3.7a the garden designed (`26` §2h: the croft measured from the layout, 150-300 m2, 2-4 % of a household's food, 60-80 h a year) and written
-  in the worktree `C:/Game Dev/tc-garden` (branch `tc2-garden`; not yet compiled). (6) W-FOREST pass 2: trees by the growing season's warmth
-  (D2-142, `--oldwoods` = `_v4` byte-identical; ten seeds `_w1` running); the rain has no seasons at any latitude - candidate pass 2b (the outer
-  tropics' wet summers and dry winters; `18` §8, `scratchpad/p_drytropics.py` not applied).
+  daylight hours** in the year's first days (3.9-4.6 over a lived year) and the kitchen gardens drawn behind every house were worked by nobody:
+  **D2-143 C3.7a the household's garden (sim version 76)** - the croft measured from the layout (median ~130 m2), dug, weeded and gathered by
+  lived and COARSE days into the larder, drawn as beds on the croft, people hoeing behind their houses; ten seeds at par, `--nogarden` = `_w1`; a
+  lived year with and without: 0.3 of 12 daylight hours in the gardens, nearly all from idling; under 1 % of the food. (6) **D2-142 W-FOREST pass 2**:
+  trees by the growing season's warmth - people x1.10, per-person rates at par, boreal woods +50 %, the boreal and mixed shots now find woods;
+  the dry tropics and wet woods still read alike: the rain has no seasons at any latitude (`place --seasons`: the dry tropics' soil 0.15-0.25 all
+  year) - pass 2b prepared (`tc2/out/tools/s17b/p_drytropics*.py`, not applied). **State at the handoff: main 93ad626 verified (build, Garden 4/4,
+  Defence 8/8, Unity C# compiles); the full suite not yet run on the garden merge; no real shots of the gardens yet** (SESSION_HANDOFF "Session
+  17, second context").
 - **Session 17 (10 Oct 2026, from 05:04 IST; Control Room, Resource Governor LOW) - the soil and the niche closed; the visual truth audit
   (`docs/tc2/27_VISUAL_TRUTH.md`)**. (1) **D2-139 the soil closed**: HEAD had not compiled (the niche code shadowed `days`; a tools `sb`) - fixed;
   the last three seeds on the soil's binary; ten seeds against `_k2`: people at year 300 x0.59, births a person-year x0.99, hunger a person-year

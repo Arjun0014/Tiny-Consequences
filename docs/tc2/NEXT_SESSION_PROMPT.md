@@ -234,6 +234,16 @@ poses every person from what they do (sixteen poses in the person shader); ways 
 far enlargement, lanes, fallow fixed; rings clear of works and works off streets (simulation, with controls). W-FOREST pass 2 begun: the
 simulation's cool woods are thin (tree suitability by the annual mean) - SESSION_HANDOFF "Session 17".
 
+**Where we are (session 17, second context, 10 Oct 2026, to 12:35 IST)**: the Unity side compiled and shot for the first time - a lived morning
+shows 2,155 of 3,001 people drawn at work or on the move (shots of a loaded save must wait for its lived day: `ShotRunner`); **D2-141** (the audit's
+view helpers and two simulation rules; the street clearance's population wave attributed, mechanism not found); **D2-142** trees by the growing
+season's warmth (W-FOREST pass 2: boreal woods +50 %; the dry tropics still read like wet woods - the rain has no seasons; pass 2b prepared in
+`tc2/out/tools/s17b/p_drytropics*.py`); **D2-143 C3.7a the household's garden** (sim version 76: the croft behind each house dug, weeded and
+gathered - the gardens the view drew are now real work and real food; a lived year: 0.3 of 12 daylight hours in them, from idling). Tools:
+`node tc2/scripts/unity.mjs cc` (the Unity C# without the editor), `timeuse --daylight --stages`, `place --crofts/--housing/--seasons/--sheds`.
+Next: the full suite on 93ad626, real shots of the gardens, the 900-year check, the Web test, W-FOREST pass 2b - SESSION_HANDOFF "Session 17,
+second context".
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.
