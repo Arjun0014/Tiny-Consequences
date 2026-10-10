@@ -315,7 +315,13 @@ worlds' scale, or the worlds shrink. Measure first (the 900-year check; a survey
 **What it would open**: beasts worth buying with grain (households' own trade, D2-126 "Open"; the commons' grazing; the landed manure their
 holdings), the Postan squeeze where land binds, legumes and the three-field course as knowledge (C11), fields that read as a landscape.
 
-## 2h. The household's own year: the garden, the threshing floor, the muck (research and design sketch, session 17 - not built)
+## 2h. The household's own year: the garden, the threshing floor, the muck (session 17 - C3.7a the garden built, D2-143)
+
+**Built (D2-143, sim version 76)**: `Core/Places/Gardens.cs` - the croft measured from the layout (columns of 2 m rows behind, 4 m columns beside;
+~0.76 of the free ground the 2 m cells find), dug, weeded and gathered by lived and COARSE days, its produce into the larder; the view's beds on
+the croft's own rectangles; `--nogarden`. Ten seeds at par; at year 300 83-86 % of households have a garden (mean ~130 m2); a lived year: 0.3 of
+the 12 daylight hours in the garden, nearly all from idling; under 1 % of the food. The research and design below are as written before the
+build (its figures for the croft's yield, 2-4 %, assumed the record's croft; the layout's crofts and the season's growth give less).
 
 **Why (measured).** Arjun's playtest saw people standing still (`27`). Presence now draws what they do, but much of what they do is nothing:
 `timeuse --load s4_v3/world_y300.tc2 --days 4 --daylight --stages` (seed 4, year 300, the sowing and growing stages) - grown women and men are

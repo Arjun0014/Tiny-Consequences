@@ -413,7 +413,7 @@ namespace TC2.Game
         /// may be drawn before it meets a neighbour (`Footprints.Room`), and where its yard has free ground - a kitchen garden behind or beside, a
         /// pen behind, a woodpile at its end or its back - so no garden, pen or woodpile is drawn into another house, a street or the green.
         /// </summary>
-        sealed class Plot { public float Room; public bool Back, Pen, SideL, SideR, WoodEnd, WoodBack, CartEnd, OxEnd; }
+        sealed class Plot { public float Room; public bool Back, Pen, SideL, SideR, WoodEnd, WoodBack, CartEnd, OxEnd; public System.Collections.Generic.List<(double cx, double cz, double hx, double hz)> Beds; }
         readonly Dictionary<int, Plot> _plots = new Dictionary<int, Plot>();
         readonly Dictionary<int, long> _plotSig = new Dictionary<int, long>();
         readonly Dictionary<int, float> _plotAt = new Dictionary<int, float>();
@@ -457,6 +457,9 @@ namespace TC2.Game
             pl.WoodBack = Footprints.YardFree(w, sid, bid, L / 2.0 - 1.2, -W / 2.0 - 1.4, 1.3, 1.0);
             pl.CartEnd = Footprints.YardFree(w, sid, bid, -(L / 2.0 + 1.9), -0.3, 1.0, 1.7);   // (a handcart by the other end wall, its shafts along it: C4.2)
             pl.OxEnd = Footprints.YardFree(w, sid, bid, -(L / 2.0 + 2.1), -0.8, 1.2, 2.8);     // (an ox cart and its pole)
+            if (pl.Beds == null) pl.Beds = new System.Collections.Generic.List<(double, double, double, double)>();
+            pl.Beds.Clear();
+            Gardens.Strips(w, sid, bid, pl.Beds);   // (its croft's strips, as the simulation measures them: C3.7a)
         }
 
         Plot PlotOf(int bid) => _plots.TryGetValue(bid, out var p) ? p : null;
@@ -832,21 +835,31 @@ namespace TC2.Game
                 {
                     int n = w.Members(b.Household).Count;
                     if (n > PlanRoom[plan]) _outshuts.Add(0, roof, walls, m * Matrix4x4.TRS(new Vector3(0f, 0f, -W / 2f), Quaternion.identity, new Vector3(L * 0.55f, 1f, 1f)));
-                    // its pen and its kitchen garden (D2-114), only on ground its neighbours, the streets and the green leave free (D2-118): the pen behind;
-                    // the garden behind past a lean-to, or beside where the pen is - worked by its hands, as wide as they are; none in a town's built-up core
+                    // its pen (D2-114), only on ground its neighbours, the streets and the green leave free (D2-118), behind; and its garden (C3.7a): beds
+                    // on the croft's own strips as the simulation measures them - only where the household has one (none in a town's built-up core), the
+                    // beds behind giving way to the pen
                     bool beasts = HasBeasts(w, b.Household);
                     bool pen = beasts && plot != null && plot.Pen;
                     if (pen) Pen(m, W, plan == Architecture.Hall ? 4 : 3);
-                    int hands = Hands(w, b.Household);
-                    if (hands > 0 && plan != Architecture.Two && plan != Architecture.Row && plot != null)
+                    if (plot != null && plot.Beds != null && w.Households.Exists(b.Household) && w.Households.Get(b.Household).Garden > 0f)
                     {
-                        float gw = 0.75f + 0.12f * Mathf.Min(4, hands);
-                        float back = -W / 2f - 2.4f - 1.5f - 2.3f;
-                        float want = (bid & 1) == 0 ? 1f : -1f;   // (the side it would take: by the house)
-                        bool wantFree = want > 0f ? plot.SideR : plot.SideL, otherFree = want > 0f ? plot.SideL : plot.SideR;
-                        float sx = wantFree ? want : -want;
-                        if (!pen && plot.Back) _gardens.Add(0, Color.white, m * Matrix4x4.TRS(new Vector3(0f, 0f, back), Quaternion.identity, new Vector3(gw, 1f, 1f)));
-                        else if (wantFree || otherFree) _gardens.Add(0, Color.white, m * Matrix4x4.TRS(new Vector3((L / 2f + 4.6f) * sx, 0f, -W / 2f - 0.6f), Quaternion.identity, new Vector3(Mathf.Min(gw, 1.25f), 1f, 1f)));
+                        float penZ = -W / 2f - 3.2f - 2.1f;
+                        for (int gi = 0; gi < plot.Beds.Count; gi++)
+                        {
+                            // each column or row of the croft tiled with beds of the kit's size (6 x 4.4 m), the last ones shortened to fit; behind, the
+                            // beds within the pen's ground give way to it
+                            var bd = plot.Beds[gi];
+                            float bw = (float)(2.0 * bd.hx), bl = (float)(2.0 * bd.hz);
+                            int nx = Mathf.Max(1, Mathf.RoundToInt(bw / 6f)), nz = Mathf.Max(1, Mathf.RoundToInt(bl / 4.4f));
+                            float tw = bw / nx, tl = bl / nz;
+                            for (int ix = 0; ix < nx; ix++)
+                                for (int iz = 0; iz < nz; iz++)
+                                {
+                                    float tx = (float)bd.cx - bw * 0.5f + tw * (ix + 0.5f), tz = (float)bd.cz - bl * 0.5f + tl * (iz + 0.5f);
+                                    if (pen && Mathf.Abs(tx) < 2.2f + tw * 0.5f && Mathf.Abs(tz - penZ) < 2.3f + tl * 0.5f) continue;
+                                    _gardens.Add(0, Color.white, m * Matrix4x4.TRS(new Vector3(tx, 0f, tz), Quaternion.identity, new Vector3(tw * 0.92f / 6f, 1f, tl * 0.92f / 4.4f)));
+                                }
+                        }
                     }
                 }
             }
@@ -940,15 +953,6 @@ namespace TC2.Game
                 }
             }
             return new Color(c.r / 0.86f, c.g / 0.86f, c.b / 0.86f, 1f);   // (the kit paints covers 0.86)
-        }
-
-        /// <summary>A household's working hands (15 to 59): who keeps its kitchen garden.</summary>
-        static int Hands(TC2.Core.Simulation.World w, int hid)
-        {
-            var mem = w.Members(hid);
-            int n = 0;
-            for (int i = 0; i < mem.Count; i++) { double a = w.People.Get(mem[i]).AgeYears(w.Now); if (a >= 15.0 && a < 60.0) n++; }
-            return n;
         }
 
         /// <summary>A building's walls by their material and its tradition's shade (D2-114).</summary>

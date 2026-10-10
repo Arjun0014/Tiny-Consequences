@@ -627,6 +627,7 @@ namespace TC2.Core.Places
                 s.ExpectedHarvest = s.FieldHa * cfg.FieldYieldPerHa * 0.8 * (1.0 + GainOf(s.Tilth)) * Heart(in s);
                 Tilled(ref s, s.Population * perPerson);
                 Rested(ref s);
+                Gardens.Year(w, s.Id);   // (each household's croft measured again, its garden's year begun: C3.7a)
             }
             else if (s.Crop == CropStage.Sown && doy >= 12)
             {

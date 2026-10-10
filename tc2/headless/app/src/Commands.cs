@@ -161,6 +161,7 @@ namespace TC2.Headless
             if (a.Has("nowallworks")) TC2.Core.Society.Conflict.WallWorksOff = true;
             if (a.Has("noworkclear")) TC2.Core.Places.Footprints.WorkClearOff = true;
             if (a.Has("oldwoods")) TC2.Core.Planet.PlanetSystems.OldWoods = true;   // (D2-142 against D2-140/141 in one binary: trees by the annual mean)
+            if (a.Has("nogarden")) TC2.Core.Places.Gardens.Off = true;   // (C3.7a against D2-142 in one binary: no gardens)
         }
 
         public static int Run(Args a)
@@ -751,6 +752,17 @@ namespace TC2.Headless
                                 }
                                 Console.WriteLine("carts: " + hand + " handcarts and " + ox + " ox carts among " + hhs + " households (in " + villagesWith + " villages), " + making + " being made, " + wanted + " wanted; begun " + w.Metrics.CartsBegun + ", made " + w.Metrics.CartsMade +
                                                   ", worn out " + w.Metrics.CartsWorn + ", given up " + w.Metrics.CartsGivenUp + "; trading trips with a cart " + w.Metrics.CartTrips + " carrying out " + F(w.Metrics.CartKg / 1000, "0") + " t");
+                            }
+                            {
+                                // the households' gardens (C3.7a): their crofts now, and what was worked and gathered over the run
+                                int gh = 0, gWith = 0; double gM2 = 0;
+                                for (int sid2 = w.Settlements.First(); sid2 != 0; sid2 = w.Settlements.Next(sid2))
+                                {
+                                    if (!w.Settlements.Get(sid2).Inhabited) continue;
+                                    var hl3 = w.HouseholdsOf(sid2);
+                                    for (int i = 0; i < hl3.Count; i++) { var h3 = w.Households.Get(hl3[i]); gh++; if (h3.Garden > 0f) { gWith++; gM2 += h3.Garden; } }
+                                }
+                                Console.WriteLine("gardens: " + gWith + " of " + gh + " households have one (mean " + F(gWith > 0 ? gM2 / gWith : 0, "0") + " m2); worked " + F(w.Metrics.GardenHours, "0") + " h over the run, gathered " + F(w.Metrics.GardenFu, "0") + " FU");
                             }
                             if (TC2.Core.Diagnostics.CraftTally.By != null) CraftReport(w);
                             var ctt = TC2.Core.Diagnostics.CartTally.T;

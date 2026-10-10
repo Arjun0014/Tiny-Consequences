@@ -4153,3 +4153,36 @@ rain has no seasons at any latitude (+-0.08 x moisture), so the dry tropics' dry
 a fixed window (the year's 0.55-0.95) misses the late dry season. Next: the rain belt following the sun in the outer tropics (`18` §8,
 `scratchpad/p_drytropics.py`), and the view's dry season read from the soil's water; the boreal floor still drawn as bright meadow; the rain
 forest view's framing (a volcano's slope).
+
+## D2-143 — 2026-10-10 — The household's garden: its croft dug, weeded and gathered (C3.7a)
+
+**Context.** The visual truth audit (`27` §8): every lived house had a kitchen garden in the picture (D2-114, "worked by its hands") that nobody
+worked and that fed nobody, and grown people were idle a third of the daylight (a lived year at year 300: 3.9-4.6 of 12 hours; the year's first
+days up to 7) - the household's own work of a medieval year was missing from the scheduler. The record (`26` §2h): peasant houses stood on tofts
+with crofts and gardens (leeks, cabbages, onions, peas and beans, herbs; Dyer: garden produce integral to the economy and the pottage, more to the
+poorest). Measured first (`place --crofts`, 2 m cells, seeds 4 and 42 at year 300): the free ground behind and beside a home, nearer it than any
+other, runs a median 164-188 m2 (quartiles ~100 and ~330), under 20 m2 for 1-2 % of homes; two-storey homes have as much as cottages.
+**Decision.** (sim version 76: the household's save grows `Garden`, `GardenWork`, `GardenFu`, `GardenAt`) `Core/Places/Gardens.cs`: the croft
+measured from the layout - three 2 m-row columns behind the house (as wide as it and 2 m more each side) and, beside each end, the half by it and
+the half behind it in 4 m columns; free of the near buildings, the green and the streets and lanes (`Footprints.YardFree` over the near ones
+only), short of half the way to the neighbours behind and along; one rectangle a column or row (~0.76 of the cells' free ground, 9-12 % of homes
+none against the cells' 1-2 %; measured when the home changes or every fifth year by the household - crofts change slowly). Its year: dug and
+planted in the sowing (`DigH` 0.10 h a m2), weeded and watered while the crops grow (`TendH` 0.12), gathered from the ripening to the year's end
+(`GatherH` 0.06); it bears `FuPerM2` 0.03 FU a m2 x the share of its digging and weeding done while the crops grew x the season's growth (the
+village's crop growth), into the larder as it is gathered (real rates: spade work ~0.28 h a m2, a mixed garden ~500 kcal a m2 - in this world's
+food units, a person-day of a 48-day year). Lived: `ActivityKind.Garden` (the household's own work, 0.32-0.54 as far as it is behindhand - below
+the fields, the meals and the fuel, above idling and company; a stint of 1.5-2.5 h at the croft), `Presence` hoeing in the beds and stooping to
+gather; COARSE/DEEP: its hours after the village's fields. The view draws the beds on the croft's own rectangles, tiled at the kit's size, giving
+way to a pen - only where the household has a garden. `--nogarden` the control.
+**Evidence.** Tests (`GardenTests` 4): the croft is the free ground behind and beside a home (a young village: 6 homes, mean 278 m2), the
+arithmetic (dug and weeded to what it wants, half kept bears half, all it bears and no more, into the larder), lived people dig once the fields
+are sown (46 h in a morning, everyone at it drawn hoeing; in the sowing's first days the fields take every hand - the scores' order), COARSE
+days keep up (42.7 of 42.7 h due). Neighbours: HouseholdWork 4, Determinism 6, Coarse 3, CatchUpPlan 2, DeepTime 8. Control `--nogarden` = `_w1`
+(seed 4, annals byte-identical); the merged rectangles reproduce the first form exactly. **Ten seeds, 300 years DEEP (`_g1` against `_w1`)**:
+at par - people x0.98-0.99 (t -0.7 to -1.0), births x1.00, deaths x1.00, hunger a person-year x1.03 (t 0.7), famines x0.98; at year 300 83-86 %
+of households have a garden (mean 128-135 m2); seed 4 worked 6.3 million garden hours over 300 years for 384,000 FU (under 1 % of its food:
+the garden's weight is in the day's work and the picture, as designed). **A lived year** of the same save (seed 4 `_g1`, year 300) with and
+without (`timeuse --daylight --stages`): grown people spend 0.3 of the 12 daylight hours in their gardens (0.5 in the sowing), nearly all of it
+from idling (women 4.8 -> 4.6, men 4.5 -> 4.2). The Unity C# compiles (the view's beds; `unity.mjs cc` on the branch).
+**Open.** Real shots of the gardens worked (a lived morning); the bed's season drawn (dug, green, gathered - the kit's bed has its plants baked
+in); the threshing floor and the muck (C3.7b/c).

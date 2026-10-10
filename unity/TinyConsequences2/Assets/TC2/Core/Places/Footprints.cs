@@ -403,7 +403,7 @@ namespace TC2.Core.Places
         }
 
         /// <summary>Whether a rectangle reaches into a street or lane where it is lined (within `Streets.Width` of its line).</summary>
-        static bool InLine(in Settlement s, double x, double y, double face, double cx, double cz, double hx, double hz)
+        internal static bool InLine(in Settlement s, double x, double y, double face, double cx, double cz, double hx, double hz)
         {
             double fx = DMath.Cos(face), fy = DMath.Sin(face), ux = -fy, uy = fx;
             double px = x + ux * cx + fx * cz, py = y + uy * cx + fy * cz;

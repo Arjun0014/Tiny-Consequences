@@ -291,6 +291,13 @@ namespace TC2.Core.History
                     return "at " + home + "'s smithy, " + (w.Settlements.Exists(p.Home) && w.Settlements.Get(p.Home).Arms < TC2.Core.Places.Forge.ArmsWant(w.Settlements.Get(p.Home)) ? "forging arms: " + home + " fears its neighbours" : "smelting and working metal for the village's tools");
                 case ActivityKind.Burn: return "burning charcoal at " + home + "'s hearth by the woodlot: its smiths want charcoal to smelt";
                 case ActivityKind.Weave: return "at " + home + "'s weaver's shed, weaving and finishing cloth and goods for its store: one of its best weavers, and its wares are short of what it keeps";
+                case ActivityKind.Garden:
+                    {
+                        // (C3.7a: the season's work in the household's croft)
+                        var cs = w.Settlements.Exists(p.Home) ? w.Settlements.Get(p.Home).Crop : TC2.Core.Places.CropStage.Sown;
+                        return "in the household's garden behind the house, " + (cs == TC2.Core.Places.CropStage.Sown ? "digging and planting beans, peas and cabbages" :
+                               cs == TC2.Core.Places.CropStage.Growing ? "weeding and watering the beds" : "gathering leeks, beans and cabbages for the pot") + ": its season wants it";
+                    }
                 case ActivityKind.Pot:
                     {
                         // (C3.2: what its potters have to make - the jars its granaries' grain lacks, the pots its hearths lack, or ware for its buyers)

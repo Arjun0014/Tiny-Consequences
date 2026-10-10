@@ -85,6 +85,17 @@ namespace TC2.Core.Agents
                     { fx = mx - x; fy = my - y; pose = u1 < 0.75 ? SitTalk : Talk; }
                     else pose = u1 < 0.75 ? Sit : Stand;
                     break;
+                case ActivityKind.Garden:
+                {
+                    // in the household's croft behind its house: along a bed a couple of metres to and fro - the spade and the hoe while the crops grow,
+                    // stooped to the gathering from the ripening
+                    double run = Tri(since * 0.04 / 3.0 + u0) * 3.0 - 1.5, a = u1 * DMath.TwoPi;
+                    x += run * DMath.Cos(a); y += run * DMath.Sin(a);
+                    fx = DMath.Cos(a) * TriSlope(since * 0.04 / 3.0 + u0); fy = DMath.Sin(a) * TriSlope(since * 0.04 / 3.0 + u0);
+                    pose = s.Crop == CropStage.Ripe || s.Crop == CropStage.Harvested ? Reap : Hoe;
+                    moving = true;
+                    break;
+                }
                 case ActivityKind.Craft:
                     // making and mending the household's clothes and tools: at the doorstep in the light, the work in the lap
                     Door(w, in p, sid, 0.5 + 0.5 * u0, ref x, ref y, ref fx, ref fy);
