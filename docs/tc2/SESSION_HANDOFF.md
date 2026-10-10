@@ -1,5 +1,50 @@
 # TC2 Session handoff
 
+## Session 17, second context (10 Oct 2026, from 06:46 IST; Control Room run #48 session 2, Resource Governor LOW) - queue 3 closed, the Unity side compiled and shot, D2-141 attributed; W-FOREST pass 2's ten seeds; the garden designed
+
+### Exact state (keep current)
+- **Committed a9571e0**: the floatcheck fixes (Presence/WayLines), `Conflict.PastWorks` (a ring passes a work only where it costs no home), the
+  DefenceTests palisade test rewritten (traced: the soil's leaner worlds make the town raise a third ring at year 25 - legitimate), `ShotRunner`
+  (a loaded world lives into its lived day before the shot hour; `--village town`), `unity.mjs cc` (a compile check of the Unity C# without the
+  editor), `timeuse --daylight --stages`, `place --sheds`, `test` takes `--noniche/--nowallworks/--noworkclear`, the Presence/WayLines metas,
+  docs `26` §2h (the garden, designed) and `27` §8 (real shots).
+- **Uncommitted in main**: `p_summerwoods.py` applied (W-FOREST pass 2's simulation side: `PlanetSystems.GrowVegetation` trees by the growing
+  season's warmth, `OldWoods`/`--oldwoods`) - its ten seeds `_w1` running in chain4 (`scratchpad/q6.sh`, control `_w0` = `_v4`); the `26` §2h
+  scale correction.
+- **Worktree `C:/Game Dev/tc-garden` (branch `tc2-garden`, from a9571e0)**: `place --crofts` (the free ground behind each home, 2 m cells) and
+  `place --housing` (households by shelter, works within a street's width of a street or lane) - **not yet built**; run them on `s4_n1`
+  (`scratchpad/sv/s4_n1_y100/200/300.tc2`, v75 copies) and `s4_v4` saves: `--housing` at years 100/200 tests D2-141's mechanism (lanes kept free of
+  works hold more homes?); `--crofts` sizes the garden (C3.7a).
+- **Runs** (`tc2/out/civ`): `_c1` (= `_n1`), `_v3` (the first ring rule), `_c2` (= `_n1`), `_v4` (the final binary of D2-141, saves 100/200/300),
+  `_v5b` (`--noworkclear` alone: the ring rule alone - no wave), `_w0`/`_w1` (W-FOREST pass 2, running).
+- Scratchpad: `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/99349ac7-e0ce-4d12-9feb-ababb56ffd48/scratchpad` (`bld.sh`,
+  `gwrun.sh`, `cmp.py`, `rates.py`, `decades.py A B` (people by 20-year spans), `shots.sh TAG SAVE VIEWS [HOUR]` with `SHOTX=` extra args,
+  `sheet.py` (contact sheets), `l9.sh` (the 900-year check: `BIN= TAG= bash l9.sh SEED`), `webgate.sh TAG`, `d2141.md` (D2-141's text: MECH to fill
+  from `--housing`), `chain4.sh` (q6 -> forest shots s17d -> the full suite `suite_v5.txt`)).
+- **Rule that bit**: stopping a background task started as `cd X && bash q.sh > log` kills the outer shell only - the script runs on (and a
+  stale copy re-read an edited script). Start queues with `exec bash q.sh > log`, and kill a chain's parent shell to detach its later steps.
+
+### Findings of this context
+- D2-141 (text in `scratchpad/d2141.md`, to go into DECISIONS): ten seeds `_v4` vs `_n1` at par in rates; **the street clearance (works 4 m off
+  streets and lanes) makes a people wave** - x1.02-1.07 over years 140-199, x0.95 over 280-299 (t -3.7) - attributed with `_v5b` (the ring rule
+  alone: no wave). Boats lost x1.68 = `_n1`'s luck (the lowest of 65 run families). Road audits: works in palisades 13 -> 0 (seed 4), works in lanes
+  9 -> 0.
+- Real shots (`27` §8): on a lived morning 2,155 of 3,001 people drawn are busy; poses, ways along streets, gardens, pens all read. Shots of a
+  loaded save before its lived day showed everyone standing at their doors - the tools fault fixed in `ShotRunner`.
+- **Adults idle ~7 of 12 daylight hours** outside the harvest (`timeuse --daylight --stages`, seed 4, year 300); the kitchen gardens drawn behind
+  every house are worked by nobody (`26` §2h: C3.7a the garden - a croft of ~150-300 m2 measured from the layout, ~2-4 % of a household's food,
+  ~60-80 h a year; coarse and lived paths; the next slice after W-FOREST, the 900-year check and the Web test).
+- W-FOREST: the baseline forest shots (`s17a`, seed 4 year 300) show no woods at all in the boreal and mixed views (cleared or thin); the
+  simulation's rain has almost no seasons (`PlanetSystems.Weather`: +-0.08 x moisture) - the dry tropics' dry season the view draws is not in the
+  state: candidate W-FOREST pass 2b, the rain belt following the sun in the outer tropics (wet summers, dry winters: crops grow in the wet season).
+
+### Next, in order
+1. W-FOREST pass 2: the `_w0` control, `_w1` vs `_v4` (`cmp_v4_w1.txt`, `woods_s*_v4/w1.txt`), the forest shots `s17d`; D2-142; commit.
+2. The full suite (chain4's last step, `suite_v5.txt`); build the worktree and run `--housing`/`--crofts`; fill D2-141's mechanism; write D2-141 into
+   DECISIONS; commit; merge `tc2-garden` (its tools) into main.
+3. The 900-year check (`l9.sh` seeds 4 and 42 on the final binary) and the Web build and test (`webgate.sh s17web2`).
+4. C3.7a the garden (`26` §2h), then W-FOREST pass 2b if the shots still read alike.
+
 ## Session 17 (10 Oct 2026, from 05:04 IST; Control Room, Resource Governor LOW: CPU 50 %, RAM 75 %, one heavy job) - the soil and the niche closed (D2-139, D2-140); the visual truth audit (`27_VISUAL_TRUTH.md`)
 
 Arjun's prompt (10 Oct): finish the soil, test the niche, then a **real-game audit** - people standing still, houses on roads, can the world be read
