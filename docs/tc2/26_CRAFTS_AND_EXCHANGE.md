@@ -335,9 +335,15 @@ daily rates, work paced by the year (sowing, reaping, a garden's digging and wee
 household's grain is ~0.03-0.06 h a FU - ~0.2 h a day for five; **a garden is ~100 work-hours a household-year (~2 h a day in the growing
 season) for ~5-10 % of its food** - the larger, the more visible, and the one the picture already promises.
 
-**Design sketch (C3.7a the garden; to be measured and decided).** The garden is the household's own: its ground the yard behind or beside
-its home where the plot leaves it free (`Footprints` yard zones - the view's garden placement, read from the same state), sized by its hands
-(as drawn: 25-45 m2 at the view's scale, the record's quarter-acre crofts at the world's own). Each year: digging and sowing in the sowing
+**The garden's size is the crux.** The bed the view draws (25-45 m2) would feed a household under 1 % of its year (a mixed garden of pulses,
+cabbage and leeks: ~500 kcal a m2 a year) for a few hours' work - a token. The record's gardens were the croft behind the toft (a tenth to
+half an acre). In these villages the free ground behind a house runs about its frontage (~15 m) by 15-20 m to the back lane (C13.2) - **a croft
+of ~150-300 m2: 4-8 % of a household's food for ~45-110 work-hours a year** (spade work, ~0.2-0.5 h a m2). So the garden must be measured from
+the village's own layout - the free ground behind and beside the home (sampled with `Footprints.YardFree`, up to a croft's size; none in a town's
+built-up core) - kept as state, and drawn at its true size: strips of garden behind each house, the medieval village from above.
+
+**Design sketch (C3.7a the garden; to be measured and decided).** The garden is the household's own: its ground the croft behind or beside its
+home where the layout leaves it free (above), measured when the year turns and kept with the household. Each year: digging and sowing in the sowing
 stage (hours a m2), weeding and watering in the growing stage, the gathering from mid-growing into the ripe stage; what it bears is its area x
 a yield a m2 x the weather's growth (the village's crop growth) x the share of its work done - the produce comes into the household's larder
 as it is gathered (pottage greens and pulses in summer, keeping roots and cabbages later). Its work is a new activity (`Garden`), the
