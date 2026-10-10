@@ -30,11 +30,11 @@ world picture?". No simulation theatre: presentation elaborates a real activity,
   `Footprints.OpenScale/SquareEarth/DiscFree`, two simulation changes with controls (`--nowallworks`, `--noworkclear`). Targeted tests on the final
   binary: HouseholdFormationTests 5/5, TilthTests 9/9, LandTests 10/10. Control: `--noniche --nowallworks --noworkclear` reproduces `_s2`
   byte-identically (seeds 4, 42).
-- **Running in the background (it may have finished - check `scratchpad/q3.log`)**: queue 3 (`C:/Users/aswin/AppData/Local/Temp/claude/
-  C--Game-Dev-tiny-consequences/9bd81d71-36cd-4497-a09b-0b3d9ad0e072/scratchpad/q3.sh`): `_c1` (`--nowallworks --noworkclear` must = `_n1`), ten
-  seeds `_v3` (the final binary; `cmp_n1_v3.txt` should be at par - only rings and works' clearance differ), then **the full suite**
-  (`suite_v3.txt`, via `node tc2/scripts/headless.mjs test`). It was paused at its RAM gate: a 1.7-2.8 GB QEMU VM (not ours) held the machine at
-  88-97 % RAM. If it never ran, rerun its steps.
+- **Queue 3 was STOPPED at the handoff (06:45 IST) after its first step** - it sat at its RAM gate from 06:19 (a 1.7-2.8 GB QEMU VM, not ours,
+  held the machine at 88-97 % RAM); nothing of it is running. Done: `_c0` (`--noniche --nowallworks --noworkclear` = `_s2` byte-identical, seeds 4
+  and 42). **Rerun the rest** (`tc2/out/tools/s17/q3.sh` without its first build/`_c0` lines, after rebuilding the headless host): `_c1` seed 4
+  (`--nowallworks --noworkclear` must = `_n1`), ten seeds `_v3` (the final binary; `python cmp.py n1 v3 <ten seeds>` should be at par - only rings
+  and works' clearance differ), then **the full suite** (`node tc2/scripts/headless.mjs test`).
 - **NOT verified**: the Unity side (WorldObjectsView, Hud, CameraRig, LivestockView, TerrainLod, ForestTypes, ShotRunner, the Instanced and
   Terrain shaders) has never been compiled; no real shots of any session 17 change; the full suite on sim version 75; `.meta` files for
   `Presence.cs`/`WayLines.cs` (a Unity build makes them - commit them).
@@ -43,7 +43,7 @@ world picture?". No simulation theatre: presentation elaborates a real activity,
   The view's `ForestTypes.Classify` already takes the swing (treeline below a growing-season warmth of 7 degC).
 
 ## Do next, in order
-1. Record queue 3's results (or rerun it): controls, `_v3` vs `_n1` parity, the full suite - fix failures; commit; close D2-139/140 in the
+1. Rerun queue 3's remaining steps: the `_c1` control, `_v3` vs `_n1` parity, the full suite - fix failures; commit; close D2-139/140 in the
    docs if not already; write D2-141 (the visual truth audit's simulation changes: rings clear of works, works off streets) with `_v3`'s numbers.
 2. **The Unity compile and real shots** (one heavy job alone, RAM gate ~72 %): copy a v75 save (`tc2/out/civ/s4_v3/world_y300.tc2`, or set an
    older save's header with `scratchpad/v75.py`), then `node tc2/scripts/unity.mjs shots --tag s17a --load <save> --hour 10 --views

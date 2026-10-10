@@ -23,7 +23,8 @@ without a panel - then **W-FOREST pass 2**, then the roadmap; presentation and s
 
 **State at the first context's end (06:35 IST)**: committed b5beba2 (WIP) and a second commit with the view-only W-FOREST pass-2 work (the woods'
 floor by kind of wood, the dry tropics' dry season, rain forest closure, boreal spires, ForestTypes' treeline by growing-season warmth tMean +
-0.6 TAmp < 7) and the tools (`place --woods` by kind and by summer). **Queue 3 is still running in the background** (`scratchpad/q3.sh`, log
+0.6 TAmp < 7) and the tools (`place --woods` by kind and by summer). **Queue 3 was STOPPED at the handoff (06:45) after `_c0`: nothing runs; rerun
+its remaining steps (`tc2/out/tools/s17/q3.sh`).** It had been (`scratchpad/q3.sh`, log
 `q3.log`): its first controls passed (`--noniche --nowallworks --noworkclear` = `_s2` byte-identical, seeds 4 and 42); it was waiting at its RAM gate
 (the machine at 88-97 % from a 1.7-2.8 GB QEMU VM that is not ours) before `_c1` (`--nowallworks --noworkclear` must = `_n1`), the ten seeds `_v3`
 and the full suite (`suite_v3.txt`; it builds the headless app from the source at that moment). **Not applied yet**: `scratchpad/p_summerwoods.py`
