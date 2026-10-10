@@ -29,7 +29,7 @@ namespace TC2.Game
         /// <summary>The village works by structure kind (C1.1; the civilisation kit, D2-089); null where a kind has no model yet.</summary>
         readonly Instancer[] _works = new Instancer[25];   // (by structure kind: the kiln is 24, C3.2)
         Instancer[] _homes, _frames;   // homes by plan and roof form; the timber framing of framed ones (D2-114)
-        Instancer _chimneys, _plinths, _outshuts, _pens, _stalls, _cross, _gardens;   // overlays, pens, the market, kitchen gardens (D2-114)
+        Instancer _chimneys, _plinths, _outshuts, _pens, _stalls, _cross, _gardens, _gardensBare;   // overlays, pens, the market, kitchen gardens (D2-114; out of leaf: C3.7a)
         Instancer _tenters;   // cloth stretched to dry by a weaver's shed while its village has wares (C3.1)
         Instancer _clayPits, _jars, _ware;   // the clay pit by a kiln, sealed jars by a granary, ware set out for sale (C3.2)
         Instancer _handcarts, _oxcarts, _cartLoads, _oxen;   // households' carts out with their people, a load on them, the ox before an ox cart (C4.2)
@@ -98,6 +98,7 @@ namespace TC2.Game
             _outshuts = new Instancer(Models.Get("outshut", ProcMeshes.House), _mat, true);
             _pens = new Instancer(Models.Get("fence", ProcMeshes.Granary), _mat, true);
             _gardens = new Instancer(Models.Get("garden", ProcMeshes.Granary), _mat, true);
+            _gardensBare = new Instancer(Models.Get("garden_bare", ProcMeshes.Granary), _mat, true);
             _stalls = new Instancer(Models.Get("market_stall", ProcMeshes.Granary), _mat, true);
             _cross = new Instancer(Models.Get("market_cross", ProcMeshes.Granary), _mat, true);
             _stonePiles = new Instancer(Models.Get("stone_pile", ProcMeshes.Granary), _mat, true);
@@ -269,7 +270,7 @@ namespace TC2.Game
             {
                 for (int i = 0; i < _homes.Length; i++) _homes[i].Draw(cam);
                 for (int i = 0; i < _frames.Length; i++) _frames[i].Draw(cam);
-                _chimneys.Draw(cam); _plinths.Draw(cam); _outshuts.Draw(cam); _pens.Draw(cam); _stalls.Draw(cam); _gardens.Draw(cam); _tenters.Draw(cam); _clayPits.Draw(cam); _jars.Draw(cam); _ware.Draw(cam); _handcarts.Draw(cam); _oxcarts.Draw(cam); _cartLoads.Draw(cam); _oxen.Draw(cam); _parked.Draw(cam); _parkedOx.Draw(cam);
+                _chimneys.Draw(cam); _plinths.Draw(cam); _outshuts.Draw(cam); _pens.Draw(cam); _stalls.Draw(cam); _gardens.Draw(cam); _gardensBare.Draw(cam); _tenters.Draw(cam); _clayPits.Draw(cam); _jars.Draw(cam); _ware.Draw(cam); _handcarts.Draw(cam); _oxcarts.Draw(cam); _cartLoads.Draw(cam); _oxen.Draw(cam); _parked.Draw(cam); _parkedOx.Draw(cam);
                 _stonePiles.Draw(cam);
                 for (int i = 0; i < _works.Length; i++) _works[i]?.Draw(cam);
                 _hay.Draw(cam); _huts.Draw(cam); _tents.Draw(cam); _ruins.Draw(cam); _walls.Draw(cam); _woodpiles.Draw(cam);
@@ -469,7 +470,7 @@ namespace TC2.Game
             var P = w.Planet;
             for (int i = 0; i < _homes.Length; i++) _homes[i].Clear();
             for (int i = 0; i < _frames.Length; i++) _frames[i].Clear();
-            _chimneys.Clear(); _plinths.Clear(); _outshuts.Clear(); _pens.Clear(); _stalls.Clear(); _gardens.Clear(); _tenters.Clear(); _clayPits.Clear(); _jars.Clear(); _ware.Clear(); _parked.Clear(); _parkedOx.Clear();
+            _chimneys.Clear(); _plinths.Clear(); _outshuts.Clear(); _pens.Clear(); _stalls.Clear(); _gardens.Clear(); _gardensBare.Clear(); _tenters.Clear(); _clayPits.Clear(); _jars.Clear(); _ware.Clear(); _parked.Clear(); _parkedOx.Clear();
             _stonePiles.Clear();
             for (int i = 0; i < _works.Length; i++) _works[i]?.Clear();
             _hay.Clear(); _huts.Clear(); _tents.Clear(); _ruins.Clear(); _beached.Clear(); _beachedP.Clear(); _walls.Clear(); _woodpiles.Clear();
@@ -757,6 +758,48 @@ namespace TC2.Game
             }
         }
 
+        static readonly Color BedDug = new Color(0.42f, 0.30f, 0.20f, 1f), BedRough = new Color(0.55f, 0.57f, 0.38f, 1f);
+
+        /// <summary>
+        /// A household's garden (C3.7a): beds on its croft's own strips as the simulation measures them - only where it has one (none in a town's
+        /// built-up core) - each column or row tiled with beds of the kit's size (6 x 4.4 m), the last ones shortened to fit; behind a house, the beds
+        /// within its pen's ground give way to the pen. Each bed as the croft is this season (`Gardens.Shown`): dug in the order its gardener works
+        /// (its middle column behind first) - fresh earth in the sowing, in leaf from the growing on, cleared as it is gathered - and a weedy rough
+        /// where nobody dug it this year.
+        /// </summary>
+        void GardenBeds(TC2.Core.Simulation.World w, in Settlement s, int hid, Plot plot, Matrix4x4 m, bool pen, float penZ)
+        {
+            if (plot == null || plot.Beds == null || plot.Beds.Count == 0 || hid == 0 || !w.Households.Exists(hid)) return;
+            ref var hh = ref w.Households.Get(hid);
+            if (hh.Garden <= 0f) return;
+            int doy = SimTime.DayOfYear(w.Now + PlanetState.LocalOffset(s.Anchor));
+            bool leaf = Gardens.Shown(in hh, doy, s.CropGrowth, out double dug, out double cleared);
+            for (int pass = 0, n = 0, k = 0, nDug = 0, nCleared = 0; pass < 2; pass++)
+            {
+                if (pass == 1) { nDug = Mathf.RoundToInt((float)(dug * n)); nCleared = Mathf.RoundToInt((float)(cleared * n)); }
+                for (int gi = 0; gi < plot.Beds.Count; gi++)
+                {
+                    var bd = plot.Beds[gi];
+                    float bw = (float)(2.0 * bd.hx), bl = (float)(2.0 * bd.hz);
+                    int nx = Mathf.Max(1, Mathf.RoundToInt(bw / 6f)), nz = Mathf.Max(1, Mathf.RoundToInt(bl / 4.4f));
+                    float tw = bw / nx, tl = bl / nz;
+                    // (from the house outward: the gardener digs from the back wall)
+                    for (int iz = nz - 1; iz >= 0; iz--)
+                        for (int ix = 0; ix < nx; ix++)
+                        {
+                            float tx = (float)bd.cx - bw * 0.5f + tw * (ix + 0.5f), tz = (float)bd.cz - bl * 0.5f + tl * (iz + 0.5f);
+                            if (pen && Mathf.Abs(tx) < 2.2f + tw * 0.5f && Mathf.Abs(tz - penZ) < 2.3f + tl * 0.5f) continue;
+                            if (pass == 0) { n++; continue; }
+                            var tm = m * Matrix4x4.TRS(new Vector3(tx, 0f, tz), Quaternion.identity, new Vector3(tw * 0.92f / 6f, 1f, tl * 0.92f / 4.4f));
+                            if (k >= nDug) _gardensBare.Add(0, BedRough, tm);
+                            else if (leaf && k >= nCleared) _gardens.Add(0, Color.white, tm);
+                            else _gardensBare.Add(0, BedDug, tm);
+                            k++;
+                        }
+                }
+            }
+        }
+
         /// <summary>
         /// One building (D2-059): lived in - its windows lit after dark while its people are awake, smoke while one of them cooks
         /// or the hearth burns against the cold (D2-056); standing empty - greying and greening as it decays; fallen in - a ruin
@@ -841,28 +884,10 @@ namespace TC2.Game
                     bool beasts = HasBeasts(w, b.Household);
                     bool pen = beasts && plot != null && plot.Pen;
                     if (pen) Pen(m, W, plan == Architecture.Hall ? 4 : 3);
-                    if (plot != null && plot.Beds != null && w.Households.Exists(b.Household) && w.Households.Get(b.Household).Garden > 0f)
-                    {
-                        float penZ = -W / 2f - 3.2f - 2.1f;
-                        for (int gi = 0; gi < plot.Beds.Count; gi++)
-                        {
-                            // each column or row of the croft tiled with beds of the kit's size (6 x 4.4 m), the last ones shortened to fit; behind, the
-                            // beds within the pen's ground give way to it
-                            var bd = plot.Beds[gi];
-                            float bw = (float)(2.0 * bd.hx), bl = (float)(2.0 * bd.hz);
-                            int nx = Mathf.Max(1, Mathf.RoundToInt(bw / 6f)), nz = Mathf.Max(1, Mathf.RoundToInt(bl / 4.4f));
-                            float tw = bw / nx, tl = bl / nz;
-                            for (int ix = 0; ix < nx; ix++)
-                                for (int iz = 0; iz < nz; iz++)
-                                {
-                                    float tx = (float)bd.cx - bw * 0.5f + tw * (ix + 0.5f), tz = (float)bd.cz - bl * 0.5f + tl * (iz + 0.5f);
-                                    if (pen && Mathf.Abs(tx) < 2.2f + tw * 0.5f && Mathf.Abs(tz - penZ) < 2.3f + tl * 0.5f) continue;
-                                    _gardens.Add(0, Color.white, m * Matrix4x4.TRS(new Vector3(tx, 0f, tz), Quaternion.identity, new Vector3(tw * 0.92f / 6f, 1f, tl * 0.92f / 4.4f)));
-                                }
-                        }
-                    }
+                    GardenBeds(w, in s, b.Household, plot, m, pen, -W / 2f - 3.2f - 2.1f);
                 }
             }
+            if (hut && lived) GardenBeds(w, in s, b.Household, plot, m, false, 0f);   // (a hut's croft is dug as a house's: C3.7a)
             if (!lived) return false;
             // its cart in the yard (C4.2: the household's own, while nobody is out with it) - by the other end wall from the woodpile
             if (plot != null && w.Households.Exists(b.Household))

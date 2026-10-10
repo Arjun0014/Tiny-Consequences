@@ -26,6 +26,14 @@ picture?". No simulation theatre: presentation elaborates a real activity, never
    the worktrees `C:/Game Dev/tc-g2`, `tc-g4`, `tc-wild` are earlier sessions' - leave them), `git log --oneline -6` (HEAD 93ad626 or a handoff
    commit on it).
 
+## Stopped by Arjun (10 Oct 2026, 12:45 IST, session 17's third context) - nothing running
+- HEAD = a8a45a9 + a WIP commit: **uncompiled** seasonal garden beds (`Gardens.Shown`, `WorldObjectsView.GardenBeds`, kit `garden_bare`; huts' crofts
+  drawn) - run `node tc2/scripts/unity.mjs cc` first. The full suite was stopped mid-run (no result).
+- **Bug found, not fixed**: the garden's work uses the unshifted day of the year (`AgentSystem.cs` ~577, ~1163, ~1989) while southern villages keep
+  their crop calendar 24 days on - southern gardens run on the wrong days. Fix it first (one helper, a test, ten seeds). Details and the next steps:
+  `docs/tc2/SESSION_HANDOFF.md` top block "Session 17, third context". Shots of gardens need `--days 6-10` or `--days 14-28` (a year-300 save opens
+  on the year's first day, nothing dug).
+
 ## Where things stand (10 Oct 2026, ~12:35 IST, end of session 17's second context) - nothing running
 - **main 93ad626**, verified: headless build, GardenTests 4/4, DefenceTests 8/8, `node tc2/scripts/unity.mjs cc` (the Unity C# compiles).
   Contains D2-141, **D2-142** (W-FOREST pass 2's simulation side: `--oldwoods`), **D2-143 C3.7a the garden** (sim version 76, `--nogarden`).

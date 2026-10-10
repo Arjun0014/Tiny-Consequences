@@ -182,6 +182,24 @@ namespace TC2.Core.Places
         }
 
         /// <summary>
+        /// What its croft shows on this day of the year (the view; read only): `dug` the share of its beds dug this year (fresh earth; the digging
+        /// comes first of its year's work), `cleared` the share gathered and cleared from the ripening on; true while the dug beds are in leaf (from the
+        /// growing on - in the sowing they are planted but bare). A bed is in leaf while dug and not yet cleared; nothing grown clears all.
+        /// </summary>
+        public static bool Shown(in Household hh, int doy, double cropGrowth, out double dug, out double cleared)
+        {
+            dug = 0.0; cleared = 0.0;
+            double m2 = hh.Garden;
+            if (Off || m2 <= 0) return false;
+            dug = DMath.Clamp01(hh.GardenWork / (DigH * m2));
+            if (doy < SowEnd) return false;
+            if (doy < GrowEnd) return true;
+            double bears = Bears(in hh, cropGrowth);
+            cleared = bears > 1e-9 ? dug * DMath.Clamp01(hh.GardenFu / bears) : dug;
+            return true;
+        }
+
+        /// <summary>
         /// Hours of its garden's work still wanted by this day of the year: in the sowing and the growing, the digging and the weeding due by now less
         /// what was done; from the ripening, the gathering due by now less what was gathered (none where the garden bears nothing).
         /// </summary>

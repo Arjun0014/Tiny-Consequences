@@ -1064,6 +1064,28 @@ def garden(name, seed=27):
     return k.finish()
 
 
+def garden_bare(name, seed=28):
+    """The same garden out of leaf (C3.7a, the bed's season): its beds and clods tinted per instance - fresh dug earth in the sowing and once
+    gathered, a weedy rough where nobody dug it this year; the hurdles and stakes as `garden`. 6 x 4.4 m, the open side toward the house (kit -y)."""
+    k = Kit(name, seed)
+    k.box((0, 0, 0.025), (6.0, 4.4, 0.05), srgb(0.44, 0.34, 0.24))            # the plot's trodden earth
+    bed = srgb(0.90, 0.90, 0.90, 1.0)                                         # tinted per instance: the bed's earth as it is this season
+    for i in range(4):
+        y = -1.45 + i * 0.97
+        k.box((0, y, 0.08), (5.3, 0.62, 0.08), bed)                           # a raised bed
+        for r in (-0.16, 0.16):
+            k.box((0, y + r, 0.13), (5.1, 0.12, 0.04), bed)                   # its ridges, turned by the spade
+        for j in range(6):
+            x = -2.2 + j * 0.88 + k.rng.uniform(-0.15, 0.15)
+            k.box((x, y + k.rng.uniform(-0.18, 0.18), 0.15), (0.22, 0.18, 0.08), bed, rot_z=k.rng.uniform(0, 1.5))   # clods
+    wattle = srgb(0.46, 0.35, 0.23)
+    for (cx, cy, lx, ly) in ((0.0, 2.2, 6.0, 0.08), (-3.0, 0.0, 0.08, 4.4), (3.0, 0.0, 0.08, 4.4)):
+        k.box((cx, cy, 0.42), (lx, ly, 0.84), wattle)                            # the hurdles
+    for (x, y) in ((-3.0, 2.2), (3.0, 2.2), (-3.0, -2.2), (3.0, -2.2), (0.0, 2.2)):
+        k.box((x, y, 0.5), (0.12, 0.12, 1.0), srgb(0.36, 0.27, 0.18))          # stakes
+    return k.finish()
+
+
 def homes():
     objs = []
     for plan in ("small", "cottage", "long", "two", "hall", "row"):
@@ -1074,6 +1096,7 @@ def homes():
     objs.append(plinth("plinth"))
     objs.append(outshut("outshut"))
     objs.append(garden("garden"))
+    objs.append(garden_bare("garden_bare"))
     return objs
 
 

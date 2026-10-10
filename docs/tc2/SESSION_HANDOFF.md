@@ -1,5 +1,32 @@
 # TC2 Session handoff
 
+## Session 17, third context (10 Oct 2026, 12:31-12:45 IST; Control Room run #48 session 3; Resource Governor HIGH, the machine at 94-97 % RAM from a QEMU VM and other applications) - stopped by Arjun
+
+### Exact state at the stop - nothing running
+- **main HEAD**: a8a45a9 + one WIP commit (this block): **uncompiled** view work - run `node tc2/scripts/unity.mjs cc` first.
+  - `Gardens.Shown(in hh, doy, cropGrowth, out dug, out cleared)` (read only): the share of the croft dug this year and the share gathered and cleared;
+    true from the growing on (the dug beds in leaf).
+  - `WorldObjectsView.GardenBeds`: the beds drawn by season - dug in the gardener's order (middle column behind first, from the back wall out): fresh
+    earth (`garden_bare` tinted `BedDug`) in the sowing and once gathered, in leaf (`garden`) from the growing on, a weedy rough (`BedRough`) where
+    nobody dug this year; **huts' crofts drawn too** (they were worked in the simulation but drawn bare). `_gardensBare` instancer.
+  - Kit: `garden_bare` in `tc2/art/kit.py` (beds, ridges and clods tintable; built with `--only garden_bare`; `garden_bare.fbx` committed, its `.meta`
+    is made by Unity's import - commit it after the first editor run).
+- **The full suite was stopped mid-run** (started 12:33 on a8a45a9; no result) - run it once on the next HEAD.
+- **Found, NOT fixed - a real D2-143 bug**: the garden uses the unshifted day of the year (`AgentSystem.cs` ~577 `Gardens.Work`, ~1163 `Behindhand`,
+  ~1989 the COARSE step's `gDoy`), but southern villages keep their crop calendar 24 days on (`if (s.Anchor.Y < 0) doy = (doy + 24) % 48`,
+  SettlementSystem/Holdings) and `Gardens.Year` runs on that calendar - so southern gardens are dug, weeded and gathered on the wrong days (little
+  borne). Fix: one helper for the village's own day of the year used by all three calls and by the view's `GardenBeds`; a test with a southern
+  village; ten seeds against the HEAD binary (the change moves the worlds; sim version stays 76 - no format change).
+- Tools: this context's copies in its scratchpad (`1a60904a-...`): `q1.sh` (suite, keep bin_h, `unity.mjs cc`, then shots `s18a` with
+  `SHOTX="--days 8"` - the sowing, beds being dug - and `s18b` `--village town --days 20` - in leaf). **A year-300 save opens on the year's first
+  day: nothing is dug yet** - shoot gardens with `--days 6-10` (digging) or `--days 14-28` (in leaf, weeding).
+
+### Next, in order
+1. `unity.mjs cc`; fix the southern garden calendar (above) with a test; the full suite once; ten seeds (`q8.sh` pattern) against `_g1`.
+2. Real shots of the gardens (`--days 8` and `--days 20`; read "at work or on the move"); fix what they show; commit (DECISIONS D2-144).
+3. Then as the second context's list below: the 900-year check, the Web build and test, W-FOREST pass 2b (note: pass 2b's wet season is by the
+   hemisphere's summer - check the southern crop calendar's growing stage falls in it).
+
 ## Session 17, second context (10 Oct 2026, 06:46-12:35 IST; Control Room run #48 session 2; Resource Governor LOW, HIGH from ~12:00) - queue 3 closed, the Unity side compiled and shot, D2-141, D2-142 the woods, D2-143 the garden
 
 ### Exact state at the handoff (12:35 IST) - nothing running
