@@ -220,6 +220,20 @@ with their child stays first (no vacancy to contest), and a household's follower
 the poorer land and hunger a person-year rises x1.9: the marriage rule (C3.5) does not bind. Next: **C3.5b the niche** (a couple marries when its
 land and hands keep it; measured code in place, off by default) - SESSION_HANDOFF "Session 16, fourth context", "Next, in order".
 
+**Direction from Arjun (10 Oct 2026, session 17) - presentation and simulation advance together**: he opened the game and saw people standing
+still, houses on roads, a world that does not show its simulation, forests still alike. A real-game audit first (`27_VISUAL_TRUTH.md`), then
+W-FOREST pass 2, then the roadmap - and from now on every new system answers "what changes in the world picture?" (nothing visible: is that right,
+or is an inspector line enough, or is a truthful representation missing). No simulation theatre: presentation elaborates a real activity, never
+invents one.
+
+**Where we are (session 17, 10 Oct 2026)**: **D2-139 the soil closed** and **D2-140 the household's niche adopted** (sim version 75: a couple
+marries when its land and hands keep it a year at the last harvest, or its grain carries the shortfall; hunger a person-year back to before the
+soil, births answer the land). **The visual truth audit** (`27`): 98.4 % of drawn people stood still - now `Core/Agents/Presence.cs` places and
+poses every person from what they do (sixteen poses in the person shader); ways were drawn across lots (286 homes cut in a big world) - now
+`Core/Agents/WayLines.cs` brings each way in along a street, round the village's edge, through passed villages by their streets; pens, gates,
+far enlargement, lanes, fallow fixed; rings clear of works and works off streets (simulation, with controls). W-FOREST pass 2 begun: the
+simulation's cool woods are thin (tree suitability by the annual mean) - SESSION_HANDOFF "Session 17".
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.

@@ -85,8 +85,9 @@ namespace TC2.Game
             new[] { Color.white },
             new[] { new Color(0.22f, 0.35f, 0.16f), new Color(0.31f, 0.44f, 0.19f), new Color(0.46f, 0.48f, 0.25f), new Color(0.60f, 0.33f, 0.16f),
                     new Color(0.74f, 0.56f, 0.22f), new Color(0.44f, 0.36f, 0.29f), new Color(0.22f, 0.37f, 0.24f) },
-            new[] { new Color(0.36f, 0.56f, 0.22f), new Color(0.48f, 0.64f, 0.27f), new Color(0.66f, 0.42f, 0.20f) },
-            new[] { new Color(0.40f, 0.37f, 0.25f), new Color(0.62f, 0.38f, 0.60f), new Color(0.52f, 0.56f, 0.40f), new Color(0.74f, 0.76f, 0.60f) },
+            new[] { new Color(0.36f, 0.56f, 0.22f), new Color(0.48f, 0.64f, 0.27f), new Color(0.66f, 0.42f, 0.20f), new Color(0.16f, 0.36f, 0.14f), new Color(0.40f, 0.30f, 0.16f) },   // (3: the rain forest's dark fronds; 4: bracken gone brown)
+            new[] { new Color(0.40f, 0.37f, 0.25f), new Color(0.62f, 0.38f, 0.60f), new Color(0.52f, 0.56f, 0.40f), new Color(0.74f, 0.76f, 0.60f),
+                    new Color(0.42f, 0.52f, 0.20f), new Color(0.78f, 0.80f, 0.70f) },   // (4: the boreal floor's moss, 5: its pale lichen)
             new[] { new Color(0.66f, 0.64f, 0.60f), new Color(0.48f, 0.46f, 0.44f), new Color(0.70f, 0.61f, 0.50f) },
         };
         int _builtWorld = -1, _builtCoast = -1, _builtRelief = -1;
@@ -541,19 +542,59 @@ namespace TC2.Game
                             group = 6; scale = 1.1f;
                         }
                         else if (water) { if (grow > lushness) continue; if (pick < 0.45) kind = Reeds; }   // by fresh water
-                        else if (wood > 0.55f)
-                        {
-                            // under the woods: ferns and undergrowth where the light comes through, little grass
-                            if (pick < 0.30) { kind = Fern; group = leafGroup >= 0 ? 2 : (pick < 0.15 ? 0 : 1); scale = 0.50f + 0.45f * grow; }
-                            else if (pick < 0.40) { kind = Shrub; group = leafGroup >= 0 ? leafGroup + (pick < 0.35 ? 0 : 1) : (pick < 0.35 ? 0 : 6); scale = 0.8f + 0.7f * grow; }
-                            else continue;
-                        }
                         else if (wood > 0.10f)
                         {
-                            // the woods' edges and open woodland: shrubs and ferns among the grass
-                            if (pick < 0.28) { kind = Shrub; group = leafGroup >= 0 ? leafGroup + (pick < 0.14 ? 0 : 1) : (dry > 0.5f ? 2 : (pick < 0.14 ? 0 : 1)); scale = 0.9f + 1.1f * grow; }
-                            else if (pick < 0.40 && dry < 0.5f) { kind = Fern; group = leafGroup >= 0 ? 2 : 1; scale = 0.45f + 0.40f * grow; }
-                            else if (grow > lushness) continue;
+                            // the woods' floor and their edges by the kind of wood (W-FOREST pass 2, ForestTypes from the cell's own climate and water):
+                            // moss and lichen with bilberry under boreal spruce, big dark fronds under the rain forest, golden grass and thorn
+                            // scrub in the dry tropics' open woodland, maquis in warm evergreen woods, bracken under broadleaves, moss and ferns in
+                            // mixed woods, sedge and reeds in a carr, ferns and lush growth in a river's gallery; at an edge (a share under 0.55)
+                            // the scrub thickens and grass comes in
+                            bool edge = wood <= 0.55f;
+                            int ft = ForestTypes.Classify(tm, P.Moist[cell], riverNear, ForestTypes.Wetness(P, cell), P.TAmp[cell]);
+                            switch (ft)
+                            {
+                                case ForestTypes.Boreal: case ForestTypes.Treeline:
+                                    if (pick < 0.40) { kind = Cushion; group = pick < 0.27 ? 4 : 5; scale = 0.55f + 0.6f * grow; }
+                                    else if (pick < (edge ? 0.62 : 0.55)) { kind = Shrub; group = leafGroup >= 0 ? leafGroup : 0; scale = (edge ? 0.7f : 0.5f) + 0.5f * grow; }
+                                    else if (edge && grow < lushness * 0.5f) kind = Grass;
+                                    else continue;
+                                    break;
+                                case ForestTypes.Rain:
+                                    if (pick < 0.50) { kind = Fern; group = 3; scale = 0.9f + 0.9f * grow; }
+                                    else if (pick < (edge ? 0.85 : 0.70)) { kind = Shrub; group = pick < 0.62 ? 0 : 6; scale = 1.0f + 1.0f * grow; }
+                                    else continue;
+                                    break;
+                                case ForestTypes.DryTropic:
+                                    if (pick < 0.16) { kind = Shrub; group = pick < 0.08 ? 2 : 5; scale = 0.8f + 0.9f * grow; }
+                                    else if (pick < 0.21) { kind = Stone; group = 2; scale = 0.4f + 0.8f * grow; }
+                                    else if (grow < 0.85f) { kind = Grass; group = dry > 0.35f || f > 0.55f ? 5 : 6; scale = 1.1f; }
+                                    else continue;
+                                    break;
+                                case ForestTypes.WarmTemperate:
+                                    if (pick < (edge ? 0.45 : 0.35)) { kind = Shrub; group = pick < 0.2 ? 6 : 2; scale = 0.8f + 0.8f * grow; }
+                                    else if (grow < lushness * 0.6f) { kind = Grass; group = dry > 0.4f ? 5 : 0; }
+                                    else continue;
+                                    break;
+                                case ForestTypes.Wet: case ForestTypes.Gallery:
+                                    if (pick < (ft == ForestTypes.Wet ? 0.45 : 0.20)) kind = Reeds;
+                                    else if (pick < 0.62) { kind = Fern; group = leafGroup >= 0 ? 2 : 1; scale = 0.6f + 0.5f * grow; }
+                                    else if (grow < lushness) kind = Grass;
+                                    else continue;
+                                    break;
+                                case ForestTypes.Mixed:
+                                    if (pick < 0.20) { kind = Cushion; group = 4; scale = 0.5f + 0.5f * grow; }
+                                    else if (pick < 0.40) { kind = Fern; group = leafGroup >= 0 ? 4 : 1; scale = 0.5f + 0.45f * grow; }
+                                    else if (pick < (edge ? 0.60 : 0.50)) { kind = Shrub; group = leafGroup >= 0 ? leafGroup + (pick < 0.45 ? 0 : 1) : 0; scale = 0.7f + 0.7f * grow; }
+                                    else if (edge && grow < lushness * 0.6f) kind = Grass;
+                                    else continue;
+                                    break;
+                                default:   // temperate broadleaf
+                                    if (pick < (edge ? 0.30 : 0.42)) { kind = Fern; group = leafGroup >= 0 ? 4 : (pick < 0.2 ? 0 : 1); scale = 0.55f + 0.5f * grow; }
+                                    else if (pick < (edge ? 0.58 : 0.50)) { kind = Shrub; group = leafGroup >= 0 ? leafGroup + (pick < 0.46 ? 0 : 1) : (pick < 0.46 ? 0 : 1); scale = 0.8f + 1.0f * grow; }
+                                    else if (edge && grow < lushness) kind = Grass;
+                                    else continue;
+                                    break;
+                            }
                         }
                         else if (tundra)
                         {
@@ -722,7 +763,7 @@ namespace TC2.Game
                             float relHere = Mathf.Lerp(Mathf.Lerp(p.Rel[a], p.Rel[b], s), Mathf.Lerp(p.Rel[c], p.Rel[d], s), t);
                             float over = (relHere - (float)((Ground.DrawnElev(P, cell) - P.SeaLevel) * Ground.VScale)) / (float)Ground.VScale;
                             float tHere = ForestTypes.MeanTempAt(P.TMean[cell], over);
-                            int type = ForestTypes.Classify(tHere, P.Moist[cell], near, ForestTypes.Wetness(P, cell));
+                            int type = ForestTypes.Classify(tHere, P.Moist[cell], near, ForestTypes.Wetness(P, cell), P.TAmp[cell]);
                             // open woods leave some standing crowns out: the dry tropics' scattered trees, the treeline's, a carr's pools
                             float open = ForestTypes.Openness(type);
                             if (open > 0f && Frac(num * 17.17f) < open) continue;
@@ -740,6 +781,10 @@ namespace TC2.Game
                             float r = Canopy.Radius[k] * Canopy.Spacing * (ProcMeshes.Needles(kind) ? 1f / 1.32f : kind == ProcMeshes.TreePoplar ? 0.85f : 1f);
                             float h = r * Canopy.Top(num) * (ProcMeshes.Needles(kind) ? 1.05f : 1.1f) * ForestTypes.Stature(type);
                             if (kind == ProcMeshes.TreeEmergent) h *= 1.25f;
+                            // (W-FOREST pass 2) the rain forest's canopy closes: crowns broad enough to touch, of uneven height - a ceiling of
+                            // crowns with the emergents above it, no ground between; the cold woods' spires stand narrow and tall
+                            if (type == ForestTypes.Rain && kind == ProcMeshes.TreeRainCanopy) { r *= 1.24f; h *= 0.88f + 0.24f * Frac(num * 7.73f); }
+                            else if ((type == ForestTypes.Boreal || type == ForestTypes.Mixed) && ProcMeshes.Needles(kind)) { r *= 0.90f; h *= 1.10f; }
                             if (kind != ProcMeshes.TreeSnag)
                             {
                                 if (age < 0.08f) { r *= 0.26f; h *= 0.36f; }          // a sapling (slender: wide and low it read as a cushion)
@@ -1336,6 +1381,14 @@ namespace TC2.Game
                         float f = P.SinLat[c] < 0 ? (yearNorth + 0.5f) % 1f : yearNorth;
                         float leaves = f < 0.5f ? 0f : (f < 0.875f ? (f - 0.5f) / 0.375f * 0.8f : 1f);
                         leaves *= 1f - Edge(17f, 22f, tm);   // (no autumn in the tropics)
+                        // (W-FOREST pass 2) the dry tropics' woodland is deciduous in the dry season: the leaves brown and fall through the dry half
+                        // of the year (the cool months), bare at its height where the climate is driest - ForestTypes' thresholds, smoothed
+                        float dryWood = Edge(16f, 20f, tm) * (1f - Edge(0.40f, 0.60f, P.Moist[c]));
+                        if (dryWood > 0.01f)
+                        {
+                            float ds = f >= 0.55f && f < 0.95f ? Mathf.Sin((f - 0.55f) / 0.40f * Mathf.PI) : 0f;
+                            leaves = Mathf.Max(leaves, dryWood * ds * 0.97f);
+                        }
                         p.Wood[o] = new Vector4(wood, con, leaves, snow);
                         // (W-FOREST) the far canopy's kind: the rain forest's deep greens where it is hot, the dry tropics' olive where hot and
                         // seasonally dry - ForestTypes' own thresholds, smoothed so the woods blend across a climate's edge

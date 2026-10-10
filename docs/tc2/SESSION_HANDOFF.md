@@ -21,6 +21,15 @@ without a panel - then **W-FOREST pass 2**, then the roadmap; presentation and s
   BIN/TESTS/GATE builds and tests; `gwrun.sh`; `q1-3.sh`; `v75.py` sets a save's sim version; `sv/` v75 copies of the `_s2` saves for the audits;
   `rates.py TAG seeds`; `p_*.py` patches).
 
+**State at the first context's end (06:35 IST)**: committed b5beba2 (WIP) and a second commit with the view-only W-FOREST pass-2 work (the woods'
+floor by kind of wood, the dry tropics' dry season, rain forest closure, boreal spires, ForestTypes' treeline by growing-season warmth tMean +
+0.6 TAmp < 7) and the tools (`place --woods` by kind and by summer). **Queue 3 is still running in the background** (`scratchpad/q3.sh`, log
+`q3.log`): its first controls passed (`--noniche --nowallworks --noworkclear` = `_s2` byte-identical, seeds 4 and 42); it was waiting at its RAM gate
+(the machine at 88-97 % from a 1.7-2.8 GB QEMU VM that is not ours) before `_c1` (`--nowallworks --noworkclear` must = `_n1`), the ten seeds `_v3`
+and the full suite (`suite_v3.txt`; it builds the headless app from the source at that moment). **Not applied yet**: `scratchpad/p_summerwoods.py`
+(the ecology change: tree suitability by growing-season warmth SmoothStep(5, 10, TMean + 0.6 TAmp), `--oldwoods` the control; D2-142) - apply it
+after the suite's build has begun (or after q3), then measure with `place --woods` and ten seeds against `_v3`.
+
 ### Next, in order
 1. Queue 3's results: the controls byte-identical, `_v3` against `_n1` at par (only rings and works' clearance differ), the full suite - then
    **commit** (D2-139 closed, D2-140, the audit tools, the view and shader changes, the docs).

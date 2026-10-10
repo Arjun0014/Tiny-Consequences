@@ -24,11 +24,14 @@ namespace TC2.Game
 
         /// <summary>
         /// The kind of wood: a stream's corridor or wet ground first (where the climate allows trees), then by the warmth and the moisture.
-        /// `riverNear` 0-1 (the terrain's corridor value), `wet` 0-1 (soil water, standing water), `moist` the climate's moisture index.
+        /// `riverNear` 0-1 (the terrain's corridor value), `wet` 0-1 (soil water, standing water), `moist` the climate's moisture index, `swing` the
+        /// seasonal swing: the treeline's krummholz where the growing season's warmth (tMean + 0.6 swing - Koerner's growing-season mean: the
+        /// whole year in the tropics, the summer months near the poles) stays under 7 degC (W-FOREST pass 2, D2-142 - before, under -1.5 degC
+        /// annual mean); a cold place with a warm enough growing season is boreal.
         /// </summary>
-        public static int Classify(float tMean, float moist, float riverNear, float wet)
+        public static int Classify(float tMean, float moist, float riverNear, float wet, float swing)
         {
-            if (tMean < -1.5f) return Treeline;
+            if (tMean + 0.6f * swing < 7f) return Treeline;
             if (riverNear > 0.55f && tMean > 1f) return Gallery;
             if (wet > 0.8f && tMean > 0f) return Wet;
             if (tMean >= 20f) return moist >= 0.55f ? Rain : DryTropic;
@@ -43,7 +46,7 @@ namespace TC2.Game
         {
             float wet = Wetness(P, c);
             float river = P.IsStream(c) ? 1f : 0f;
-            return Classify(P.TMean[c], P.Moist[c], river, wet);
+            return Classify(P.TMean[c], P.Moist[c], river, wet, P.TAmp[c]);
         }
 
         /// <summary>How wet a cell's ground lies (0-1): its soil water, and water standing over it.</summary>

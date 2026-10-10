@@ -85,7 +85,7 @@ namespace TC2.Headless
                 {
                     if (!P.IsLand(c)) continue;
                     float t = P.TMean[c], m = P.Moist[c], wetv = Math.Max(P.SoilWater[c], P.LakeDepth[c] > 0f ? 1f : 0f);
-                    int kind = t < -1.5f ? 6 : (P.IsStream(c) && t > 1f) ? 8 : (wetv > 0.8f && t > 0f) ? 7 : t >= 20f ? (m >= 0.55f ? 0 : 1) : t >= 14f ? (m < 0.40f ? 1 : 2) : t >= 8f ? 3 : t >= 3f ? 4 : 5;
+                    int kind = t + 0.6f * P.TAmp[c] < 7f ? 6 : (P.IsStream(c) && t > 1f) ? 8 : (wetv > 0.8f && t > 0f) ? 7 : t >= 20f ? (m >= 0.55f ? 0 : 1) : t >= 14f ? (m < 0.40f ? 1 : 2) : t >= 8f ? 3 : t >= 3f ? 4 : 5;
                     land[kind]++;
                     if (P.Forest[c] > 0.05f) { shares[kind].Add(P.Forest[c]); ha[kind] += P.AreaHa(c) * P.Forest[c]; if (w.Fire.BurnedAt[c] != 0 && w.Now - w.Fire.BurnedAt[c] < 30 * SimTime.Year) burnt[kind]++; }
                 }
@@ -103,7 +103,7 @@ namespace TC2.Headless
                 {
                     if (!P.IsLand(c)) continue;
                     float t = P.TMean[c], m = P.Moist[c], wetv = Math.Max(P.SoilWater[c], P.LakeDepth[c] > 0f ? 1f : 0f);
-                    int kind = t < -1.5f ? 6 : (P.IsStream(c) && t > 1f) ? 8 : (wetv > 0.8f && t > 0f) ? 7 : t >= 20f ? (m >= 0.55f ? 0 : 1) : t >= 14f ? (m < 0.40f ? 1 : 2) : t >= 8f ? 3 : t >= 3f ? 4 : 5;
+                    int kind = t + 0.6f * P.TAmp[c] < 7f ? 6 : (P.IsStream(c) && t > 1f) ? 8 : (wetv > 0.8f && t > 0f) ? 7 : t >= 20f ? (m >= 0.55f ? 0 : 1) : t >= 14f ? (m < 0.40f ? 1 : 2) : t >= 8f ? 3 : t >= 3f ? 4 : 5;
                     tm2[kind] += t; amp[kind] += P.TAmp[c]; mo[kind] += m; nk[kind]++;
                     double summer = t + P.TAmp[c];
                     int b = Math.Max(0, Math.Min(7, (int)Math.Floor((summer - 2.0) / 4.0)));   // (summer 2-34 degC in 4-degree bands)

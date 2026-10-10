@@ -84,7 +84,31 @@ sown - most of the rest hidden - and the same strips always lay fallow. Now the 
 its arable), the resting strips turn from year to year (`_TC2Year`), fallow reads as rough grazed grass, and in the growing season some of it lies
 ploughed (the fallow's summer ploughing).
 
-## 6. Open
+## 6. The systems in the picture (from the code; each line to be confirmed in real shots)
+
+| System (simulated) | Drawn | Moves | Gap |
+|---|---|---|---|
+| Fields, crop stages, extra tilth (C3.6a) | the village's plots in its grid, crop colour by stage, furrows, hedges | field hands hoe, reap, sow along the rows (s17) | holdings by household not drawn |
+| Fallow, the soil (D2-139) | unsown strips at the true share, turning yearly, some ploughed in summer (s17) | yearly | tiredness itself (yields) not drawn |
+| Harvest | haystacks by the granary once in | reaping (s17) | - |
+| Woodlots felled (C1.2) | the woods' share thins | woodcutters swing, with breathers (s17) | stumps, felled clearings not drawn |
+| Quarry, mines, bog pits, charcoal (C1.3, C5) | quarry face and cut ground, pits, clamps | cutting and carrying to the pile, raking the clamp (s17) | - |
+| Smithy (C1.4b) | smithy, smoke while a smith works | hammering at its front (s17) | - |
+| Weaver's shed (C3.1) | shed, tenters while it has wares | at the loom (s17) | - |
+| Kiln (C3.2) | kiln, clay pit, jars by the granary, ware for sale | the potter seated at work, fetching clay (s17) | - |
+| Market (C1.6, C13.3) | cross, stalls, the widened market place | traders come and go | - |
+| Ways, streets, lanes (C4.1, C13) | ribbons by wear along the streets (s17), streets and lanes by frontage | travellers walk them, loads in arms, carts | - |
+| Carts (C4.2) | hand and ox carts with their people, parked in yards | yes | - |
+| Herds, tending (D2-050) | animals graze the day's ground, yard pens (s17) | herders walk with the herd (s17) | herds on the fallow (not simulated) |
+| Boats, fishing, voyages (C9) | boats on the beach, out with their crews | rowing (s17); shore fishers hold their lines (s17) | - |
+| Training (C1.5) | beaten ground by hours of practice | sparring (s17) | - |
+| Palisades (D2-074, C7.1) | posts by condition, gates where the ways cross (s17) | raised stretch by stretch | - |
+| Homes by means, plans, age (D2-114) | forms, roofs, extensions, gardens, wear | smoke, lit windows | - |
+| Headmen, the first household (C10.2) | - | - | **not drawn** |
+| Famine | gatherers in the wild, empty stores (no hay) | - | weak |
+| Abandonment, ruins (D2-052) | empty homes weather, roofs go, walls fall | - | - |
+
+## 7. Open
 
 - B (§1): adults idle in daylight 21-24 % of those drawn: measured next with `timeuse` by age - whether the scheduler lacks work a medieval day had
   (wage work, service, households working their own holdings, repairs, crafts for sale) or this is the leisure of a land-bound village with nothing
