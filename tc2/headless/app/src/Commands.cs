@@ -152,6 +152,16 @@ namespace TC2.Headless
             }
         }
 
+        /// <summary>The newest rules' switches (session 17), for `run` and `test` alike (a test that fails on a new rule is run again without it):
+        /// `--noniche` (D2-140 against D2-139: C3.5's rule alone - a couple marries on its grain), `--nowallworks` (D2-141: a ring laid clear of homes
+        /// only), `--noworkclear` (D2-141: works 1 m off a street's line).</summary>
+        public static void Switches(Args a)
+        {
+            if (a.Has("noniche")) TC2.Core.Places.SettlementSystem.NicheOn = false;
+            if (a.Has("nowallworks")) TC2.Core.Society.Conflict.WallWorksOff = true;
+            if (a.Has("noworkclear")) TC2.Core.Places.Footprints.WorkClearOff = true;
+        }
+
         public static int Run(Args a)
         {
             var sw = Stopwatch.StartNew();
@@ -167,11 +177,9 @@ namespace TC2.Headless
             if (a.Has("nosoil")) TC2.Core.Places.SettlementSystem.SoilOff = true;   // (C3.6f against D2-138 in one binary: the fields never tire)
             if (a.Has("norest")) TC2.Core.Places.SettlementSystem.RestOff = true;   // (the fields tire, nobody rests them)
             if (a.Has("nodung")) TC2.Core.Places.SettlementSystem.DungOff = true;   // (the herds' dung gives nothing back)
-            if (a.Has("noniche")) TC2.Core.Places.SettlementSystem.NicheOn = false;
-            if (a.Has("nowallworks")) TC2.Core.Society.Conflict.WallWorksOff = true;
-            if (a.Has("noworkclear")) TC2.Core.Places.Footprints.WorkClearOff = true;   // (session 17 against D2-139/140 in one binary: works 1 m off a street's line)   // (session 17 against D2-139/140 in one binary: a ring laid clear of homes only)   // (D2-140 against D2-139 in one binary: C3.5's rule alone - a couple marries on its grain)
+            Switches(a);   // (--noniche, --nowallworks, --noworkclear: shared with `test`)
             if (a.Has("nicheyears")) TC2.Core.Places.SettlementSystem.NicheYears = a.Double("nicheyears", 4);   // (C3.5b: the years of a shortfall a couple's grain must carry)
-            if (a.Has("nichetally")) TC2.Core.Places.SettlementSystem.NicheTally = new double[13];   // (C3.5b survey: marriages by the couple's living and what it brought)   // (D2-138 against D2-137 in one binary: a headman's move is a vacancy, clients' ties lapse)   // (D2-137 against C3.6e in one binary: a party founds at its place even where a village now stands)
+            if (a.Has("nichetally")) TC2.Core.Places.SettlementSystem.NicheTally = new double[13];   // (C3.5b survey: marriages by the couple's living and what it brought)
             if (a.Has("nocarts")) TC2.Core.Places.Carts.Off = true;   // (C4.2 against C3.2 in one binary: no carts)
             if (a.Has("nohold")) TC2.Core.Places.Holdings.Off = true;   // (C3.3 against C1.4b in one binary: the village's store as before - no bins, no debts)
             if (a.Has("holdmeansoff")) TC2.Core.Places.Holdings.MeansOff = true;

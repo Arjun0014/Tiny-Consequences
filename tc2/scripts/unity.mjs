@@ -1,7 +1,7 @@
 // Runs the Unity 6.6 editor in batchmode for TC2 (one Unity process at a time: 11 GB RAM).
-// Usage: node tc2/scripts/unity.mjs <configure|test|hashtest|build-web|build-win|method NAME> [--dev] [--threads] [--webgl2] [--out PATH]
+// Usage: node tc2/scripts/unity.mjs <cc|configure|test|hashtest|build-web|build-win|method NAME> [--dev] [--threads] [--webgl2] [--out PATH]
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -42,8 +42,47 @@ function tail(file, pattern) {
   console.log(hits.slice(-60).join('\n'));
 }
 
+// A compile check without the editor (session 17): Unity's generated csproj files list the sources it knew when it last ran and reference
+// its DLLs; copies in tc2/out/cc take every .cs under each asmdef's folder (as Unity compiles them), the same references and defines, no
+// analyzers, and are built with the editor's own dotnet (~0.5 GB, half a minute, against the editor's several GB). Shaders are not checked.
+function compileCheck() {
+  const dotnet = path.join(path.dirname(unity), 'Data', 'DotNetSdk', 'dotnet.exe');
+  const cc = path.join(outDir, 'cc').replace(/\\/g, '/');
+  const proj = project.replace(/\\/g, '/');
+  mkdirSync(cc, { recursive: true });
+  const projects = { Core: ['TC2.Core.csproj', 'Assets/TC2/Core'], Game: ['TC2.Game.csproj', 'Assets/TC2/Game'], Editor: ['TC2.Editor.csproj', 'Assets/TC2/Editor'], Tests: ['TC2.Tests.Core.csproj', 'Assets/TC2/Tests/Core'] };
+  for (const [name, [src, folder]] of Object.entries(projects)) {
+    const p = path.join(project, src);
+    if (!existsSync(p)) { console.log('no ' + src + ' (open the project in Unity once to generate it)'); return 1; }
+    let s = readFileSync(p, 'utf8').replace(/^﻿/, '');
+    s = s.replace(/<BaseIntermediateOutputPath>.*?<\/BaseIntermediateOutputPath>/, `<BaseIntermediateOutputPath>${cc}/obj/${name}/</BaseIntermediateOutputPath>`);
+    s = s.replace(/<OutputPath>.*?<\/OutputPath>/, `<OutputPath>${cc}/bin/</OutputPath>`);
+    s = s.replace(/\s*<Analyzer Include="[^"]*" \/>/g, '');
+    s = s.replace(/<ItemGroup>\s*(<Compile Include="[^"]*" \/>\s*)+<\/ItemGroup>/, `<ItemGroup>\n    <Compile Include="${proj}/${folder}/**/*.cs" />\n  </ItemGroup>`);
+    s = s.replace(/\s*<None Include="[^"]*" \/>/g, '');
+    s = s.replace(/<HintPath>(?![A-Za-z]:)([^<]*)<\/HintPath>/g, (m, rel) => `<HintPath>${proj}/${rel.replace(/\\/g, '/')}</HintPath>`);
+    s = s.replace(/<ProjectReference Include="TC2\.Core\.csproj" \/>/, '<ProjectReference Include="Core.csproj" />');
+    s = s.replace(/<ProjectReference Include="TC2\.Game\.csproj" \/>/, '<ProjectReference Include="Game.csproj" />');
+    s = s.replace(/<ProjectReference Include="TC2\.Tests\.Core\.csproj" \/>/, '');
+    writeFileSync(path.join(cc, name + '.csproj'), s);
+  }
+  let worst = 0;
+  for (const name of ['Editor', 'Tests']) {
+    const r = spawnSync(dotnet, ['build', path.join(cc, name + '.csproj'), '-nologo', '-v', 'q', '-clp:ErrorsOnly', '--disable-build-servers', '-m:1'], { encoding: 'utf8' });
+    const out = (r.stdout || '') + (r.stderr || '');
+    const errs = [...new Set(out.split(/\r?\n/).filter((l) => /error/.test(l)))];
+    console.log(`${name} (with what it references): exit ${r.status}` + (errs.length ? '\n' + errs.slice(0, 60).join('\n') : ''));
+    worst = worst || r.status || 0;
+  }
+  spawnSync(dotnet, ['build-server', 'shutdown'], { stdio: 'ignore' });
+  return worst;
+}
+
 let status = 0;
 switch (cmd) {
+  case 'cc':
+    status = compileCheck();
+    break;
   case 'configure':
     status = run(['-executeMethod', 'TC2.EditorTools.ProjectSetup.Configure']);
     tail(log, /error CS|\[TC2\]|Exception|Error:/);

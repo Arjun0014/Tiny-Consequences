@@ -106,7 +106,7 @@ namespace TC2.Core.Agents
             {
                 ref var b = ref w.Buildings.Get(bl[i]);
                 if (Homes.Fallen(in b, w.Now) || !Structures.IsHome(b.Kind)) continue;
-                double bx = b.X - s.SquareX, by = b.Y - s.SquareY, bd = DMath.Sqrt(bx * bx + by * by) + Footprints.Reach(Footprints.PlanOf(in b));
+                double bx = (double)b.X - s.SquareX, by = (double)b.Y - s.SquareY, bd = DMath.Sqrt(bx * bx + by * by) + Footprints.Reach(Footprints.PlanOf(in b));
                 if (bd > built) built = bd;
             }
             return built;

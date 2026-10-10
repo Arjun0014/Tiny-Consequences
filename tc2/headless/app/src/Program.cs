@@ -18,6 +18,7 @@ namespace TC2.Headless
                 switch (cmd)
                 {
                     case "test":
+                        Commands.Switches(args);
                         return TestRunner.Run(typeof(TC2.Tests.Core.Marker).Assembly, args.Get("filter"), args.Get("category"), args.Has("explicit"), args.Has("v"));
                     case "run":
                         return Commands.Run(args);

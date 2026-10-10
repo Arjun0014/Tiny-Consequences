@@ -315,6 +315,42 @@ worlds' scale, or the worlds shrink. Measure first (the 900-year check; a survey
 **What it would open**: beasts worth buying with grain (households' own trade, D2-126 "Open"; the commons' grazing; the landed manure their
 holdings), the Postan squeeze where land binds, legumes and the three-field course as knowledge (C11), fields that read as a landscape.
 
+## 2h. The household's own year: the garden, the threshing floor, the muck (research and design sketch, session 17 - not built)
+
+**Why (measured).** Arjun's playtest saw people standing still (`27`). Presence now draws what they do, but much of what they do is nothing:
+`timeuse --load s4_v3/world_y300.tc2 --days 4 --daylight --stages` (seed 4, year 300, the sowing and growing stages) - grown women and men are
+**idle about 7 of the 12 daylight hours** (Idle 7.0 / 6.8), in the fields 0.4-0.9 h, building 0.6-0.7, charcoal 0.7, cooking 0.5, weaving 0.3;
+in the ripe stage the fields take 10 of the 12. The 48-day year gives a grown person ~576 daylight hours; field work at 109 h a hectare fills
+about a fifth of them, nearly all at the harvest. The household's own work of a medieval year is missing from the scheduler - and one of it is
+already drawn: **every lived house has a kitchen garden in the picture (D2-114) that nobody works and that feeds nobody** (a visual-truth fault).
+
+**The record.** Peasant houses stood on tofts with crofts and gardens: leeks, cabbages, onions, garlic, peas and beans, herbs, fruit, hemp and
+flax; Dyer (*Food in Medieval England*, and *Everyday Life in Medieval England*) treats garden produce as an integral part of the economy and
+of the pottage, relatively more important to the poorest households. Threshing by flail was the sheaves' long tail: 4-8 bushels of wheat a day
+(110-220 kg), more of barley and oats (Britannica; Leicestershire archive); early-14th-century manors paid ~3d a quarter of wheat threshed
+(Merton, SAL MS 555) - about two days' wage. Dung was carted from the yards and byres to the fields before the ploughing.
+
+**The scale in this world.** A food unit is a person-day and the year is 48 days: work paced by eating (cooking, water, threshing) runs at real
+daily rates, work paced by the year (sowing, reaping, a garden's digging and weeding) is compressed ~7.6x into the short year. So threshing a
+household's grain is ~0.03-0.06 h a FU - ~0.2 h a day for five; **a garden is ~100 work-hours a household-year (~2 h a day in the growing
+season) for ~5-10 % of its food** - the larger, the more visible, and the one the picture already promises.
+
+**Design sketch (C3.7a the garden; to be measured and decided).** The garden is the household's own: its ground the yard behind or beside
+its home where the plot leaves it free (`Footprints` yard zones - the view's garden placement, read from the same state), sized by its hands
+(as drawn: 25-45 m2 at the view's scale, the record's quarter-acre crofts at the world's own). Each year: digging and sowing in the sowing
+stage (hours a m2), weeding and watering in the growing stage, the gathering from mid-growing into the ripe stage; what it bears is its area x
+a yield a m2 x the weather's growth (the village's crop growth) x the share of its work done - the produce comes into the household's larder
+as it is gathered (pottage greens and pulses in summer, keeping roots and cabbages later). Its work is a new activity (`Garden`), the
+household's own, scored as the household's work is (by what the season still wants of it; the grown first, children helping), drawn by
+`Presence` as hoeing and stooping in the garden bed (not at the door). The view's bed shows its state (dug, sown, green, gathered). Tools
+`--nogarden` (the control: byte-identical to the worlds before), a tally (hours, produce, households with and without ground). Tests: a
+household works its garden in season and its larder gains; a household with no free ground has none; the weather's growth reaches it.
+**What it should change**: idle daylight hours fall where it is real work (measured with `timeuse --daylight --stages`), the landless'
+hunger (D2-134) falls a little where they have a garden, and the picture shows people at work behind their houses. **Later**: the threshing
+floor (C3.7b: sheaves threshed at the barn or the granary through the year, ~0.2 h a household-day - the first sheaves threshed at once,
+D2-132) and the muck (C3.7c: the yards' dung carted onto the holdings before the ploughing - the herds' return to the soil, D2-139, by labour
+and carts instead of free).
+
 ## 3. Later slices
 - ~~**C3.1b more looms for towns**~~ (done, D2-120): another shed where the households drain the store most of a year with fibre to weave and
   the people in wares would outwear the looms; eight more makers a shed, each at the shed nearest home; towns of 500+ carry 2-4.

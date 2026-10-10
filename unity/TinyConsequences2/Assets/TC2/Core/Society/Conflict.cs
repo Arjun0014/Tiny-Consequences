@@ -1142,10 +1142,10 @@ namespace TC2.Core.Society
             }
         }
 
-        /// <summary>The ring a palisade would run on: outside the village's farthest home, its yards and its store (25-170 m).</summary>
         /// <summary>`--nowallworks`: a ring is laid clear of homes only (before session 17), on the same binary.</summary>
         public static bool WallWorksOff;
 
+        /// <summary>The ring a palisade would run on: outside the village's farthest home, its yards and its store (25-170 m).</summary>
         public double WallRadius(int sid)
         {
             var w = _w;
@@ -1176,23 +1176,46 @@ namespace TC2.Core.Society
             // (C13.3) a ring held to its greatest reach runs between houses, never through one: the nearest radius inward where none stands across it
             // (those beyond stand outside it, as suburbs do)
             // (the fewest across it where no radius is clear: those are taken down when they stand empty - Homes.Clear)
-            double best = r; int least = int.MaxValue;
+            double best = r; int least = int.MaxValue, nw;
             for (double dr = 0.0; dr <= 30.0 && r - dr >= 25.0; dr += 1.0)
             {
-                int n = Astride(sid, r - dr);
-                if (n == 0) return r - dr;
+                int n = Astride(sid, r - dr, out nw);
+                if (n == 0) return WallWorksOff || nw == 0 ? r - dr : PastWorks(sid, r - dr);
                 if (n < least) { least = n; best = r - dr; }
             }
             return best;
         }
 
+        /// <summary>
+        /// (session 17, D2-141) A work stands where a ring clear of homes would run - a training ground beyond the homes: the ring goes past it only
+        /// where that costs no home - inward while it crosses none (so it leaves outside no home the first ring held), or outward round it, whichever
+        /// is nearer; with neither within 25 m the posts run as they would have. (A first form counted a work as a home in the inward search: rings
+        /// went in past the works and left a fifth of the homes outside, and the town at once raised another - DefenceTests.)
+        /// </summary>
+        double PastWorks(int sid, double rh)
+        {
+            bool inward = true;
+            for (double d = 1.0; d <= 25.0; d += 1.0)
+            {
+                if (inward && rh - d >= 25.0)
+                {
+                    int nh = Astride(sid, rh - d, out int wi);
+                    if (nh > 0) inward = false;
+                    else if (wi == 0) return rh - d;
+                }
+                if (rh + d <= 170.0 && Astride(sid, rh + d, out int wo) == 0 && wo == 0) return rh + d;
+            }
+            return rh;
+        }
+
         /// <summary>How many homes of the village - standing, or a camp's lot kept for one - would stand across a ring of radius r (their ground within
-        /// 1.5 m of the posts).</summary>
-        int Astride(int sid, double r)
+        /// 1.5 m of the posts); `works` the works across it (none with `--nowallworks`).</summary>
+        int Astride(int sid, double r, out int works)
         {
             var w = _w;
             ref var s = ref w.Settlements.Get(sid);
             int n = 0;
+            works = 0;
             var bl = w.BuildingsOf(sid);
             for (int i = 0; i < bl.Count; i++)
             {
@@ -1204,7 +1227,7 @@ namespace TC2.Core.Society
                     // (session 17) a work standing where the ring would run - a training ground beyond the homes - is no more crossed than a home: the
                     // posts had run through the beaten ground (14 such in seed 4's world at year 300). Boats and works far out (quarries, mines) are not near.
                     if (WallWorksOff || Places.Boats.IsBoat(b.Kind)) continue;
-                    if (DMath.Abs(DMath.Sqrt(dx * dx + dy * dy) - r) < Places.Footprints.WorkR(b.Kind) + 1.5) n++;
+                    if (DMath.Abs(DMath.Sqrt(dx * dx + dy * dy) - r) < Places.Footprints.WorkR(b.Kind) + 1.5) works++;
                     continue;
                 }
                 if (DMath.Abs(DMath.Sqrt(dx * dx + dy * dy) - r) < Places.Footprints.Reach(Places.Footprints.PlanOf(in b)) + 1.5) n++;

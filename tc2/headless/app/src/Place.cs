@@ -54,6 +54,36 @@ namespace TC2.Headless
             if (a.Has("heads")) { Heads(w); return 0; }
             if (a.Has("marriage")) { Marriage(w); return 0; }
             if (a.Has("heirs")) { Heirs(w); return 0; }
+            if (a.Has("sheds"))
+            {
+                // (session 17, D2-141) where a boat shed would go at each village's landing (Boats.ShedSpot), with works kept a street's width off its
+                // line (now) and a metre off it (`--noworkclear`, before): villages with a landing, how many find a spot each way, and those that have one
+                int land = 0, fitNow = 0, fitBefore = 0, lostFit = 0, gainedFit = 0, has = 0, hasNoFit = 0;
+                var shedOf = new System.Collections.Generic.HashSet<int>();
+                for (int b = w.Buildings.First(); b != 0; b = w.Buildings.Next(b))
+                {
+                    ref var bb = ref w.Buildings.Get(b);
+                    if (bb.Kind == TC2.Core.Places.Structures.BoatShed && bb.Done != 0 && TC2.Core.Places.Homes.RuinLeft(in bb, w.Now) > 0) shedOf.Add(bb.Settlement);
+                }
+                for (int shs = w.Settlements.First(); shs != 0; shs = w.Settlements.Next(shs))
+                {
+                    ref var s = ref w.Settlements.Get(shs);
+                    if (!s.Inhabited || s.Population == 0) continue;
+                    if (!TC2.Core.Places.Boats.EnsureLanding(w, shs)) continue;
+                    land++;
+                    bool keep = TC2.Core.Places.Footprints.WorkClearOff;
+                    TC2.Core.Places.Footprints.WorkClearOff = false;
+                    bool now = TC2.Core.Places.Boats.ShedSpot(w, shs, out float x1, out float y1);
+                    TC2.Core.Places.Footprints.WorkClearOff = true;
+                    bool before = TC2.Core.Places.Boats.ShedSpot(w, shs, out float x0, out float y0);
+                    TC2.Core.Places.Footprints.WorkClearOff = keep;
+                    if (now) fitNow++; if (before) fitBefore++; if (before && !now) lostFit++; if (now && !before) gainedFit++;
+                    bool hs = shedOf.Contains(shs); if (hs) has++; if (hs && !now) hasNoFit++;
+                    if (before != now) Console.WriteLine("  " + w.History.NameOf(EntityRef.Settlement(shs)) + " #" + shs + " people " + s.Population + " streets " + s.StreetN + ": a shed fits " + (before ? "before" : "now") + " only" + (hs ? " (has a shed)" : ""));
+                }
+                Console.WriteLine("sheds at " + SimTime.FormatShort(w.Now) + ": villages with a landing " + land + "; a shed spot now " + fitNow + ", before (1 m off streets) " + fitBefore + "; lost " + lostFit + ", gained " + gainedFit + "; with a shed standing " + has + " (no spot now: " + hasNoFit + ")");
+                return 0;
+            }
             if (a.Has("landless")) { Landless(w); return 0; }
             if (a.Has("woods"))
             {

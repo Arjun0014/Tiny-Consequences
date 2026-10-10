@@ -60,7 +60,7 @@ namespace TC2.Core.Agents
             {
                 moving = true;
                 pose = carrying ? Carry : p.Act == ActivityKind.Play || p.Act == ActivityKind.Flee ? Run : Walk;
-                double wx = p.ToX - p.FromX, wy = p.ToY - p.FromY;
+                double wx = (double)p.ToX - p.FromX, wy = (double)p.ToY - p.FromY;
                 if (wx * wx + wy * wy > 1e-6) face = (s.East * wx + s.North * wy).Normalized;
                 return true;
             }

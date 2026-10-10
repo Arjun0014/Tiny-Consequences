@@ -115,3 +115,26 @@ ploughed (the fallow's summer ploughing).
   more to do. Never kept busy for show.
 - The remaining few homes in lanes (3-9 a large world) and on the green (0-12).
 - The visual-truth table of every system (§7, from real shots).
+
+## 8. Real shots (session 17, second context)
+
+The Unity side compiled first without the editor (`node tc2/scripts/unity.mjs cc`: Unity's csproj files over every source - the C# only) and then
+in the batch editor with the shaders (`unity.mjs shots`; `TC2Pose` compiled in the lit and the shadow pass).
+
+- **`s17a` (seed 4, year 300, a DEEP run's save) showed everyone standing in a row at their doors, facing out - and the log said why: "people drawn
+  8275 (at work or on the move 0)".** A saved world lives its days again only from its next midnight (`SimHost.LoadWorld`); the shot was taken 37
+  minutes after the load, before it - nobody was living a day, and `Presence` drew each at their door in no pose. (The town views also stood in
+  the town's night: the shot hour was the first village's.) Fixed in `ShotRunner`: a loaded world lives into its lived day (three hours past the
+  switch) before the shot hour; `--village town` puts the hour at the most peopled place (the town views' own). The game itself loads its own
+  saves in lived time; this was a tools fault, but it is the picture Arjun described, so every shot of a loaded save must be read with the log's
+  "at work or on the move" count.
+- **`s17b`/`s17c` (the same world, a lived morning): "people drawn 3001 (at work or on the move 2155)".** The town at its own 10 h: people on the
+  market square and in the streets, walking with their legs swinging, three neighbours talking (a hand raised), a handcart pulled, two seated
+  by a door; houses along the streets and none on them; the ways meet at the cross; gardens behind the houses. The first village: ~60 people
+  crossing its square in every direction, one drawing water at the well hand over hand, one carrying a load before them, traders at the stalls,
+  the granaries with their jars. Open: why so many cross the square at 10 h in the sowing (field hands walking to the village's one field spot,
+  visitors at the stalls?) - to be measured with `place --still`, not guessed.
+- **The kitchen gardens drawn behind every lived house are worked by nobody and feed nobody** (D2-114 drew them "worked by its hands"; the
+  simulation has no garden): a visual-truth fault of the presentation - the design that makes them real is `26` §2h (C3.7a).
+- **Adults idle about 7 of the 12 daylight hours** outside the harvest (`timeuse --daylight --stages`, `26` §2h): B of §1 is real idleness, not a
+  drawing fault - the household's own work of a medieval year is missing from the scheduler (§7 B; the garden first).

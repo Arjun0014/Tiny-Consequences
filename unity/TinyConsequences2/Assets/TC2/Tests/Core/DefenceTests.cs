@@ -265,9 +265,22 @@ namespace TC2.Tests.Core
             for (int i = w.History.FirstIndexAfter(mark); i < w.History.Count; i++)
                 if (w.History.At(i).Kind == HistoryKind.WallPlanned && w.History.At(i).Settlement == b) { told = true; Assert.AreEqual(1, w.History.At(i).ArgB); Console.WriteLine(HistoryText.Line(w, w.History.At(i))); }
             Assert.IsTrue(told);
-            // the old ring is not mended: it rots in its years and is gone
-            for (int y = 0; y < 30; y++) { ref var sk = ref w.Settlements.Get(b); sk.WallCond = 1f; sk.Wall = 2; w.AdvanceTo(w.Now + SimTime.Year); }
-            Assert.AreEqual(0f, w.Settlements.Get(b).OldR, "rotted and gone");
+            // the old ring is not mended: it rots a year's share every year (WallYears) and is gone - unless the still-growing town raises a larger
+            // ring yet before that, whose old ring takes its place (the soil's leaner worlds, D2-139: here a third ring at year 25, the first old
+            // ring then at a tenth of its strength)
+            float cond = w.Settlements.Get(b).OldCond;
+            int y = 0;
+            for (; y < 31; y++)
+            {
+                float ring;
+                { ref var sk = ref w.Settlements.Get(b); sk.WallCond = 1f; sk.Wall = 2; ring = sk.WallR; }
+                w.AdvanceTo(w.Now + SimTime.Year);
+                var sy = w.Settlements.Get(b);
+                if (sy.OldR != 25f) { Assert.IsTrue(sy.OldR == 0f || sy.OldR == ring, "rotted away, or a yet larger ring's old ring in its place"); break; }
+                Assert.AreEqual(cond - 1.0 / Conflict.WallYears, sy.OldCond, 0.002, "a year's rot, never mended");
+                cond = sy.OldCond;
+            }
+            Assert.Less(y, 31, "the old ring is gone in its years");
         }
     }
 }

@@ -105,7 +105,14 @@ namespace TC2.Game
             if (vArg != null)
             {
                 int pick = 0;
-                if (vArg == "big")
+                if (vArg == "town")
+                {
+                    // the most peopled place, as the town views frame it (CameraRig "town*"): its own local hour for the shots
+                    int bp = -1;
+                    for (int s2 = w.Settlements.First(); s2 != 0; s2 = w.Settlements.Next(s2))
+                        if (w.Settlements.Get(s2).Inhabited && w.Settlements.Get(s2).Population > bp) { bp = w.Settlements.Get(s2).Population; pick = s2; }
+                }
+                else if (vArg == "big")
                 {
                     int most = -1;
                     for (int s2 = w.Settlements.First(); s2 != 0; s2 = w.Settlements.Next(s2))
@@ -133,6 +140,13 @@ namespace TC2.Game
             if (wall != null && sid != 0) Wall(w, sid, Parse(wall, 1.0));
             long target = SimTime.StartOfDay(w.Now + local) - local + DMath.ToLong(days * SimTime.Day) + DMath.ToLong(hour * SimTime.Hour);
             while (target <= w.Now) target += SimTime.Day;
+            // (session 17) a loaded world lives its days again only from its next midnight (SimHost.LoadWorld: a save of a DEEP or COARSE run);
+            // before that nobody is at work and everyone was drawn at their door - the shot waits for the lived day, three hours into it
+            if (load != null && w.Resolution != TC2.Core.Simulation.Resolution.Activity)
+            {
+                long lived = SimTime.StartOfDay(w.Now) + SimTime.Day + 3 * SimTime.Hour;
+                while (target < lived) target += SimTime.Day;
+            }
             var b = Budget.Unlimited;
             w.AdvanceTo(target, ref b);
             // seals live on a shore anywhere on the planet: when only they are shot, the world goes on to the same hour at the
