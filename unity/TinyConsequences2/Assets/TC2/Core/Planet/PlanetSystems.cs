@@ -235,6 +235,9 @@ namespace TC2.Core.Planet
             if (!Ecology.SkipForTools && SimTime.FloorDiv(w.Now, w.Config.VegetationPeriod) % 3 == 0) Ecology.Step(w, dtY * 3, w.Now);
         }
 
+        /// <summary>`--oldwoods`: trees by the annual mean (before W-FOREST pass 2, D2-142), on the same binary.</summary>
+        public static bool OldWoods;
+
         /// <summary>A step of plant growth (dt in years): forests and grass toward what climate and water allow.</summary>
         public void GrowVegetation(World w, double dtY)
         {
@@ -246,7 +249,11 @@ namespace TC2.Core.Planet
                 double tm = _tmean[c];
                 double m = P.Moist[c];
                 double wet = DMath.Clamp01(0.5 * m + 0.5 * P.SoilWater[c] / 0.6);
-                double tSuitF = DMath.SmoothStep(-1, 8, tm) * (1.0 - DMath.SmoothStep(30, 38, tm));
+                // trees answer the growing season's warmth, not the year's mean (W-FOREST pass 2, D2-142): the treeline lies at a growing-season mean
+                // of ~6.4 degC everywhere (Koerner & Paulsen 2004) - the whole year in the tropics (an annual mean of ~6), the summer months near the
+                // poles (a warmest month of ~10) - taken here as the annual mean and 0.6 of the seasonal swing; woods close by 10 degC. Before
+                // (`--oldwoods`): SmoothStep(-1, 8) of the annual mean - a boreal cell at 2 degC had a quarter of the cover its moisture allowed
+                double tSuitF = (OldWoods ? DMath.SmoothStep(-1, 8, tm) : DMath.SmoothStep(5, 10, tm + 0.6 * P.TAmp[c])) * (1.0 - DMath.SmoothStep(30, 38, tm));
                 double tSuitG = DMath.SmoothStep(-6, 4, tm);
                 double kF = DMath.Clamp01(1.25 * m - 0.12) * tSuitF;
                 double kG = DMath.Clamp01(0.25 + 0.9 * wet) * tSuitG;

@@ -54,6 +54,81 @@ namespace TC2.Headless
             if (a.Has("heads")) { Heads(w); return 0; }
             if (a.Has("marriage")) { Marriage(w); return 0; }
             if (a.Has("heirs")) { Heirs(w); return 0; }
+            if (a.Has("crofts")) { Crofts(w, a.Int("cell", 2)); return 0; }
+            if (a.Has("seasons"))
+            {
+                // (W-FOREST pass 2b survey) the year's seasons in the soil: the world lived a year in COARSE days from the save, the land cells by the
+                // view's kind of wood (as `--woods` reads it), each kind's mean rain and soil water in each four days of the year (its local season:
+                // the southern half's year turned half round), and how many of its cells' soils fall under 0.1 for a fortnight or more
+                var P = w.Planet;
+                string[] kn = { "rain", "dry", "warm", "broadleaf", "mixed", "boreal", "treeline", "wet", "gallery" };
+                var kindOf = new int[P.Cells];
+                for (int c = 0; c < P.Cells; c++)
+                {
+                    if (!P.IsLand(c)) { kindOf[c] = -1; continue; }
+                    float t = P.TMean[c], m = P.Moist[c], wetv = Math.Max(P.SoilWater[c], P.LakeDepth[c] > 0f ? 1f : 0f);
+                    kindOf[c] = t + 0.6f * P.TAmp[c] < 7f ? 6 : (P.IsStream(c) && t > 1f) ? 8 : (wetv > 0.8f && t > 0f) ? 7 : t >= 20f ? (m >= 0.55f ? 0 : 1) : t >= 14f ? (m < 0.40f ? 1 : 2) : t >= 8f ? 3 : t >= 3f ? 4 : 5;
+                }
+                w.RequestResolution(TC2.Core.Simulation.Resolution.Coarse, SimTime.StartOfDay(w.Now) + SimTime.Day);
+                w.AdvanceTo(SimTime.StartOfDay(w.Now) + SimTime.Day + SimTime.Hour);
+                const int bins = 12;
+                var rain = new double[9, bins]; var soil = new double[9, bins]; var n = new double[9, bins];
+                var dryRun = new int[P.Cells]; var dryLong = new bool[P.Cells];
+                for (int d = 0; d < SimTime.DaysPerYear; d++)
+                {
+                    w.AdvanceTo(w.Now + SimTime.Day);
+                    int doy = SimTime.DayOfYear(w.Now);
+                    for (int c = 0; c < P.Cells; c++)
+                    {
+                        int k = kindOf[c]; if (k < 0) continue;
+                        int ld = P.Lat[c] >= 0 ? doy : (doy + SimTime.DaysPerYear / 2) % SimTime.DaysPerYear;
+                        int b = Math.Min(bins - 1, ld * bins / SimTime.DaysPerYear);
+                        rain[k, b] += P.RainToday[c]; soil[k, b] += P.SoilWater[c]; n[k, b]++;
+                        if (P.SoilWater[c] < 0.1f) { if (++dryRun[c] >= 14) dryLong[c] = true; } else dryRun[c] = 0;
+                    }
+                }
+                Console.WriteLine("seasons in the soil over a year from " + SimTime.FormatShort(w.Now) + " (each kind: rain / soil water in each four days of its local year, spring first):");
+                for (int k = 0; k < 9; k++)
+                {
+                    int cells = 0, longDry = 0; for (int c = 0; c < P.Cells; c++) if (kindOf[c] == k) { cells++; if (dryLong[c]) longDry++; }
+                    if (cells == 0) continue;
+                    var sb = new System.Text.StringBuilder("  " + kn[k].PadRight(10) + " cells " + cells.ToString().PadLeft(5) + ", dry a fortnight " + longDry.ToString().PadLeft(5) + " |");
+                    for (int b = 0; b < bins; b++) sb.Append(" " + (n[k, b] > 0 ? (rain[k, b] / n[k, b]).ToString("0.00") + "/" + (soil[k, b] / n[k, b]).ToString("0.00") : "-"));
+                    Console.WriteLine(sb.ToString());
+                }
+                return 0;
+            }
+            if (a.Has("housing"))
+            {
+                // (D2-141 survey) how the world is housed: households by shelter (a house, a hut, a camp), in villages with streets or none, and the
+                // works standing within a street's width of a street's or lane's line (the session-17 clearance keeps them off)
+                int hh = 0, house = 0, hut = 0, camp = 0, hhStreets = 0, campStreets = 0, works = 0, worksOn = 0;
+                for (int hsid = w.Settlements.First(); hsid != 0; hsid = w.Settlements.Next(hsid))
+                {
+                    ref var s = ref w.Settlements.Get(hsid);
+                    if (!s.Inhabited || s.Population == 0) continue;
+                    var hl = w.HouseholdsOf(hsid);
+                    for (int i = 0; i < hl.Count; i++)
+                    {
+                        ref var h = ref w.Households.Get(hl[i]);
+                        hh++; if (s.StreetN > 0) hhStreets++;
+                        if (h.Building == 0) { camp++; if (s.StreetN > 0) campStreets++; }
+                        else if (h.Shelter >= TC2.Core.Places.Construction.House) house++; else hut++;
+                    }
+                    var bl = w.BuildingsOf(hsid);
+                    for (int i = 0; i < bl.Count; i++)
+                    {
+                        ref var b = ref w.Buildings.Get(bl[i]);
+                        if (Structures.IsHome(b.Kind) || Boats.IsBoat(b.Kind) || Homes.RuinLeft(in b, w.Now) <= 0) continue;
+                        works++;
+                        if (Streets.On(in s, b.X, b.Y, Footprints.WorkR(b.Kind) + Streets.Width)) worksOn++;
+                    }
+                }
+                Console.WriteLine("housing at " + SimTime.FormatShort(w.Now) + ": households " + hh + " - in a house " + house + ", a hut " + hut + ", camping " + camp +
+                                  " (" + (100.0 * camp / Math.Max(1, hh)).ToString("0.0") + " %); in villages with streets " + hhStreets + " (camping " + campStreets +
+                                  "); works " + works + ", within a street's width of a street or lane " + worksOn);
+                return 0;
+            }
             if (a.Has("sheds"))
             {
                 // (session 17, D2-141) where a boat shed would go at each village's landing (Boats.ShedSpot), with works kept a street's width off its
@@ -925,6 +1000,119 @@ namespace TC2.Headless
                 if (v > bv) { bv = v; best = id; }
             }
             return best;
+        }
+
+        /// <summary>
+        /// (C3.7a survey, `26` §2h) The croft each lived home's layout leaves it: the free ground behind and beside it (cells of `cell` m, each free by
+        /// `Footprints.YardFree` - no other building, street, lane or green - nearer this home than any other, and reached from its walls through free
+        /// cells), out to 9 m past either end and 24 m behind its front. By the village's form (streets or none) and the home's plan; m2 quartiles.
+        /// </summary>
+        static void Crofts(World w, int cell)
+        {
+            double c2 = cell * 0.5;
+            var byForm = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<double>>();
+            void Add(string k, double v) { if (!byForm.TryGetValue(k, out var l)) byForm[k] = l = new System.Collections.Generic.List<double>(); l.Add(v); }
+            var homes = new System.Collections.Generic.List<int>();
+            double stripSum = 0, cellSum = 0, diffSum = 0; int pairs = 0;
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                ref var s = ref w.Settlements.Get(sid);
+                if (!s.Inhabited || s.Population == 0) continue;
+                var bl = w.BuildingsOf(sid);
+                homes.Clear();
+                for (int i = 0; i < bl.Count; i++) { ref var b = ref w.Buildings.Get(bl[i]); if (Structures.IsHome(b.Kind) && b.Household != 0 && Homes.RuinLeft(in b, w.Now) > 0) homes.Add(bl[i]); }
+                for (int hi = 0; hi < homes.Count; hi++)
+                {
+                    int bid = homes[hi];
+                    ref var b = ref w.Buildings.Get(bid);
+                    int plan = Footprints.PlanOf(in b);
+                    double hx = 0, hz = 0;
+                    for (int q = 0; q < Footprints.Count(plan); q++) { Footprints.Rect(plan, q, out double rcx, out double rcz, out double rhx, out double rhz); hx = Math.Max(hx, Math.Abs(rcx) + rhx); hz = Math.Max(hz, Math.Abs(rcz) + rhz); }
+                    double af = Footprints.FaceOf(in s, in b), fx = Math.Cos(af), fy = Math.Sin(af), ux = -fy, uy = fx;
+                    int nx = (int)Math.Ceiling((hx + 9.0) / cell), nz0 = (int)Math.Ceiling((24.0 - hz) / cell), nz1 = (int)Math.Ceiling(hz / cell);
+                    int W = 2 * nx + 1, H = nz0 + nz1 + 1;
+                    var free = new bool[W, H]; var seen = new bool[W, H];
+                    for (int ix = 0; ix < W; ix++)
+                        for (int iz = 0; iz < H; iz++)
+                        {
+                            double cx = (ix - nx) * cell, cz = (iz - nz0) * cell;   // (cz < 0 behind its middle)
+                            if (Math.Abs(cx) < hx + c2 && Math.Abs(cz) < hz + c2) continue;   // (the house itself)
+                            if (cz > hz) continue;   // (not before its front: the street side is the street's)
+                            if (!Footprints.YardFree(w, sid, bid, cx, cz, c2, c2)) continue;
+                            double px = b.X + ux * cx + fx * cz, py = b.Y + uy * cx + fy * cz;
+                            double own = (px - b.X) * (px - b.X) + (py - b.Y) * (py - b.Y);
+                            bool nearer = true;
+                            for (int hj = 0; hj < homes.Count && nearer; hj++)
+                            {
+                                if (hj == hi) continue;
+                                ref var o = ref w.Buildings.Get(homes[hj]);
+                                if ((px - o.X) * (px - o.X) + (py - o.Y) * (py - o.Y) < own) nearer = false;
+                            }
+                            free[ix, iz] = nearer;
+                        }
+                    // reached from its walls: a flood from the free cells touching the house
+                    var stack = new System.Collections.Generic.Stack<(int, int)>();
+                    for (int ix = 0; ix < W; ix++)
+                        for (int iz = 0; iz < H; iz++)
+                        {
+                            if (!free[ix, iz]) continue;
+                            double cx = (ix - nx) * cell, cz = (iz - nz0) * cell;
+                            if (Math.Abs(cx) < hx + c2 + cell && Math.Abs(cz) < hz + c2 + cell) { seen[ix, iz] = true; stack.Push((ix, iz)); }
+                        }
+                    int n = 0;
+                    while (stack.Count > 0)
+                    {
+                        var (ix, iz) = stack.Pop(); n++;
+                        for (int d = 0; d < 4; d++)
+                        {
+                            int jx = ix + (d == 0 ? 1 : d == 1 ? -1 : 0), jz = iz + (d == 2 ? 1 : d == 3 ? -1 : 0);
+                            if (jx < 0 || jz < 0 || jx >= W || jz >= H || seen[jx, jz] || !free[jx, jz]) continue;
+                            seen[jx, jz] = true; stack.Push((jx, jz));
+                        }
+                    }
+                    double m2 = n * cell * cell;
+                    // the strips' estimate the simulation keeps (Gardens.Strips, C3.7a: 4 m strips behind to 16 m, beside to 8 m, short of half the way
+                    // to the neighbours) beside the cells' measure
+                    {
+                        double back = 16.0, left = 8.0, right = 8.0, ux2 = -fy, uy2 = fx;
+                        for (int hj = 0; hj < homes.Count; hj++)
+                        {
+                            if (hj == hi) continue;
+                            ref var o2 = ref w.Buildings.Get(homes[hj]);
+                            double dx = (double)o2.X - b.X, dy = (double)o2.Y - b.Y;
+                            double along = -(dx * fx + dy * fy), across = dx * ux2 + dy * uy2;
+                            if (along > 0 && Math.Abs(across) < hx + 6.0) back = Math.Min(back, along * 0.5 - hz);
+                            if (Math.Abs(along) < hz + 4.0) { if (across > 0) right = Math.Min(right, across * 0.5 - hx); else left = Math.Min(left, -across * 0.5 - hx); }
+                        }
+                        double area = 0, wx = hx + 2.0, cw = wx * 2.0 / 3.0;
+                        for (int k = -1; k <= 1; k++)
+                            for (double d = 0.0; d + 2.0 <= back + 1e-9; d += 2.0) { if (!Footprints.YardFree(w, sid, bid, k * cw, -(hz + d + 1.0), cw * 0.5, 1.0)) break; area += 2.0 * cw; }
+                        double zf = hz - 1.0, zb = -(hz + 4.0), zm = 0.5 * (zf + zb), hzs = 0.25 * (zf - zb);
+                        for (int side = -1; side <= 1; side += 2)
+                        {
+                            double room = side > 0 ? right : left;
+                            for (int row = 0; row < 2; row++)
+                                for (double d = 0.0; d + 4.0 <= room + 1e-9; d += 4.0) { if (!Footprints.YardFree(w, sid, bid, side * (hx + d + 2.0), row == 0 ? zm + hzs : zm - hzs, 2.0, hzs)) break; area += 8.0 * hzs; }
+                        }
+                        area = Math.Min(320.0, area);
+                        Add("strips", area); stripSum += area; cellSum += Math.Min(320.0, m2); pairs++; diffSum += Math.Abs(area - Math.Min(320.0, m2));
+                    }
+                    string form = s.StreetN > 0 ? "streets" : "no streets";
+                    Add(form, m2);
+                    Add("plan " + plan, m2);
+                    Add("all", m2);
+                }
+            }
+            Console.WriteLine("crofts at " + SimTime.FormatShort(w.Now) + " (cells of " + cell + " m; free ground behind and beside each lived home, nearer it than any other, reached from its walls):");
+            Console.WriteLine("  the strips' estimate against the cells (each capped at 320 m2): mean " + (stripSum / Math.Max(1, pairs)).ToString("0") + " m2 against " + (cellSum / Math.Max(1, pairs)).ToString("0") + ", mean absolute difference " + (diffSum / Math.Max(1, pairs)).ToString("0") + " m2 over " + pairs + " homes");
+            var keys = new System.Collections.Generic.List<string>(byForm.Keys); keys.Sort(string.CompareOrdinal);
+            foreach (var k in keys)
+            {
+                var l = byForm[k]; l.Sort();
+                double q(double f) => l[Math.Min(l.Count - 1, (int)(f * l.Count))];
+                int none = 0; foreach (var v in l) if (v < 20) none++;
+                Console.WriteLine("  " + k.PadRight(12) + " homes " + l.Count.ToString().PadLeft(5) + "  m2 q10/q25/median/q75/q90 " + q(0.1).ToString("0") + "/" + q(0.25).ToString("0") + "/" + q(0.5).ToString("0") + "/" + q(0.75).ToString("0") + "/" + q(0.9).ToString("0") + "  under 20 m2 " + none);
+            }
         }
     }
 }

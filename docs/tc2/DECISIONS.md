@@ -4084,3 +4084,72 @@ soil's worlds at ~0.56 of `_k2`'s people with hunger a person-year back to where
 **Open.** Wounds a person-year stay ~x2 of `_k2`'s (scarcity's takings and raids in the soil's tighter worlds); service and wage-hands (a place in
 a landed household as a living), the land market, partible customs (C11), herds on the fallow.
 
+## D2-141 — 2026-10-10 — The visual truth audit: people drawn from what they do, ways drawn along the streets; rings clear of works, works clear of streets (session 17)
+
+**Context.** Arjun's playtest (10 Oct): people "apparently just standing still", "houses apparently standing on roads". Measured (`27` §1, §3) with
+two read-only tools on mature saves: `place --still` - 98.4 % of the people drawn in daylight stood still, field hands for 3.75 h at one spot, cooks
+and eaters drawn inside their own walls, though about half of them were working; `place --roads` (twenty saves) - the simulation's own ground was
+nearly clean, the drawing was not: the ways between villages were drawn from the village's centre across its lots (seed 4 at year 300: 286 homes cut),
+the far enlargement ignored streets, lanes were drawn 6 m before the simulation lines them, livestock pens were laid over streets and neighbours,
+gates faced neighbours' centres. Two faults were the simulation's own: palisade rings laid clear of homes only ran through the works beyond them
+(14 training grounds astride seed 4's rings at year 300), and works (kilns, sheds, barns) kept only a metre off a street's line, so they stood a
+metre or two into the street as drawn.
+**Decision.** (1) **`Core/Agents/Presence.cs`** - one read-only answer to "where is this person drawn, facing where, doing what" (`Presence.Of`), used by
+the view, picking, the camera's follow and the audits: field hands along the rows of the village's plots, woodcutters at a tree, smiths before the
+smithy, builders outside the walls they raise, herders round the herd, the idle seated at their doors, neighbours turned to each other; eating and
+cooking indoors (not drawn). The person shader poses the kit's figure for sixteen codes (`TC2Pose`, lit and shadow passes). The simulation's point
+stays the person's place; the drawn point keeps within its work's own ground. (2) **`Core/Agents/WayLines.cs`** - a way as it is drawn and walked: in
+by the street nearest its bearing, out past the last house, round the village's edge to where the route leaves the built ground; through a passed
+village by its streets; no road over a square; travellers read onto it by their share of the route (derived, cached, read only). (3) The view:
+`Footprints.OpenScale` bounds the far enlargement by streets, lanes, square and ring; lanes from 26 m; pens in the yard pen or a free ring; gates
+where streets and drawn ways cross the ring; fallow at its true share, turning by year. (4) **Two simulation changes**: a palisade's ring is laid
+clear of the works standing where it would run as of homes (`Conflict.WallRadius`: a work within its radius + 1.5 m of the ring counts as a
+crossing; boats excluded; `--nowallworks` before), and a work keeps `Streets.Width` (4 m) off a street's or lane's line as a home does
+(`Footprints.WorkFits`; `--noworkclear` before). Within sim version 75 (no build of 75 had been released; the save format is unchanged).
+**Evidence.** Controls on the final binary: `--noniche --nowallworks --noworkclear` = `_s2` (seeds 4, 42) and `--nowallworks --noworkclear` = `_n1`
+(seed 4), annals byte-identical. **Ten seeds, 300 years DEEP (`_v4`, the final binary, against `_n1`)**: births and deaths a person-year at par
+(x0.99, x1.01), hunger a person-year x0.74 (t -0.9), wounds x0.78 (t -0.7), famines x0.84 (t -1.1), people over years 200-299 x0.98 (t -1.4) - **but
+the people follow a wave**: x1.02-1.07 over years 140-199 (t ~+2), x0.95 over 280-299 (t -3.7, nine seeds of ten below). Attributed with ten seeds of
+the ring rule alone (`--noworkclear`, `_v5b`): identical to `_n1` to year 140 and no wave (x0.98-1.01 throughout, t at most 1.5) - **the wave is the
+street clearance's**. The mechanism is not found: the housing survey (`place --housing`, years 100/200/300 of seeds 4, 42 and 2) shows the clearance working - works within a street's width of a street or lane at year 300 72 -> 17, 33 -> 5, 43 -> 18 - but no fewer households camping (1.6 -> 2.2 %, 0.1 -> 0.7 %, 0.0 -> 1.8 %), so room for houses was not what it changed; seed 4 held 33 % more households at year 200 (the wave's crest), the wave the trajectory's own. Attributed by elimination, of the size earlier slices were kept at (x0.95-1.07). Kept: a work standing in a lane is the fault the audit found, and the wave is the world's own answer to it
+(the scale of D2-085's mature range is untouched). The ring rule's first form (a work counted as a home in the inward search) was replaced by
+`PastWorks` (a ring goes past a work only where that costs no home: inward without crossing a home, or outward round it; ten seeds `_v4` against
+`_v3`, at par, seeds 4 and 5 identical). **Boats lost at sea x1.68 (t 3.4) and drowned x1.9** against `_n1` are not the change's: `_n1`'s 50
+boats lost (2.28 a 10,000 trips) is the lowest of 65 ten-seed run families on record (2.75-4.44; `_s2` 4.12), `_v3` and `_v4` the usual; the boat
+mix does not explain it (more plank boats in `_v3`) and the weather is the same; and a shed fits at every landing either way (`place --sheds`,
+seeds 6, 7 and 1 at years 100, 200 and 300). **Road audits** (`place --roads`, year 300, `_n1` -> `_v4`): works drawn into a palisade 13 -> 0
+(seed 4), 10 -> 8 (seed 42), 14 -> 7 (seed 2); works in a lane 9 -> 0, 10 -> 1, 3 -> 1; homes cut by a drawn way (the view) 286 -> 1 (seed 4), 136
+-> 0 (seed 42). The people standing still (the same lived days, `Presence`): 28-32 % neither move nor work, from 98.4 %; in real shots of a lived
+morning 2,155 of 3,001 people drawn are at work or on the move (`27` §8). DefenceTests' palisade test traced year by year: the soil's leaner
+worlds (D2-139, never through the full suite before) make its town raise a third ring at year 25 - the old ring never mended, rotting a
+thirtieth a year to a tenth; the test now checks that (8/8).
+**Open.** Adults idle 21-24 % of the people drawn in daylight (`27` §7): measured next by age, sex and season (`timeuse --daylight --stages`); the
+Unity side was compiled without the editor (`unity.mjs cc`) - real shots of every change pending.
+
+## D2-142 — 2026-10-10 — Trees by the growing season's warmth (W-FOREST pass 2, the simulation's side)
+
+**Context.** W-FOREST (`18` §8): forests and climates read alike. Measured first (`place --woods`, by the view's kind of wood and by the summer's
+warmth): the simulation itself held little cool forest - the median woods share of wooded boreal cells 0.08-0.16, broadleaf 0.09-0.24, none at
+the treeline - and the baseline shots of seed 4 at year 300 found no woods at all in the boreal and the mixed views. Tree suitability ramped on
+the annual mean (`PlanetSystems.GrowVegetation`: SmoothStep(-1, 8) degC), so a boreal cell at an annual 2 degC held a quarter of the cover its
+moisture allowed. Treelines follow the growing season's warmth, not the year's mean (Koerner & Paulsen 2004: a growing-season mean of ~6.4 degC
+everywhere - the whole year in the tropics, the summer months near the poles).
+**Decision.** (sim version 75; no format change) Tree suitability by the growing season: SmoothStep(5, 10) of the annual mean plus 0.6 of the
+seasonal swing (the warm half-year's mean), the heat limit unchanged; `--oldwoods` keeps the annual mean (`PlanetSystems.OldWoods`). The view's
+kinds already read the same warmth (`ForestTypes.Classify`: the treeline below a growing-season warmth of 7 degC).
+**Evidence.** Control `--oldwoods` = `_v4` (seed 4, annals byte-identical). Ten seeds, 300 years DEEP (`_w1` against `_v4`, the same binary):
+**people x1.10 (t 2.6; years 200-299 x1.10, t 2.8), foundings x1.26 (t 2.5)** - the cool lands now carry woods (fuel, timber, game) and more of
+them are lived in; births a person-year x0.99, deaths x0.98, hunger a person-year x1.26 (t 0.6), wounds x1.39 (t 0.8), famines x1.16 (t 0.6) -
+at par per person. **Cost at par**: the events processed x1.017 over the ten worlds; the wall time's x1.49 (t 3.3) was the machine's load (the
+`_w1` runs ran at below-normal priority while other applications held the machine at 82-96 % RAM; seed 5 took x2.1 with the same people and
+x1.03 the events) - back to back on seed 5 (150 years DEEP, the same load): x1.08 in the first round, x1.33 in the second as the machine's load rose under both. Woods by kind at year 300 (`place --woods`, seeds 4, 42, 2): boreal median share 0.21 -> 0.33, 0.10 -> 0.15, 0.14 ->
+0.20; mixed 0.39 -> 0.49, 0.12 -> 0.15, 0.19 -> 0.22; the rain forest unchanged; on unfarmed land with moisture over 0.45 the woods hold 0.43-0.70
+of their cells wherever the summer is 10-26 degC. The temperate belt of these worlds is dry (broadleaf land moisture 0.11-0.27, mixed 0.22-0.51:
+steppe and parkland by the climate model) - not a fault of the woods. Shots (`tc2/out/shots/s17d` against `s17a`): the boreal view now finds
+stands of spires and a wood beside them where it found grass with a few spires; the mixed view snow-covered woods of spires and crowns where it
+found bare fields.
+**Open (W-FOREST pass 2b).** The dry tropics and the wet woods still read alike in the shots (dense dark crowns on bright green): the weather's
+rain has no seasons at any latitude (+-0.08 x moisture), so the dry tropics' dry season is not in the state, and the view's leaf fall keyed to
+a fixed window (the year's 0.55-0.95) misses the late dry season. Next: the rain belt following the sun in the outer tropics (`18` §8,
+`scratchpad/p_drytropics.py`), and the view's dry season read from the soil's water; the boreal floor still drawn as bright meadow; the rain
+forest view's framing (a volcano's slope).

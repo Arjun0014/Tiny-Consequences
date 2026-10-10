@@ -155,6 +155,26 @@ autumn (4,096 colour groups). Camera views `forest:KIND[:low|:far]` frame the mo
 Shots `tc2/out/shots/wf2/sheet4.png` (rain, dry, mixed, boreal side by side), `wf2`, `wf3`. The far canopy (the terrain shader) takes the kind
 too (UV4: how tropical, how seasonally dry; `wf6/before_after_far.png`). Not yet: ground cover by kind, stand age as state (only fire's is real; felling and windthrow leave none), a straight snow/no-snow seam seen on one boreal patch.
 
+**W-FOREST pass 2 (session 17) - still OPEN for Arjun's judgement.** Measured first (`place --woods`, by kind and by the summer's warmth): the
+simulation itself held little cool forest - the median woods share of wooded boreal cells 0.08-0.16, broadleaf 0.09-0.24, none at the treeline -
+because tree suitability ramped on the annual mean (`PlanetSystems.GrowVegetation`: SmoothStep(-1, 8) degC), so a boreal cell at an annual 2 degC
+held a quarter of the cover its moisture allowed. Real treelines follow the growing season's warmth (Koerner & Paulsen 2004: a growing-season
+mean of ~6.4 degC everywhere). **The simulation (D2-142, ten seeds `_w1` against `_v4`)**: trees by the growing season - SmoothStep(5, 10) of the
+annual mean plus 0.6 of the seasonal swing (`--oldwoods` the control, byte-identical to `_v4`). **The view**: the woods' floor by kind of wood
+(moss, lichen and bilberry under boreal spruce, big dark fronds under the rain forest, golden grass and thorn scrub in the dry tropics, maquis,
+bracken, sedge in a carr), the rain forest's canopy closed with emergents above it, boreal spires narrower and taller, the dry tropics'
+woodland bare through the dry half of the year, the treeline by the growing season's warmth (`ForestTypes.Classify`). Baseline shots
+(`tc2/out/shots/s17a`, seed 4 year 300) found no woods at all in the boreal and the mixed views - cleared or thin.
+**Found in passing - the dry season is not in the state.** The weather's rain chance swings with the seasons by only +-0.08 x moisture
+(`PlanetSystems.Weather`) at every latitude: the outer tropics have no dry season, though the view draws the dry tropics' leaves falling in one
+(an elaboration of the climate's class, not of the state). **Candidate W-FOREST pass 2b**: the rain belt follows the sun - in the outer tropics
+(|latitude| ~8-25 degrees) the seasonal swing of the rain chance grows to most of its mean (wet summers, dry winters: the savanna's), none on the
+equator and in the subtropical highs; the annual moisture index unchanged. What it would change, from the state: the soil dries in the dry
+season - the grass browns (`CellColour` already browns it by soil water), fires find dry fuel (the savanna's fire season), herds and wild grazers
+thin out on the dry pasture, the deciduous woodland's leaf fall becomes the soil's own; the crops grow in the wet summer (their growth reads soil
+water only in the growing stage, local summer), so harvests should hold. Ten seeds against pass 2 (hunger, herds, fires, people), then shots of
+the four climates side by side in the dry and the wet season.
+
 ## 9. The civilisation made visible (D2-089)
 
 Done so far (D2-090-D2-097): works drawn from the structure table (granaries on staddles, barns, the smithy with smoke while a smith works,

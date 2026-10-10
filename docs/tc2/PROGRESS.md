@@ -4,6 +4,22 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 17, second context (10 Oct 2026, from 06:46 IST; Control Room, Resource Governor LOW; the machine at 75-96 % RAM from other
+  applications much of the time)** - (1) queue 3 closed: the controls byte-identical (`_c0` = `_s2`, `_c1`/`_c2` = `_n1`); ten seeds of the
+  final binary against `_n1` at par in rates; boats lost x1.68 traced to `_n1`'s luck (the lowest of 65 run families; `place --sheds`: a shed fits
+  at every landing either way). (2) **The Unity side compiled and shot for the first time**: `node tc2/scripts/unity.mjs cc` (new: the C# without
+  the editor, half a minute), then the real game: shots of a loaded save had shown everyone standing at their doors ("at work or on the move 0")
+  - the save lived its days only from its next midnight; `ShotRunner` now waits for the lived day (`--village town` for the town's own hour);
+  on a lived morning 2,155 of 3,001 people drawn are busy, with poses, ways along streets, gardens and pens (`27` §8). (3) The full suite
+  365/366: DefenceTests' palisade test traced year by year - the soil's leaner worlds (D2-139) make its town raise a third ring at year 25,
+  legitimately; the test now checks the old ring's yearly rot (8/8); the determinism lint caught four float subtractions (fixed). (4) **D2-141's
+  street clearance makes a people wave** (x1.02-1.07 over years 140-199, x0.95 over 280-299, t -3.7) - attributed with ten seeds of the ring rule
+  alone (`_v5b`: none); the ring rule now passes a work only where that costs no home (`Conflict.PastWorks`, `_v4`). (5) **Adults idle ~7 of 12
+  daylight hours** outside the harvest (`timeuse --daylight --stages`, new) and the kitchen gardens drawn behind every house are worked by nobody:
+  C3.7a the garden designed (`26` §2h: the croft measured from the layout, 150-300 m2, 2-4 % of a household's food, 60-80 h a year) and written
+  in the worktree `C:/Game Dev/tc-garden` (branch `tc2-garden`; not yet compiled). (6) W-FOREST pass 2: trees by the growing season's warmth
+  (D2-142, `--oldwoods` = `_v4` byte-identical; ten seeds `_w1` running); the rain has no seasons at any latitude - candidate pass 2b (the outer
+  tropics' wet summers and dry winters; `18` §8, `scratchpad/p_drytropics.py` not applied).
 - **Session 17 (10 Oct 2026, from 05:04 IST; Control Room, Resource Governor LOW) - the soil and the niche closed; the visual truth audit
   (`docs/tc2/27_VISUAL_TRUTH.md`)**. (1) **D2-139 the soil closed**: HEAD had not compiled (the niche code shadowed `days`; a tools `sb`) - fixed;
   the last three seeds on the soil's binary; ten seeds against `_k2`: people at year 300 x0.59, births a person-year x0.99, hunger a person-year
