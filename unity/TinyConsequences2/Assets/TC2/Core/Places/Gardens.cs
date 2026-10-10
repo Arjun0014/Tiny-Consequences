@@ -67,8 +67,8 @@ namespace TC2.Core.Places
         static readonly System.Collections.Generic.List<int> _near = new System.Collections.Generic.List<int>();
 
         /// <summary>
-        /// The croft's free strips in the house's frame (centre along its front, toward it; half sizes) - behind it first (its middle column first:
-        /// where its gardener goes), then beside each end; the view draws its beds on them and `Measure` sums them. Behind: three columns as wide as
+        /// The croft's free ground in the house's frame as rectangles (centre along its front, toward it; half sizes), one a column or row - behind it
+        /// first (its middle column first: where its gardener goes), then beside each end; the view draws its beds on them and `Measure` sums them. Behind: three columns as wide as
         /// the house and 2 m more each side, each followed back 2 m at a time while free and short of half the way to the next home behind; beside each
         /// end: the half by the house and the half behind it, each followed outward 4 m at a time while free and short of half the way to the next home
         /// along. Free: no other building's ground (the near ones, gathered once), not the green, no street or lane where lined (as `YardFree`). Read only.
@@ -108,13 +108,9 @@ namespace TC2.Core.Places
             double wx = hx + 2.0, cw = wx * 2.0 / 3.0;
             for (int k = 0; k < 3; k++)
             {
-                double cx = (k == 0 ? 0 : k == 1 ? -1 : 1) * cw;
-                for (double d = 0.0; d + Row <= back + 1e-9; d += Row)
-                {
-                    double cz = -(hz + d + Row * 0.5);
-                    if (!Free(w, in s, in b, af, cx, cz, cw * 0.5, Row * 0.5)) break;
-                    into.Add((cx, cz, cw * 0.5, Row * 0.5));
-                }
+                double cx = (k == 0 ? 0 : k == 1 ? -1 : 1) * cw, d = 0.0;
+                while (d + Row <= back + 1e-9 && Free(w, in s, in b, af, cx, -(hz + d + Row * 0.5), cw * 0.5, Row * 0.5)) d += Row;
+                if (d > 0) into.Add((cx, -(hz + d * 0.5), cw * 0.5, d * 0.5));   // (the column's free rows, one bed: contiguous from the wall)
             }
             double zf = hz - 1.0, zb = -(hz + Strip), zm = 0.5 * (zf + zb), hzs = 0.25 * (zf - zb);
             for (int side = -1; side <= 1; side += 2)
@@ -122,13 +118,9 @@ namespace TC2.Core.Places
                 double room = side > 0 ? right : left;
                 for (int row = 0; row < 2; row++)
                 {
-                    double cz = row == 0 ? zm + hzs : zm - hzs;
-                    for (double d = 0.0; d + Strip <= room + 1e-9; d += Strip)
-                    {
-                        double cx = side * (hx + d + Strip * 0.5);
-                        if (!Free(w, in s, in b, af, cx, cz, Strip * 0.5, hzs)) break;
-                        into.Add((cx, cz, Strip * 0.5, hzs));
-                    }
+                    double cz = row == 0 ? zm + hzs : zm - hzs, d = 0.0;
+                    while (d + Strip <= room + 1e-9 && Free(w, in s, in b, af, side * (hx + d + Strip * 0.5), cz, Strip * 0.5, hzs)) d += Strip;
+                    if (d > 0) into.Add((side * (hx + d * 0.5), cz, d * 0.5, hzs));   // (the row's free columns, one bed)
                 }
             }
         }

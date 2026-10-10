@@ -35,6 +35,7 @@ namespace TC2.Headless
                     case "follow":
                         return Commands.Follow(args);
                     case "timeuse":
+                        Commands.Switches(args);
                         return Commands.TimeUse(args);
                     case "chronicle":
                         return Commands.ChronicleBook(args);

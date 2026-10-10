@@ -846,9 +846,19 @@ namespace TC2.Game
                         float penZ = -W / 2f - 3.2f - 2.1f;
                         for (int gi = 0; gi < plot.Beds.Count; gi++)
                         {
+                            // each column or row of the croft tiled with beds of the kit's size (6 x 4.4 m), the last ones shortened to fit; behind, the
+                            // beds within the pen's ground give way to it
                             var bd = plot.Beds[gi];
-                            if (pen && bd.cx == 0.0 && Mathf.Abs((float)bd.cz - penZ) < (float)bd.hz + 2.3f) continue;
-                            _gardens.Add(0, Color.white, m * Matrix4x4.TRS(new Vector3((float)bd.cx, 0f, (float)bd.cz), Quaternion.identity, new Vector3((float)(2.0 * bd.hx) / 6f, 1f, (float)(2.0 * bd.hz) / 4.4f)));
+                            float bw = (float)(2.0 * bd.hx), bl = (float)(2.0 * bd.hz);
+                            int nx = Mathf.Max(1, Mathf.RoundToInt(bw / 6f)), nz = Mathf.Max(1, Mathf.RoundToInt(bl / 4.4f));
+                            float tw = bw / nx, tl = bl / nz;
+                            for (int ix = 0; ix < nx; ix++)
+                                for (int iz = 0; iz < nz; iz++)
+                                {
+                                    float tx = (float)bd.cx - bw * 0.5f + tw * (ix + 0.5f), tz = (float)bd.cz - bl * 0.5f + tl * (iz + 0.5f);
+                                    if (pen && Mathf.Abs(tx) < 2.2f + tw * 0.5f && Mathf.Abs(tz - penZ) < 2.3f + tl * 0.5f) continue;
+                                    _gardens.Add(0, Color.white, m * Matrix4x4.TRS(new Vector3(tx, 0f, tz), Quaternion.identity, new Vector3(tw * 0.92f / 6f, 1f, tl * 0.92f / 4.4f)));
+                                }
                         }
                     }
                 }
