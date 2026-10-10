@@ -567,6 +567,17 @@ namespace TC2.Core.Agents
                         if (qid != 0) Stone.Cut(w, p.At, qid, hours, Stone.CutRate(in p, Tools(p.Household)), false, p.Household);
                     }
                     break;
+                case ActivityKind.Garden:
+                    if (p.At != 0 && p.At == p.Home && hours > 0 && w.Households.Exists(p.Household))
+                    {
+                        // the household's garden (C3.7a): dug and weeded while the crops grow, what it bears gathered into the larder from the ripening
+                        ref var hh = ref w.Households.Get(p.Household);
+                        ref var s = ref w.Settlements.Get(p.At);
+                        double gH = hours * (0.5 + 0.5 * p.Health);
+                        double gFu = Gardens.Work(ref hh, SimTime.DayOfYear(now + TC2.Core.Planet.PlanetState.LocalOffset(s.Anchor)), s.CropGrowth, gH);
+                        w.Metrics.GardenHours += gH; w.Metrics.GardenFu += gFu;
+                    }
+                    break;
                 case ActivityKind.Craft:
                     if (p.At != 0 && p.At == p.Home && hours > 0 && w.Households.Exists(p.Household))
                     {
@@ -616,7 +627,7 @@ namespace TC2.Core.Agents
         /// <summary>Activities that are work: they count toward a day's labour.</summary>
         static bool IsWork(ActivityKind a) => a == ActivityKind.Fields || a == ActivityKind.Wood || a == ActivityKind.Build || a == ActivityKind.Hunt ||
                                               a == ActivityKind.Fish || a == ActivityKind.Gather || a == ActivityKind.Haul || a == ActivityKind.Tend ||
-                                              a == ActivityKind.Cook || a == ActivityKind.Water || a == ActivityKind.Craft || a == ActivityKind.Quarry || a == ActivityKind.Smith || a == ActivityKind.Train || a == ActivityKind.Mine || a == ActivityKind.Burn || a == ActivityKind.Sail || a == ActivityKind.Weave || a == ActivityKind.Pot;
+                                              a == ActivityKind.Cook || a == ActivityKind.Water || a == ActivityKind.Craft || a == ActivityKind.Quarry || a == ActivityKind.Smith || a == ActivityKind.Train || a == ActivityKind.Mine || a == ActivityKind.Burn || a == ActivityKind.Sail || a == ActivityKind.Weave || a == ActivityKind.Pot || a == ActivityKind.Garden;
 
         /// <summary>How much a day's labour still leaves for the slack's work: whole until five hours, a fifth past eight.</summary>
         static double DayLeft(in Person p) => DMath.Clamp(1.0 - (p.Worked - 5.0) / 3.0, 0.2, 1.0);
@@ -1144,6 +1155,18 @@ namespace TC2.Core.Agents
                 double u = 0.42 * elder * (0.6 + 0.4 * p.Diligence / 255.0) + 0.12 * rs.NextUnit();
                 if (u > best) { best = u; choice = 20; }
             }
+            if (day && atHome && w.Households.Exists(p.Household) && !Gardens.Off)
+            {
+                // the household's garden behind its house (C3.7a): dug and weeded while the crops grow, gathered from the ripening - its own work, as its
+                // meals and water are, wanted as far as it is behindhand (above the slack's company and idling, below the fields, the meals and the fuel)
+                ref var gHh = ref w.Households.Get(p.Household);
+                double gBehind = Gardens.Behindhand(in gHh, SimTime.DayOfYear(now + TC2.Core.Planet.PlanetState.LocalOffset(here.Anchor)), here.CropGrowth);
+                if (gBehind > 0.5)
+                {
+                    double u = (0.32 + 0.22 * DMath.Clamp01(gBehind / DMath.Max(1.0, 0.25 * Gardens.YearH * gHh.Garden))) * elder * (0.6 + 0.4 * p.Diligence / 255.0) + 0.1 * rs.NextUnit();
+                    if (u > best) { best = u; choice = 25; }
+                }
+            }
             if (day && atHome && age >= 16 && age < 60 && p.Health > 0.6 && Carts.HasWork(w, p.Household))
             {
                 // the household is making a cart (C4.2): its grown members cut and shape the wheels, the axle and the bed in the yard - their own small job,
@@ -1296,6 +1319,14 @@ namespace TC2.Core.Agents
                     {
                         ref var qb = ref w.Buildings.Get(quarry);
                         BeginLocal(ref p, ActivityKind.Quarry, WhyCode.Stone, 0, qb.X + rs.Range(-6, 6), qb.Y + rs.Range(-6, 6), SimTime.Hours(2.5 + 1.5 * rs.NextUnit()));
+                        return;
+                    }
+                case 25:
+                    {
+                        ref var gHh = ref w.Households.Get(p.Household);   // (at its croft: the first free strip behind or beside the house)
+                        double gx = gHh.HomeX, gy = gHh.HomeY;
+                        if (gHh.Building != 0 && w.Buildings.Exists(gHh.Building)) Gardens.Measure(w, p.Home, gHh.Building, out gx, out gy);
+                        BeginLocal(ref p, ActivityKind.Garden, WhyCode.Garden, 0, gx + rs.Range(-2, 2), gy + rs.Range(-2, 2), SimTime.Hours(1.5 + 1.0 * rs.NextUnit()));
                         return;
                     }
                 case 24:
@@ -1950,6 +1981,19 @@ namespace TC2.Core.Agents
                 }
                 int lslot = -1;
                 if (LandHours != null) { lslot = LandSlot(w, in s); LandHours[lslot] += days; LandHours[lslot + 1] += cropH; LandHours[lslot + 2] += hours; }
+                if (hours > 0 && !Gardens.Off && w.Households.Exists(p.Household))
+                {
+                    // the household's garden (C3.7a): its own ground after the village's fields, as far as its season wants it by the step's last day
+                    ref var gHh = ref w.Households.Get(p.Household);
+                    int gDoy = SimTime.DayOfYear(now + TC2.Core.Planet.PlanetState.LocalOffset(s.Anchor) + (days - 1) * SimTime.Day);
+                    double gWant = Gardens.Behindhand(in gHh, gDoy, s.CropGrowth);
+                    if (gWant > 0)
+                    {
+                        double gH = DMath.Min(hours, gWant);
+                        double gFu = Gardens.Work(ref gHh, gDoy, s.CropGrowth, gH);
+                        hours -= gH; w.Metrics.GardenHours += gH; w.Metrics.GardenFu += gFu;
+                    }
+                }
                 if (hours > 0 && age >= 16 && age < 60 && p.Health > 0.6 && Carts.HasWork(w, p.Household) && !(shortNow && WildNeed(in s, now, ration) > Carts.ShortBound))
                 {
                     // the household is making a cart (C4.2): a couple of its grown members' hours a day go to it before the village's building - their own
