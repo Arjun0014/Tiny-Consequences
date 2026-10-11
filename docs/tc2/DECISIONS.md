@@ -4214,4 +4214,27 @@ million FU over the ten worlds) for x1.16 the hours (42.2 -> 48.8 million): 0.05
 200-299 x0.98 (t -0.7), births x0.99, deaths x1.00, hunger x1.03 (t 0.5), famines x0.95 (t -0.8); births and deaths a person-year x1.01 and
 x1.02 (t ~2, the size earlier slices were kept at). Sickness x4.1 (t 1.8) is chance: one or two epidemics dominate a family - over years
 100-299 the same ten seeds held 1,193 (`_n1`), 4,797 (`_v3`), 4,387 (`_v4`), 1,337 (`_w1`), 2,260 (`_g1`) and 5,194 (`_g2`) sick, 106-275
-epidemics (`_g2` 231); seed 42's people at year 300 x0.69 follow its 1,700 sick. Real shots: pending (the batch editor's queue, session 18).
+epidemics (`_g2` 231); seed 42's people at year 300 x0.69 follow its 1,700 sick. Real shots: `tc2/out/shots/s18a` (day 8: fresh ridged earth where dug, an olive rough where not yet) and `s18b` (the town on day 20: green beds
+in leaf; none in the built-up core) - and two faults, D2-145.
+
+## D2-145 — 2026-10-11 — A croft's ground counted once; its wattle along its outline (C3.7a closing, from the real shots)
+
+**Context.** The first real shots of the gardens (`tc2/out/shots/s18a`, seed 4 `_g2` at year 300 lived to day 8 of the sowing; `s18b` the town on
+day 20): the season reads - fresh ridged earth where a croft is dug, an olive rough where it is not yet, green beds in leaf - but (1) every 6 x 4.4
+m bed carried its own wattle hurdles on three sides, so a croft of a dozen beds read as a stack of wooden crates, and (2) looking at why beds
+crowded the house ends: the croft beside an end (`Gardens.Strips`) began at the end wall while the three columns behind already reach 2 m past it
+each side - up to 2 x 4 m per side counted twice in its area (`Measure` sums the rectangles) and drawn twice, and the end yard where the view stands
+the woodpile and the cart was garden.
+**Decision.** (1) The croft beside each end begins beyond an end yard of 2 m (`Gardens.EndYard`: the width the croft behind reaches past the
+house), still 8 m deep at most and short of half the way to the next home along (measured from the end wall as before) - no two of a croft's
+rectangles overlap. (2) The kit's beds carry no hurdles (`garden`, `garden_bare`); a wattle hurdle (`hurdle`: a 2 m panel in three woven courses,
+30 faces) is set end to end along the croft's open outline (`WorldObjectsView.CroftFence`: each rectangle's edges less where another of them or
+the house's walls run along them; none through the pen); the beds fill their rectangles (0.97). Within sim version 76 (no format change).
+**Evidence.** GardenTests 5/5 (the croft test now asserts no two of a croft's rectangles overlap, none lies under its house, its area is their
+sum), HouseholdWork 4, the lint clean, the Unity C# compiles. Control `--nogarden` seed 4 = `_g0` (annals byte-identical). Ten seeds, 300 years
+DEEP (`_g3` against `_g2`): crofts at year 300 mean 143 -> 140 m2 (84 % of households either way), the gardens' hours 48.8 -> 47.3 million and
+food 4.44 -> 4.31 million FU (0.091 FU an hour); the worlds at par - people over years 200-299 x0.99 (t -0.3), births x0.97, deaths x0.97,
+hunger a person-year x0.62 (t -1.2), famines x0.83 (t -0.8); seed 4's people at year 300 x0.56 follow an epidemic at years 220-280 (3,572 sick
+in one span) where `_g1`/`_g2` met famines instead, seed 42's x1.42 the epidemic it missed; drowned x0.40 (t -2.6) is the boats' luck (D2-141
+saw x1.68 the other way; the crofts cannot reach the sea). Real shots (`tc2/out/shots/s18c`, `s18d`: seed 4 `_g3` at year 300, day 8 and the
+town on day 20): each croft reads as one wattled plot behind its house - dug beds and the rough beside them, people at work in them.

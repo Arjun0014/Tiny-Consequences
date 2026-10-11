@@ -320,7 +320,10 @@ holdings), the Postan squeeze where land binds, legumes and the three-field cour
 **Built (D2-143, sim version 76)**: `Core/Places/Gardens.cs` - the croft measured from the layout (columns of 2 m rows behind, 4 m columns beside;
 ~0.76 of the free ground the 2 m cells find), dug, weeded and gathered by lived and COARSE days, its produce into the larder; the view's beds on
 the croft's own rectangles; `--nogarden`. Ten seeds at par; at year 300 83-86 % of households have a garden (mean ~130 m2); a lived year: 0.3 of
-the 12 daylight hours in the garden, nearly all from idling; under 1 % of the food. The research and design below are as written before the
+the 12 daylight hours in the garden, nearly all from idling; under 1 % of the food. **D2-144** (session 18): the gardens kept the north's calendar in southern villages (dug at the reaping, gathered
+while the crop grew) - fixed with one `SettlementSystem.DayOfYear`; the gardens' food over ten worlds x2.05 (0.091 FU an hour, north and south
+alike); the beds drawn by their season. **D2-145**: a croft's rectangles never overlap (the croft beside an end begins beyond a 2 m end yard);
+one wattle fence along its outline. The research and design below are as written before the
 build (its figures for the croft's yield, 2-4 %, assumed the record's croft; the layout's crofts and the season's growth give less).
 
 **Why (measured).** Arjun's playtest saw people standing still (`27`). Presence now draws what they do, but much of what they do is nothing:

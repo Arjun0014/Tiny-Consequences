@@ -38,6 +38,13 @@ namespace TC2.Tests.Core
             Gardens.Year(w, sid);
         }
 
+        /// <summary>m2 two rectangles of one frame (centres, half sizes) share.</summary>
+        static double Overlap(double ax, double az, double ahx, double ahz, double bx, double bz, double bhx, double bhz)
+        {
+            double ox = Math.Min(ax + ahx, bx + bhx) - Math.Max(ax - ahx, bx - bhx), oz = Math.Min(az + ahz, bz + bhz) - Math.Max(az - ahz, bz - bhz);
+            return ox > 0 && oz > 0 ? ox * oz : 0.0;
+        }
+
         [Test]
         public void ACroftIsTheFreeGroundBehindAndBesideAHome()
         {
@@ -53,6 +60,23 @@ namespace TC2.Tests.Core
                 homes++;
                 double m2 = Gardens.Measure(w, sid, hh.Building, out double gx, out double gy);
                 Assert.That(m2, Is.InRange(0.0, Gardens.MaxM2), "within a croft's size");
+                // (D2-145) its rectangles never overlap each other nor its house: the croft beside an end begins where the croft behind ends
+                var strips = new System.Collections.Generic.List<(double cx, double cz, double hx, double hz)>();
+                Gardens.Strips(w, sid, hh.Building, strips);
+                Gardens.Extent(Footprints.PlanOf(in w.Buildings.Get(hh.Building)), out double ehx, out double ehz);
+                double sum2 = 0;
+                for (int a = 0; a < strips.Count; a++)
+                {
+                    var ra = strips[a];
+                    sum2 += 4.0 * ra.hx * ra.hz;
+                    Assert.LessOrEqual(Overlap(ra.cx, ra.cz, ra.hx, ra.hz, 0, 0, ehx, ehz), 1e-6, "a croft's bed never under its house");
+                    for (int c = a + 1; c < strips.Count; c++)
+                    {
+                        var rc = strips[c];
+                        Assert.LessOrEqual(Overlap(ra.cx, ra.cz, ra.hx, ra.hz, rc.cx, rc.cz, rc.hx, rc.hz), 1e-6, "no ground of a croft counted twice");
+                    }
+                }
+                Assert.AreEqual(System.Math.Min(Gardens.MaxM2, sum2), m2, 1e-6, "its area the sum of its rectangles");
                 Assert.AreEqual(m2, hh.Garden, 1e-3, "the croft measured when the year turned");
                 if (m2 > 0)
                 {

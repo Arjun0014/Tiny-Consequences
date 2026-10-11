@@ -104,6 +104,7 @@ ploughed (the fallow's summer ploughing).
 | Training (C1.5) | beaten ground by hours of practice | sparring (s17) | - |
 | Palisades (D2-074, C7.1) | posts by condition, gates where the ways cross (s17) | raised stretch by stretch | - |
 | Homes by means, plans, age (D2-114) | forms, roofs, extensions, gardens, wear | smoke, lit windows | - |
+| Gardens (C3.7a, D2-143-145) | beds on each croft as the simulation measures it, by its season: fresh earth dug, in leaf, cleared as gathered, weedy where undug; one wattle fence round the croft | people hoe and stoop in the beds | the beds' crops by kind (one kit bed) |
 | Headmen, the first household (C10.2) | - | - | **not drawn** |
 | Famine | gatherers in the wild, empty stores (no hay) | - | weak |
 | Abandonment, ruins (D2-052) | empty homes weather, roofs go, walls fall | - | - |
@@ -138,3 +139,9 @@ in the batch editor with the shaders (`unity.mjs shots`; `TC2Pose` compiled in t
   simulation has no garden): a visual-truth fault of the presentation - the design that makes them real is `26` §2h (C3.7a).
 - **Adults idle about 7 of the 12 daylight hours** outside the harvest (`timeuse --daylight --stages`, `26` §2h): B of §1 is real idleness, not a
   drawing fault - the household's own work of a medieval year is missing from the scheduler (§7 B; the garden first).
+- **The gardens in real shots (session 18; `tc2/out/shots/s18a`, `s18b`: seed 4 `_g2` at year 300, lived to day 8 of the sowing and to day 20)**:
+  the season reads - fresh ridged earth where a croft is dug, an olive rough where it is not yet, green beds in leaf; a town's built-up core has
+  none. Two faults found and fixed (D2-145): every bed carried its own wattle on three sides, so a croft read as a stack of crates (now one fence
+  along its outline), and the croft beside an end overlapped the croft behind (2 x 4 m a side counted twice, drawn twice, over the end yard where
+  the woodpile and the cart stand). Before them, D2-144: southern crofts kept the north's calendar (dug at the reaping, gathered while the crop
+  grew) - one `SettlementSystem.DayOfYear` for every use of a village's calendar.

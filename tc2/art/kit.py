@@ -1043,8 +1043,8 @@ def outshut(name, seed=24):
 
 
 def garden(name, seed=27):
-    """A household's kitchen garden behind its house (D2-114): beds of dug earth in rows of greens, wattle hurdles on three sides (the open side
-    toward the house, kit -y). 6 x 4.4 m; the game scales it by the household's hands and turns it with the house."""
+    """A bed of a household's kitchen garden (D2-114, C3.7a): raised beds of dug earth in rows of greens, 6 x 4.4 m; the game tiles its croft with
+    them and fences the croft's outline with `hurdle` (D2-145: hurdles round each bed made a croft a stack of crates)."""
     k = Kit(name, seed)
     k.box((0, 0, 0.025), (6.0, 4.4, 0.05), srgb(0.44, 0.34, 0.24))            # the plot's trodden earth
     greens = (srgb(0.30, 0.47, 0.20), srgb(0.38, 0.52, 0.24), srgb(0.27, 0.40, 0.22), srgb(0.46, 0.55, 0.30))
@@ -1056,17 +1056,12 @@ def garden(name, seed=27):
             x = -2.3 + j * 0.77 + k.rng.uniform(-0.08, 0.08)
             h = k.rng.uniform(0.22, 0.36) if i != 2 else k.rng.uniform(0.45, 0.6)   # (a row of beans on short poles)
             k.box((x, y + k.rng.uniform(-0.06, 0.06), 0.12 + h / 2.0), (0.34, 0.34, h), g, rot_z=k.rng.uniform(0, 1.2))
-    wattle = srgb(0.46, 0.35, 0.23)
-    for (cx, cy, lx, ly) in ((0.0, 2.2, 6.0, 0.08), (-3.0, 0.0, 0.08, 4.4), (3.0, 0.0, 0.08, 4.4)):
-        k.box((cx, cy, 0.42), (lx, ly, 0.84), wattle)                            # the hurdles
-    for (x, y) in ((-3.0, 2.2), (3.0, 2.2), (-3.0, -2.2), (3.0, -2.2), (0.0, 2.2)):
-        k.box((x, y, 0.5), (0.12, 0.12, 1.0), srgb(0.36, 0.27, 0.18))          # stakes
     return k.finish()
 
 
 def garden_bare(name, seed=28):
     """The same garden out of leaf (C3.7a, the bed's season): its beds and clods tinted per instance - fresh dug earth in the sowing and once
-    gathered, a weedy rough where nobody dug it this year; the hurdles and stakes as `garden`. 6 x 4.4 m, the open side toward the house (kit -y)."""
+    gathered, a weedy rough where nobody dug it this year. 6 x 4.4 m, as `garden`."""
     k = Kit(name, seed)
     k.box((0, 0, 0.025), (6.0, 4.4, 0.05), srgb(0.44, 0.34, 0.24))            # the plot's trodden earth
     bed = srgb(0.90, 0.90, 0.90, 1.0)                                         # tinted per instance: the bed's earth as it is this season
@@ -1078,11 +1073,18 @@ def garden_bare(name, seed=28):
         for j in range(6):
             x = -2.2 + j * 0.88 + k.rng.uniform(-0.15, 0.15)
             k.box((x, y + k.rng.uniform(-0.18, 0.18), 0.15), (0.22, 0.18, 0.08), bed, rot_z=k.rng.uniform(0, 1.5))   # clods
-    wattle = srgb(0.46, 0.35, 0.23)
-    for (cx, cy, lx, ly) in ((0.0, 2.2, 6.0, 0.08), (-3.0, 0.0, 0.08, 4.4), (3.0, 0.0, 0.08, 4.4)):
-        k.box((cx, cy, 0.42), (lx, ly, 0.84), wattle)                            # the hurdles
-    for (x, y) in ((-3.0, 2.2), (3.0, 2.2), (-3.0, -2.2), (3.0, -2.2), (0.0, 2.2)):
-        k.box((x, y, 0.5), (0.12, 0.12, 1.0), srgb(0.36, 0.27, 0.18))          # stakes
+    return k.finish()
+
+
+def hurdle(name, seed=29):
+    """A wattle hurdle (D2-145): a 2 m panel of hazel rods woven between upright sails, a stake at each end, 0.75 m high - the game sets them
+    end to end along a croft's open outline (scaled along x to fit), a garden's fence as against a pen's rails (`fence`)."""
+    k = Kit(name, seed)
+    rod = (srgb(0.47, 0.36, 0.23), srgb(0.40, 0.30, 0.19))
+    for i in range(3):
+        k.box((0, 0.015 * (1 if i % 2 else -1), 0.2 + i * 0.21), (1.96, 0.05, 0.19), rod[i % 2])   # the weave in three courses (cheap: a croft has many)
+    for x in (-0.98, 0.98):
+        k.box((x, 0, 0.45), (0.08, 0.08, 0.9), srgb(0.33, 0.25, 0.17))           # the stakes
     return k.finish()
 
 
@@ -1097,6 +1099,7 @@ def homes():
     objs.append(outshut("outshut"))
     objs.append(garden("garden"))
     objs.append(garden_bare("garden_bare"))
+    objs.append(hurdle("hurdle"))
     return objs
 
 

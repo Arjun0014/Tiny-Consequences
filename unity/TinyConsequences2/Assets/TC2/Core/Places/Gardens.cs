@@ -42,13 +42,16 @@ namespace TC2.Core.Places
         public const double FuPerM2 = 0.03;
         /// <summary>m2: the most a household's croft is measured to (a tenth of an acre and a little more).</summary>
         public const double MaxM2 = 320.0;
-        /// <summary>m: how far its croft is measured - 16 m behind its back wall, 8 m beside each end (in 4 m columns).</summary>
+        /// <summary>m: how far its croft is measured - 16 m behind its back wall, 8 m beside each end beyond its end yard (in 4 m columns).</summary>
         const double Strip = 4.0, Behind = 16.0, Beside = 8.0;
+        /// <summary>m: the yard by each end wall left out of the croft (where the woodpile and the cart stand, the view's; and the width the croft
+        /// behind reaches past the house each side - so the croft beside an end begins where the croft behind ends: D2-145).</summary>
+        const double EndYard = 2.0;
         /// <summary>The crop calendar's days (SettlementSystem): the sowing to day 12, the growing to day 30, the gathering to the year's end.</summary>
         const double SowEnd = 12.0, GrowEnd = 30.0, YearEnd = 48.0;
 
         /// <summary>The house's half extent in its own frame (along its front, toward it), walls and eaves.</summary>
-        static void Extent(int plan, out double hx, out double hz)
+        public static void Extent(int plan, out double hx, out double hz)
         {
             hx = 0; hz = 0;
             for (int q = 0; q < Footprints.Count(plan); q++)
@@ -89,7 +92,8 @@ namespace TC2.Core.Places
         /// The croft's free ground in the house's frame as rectangles (centre along its front, toward it; half sizes), one a column or row - behind it
         /// first (its middle column first: where its gardener goes), then beside each end; the view draws its beds on them and `Measure` sums them. Behind: three columns as wide as
         /// the house and 2 m more each side, each followed back 2 m at a time while free and short of half the way to the next home behind; beside each
-        /// end: the half by the house and the half behind it, each followed outward 4 m at a time while free and short of half the way to the next home
+        /// end, beyond its end yard (the 2 m the croft behind reaches past the house - so no two of a croft's rectangles overlap, D2-145): the half by
+        /// the house and the half behind it, each followed outward 4 m at a time while free and short of half the way to the next home
         /// along. Free: no other building's ground (the near ones, gathered once), not the green, no street or lane where lined (as `YardFree`). Read only.
         /// </summary>
         public static void Strips(World w, int sid, int bid, System.Collections.Generic.List<(double cx, double cz, double hx, double hz)> into)
@@ -102,7 +106,7 @@ namespace TC2.Core.Places
             double af = Footprints.FaceOf(in s, in b), fx = DMath.Cos(af), fy = DMath.Sin(af), ux = -fy, uy = fx;
             // the near buildings (within the croft's reach and their own), and half the way to the nearest home behind and along each end
             double reach = DMath.Sqrt((hx + Beside + Strip) * (hx + Beside + Strip) + (hz + Behind) * (hz + Behind));
-            double back = Behind, left = Beside, right = Beside;
+            double back = Behind, left = Beside + EndYard, right = Beside + EndYard;
             _near.Clear();
             var bl = w.BuildingsOf(sid);
             for (int i = 0; i < bl.Count; i++)
@@ -124,7 +128,7 @@ namespace TC2.Core.Places
                     else left = DMath.Min(left, -across * 0.5 - hx);
                 }
             }
-            double wx = hx + 2.0, cw = wx * 2.0 / 3.0;
+            double wx = hx + EndYard, cw = wx * 2.0 / 3.0;
             for (int k = 0; k < 3; k++)
             {
                 double cx = (k == 0 ? 0 : k == 1 ? -1 : 1) * cw, d = 0.0;
@@ -134,12 +138,12 @@ namespace TC2.Core.Places
             double zf = hz - 1.0, zb = -(hz + Strip), zm = 0.5 * (zf + zb), hzs = 0.25 * (zf - zb);
             for (int side = -1; side <= 1; side += 2)
             {
-                double room = side > 0 ? right : left;
+                double room = (side > 0 ? right : left) - EndYard;   // (from the end yard's edge: the croft behind reaches it)
                 for (int row = 0; row < 2; row++)
                 {
                     double cz = row == 0 ? zm + hzs : zm - hzs, d = 0.0;
-                    while (d + Strip <= room + 1e-9 && Free(w, in s, in b, af, side * (hx + d + Strip * 0.5), cz, Strip * 0.5, hzs)) d += Strip;
-                    if (d > 0) into.Add((side * (hx + d * 0.5), cz, d * 0.5, hzs));   // (the row's free columns, one bed)
+                    while (d + Strip <= room + 1e-9 && Free(w, in s, in b, af, side * (wx + d + Strip * 0.5), cz, Strip * 0.5, hzs)) d += Strip;
+                    if (d > 0) into.Add((side * (wx + d * 0.5), cz, d * 0.5, hzs));   // (the row's free columns, one bed)
                 }
             }
         }
