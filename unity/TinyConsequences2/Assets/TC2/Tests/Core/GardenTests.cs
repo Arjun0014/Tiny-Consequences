@@ -130,6 +130,70 @@ namespace TC2.Tests.Core
             Assert.IsNull(TestWorlds.Audit(w));
         }
 
+        /// <summary>
+        /// Every village's gardens keep its own calendar (D2-144): dug and weeded only while its crop is sown or growing, gathered only once it is ripe -
+        /// a southern village's half a year on, as its fields are. (The garden had kept the north's days everywhere: a southern croft was dug while its
+        /// village reaped and gathered while its crop was still growing.)
+        /// </summary>
+        [Test]
+        public void AGardenKeepsItsOwnVillagesCalendarInBothHemispheres()
+        {
+            World w = null;
+            int south = 0, north = 0;
+            for (ulong seed = 431; seed < 500 && (south == 0 || north == 0); seed++)
+            {
+                w = TestWorlds.Make(seed); south = 0; north = 0;
+                for (int s = w.Settlements.First(); s != 0; s = w.Settlements.Next(s))
+                {
+                    if (!w.Settlements.Get(s).Inhabited) continue;
+                    if (w.Settlements.Get(s).Anchor.Y < 0) { if (south == 0) south = s; }
+                    else if (north == 0) north = s;
+                }
+            }
+            Assert.AreNotEqual(0, south, "a world with a southern village");
+            Assert.AreNotEqual(0, north, "and a northern one");
+            int[] sids = { north, south };
+            foreach (int sid in sids) Housed(w, sid);
+            Coarse(w);
+            var dug = new double[2]; var gathered = new double[2]; var wrongDig = new double[2]; var wrongGather = new double[2]; var grew = new double[2];
+            for (int d = 0; d < SimTime.DaysPerYear + 4; d++)
+            {
+                var before = new CropStage[2]; var work0 = new double[2]; var fu0 = new double[2];
+                for (int v = 0; v < 2; v++)
+                {
+                    before[v] = w.Settlements.Get(sids[v]).Crop;
+                    var hl = w.HouseholdsOf(sids[v]);
+                    for (int i = 0; i < hl.Count; i++) { var hh = w.Households.Get(hl[i]); work0[v] += hh.GardenWork; fu0[v] += hh.GardenFu; }
+                }
+                w.AdvanceTo(w.Now + SimTime.Day);
+                for (int v = 0; v < 2; v++)
+                {
+                    ref var s = ref w.Settlements.Get(sids[v]);
+                    grew[v] = System.Math.Max(grew[v], s.CropGrowth);
+                    double work1 = 0, fu1 = 0;
+                    var hl = w.HouseholdsOf(sids[v]);
+                    for (int i = 0; i < hl.Count; i++) { var hh = w.Households.Get(hl[i]); work1 += hh.GardenWork; fu1 += hh.GardenFu; }
+                    // (a day across a change of stage may belong to either; the year's turn begins the croft's year again)
+                    if (s.Crop != before[v] || work1 < work0[v] - 1e-6 || fu1 < fu0[v] - 1e-6) continue;
+                    bool ripe = s.Crop == CropStage.Ripe || s.Crop == CropStage.Harvested;
+                    double dw = work1 - work0[v], df = fu1 - fu0[v];
+                    dug[v] += dw; gathered[v] += df;
+                    if (ripe) wrongDig[v] += dw; else wrongGather[v] += df;
+                }
+            }
+            for (int v = 0; v < 2; v++)
+            {
+                string name = v == 0 ? "the northern village" : "the southern village";
+                Console.WriteLine(name + ": dug and weeded " + dug[v].ToString("0.0") + " h (" + wrongDig[v].ToString("0.0") + " while its crop was ripe or in), gathered "
+                                  + gathered[v].ToString("0.00") + " FU (" + wrongGather[v].ToString("0.00") + " while it was sown or growing); its crop grew to " + grew[v].ToString("0.00"));
+                Assert.Greater(dug[v], 0.0, name + "'s gardens were worked");
+                Assert.AreEqual(0.0, wrongDig[v], 1e-6, name + ": no digging or weeding while its crop is ripe or reaped");
+                Assert.AreEqual(0.0, wrongGather[v], 1e-6, name + ": nothing gathered while its crop is sown or growing");
+                if (grew[v] > 0.1) Assert.Greater(gathered[v], 0.0, name + ": what its gardens bore was gathered");
+            }
+            Assert.IsNull(TestWorlds.Audit(w));
+        }
+
         [Test]
         public void CoarseDaysWorkTheGardensAsLivedDaysDo()
         {
@@ -144,7 +208,7 @@ namespace TC2.Tests.Core
             double worked = w.Metrics.GardenHours - h0;
             var hl = w.HouseholdsOf(sid);
             double due = 0, done = 0;
-            int doy = SimTime.DayOfYear(w.Now + TC2.Core.Planet.PlanetState.LocalOffset(w.Settlements.Get(sid).Anchor));
+            int doy = SettlementSystem.DayOfYear(in w.Settlements.Get(sid), w.Now);
             for (int i = 0; i < hl.Count; i++) { var hh = w.Households.Get(hl[i]); due += Gardens.Behindhand(in hh, doy, 1.0) + hh.GardenWork; done += hh.GardenWork; }
             Console.WriteLine("COARSE garden hours " + worked.ToString("0.0") + "; done " + done.ToString("0.0") + " of " + due.ToString("0.0") + " due by day " + doy);
             Assert.Greater(worked, 0.0, "COARSE days give the gardens hours");

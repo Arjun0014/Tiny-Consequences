@@ -364,8 +364,7 @@ namespace TC2.Core.Worldgen
             ref var st2 = ref w.Settlements.Get(sid);
             st2.FieldHa = Math.Max(0.5, Math.Min(st2.Population * cfg.FieldHaPerPerson, st2.ArableHa));
             // the crop already in the ground for the season the world starts in
-            int doy = SimTime.DayOfYear(w.Now + PlanetState.LocalOffset(anchor));
-            if (anchor.Y < 0) doy = (doy + 24) % SimTime.DaysPerYear;
+            int doy = SettlementSystem.DayOfYear(anchor, w.Now);   // (its own calendar: the southern seasons half a year on)
             st.Crop = doy < 12 ? CropStage.Sown : (doy < 30 ? CropStage.Growing : (doy < 39 ? CropStage.Ripe : CropStage.Harvested));
             st.Sown = 0.9; st.CropGrowth = doy < 12 ? 0 : 0.5;
             st.CropWorkNeed = st.Crop == CropStage.Sown ? st.FieldHa * 40 : (st.Crop == CropStage.Growing ? st.FieldHa * 8 : (st.Crop == CropStage.Ripe ? st.FieldHa * 45 : 0));

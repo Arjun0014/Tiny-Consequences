@@ -19,6 +19,25 @@ namespace TC2.Core.Places
 
         /// <summary>Work-hours a m2 a year, by its season: digging and planting (the sowing), weeding and watering (the growing), gathering.</summary>
         public const double DigH = 0.10, TendH = 0.12, GatherH = 0.06, YearH = DigH + TendH + GatherH;
+        /// <summary>
+        /// Tools (`--gardentally`, D2-144): the gardens' work by its village's hemisphere - [0 hours, 1 FU gathered, 2 hours digging or weeding while
+        /// the village's crop was ripe or in, 3 FU gathered while it was sown or growing] in the north, [4..7] the same in the south. Null in the game;
+        /// never read by the simulation (a run with it is the same run).
+        /// </summary>
+        public static double[] Tally;
+
+        /// <summary>Counts a garden's hours on its village's day of the year (tools).</summary>
+        public static void Count(in Settlement s, int doy, double hours, double fu)
+        {
+            var t = Tally;
+            if (t == null) return;
+            int o = s.Anchor.Y < 0 ? 4 : 0;
+            t[o] += hours; t[o + 1] += fu;
+            bool ripe = s.Crop == CropStage.Ripe || s.Crop == CropStage.Harvested;
+            if (doy < GrowEnd && ripe) t[o + 2] += hours;
+            if (!ripe) t[o + 3] += fu;
+        }
+
         /// <summary>FU a m2 a year a garden kept well bears in a good year.</summary>
         public const double FuPerM2 = 0.03;
         /// <summary>m2: the most a household's croft is measured to (a tenth of an acre and a little more).</summary>

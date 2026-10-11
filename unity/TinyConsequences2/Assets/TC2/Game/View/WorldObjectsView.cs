@@ -772,7 +772,7 @@ namespace TC2.Game
             if (plot == null || plot.Beds == null || plot.Beds.Count == 0 || hid == 0 || !w.Households.Exists(hid)) return;
             ref var hh = ref w.Households.Get(hid);
             if (hh.Garden <= 0f) return;
-            int doy = SimTime.DayOfYear(w.Now + PlanetState.LocalOffset(s.Anchor));
+            int doy = SettlementSystem.DayOfYear(in s, w.Now);
             bool leaf = Gardens.Shown(in hh, doy, s.CropGrowth, out double dug, out double cleared);
             for (int pass = 0, n = 0, k = 0, nDug = 0, nCleared = 0; pass < 2; pass++)
             {

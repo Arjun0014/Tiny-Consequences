@@ -39,8 +39,7 @@ namespace TC2.Core.Places
             ref var s = ref w.Settlements.Get(sid);
             if (!s.Inhabited) return;
             long now = w.Now;
-            int doy = SimTime.DayOfYear(now + Planet.PlanetState.LocalOffset(s.Anchor));
-            if (s.Anchor.Y < 0) doy = (doy + 24) % SimTime.DaysPerYear; // southern seasons
+            int doy = DayOfYear(in s, now);   // (its own calendar: the southern seasons half a year on)
             // DEEP (04 §4.3b, F8): a calm village lives several days at a step - never across a day of its calendar (sowing, the crop
             // growing, ripe, the harvest, the day households weigh leaving), so a step's work belongs to one stage
             int days = 1;
@@ -182,8 +181,7 @@ namespace TC2.Core.Places
             var w = _w;
             var t = GapTally;
             ref var s = ref w.Settlements.Get(sid);
-            int doy = SimTime.DayOfYear(w.Now + Planet.PlanetState.LocalOffset(s.Anchor));
-            if (s.Anchor.Y < 0) doy = (doy + 24) % SimTime.DaysPerYear;
+            int doy = DayOfYear(in s, w.Now);
             int toHarvest = HarvestDay - doy; if (toHarvest < 0) toHarvest += SimTime.DaysPerYear;
             t[Math.Min(47, toHarvest)]++;
             t[48 + (int)s.Crop]++;
@@ -1318,13 +1316,26 @@ namespace TC2.Core.Places
         /// <summary>The same in years of their bread (tools, pages).</summary>
         public double CoupleMeans(int sid, int womanId, int manId) => CoupleDays(sid, womanId, manId) / SimTime.DaysPerYear;
 
+        /// <summary>
+        /// A village's own day of the year at time t - the day its crop calendar, its households' year and its gardens keep: its local day (by its
+        /// longitude), the southern seasons half a year on. Every use of the village's calendar goes through here (a garden kept the north's days
+        /// in southern villages: D2-144).
+        /// </summary>
+        public static int DayOfYear(in Settlement s, long t) => DayOfYear(s.Anchor, t);
+
+        /// <summary>The same for a place's anchor (a village being founded).</summary>
+        public static int DayOfYear(Vec3d anchor, long t)
+        {
+            int doy = SimTime.DayOfYear(t + Planet.PlanetState.LocalOffset(anchor));
+            return anchor.Y < 0 ? (doy + SimTime.DaysPerYear / 2) % SimTime.DaysPerYear : doy;
+        }
+
         /// <summary>Days from today to a village's next new grain (its own calendar: the southern seasons half a year on): its first sheaves
         /// (D2-132; --nosheaves: its harvest's day, 48 on that day).</summary>
         public int ToHarvest(int sid)
         {
             ref var s = ref _w.Settlements.Get(sid);
-            int doy = SimTime.DayOfYear(_w.Now + Planet.PlanetState.LocalOffset(s.Anchor));
-            if (s.Anchor.Y < 0) doy = (doy + 24) % SimTime.DaysPerYear;
+            int doy = DayOfYear(in s, _w.Now);
             if (!SheavesOff) return ToBread(doy, s.Crop);
             int toHarvest = HarvestDay - doy;
             return toHarvest <= 0 ? toHarvest + SimTime.DaysPerYear : toHarvest;

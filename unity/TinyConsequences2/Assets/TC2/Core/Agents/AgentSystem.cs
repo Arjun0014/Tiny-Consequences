@@ -574,8 +574,10 @@ namespace TC2.Core.Agents
                         ref var hh = ref w.Households.Get(p.Household);
                         ref var s = ref w.Settlements.Get(p.At);
                         double gH = hours * (0.5 + 0.5 * p.Health);
-                        double gFu = Gardens.Work(ref hh, SimTime.DayOfYear(now + TC2.Core.Planet.PlanetState.LocalOffset(s.Anchor)), s.CropGrowth, gH);
+                        int gDoy = SettlementSystem.DayOfYear(in s, now);   // (the village's own calendar: D2-144)
+                        double gFu = Gardens.Work(ref hh, gDoy, s.CropGrowth, gH);
                         w.Metrics.GardenHours += gH; w.Metrics.GardenFu += gFu;
+                        if (Gardens.Tally != null) Gardens.Count(in s, gDoy, gH, gFu);
                     }
                     break;
                 case ActivityKind.Craft:
@@ -1160,7 +1162,7 @@ namespace TC2.Core.Agents
                 // the household's garden behind its house (C3.7a): dug and weeded while the crops grow, gathered from the ripening - its own work, as its
                 // meals and water are, wanted as far as it is behindhand (above the slack's company and idling, below the fields, the meals and the fuel)
                 ref var gHh = ref w.Households.Get(p.Household);
-                double gBehind = Gardens.Behindhand(in gHh, SimTime.DayOfYear(now + TC2.Core.Planet.PlanetState.LocalOffset(here.Anchor)), here.CropGrowth);
+                double gBehind = Gardens.Behindhand(in gHh, SettlementSystem.DayOfYear(in here, now), here.CropGrowth);
                 if (gBehind > 0.5)
                 {
                     double u = (0.32 + 0.22 * DMath.Clamp01(gBehind / DMath.Max(1.0, 0.25 * Gardens.YearH * gHh.Garden))) * elder * (0.6 + 0.4 * p.Diligence / 255.0) + 0.1 * rs.NextUnit();
@@ -1985,13 +1987,14 @@ namespace TC2.Core.Agents
                 {
                     // the household's garden (C3.7a): its own ground after the village's fields, as far as its season wants it by the step's last day
                     ref var gHh = ref w.Households.Get(p.Household);
-                    int gDoy = SimTime.DayOfYear(now + TC2.Core.Planet.PlanetState.LocalOffset(s.Anchor) + (days - 1) * SimTime.Day);
+                    int gDoy = SettlementSystem.DayOfYear(in s, now + (days - 1) * SimTime.Day);
                     double gWant = Gardens.Behindhand(in gHh, gDoy, s.CropGrowth);
                     if (gWant > 0)
                     {
                         double gH = DMath.Min(hours, gWant);
                         double gFu = Gardens.Work(ref gHh, gDoy, s.CropGrowth, gH);
                         hours -= gH; w.Metrics.GardenHours += gH; w.Metrics.GardenFu += gFu;
+                        if (Gardens.Tally != null) Gardens.Count(in s, gDoy, gH, gFu);
                     }
                 }
                 if (hours > 0 && age >= 16 && age < 60 && p.Health > 0.6 && Carts.HasWork(w, p.Household) && !(shortNow && WildNeed(in s, now, ration) > Carts.ShortBound))

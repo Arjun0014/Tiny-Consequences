@@ -4186,3 +4186,32 @@ without (`timeuse --daylight --stages`): grown people spend 0.3 of the 12 daylig
 from idling (women 4.8 -> 4.6, men 4.5 -> 4.2). The Unity C# compiles (the view's beds; `unity.mjs cc` on the branch).
 **Open.** Real shots of the gardens worked (a lived morning); the bed's season drawn (dug, green, gathered - the kit's bed has its plants baked
 in); the threshing floor and the muck (C3.7b/c).
+
+## D2-144 — 2026-10-11 — The gardens keep their village's own calendar; the croft drawn by its season (C3.7a closing)
+
+**Context.** Reading the garden's code for its real shots (session 17, third context): the garden's work took the day of the year from the
+village's longitude only (`AgentSystem`: the lived step, the scheduler's want, the COARSE step), while every southern village keeps its crop
+calendar half a year on (`SettlementSystem.Daily`: `doy + 24`) and its croft's year begins on that calendar (`Gardens.Year` at its sowing) - so a
+southern croft was dug while its village reaped and gathered while its crop was still growing, at the growth so far. The same calendar was
+written out five times (SettlementSystem three, Holdings, WorldGenerator); every other seasonal rule (the crop, the herds' breeding) shifts the
+south correctly. And the beds drawn on every croft (D2-114, C3.7a) were always green - the kit's bed has its plants baked in, so a croft looked
+the same dug, growing and gathered - and huts' crofts, worked in the simulation, were drawn bare (the beds were drawn for houses only).
+**Decision.** (1) `SettlementSystem.DayOfYear(in Settlement, t)` (and by anchor, for a village being founded) - a village's own day of the year:
+its local day by its longitude, the southern seasons half a year on - used by the garden's three calls, the view, and in place of the copies in
+SettlementSystem, Holdings and WorldGenerator (the same arithmetic). (2) The view (`WorldObjectsView.GardenBeds`, read only, from
+`Gardens.Shown`): each croft's beds as it is this season - dug in its gardener's order (the middle column behind first, from the back wall out):
+fresh earth in the sowing (`garden_bare`, tinted), in leaf from the growing on (`garden`), cleared as it is gathered, a weedy rough where nobody
+dug it this year; huts' crofts drawn too. Kit `garden_bare` (its beds, ridges and clods tinted per instance). (3) Tools: `--gardentally` (hours
+and FU by the village's hemisphere; digging while its crop is ripe or in, gathering while it is sown or growing). Sim version 76 unchanged (no
+format change; a world's history from a v76 save differs where it has southern gardens).
+**Evidence.** GardenTests 5/5 - new: `AGardenKeepsItsOwnVillagesCalendarInBothHemispheres` (a northern and a southern village over a year,
+COARSE: dug and weeded 366 and 522 h, none while their crop was ripe or in; gathered 37.0 and 16.8 FU, none while it was sown or growing);
+and the test catches the fault: built with the garden's three calls put back to the north's days, the southern village dug 183 h while its crop was ripe or in and gathered 0.8 FU, all of it while the crop was sown or growing (fails; the source restored byte for byte). Neighbours: HouseholdWork 4, Determinism 6, Coarse 3, CatchUpPlan 2, DeepTime 8; the determinism lint clean; the Unity C# compiles
+(`unity.mjs cc`: Game, Editor, Tests). **Control** `--nogarden` seed 4 = `_g0` (= `_w1`), annals byte-identical: the one calendar changes
+nothing else. **Ten seeds, 300 years DEEP (`_g2` against `_g1`, one lane at below-normal priority)**: the gardens' food x2.05 (2.16 -> 4.44
+million FU over the ten worlds) for x1.16 the hours (42.2 -> 48.8 million): 0.051 -> 0.091 FU an hour; north and south now alike (0.092 and
+0.090 FU an hour; 23.5 and 25.4 million hours), no hour out of season in either. The worlds at par: people at year 300 x0.96 (t -0.8), years
+200-299 x0.98 (t -0.7), births x0.99, deaths x1.00, hunger x1.03 (t 0.5), famines x0.95 (t -0.8); births and deaths a person-year x1.01 and
+x1.02 (t ~2, the size earlier slices were kept at). Sickness x4.1 (t 1.8) is chance: one or two epidemics dominate a family - over years
+100-299 the same ten seeds held 1,193 (`_n1`), 4,797 (`_v3`), 4,387 (`_v4`), 1,337 (`_w1`), 2,260 (`_g1`) and 5,194 (`_g2`) sick, 106-275
+epidemics (`_g2` 231); seed 42's people at year 300 x0.69 follow its 1,700 sick. Real shots: pending (the batch editor's queue, session 18).

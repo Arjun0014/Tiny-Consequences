@@ -206,6 +206,7 @@ namespace TC2.Headless
             TC2.Core.Places.Holdings.HungerTally = new double[16]; TC2.Core.Places.SettlementSystem.MarriageTally = new double[8];   // (C3.3c: who dies of hunger - by the household's own grain, debts and kin)   // (C3.3: the accounting alone - Means reads the village's granary as before)
             if (a.Has("nosmithcrew")) TC2.Core.Places.Forge.CrewOff = true;   // (C1.4b against the smithy before it in one binary: every smith at it, no practice)
             if (a.Has("carttally")) TC2.Core.Diagnostics.CartTally.T = new double[12];   // (C4.2 closing: why carts begun are given up)
+            if (a.Has("gardentally")) TC2.Core.Places.Gardens.Tally = new double[8];   // (D2-144: the gardens' work by hemisphere and by their village's crop)
             if (a.Has("crafttally")) { var ct = new System.Collections.Generic.Dictionary<int, double>[TC2.Core.Diagnostics.CraftTally.Kinds]; for (int k = 0; k < ct.Length; k++) ct[k] = new System.Collections.Generic.Dictionary<int, double>(); TC2.Core.Diagnostics.CraftTally.By = ct; var vy = new System.Collections.Generic.Dictionary<long, double>[TC2.Core.Diagnostics.CraftTally.Kinds]; for (int k = 0; k < vy.Length; k++) vy[k] = new System.Collections.Generic.Dictionary<long, double>(); TC2.Core.Diagnostics.CraftTally.VillageYear = vy; }   // (roles from practice: whose hours at each craft)
             if (a.Has("loads")) TC2.Core.Places.Trade.LoadTally = new double[4];   // (C4.2 survey: trading loads bound by what one person carries)
             if (a.Has("nokiln")) TC2.Core.Places.Pottery.Off = true;   // (C3.2 against D2-063 in one binary: no kilns - pots and jars from knowing how)
@@ -763,6 +764,10 @@ namespace TC2.Headless
                                     for (int i = 0; i < hl3.Count; i++) { var h3 = w.Households.Get(hl3[i]); gh++; if (h3.Garden > 0f) { gWith++; gM2 += h3.Garden; } }
                                 }
                                 Console.WriteLine("gardens: " + gWith + " of " + gh + " households have one (mean " + F(gWith > 0 ? gM2 / gWith : 0, "0") + " m2); worked " + F(w.Metrics.GardenHours, "0") + " h over the run, gathered " + F(w.Metrics.GardenFu, "0") + " FU");
+                                var gTal = TC2.Core.Places.Gardens.Tally;
+                                if (gTal != null)
+                                    for (int gq = 0; gq < 8; gq += 4)
+                                        Console.WriteLine("garden tally " + (gq == 0 ? "north" : "south") + ": " + F(gTal[gq], "0") + " h, " + F(gTal[gq + 1], "0") + " FU (" + F(gTal[gq] > 0 ? gTal[gq + 1] / gTal[gq] : 0, "0.000") + " FU an hour); dug or weeded while the crop was ripe or in " + F(gTal[gq + 2], "0") + " h, gathered while it was sown or growing " + F(gTal[gq + 3], "0") + " FU");
                             }
                             if (TC2.Core.Diagnostics.CraftTally.By != null) CraftReport(w);
                             var ctt = TC2.Core.Diagnostics.CartTally.T;

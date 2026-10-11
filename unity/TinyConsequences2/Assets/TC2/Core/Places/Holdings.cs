@@ -384,8 +384,7 @@ namespace TC2.Core.Places
             if (!w.Settlements.Exists(sid) || !Hard(in w.Settlements.Get(sid))) return;
             t[4]++;
             ref var s = ref w.Settlements.Get(sid);
-            int doy = SimTime.DayOfYear(w.Now + Planet.PlanetState.LocalOffset(s.Anchor));
-            if (s.Anchor.Y < 0) doy = (doy + 24) % SimTime.DaysPerYear;
+            int doy = SettlementSystem.DayOfYear(in s, w.Now);
             int toHarvest = SettlementSystem.HarvestDay - doy; if (toHarvest <= 0) toHarvest += SimTime.DaysPerYear;
             // what the holders spare beyond their own needs at the village's ration to the harvest, against what every household without grain
             // needs at that ration to the harvest
