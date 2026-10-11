@@ -26,6 +26,12 @@ picture?". No simulation theatre: presentation elaborates a real activity, never
    the worktrees `C:/Game Dev/tc-g2`, `tc-g4`, `tc-wild` are earlier sessions' - leave them), `git log --oneline -6` (HEAD 93ad626 or a handoff
    commit on it).
 
+## Session 18 (11 Oct 2026) - resumed by Arjun
+- **D2-144** (the gardens keep their village's own calendar) and **D2-145** (a croft counted once, one wattle fence per croft, beds by season) are
+  committed and verified (d224365). Arjun's resource rule (D-1): **one low-priority job at a time while RAM < 86 % and CPU < 50 %**.
+- Queue 6 (the full suite, the 900-year check, the Web build and test) - its state and the next steps: `docs/tc2/SESSION_HANDOFF.md` top block
+  "Session 18". The block below is the previous stop's, now done.
+
 ## Stopped by Arjun (10 Oct 2026, 12:45 IST, session 17's third context) - nothing running
 - HEAD = a8a45a9 + a WIP commit: **uncompiled** seasonal garden beds (`Gardens.Shown`, `WorldObjectsView.GardenBeds`, kit `garden_bare`; huts' crofts
   drawn) - run `node tc2/scripts/unity.mjs cc` first. The full suite was stopped mid-run (no result).

@@ -1,5 +1,29 @@
 # TC2 Session handoff
 
+## Session 18 (11 Oct 2026, from 06:48 IST; Control Room run #48 session 3 continued after Arjun stopped and resumed it) - D2-144, D2-145 the gardens
+
+### Exact state (keep current)
+- **main d224365**: e23e5b7 (**D2-144** the gardens keep their village's own calendar; `SettlementSystem.DayOfYear(in s, t)` / `(anchor, t)` -
+  every use of a village's calendar; `Gardens.Shown`, `--gardentally`) and d224365 (**D2-145** a croft's rectangles never overlap - `Gardens.EndYard`;
+  `WorldObjectsView.GardenBeds`/`CroftFence`: beds by season, one wattle fence along the croft's outline; kit `garden`, `garden_bare`, `hurdle`;
+  the `.meta` files of Gardens.cs and GardenTests.cs). Both verified: GardenTests 5/5, neighbours, lint, Unity C# (`unity.mjs cc`), controls
+  `--nogarden` = `_g0` byte-identical, ten seeds each (`_g2` vs `_g1`, `_g3` vs `_g2`) at par, real shots `s18a-d`.
+- **Resource rule (Arjun, Decision Inbox D-1, 11 Oct)**: one low-priority job at a time (`cmd //c start "" //belownormal //wait //b ...`) while RAM <
+  86 % and CPU < 50 % (`scratchpad/q*.sh`'s `gate`/`low`); the machine's other applications hold RAM at 76-96 %. Ten seeds run one after another
+  (~15 min); the Unity batch editor's shots ~1 min a run; never two jobs at once.
+- **Queue 6 running** (`scratchpad/q6.sh`, log `q6.log`; scratchpad `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/
+  1a60904a-17b6-4bc6-af65-f00fb5712a44/scratchpad`): the full suite on d224365 (`suite_d.txt`), the 900-year check (`l9.sh`, `_g3` seeds 4 then 42 with
+  `bin_d`: `tc2/out/civ/s4_l9g3*`, `s42_l9g3*`), the Web build (`--jobs 2`, `webbuild_s18web1.txt`) and the Web test (`tc2/out/webtest/s18web1.log`).
+  **Do not edit the source until its Web build has compiled it.**
+
+### Next, in order
+1. Queue 6's results (suite, 900 years, Web); fix what fails.
+2. **W-FOREST pass 2b** (`scratchpad/p_drytropics.py`, `p_drytropics_view.py` - copies in `tc2/out/tools/s17b/`): apply, build, `--oldrain` (seed 4) =
+   `_g3` byte-identical, ten seeds, `place --seasons` before/after (seed 42), shots of the dry tropics in the wet and the dry season and four climates
+   side by side - D2-146. Check the crop calendar's growing stage falls in each hemisphere's wet season (it does by design: the wet season is the
+   local summer; the southern calendar is half a year on).
+3. C3.7b the threshing floor / C3.7c the muck (`26` §2h); the remaining visual-truth items (`27` §6: headmen, famine, stumps; the beds' crops by kind).
+
 ## Session 17, third context (10 Oct 2026, 12:31-12:45 IST; Control Room run #48 session 3; Resource Governor HIGH, the machine at 94-97 % RAM from a QEMU VM and other applications) - stopped by Arjun
 
 ### Exact state at the stop - nothing running

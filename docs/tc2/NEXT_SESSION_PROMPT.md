@@ -244,6 +244,12 @@ gathered - the gardens the view drew are now real work and real food; a lived ye
 Next: the full suite on 93ad626, real shots of the gardens, the 900-year check, the Web test, W-FOREST pass 2b - SESSION_HANDOFF "Session 17,
 second context".
 
+**Where we are (session 18, 11 Oct 2026)**: **D2-144** - the gardens kept the north's calendar in southern villages; one `SettlementSystem.DayOfYear`
+for every use of a village's calendar (gardens' food x2.05, north and south alike). **D2-145** - the first real shots of the gardens: beds drawn by
+their season (dug, rough, in leaf, cleared), a croft's rectangles never overlap (a 2 m end yard), one wattle fence along each croft. Arjun's resource
+rule (D-1): one low-priority job at a time while RAM < 86 % and CPU < 50 %. Next: queue 6's results, then W-FOREST pass 2b - SESSION_HANDOFF
+"Session 18".
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.

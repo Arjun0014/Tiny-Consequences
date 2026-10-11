@@ -4,6 +4,17 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 18 (11 Oct 2026, from 06:48 IST; Control Room run #48 session 3 continued; Resource Governor LOW, Arjun's rule D-1: one low-priority
+  job at a time while RAM < 86 % and CPU < 50 % - other applications hold the machine at 76-96 % RAM)** - (1) **D2-144** (e23e5b7): the gardens
+  kept the north's calendar in southern villages (dug at the reaping, gathered while the crop grew; found reading the code for its shots) - one
+  `SettlementSystem.DayOfYear` for every use of a village's calendar; GardenTests 5/5 (a new test over both hemispheres that fails on the old
+  calendar), neighbours, control `--nogarden` = `_g0`, ten seeds `_g2` at par, the gardens' food x2.05 (north and south alike), `--gardentally`.
+  (2) **The first real shots of the gardens** (`s18a`/`s18b`): the beds by season read (fresh earth dug, olive rough undug, green in leaf) but every
+  bed carried its own hurdles (crofts read as crates) and the croft beside an end overlapped the croft behind - **D2-145** (d224365): the croft
+  beside an end begins beyond a 2 m end yard, one wattle fence along the croft's outline (kit `hurdle`, beds without hurdles); ten seeds `_g3` at
+  par; shots `s18c`/`s18d` (`tc2/out/shots/s18_gardens_sheet.png`); the Unity `.meta` files of Gardens.cs and GardenTests.cs committed at last.
+  (3) Queue 6 (`scratchpad/q6.sh`, log `q6.log`): the full suite on d224365, the 900-year check (`_g3` seeds 4, 42, bin_d), the Web build (2 jobs)
+  and the Web test `s18web1`.
 - **Session 17, second context (10 Oct 2026, from 06:46 IST; Control Room, Resource Governor LOW; the machine at 75-96 % RAM from other
   applications much of the time)** - (1) queue 3 closed: the controls byte-identical (`_c0` = `_s2`, `_c1`/`_c2` = `_n1`); ten seeds of the
   final binary against `_n1` at par in rates; boats lost x1.68 traced to `_n1`'s luck (the lowest of 65 run families; `place --sheds`: a shed fits
