@@ -1,34 +1,36 @@
 # TC2 Session handoff
 
-## Session 18 (11 Oct 2026, from 06:48 IST; Control Room run #48 session 3 continued after Arjun stopped and resumed it) - D2-144, D2-145 the gardens
+## Session 18 (11 Oct 2026, 06:48-~16:00 IST; Control Room run #48 session 3, resumed by Arjun; stopped by Arjun) - D2-144 to D2-147; Web 6/6
 
-### Exact state (keep current)
-- **main d224365**: e23e5b7 (**D2-144** the gardens keep their village's own calendar; `SettlementSystem.DayOfYear(in s, t)` / `(anchor, t)` -
-  every use of a village's calendar; `Gardens.Shown`, `--gardentally`) and d224365 (**D2-145** a croft's rectangles never overlap - `Gardens.EndYard`;
-  `WorldObjectsView.GardenBeds`/`CroftFence`: beds by season, one wattle fence along the croft's outline; kit `garden`, `garden_bare`, `hurdle`;
-  the `.meta` files of Gardens.cs and GardenTests.cs). Both verified: GardenTests 5/5, neighbours, lint, Unity C# (`unity.mjs cc`), controls
-  `--nogarden` = `_g0` byte-identical, ten seeds each (`_g2` vs `_g1`, `_g3` vs `_g2`) at par, real shots `s18a-d`.
-- **Resource rule (Arjun, Decision Inbox D-1, 11 Oct)**: one low-priority job at a time (`cmd //c start "" //belownormal //wait //b ...`) while RAM <
-  86 % and CPU < 50 % (`scratchpad/q*.sh`'s `gate`/`low`); the machine's other applications hold RAM at 76-96 %. Ten seeds run one after another
-  (~15 min); the Unity batch editor's shots ~1 min a run; never two jobs at once.
-- **Done since**: the full suite on d224365 369/371 (both failures the garden's COARSE day -> **D2-146**, `AgentSystem.GardenOrder`, `--oldgardenorder`);
-  the 900-year check passed (seed 4: 11,149 people at year 900, seed 42: 5,667; no collapse). D2-146's ten seeds found **a hang** (seed 6, year 159->160):
-  `World.LandChanged` -> `Homes.SeaTook` -> `FreeLot`, the frontage search unbounded when the sea took every lot -> **D2-147** (bounded by the spiral's
-  reach; test `FootprintsTests.ALotIsFoundAtOnceWhenTheSeaTookEveryLot`); tools `run --trace FILE` (`TraceProfiler`) and trace points in
-  `TectonicStep`/`LandChanged`. Drafts: `scratchpad/d2146.md`, `d2147.md` (evidence pending).
-- **Queue 8** (`scratchpad/q8.sh`, log `q8.log`; scratchpad `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/
-  1a60904a-17b6-4bc6-af65-f00fb5712a44/scratchpad`): built `bin_f`, FootprintsTests 8/8; **waiting at its gate since 10:26** (Arjun's Chrome GPU process,
-  software WebGL, holds the CPU at 60-99 %; Decision Inbox D-2). Remaining: Migration/WildFood/Garden/HouseholdWork/Coarse/Determinism tests, `unity.mjs
-  cc`, control `--oldgardenorder` seed 4 = `_g3`, ten seeds `_g4` (seeds 4, 5, 1 must equal bin_e's runs: `scratchpad/s*_g4_bin_e.csv`), cmp `g3 g4`,
-  the Web build and test `s18web1`, the full suite. Then write D2-146/D2-147 into DECISIONS and commit.
+### Exact state at the stop
+- **main**: e23e5b7 (**D2-144** the gardens keep their village's own calendar), d224365 (**D2-145** a croft counted once, one wattle fence, beds by
+  season), 29f56df (docs), c7edc68 (**D2-146** a COARSE day's garden by the lived urges; **D2-147** FreeLot bounded when the sea took every lot; `run
+  --trace`), and the stop's commit (DECISIONS D2-146/D2-147 with evidence, PROGRESS, this block, the prompts, `SESSION_18_REPORT.md`). Nothing uncommitted
+  of ours (`.claude/launch.json` and `Assets/Resources.meta` are not ours).
+- **Verified on c7edc68**: Footprints 8 (new: the drowned village), Migration 9, WildFood 11, Garden 5, HouseholdWork 4, Coarse 3, Determinism 6; lint;
+  Unity C# (`unity.mjs cc`); controls `--oldgardenorder` = `_g3` byte-identical; ten seeds `_g4` at par (seeds 4, 5, 1 byte-identical before and after
+  D2-147); **the Web build (one job, 1 h 13 min) and the Web test `s18web1` 6/6** (WebGPU, browser = headless bit-identical, reload continues, a day
+  away catches up ~96 years: 531 people in 17 places, no console errors). The 900-year check passed (seeds 4 and 42, `_g3`).
+- **The full suite on c7edc68 was running at the stop** (`scratchpad/suite_f.txt`, ~85 % through with no failure when the handoff was written; see
+  SESSION_18_REPORT.md for whether it finished). The previous full run (d224365) was 369/371 - both failures fixed by D2-146 and passing on their own.
+- **W-FOREST pass 2b prepared, NOT applied**: `tc2/out/tools/s18/pass2b.diff` (`git apply` it: the rain belt follows the sun in the outer tropics,
+  `--oldrain`; the dry woodland's leaves fall with its soil's water; `place` applies the rule switches before loading), the queue that validates it
+  `tc2/out/tools/s18/q10.sh` (build, planet/weather tests, control `--oldrain` = `_g4`, `place --seasons` old/new on seed 42, ten seeds `_r1`, cc, shots
+  of four climates on days 20 and 44), the decision draft `tc2/out/tools/s18/d2148.md`.
+- **Resource rules (Arjun)**: D-1 - one low-priority job at a time (`cmd //c start "" //belownormal //wait //b ...`); D-2 - run while CPU < 85 % and RAM
+  < 86 % (`q*.sh`'s `gate`/`low`). The machine's other applications (a Chrome tab drawing WebGL in software, other sessions) held it at 60-100 % CPU
+  for hours: jobs waited at the gate and ran slowly (a test class 13 min instead of 24 s). The Web build with `--jobs 1` takes ~75 min.
+- Tools in `tc2/out/tools/s18/` (copy into the new scratchpad and fix the `S=` path): `q2-q10.sh` (the gated queues), `l9.sh`, `cmp.py`, `rates.py`,
+  `sheet.py`, `shots.sh`, `p_drytropics*.py`, `pass2b.diff`, `d2144-d2148.md`. Runs: `tc2/out/civ/s*_g2` (D2-144), `_g3` (D2-145), `_g4` (D2-146/147),
+  `s4_l9g3`, `s42_l9g3` (900 years). Shots: `tc2/out/shots/s18a-d`, `s18_gardens_sheet.png`.
 
 ### Next, in order
-1. Queue 6's results (suite, 900 years, Web); fix what fails.
-2. **W-FOREST pass 2b** (`scratchpad/p_drytropics.py`, `p_drytropics_view.py` - copies in `tc2/out/tools/s17b/`): apply, build, `--oldrain` (seed 4) =
-   `_g3` byte-identical, ten seeds, `place --seasons` before/after (seed 42), shots of the dry tropics in the wet and the dry season and four climates
-   side by side - D2-146. Check the crop calendar's growing stage falls in each hemisphere's wet season (it does by design: the wet season is the
-   local summer; the southern calendar is half a year on).
-3. C3.7b the threshing floor / C3.7c the muck (`26` §2h); the remaining visual-truth items (`27` §6: headmen, famine, stumps; the beds' crops by kind).
+1. If the stop's full suite did not finish: run it once on HEAD (`node tc2/scripts/headless.mjs test`, one job; ~17 min on a quiet machine).
+2. **W-FOREST pass 2b**: `git apply tc2/out/tools/s18/pass2b.diff`, then `q10.sh`'s steps; write D2-148 from `d2148.md`; keep iterating on the shots
+   until the four climates are not interchangeable (Arjun judges W-FOREST).
+3. C3.7b the threshing floor (the harvest held as sheaves until threshed - `SettlementSystem.Sheaves` puts the grain straight in the store today;
+   ~0.3 h an adult-day through the off-season, at the granary or a barn) / C3.7c the muck (`26` §2h); the visual-truth items (`27` §6: headmen, famine,
+   stumps - the woods keep no record of felling, so stumps need derived or new state; the beds' crops by kind).
 
 ## Session 17, third context (10 Oct 2026, 12:31-12:45 IST; Control Room run #48 session 3; Resource Governor HIGH, the machine at 94-97 % RAM from a QEMU VM and other applications) - stopped by Arjun
 

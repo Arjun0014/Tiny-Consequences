@@ -15,22 +15,26 @@ long/Web/visual checks -> a real-game visual truth audit (people, houses and roa
 picture?". No simulation theatre: presentation elaborates a real activity, never invents one.
 
 ## Read first (this order), then work autonomously
-1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the standing prompt (architecture, rules, every direction; "Where we are (session 17, second context)").
-2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 17, second context"**: exact state, findings, "Next, in order".
-3. `docs/tc2/DECISIONS.md` newest: **D2-143** (the household's garden), **D2-142** (trees by the growing season's warmth), **D2-141** (the visual
-   truth audit's view helpers and simulation rules), D2-140, D2-139.
+1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the standing prompt (architecture, rules, every direction; "Where we are (session 18)").
+2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 18"**: exact state, "Next, in order"; and `docs/tc2/SESSION_18_REPORT.md`.
+3. `docs/tc2/DECISIONS.md` newest: **D2-147** (a drowned village's lots), **D2-146** (a COARSE day's garden by the lived urges), **D2-145** (a croft
+   counted once, its wattle), **D2-144** (the gardens' own calendar), D2-143 (the household's garden), D2-142 (trees by the growing season's warmth).
 4. `docs/tc2/27_VISUAL_TRUTH.md` (§8 the real shots), `docs/tc2/26_CRAFTS_AND_EXCHANGE.md` §2h (the household's own year: the garden built,
    the threshing floor and the muck designed), `docs/tc2/18_WORLD_READABILITY.md` §8 (W-FOREST pass 2 and the pass 2b design).
-5. `docs/tc2/PROGRESS.md` CURRENT STATE (the session 17 second-context entry first).
+5. `docs/tc2/PROGRESS.md` CURRENT STATE (the session 18 entry first).
 6. `git status` (the modified `.claude/launch.json` and untracked `unity/TinyConsequences2/Assets/Resources.meta` are not ours - leave them;
    the worktrees `C:/Game Dev/tc-g2`, `tc-g4`, `tc-wild` are earlier sessions' - leave them), `git log --oneline -6` (HEAD 93ad626 or a handoff
    commit on it).
 
-## Session 18 (11 Oct 2026) - resumed by Arjun
-- **D2-144** (the gardens keep their village's own calendar) and **D2-145** (a croft counted once, one wattle fence per croft, beds by season) are
-  committed and verified (d224365). Arjun's resource rule (D-1): **one low-priority job at a time while RAM < 86 % and CPU < 50 %**.
-- Queue 6 (the full suite, the 900-year check, the Web build and test) - its state and the next steps: `docs/tc2/SESSION_HANDOFF.md` top block
-  "Session 18". The block below is the previous stop's, now done.
+## Session 18 (11 Oct 2026) - stopped by Arjun at ~16:00 IST; nothing of ours running
+- Done and verified: **D2-144** (the gardens keep their village's own calendar), **D2-145** (a croft counted once, one wattle fence, beds by season),
+  **D2-146** (a COARSE day's garden by the lived urges - the full suite's two failures), **D2-147** (a drowned village's households find a lot at once -
+  a latent hang its seeds found), the 900-year check (seeds 4 and 42), the Web build and test `s18web1` 6/6. The full suite on c7edc68 was running at
+  the stop - see `docs/tc2/SESSION_18_REPORT.md`; run it once if it did not finish.
+- Next: **W-FOREST pass 2b** - `git apply tc2/out/tools/s18/pass2b.diff`, validate with `tc2/out/tools/s18/q10.sh`'s steps, write D2-148 from
+  `tc2/out/tools/s18/d2148.md`. Then C3.7b threshing / C3.7c muck and the visual-truth items. Details: `docs/tc2/SESSION_HANDOFF.md` "Session 18".
+- **Resource rules (Arjun, Decision Inbox D-1, D-2)**: one low-priority job at a time (`cmd //c start "" //belownormal //wait //b ...`) while CPU < 85 %
+  and RAM < 86 %; gate every heavy job (`tc2/out/tools/s18/q*.sh`'s `gate`/`low`).
 
 ## Stopped by Arjun (10 Oct 2026, 12:45 IST, session 17's third context) - nothing running
 - HEAD = a8a45a9 + a WIP commit: **uncompiled** seasonal garden beds (`Gardens.Shown`, `WorldObjectsView.GardenBeds`, kit `garden_bare`; huts' crofts

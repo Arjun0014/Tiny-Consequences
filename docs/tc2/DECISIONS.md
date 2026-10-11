@@ -4238,3 +4238,37 @@ hunger a person-year x0.62 (t -1.2), famines x0.83 (t -0.8); seed 4's people at 
 in one span) where `_g1`/`_g2` met famines instead, seed 42's x1.42 the epidemic it missed; drowned x0.40 (t -2.6) is the boats' luck (D2-141
 saw x1.68 the other way; the crofts cannot reach the sea). Real shots (`tc2/out/shots/s18c`, `s18d`: seed 4 `_g3` at year 300, day 8 and the
 town on day 20): each croft reads as one wattled plot behind its house - dug beds and the rough beside them, people at work in them.
+
+## D2-146 — 2026-10-11 — A COARSE day's garden in the order a lived day's urges give it (C3.7a, from the full suite)
+
+**Context.** The first full suite since the garden (D2-143; run on d224365): 369 of 371, two failures, both the garden's COARSE day.
+`MigrationTests.AHomeIsRaisedOnlyByLabourAndWood` - a camping household with wood raised its hut but not its house in 60 days; and
+`WildFoodTests.CoarseAndActivityTurnToTheWildAlikeInAShortage` - a village with its harvest lost and its stores bare sent 0.59 as many hours to
+the wild in COARSE days as lived (the bound 0.6-1.6). Cause: a COARSE day gave the garden what its season wanted before everything but the
+fields, the fuel and the crafts' places - before the household's own roof and before the wild - while a lived day chooses by urges: the garden
+pulls 0.32-0.54 (by how far behind it is) x the member's diligence, building a roof from a camp 0.85, a hut's house 0.4, the wild by the hunger.
+**Decision.** `AgentSystem.GardenOrder`: a COARSE day's garden takes its hours by the same urge (`Gardens.UrgeBase` x (0.6 + 0.4 diligence) +
+0.05, a lived day's chance on average) - not at all today where the village is short and the wild pulls harder; after the household's own
+building where its roof pulls harder (a camp's always, a hut's house unless the garden is far behind); else first, as before. `CoarseGarden`
+the step's hours in it. The lived urge's arithmetic unchanged (`UrgeBase` x elder x diligence + chance). `--oldgardenorder` the control.
+**Evidence.** Both failures pass (Migration 9/9; WildFood 11/11 - in a shortage COARSE days send 6.50 wild hours an adult-day against lived 7.89,
+x0.82 where it was x0.59); Garden 5, HouseholdWork 4, Coarse 3, Determinism 6, Footprints 8; the lint clean; the Unity C# compiles. Control
+`--oldgardenorder` seed 4 = `_g3` (annals byte-identical, on both D2-146's binary and D2-147's). Ten seeds, 300 years DEEP (`_g4` against `_g3`, one
+lane at below-normal priority on a machine held at 60-100 % CPU by other applications): at par - people over years 200-299 x1.03 (t 0.8), births and
+deaths a person-year x1.00 and x0.99, hunger a person-year x1.45 (t 0.9), famines a person-year x1.16 (t 0.9) (mean hunger 5.7 a 1,000 person-years:
+`_g2` 6.2, `_g3` 5.0 - seed 4's `_g3` traded its famines for an epidemic), relief between villages x1.56 (t 2.2), foundings x0.84 (t -1.5).
+
+## D2-147 — 2026-10-11 — A drowned village's households find a lot at once (an endless walk along drowned streets)
+
+**Context.** D2-146's ten seeds: seed 6 stopped at year 159 (1,036 s of CPU against ~85 s for the whole run). Reproduced from its year-100 save
+(the hang falls at the turn into year 160) and located with a tracing profiler (`run --trace FILE`: every event and part of a day written as it is
+entered, flushed; trace points round the tectonic step's parts and `LandChanged`'s): the tectonic step's `LandChanged` -> `Homes.SeaTook` ->
+`FreeLot`. The plates moved a village's ground under the sea; for each household whose home was drowned, `FreeLot` found no free lot in its spiral
+(every one in the sea), so the spiral's distance stayed `double.MaxValue` - and the frontage search along its streets, bounded only by that
+distance, walked out lot by lot forever (every street lot drowned too). Latent since C13.1 (D2-116); D2-146 only steered seed 6 there.
+**Decision.** Where none of the spiral's lots within reach is free, the frontage is sought no further out than the spiral looked (its last lot's
+distance, 15 + 9.5 sqrt(Lots + 65) m); then the next lot of the spiral as before. A spiral that found a free lot bounds the search as before (the
+same worlds). Tools: `TraceProfiler` (`--trace FILE`) and trace points in `World.TectonicStep`/`LandChanged` (null in the game).
+**Evidence.** `FootprintsTests.ALotIsFoundAtOnceWhenTheSeaTookEveryLot` (two streets, the sea over all the village's ground: a lot at once - the
+test runs FreeLot on a thread with a 10 s limit); Footprints 8/8. Seed 6 of D2-146 runs its 300 years (82 s); seeds 4, 5 and 1 byte-identical to their
+runs before the fix (a spiral that found a free lot bounds the search as before).

@@ -17,7 +17,11 @@
   its house (`MigrationTests.AHomeIsRaisedOnlyByLabourAndWood`) and a short village gardened before it foraged (`WildFoodTests.CoarseAndActivity
   TurnToTheWildAlikeInAShortage`: COARSE 0.59 of lived) - **D2-146** a COARSE day's garden in the order a lived day's urges give it (after the wild
   when hunger pulls harder, after the household's own roof where that pulls harder): both pass (wild hours in a shortage COARSE/lived 0.82),
-  neighbours pass, control `--oldgardenorder` = `_g3` byte-identical; ten seeds `_g4`, the Web build and test and the full suite in queue 7.
+  neighbours pass, control `--oldgardenorder` = `_g3` byte-identical; ten seeds `_g4` at par. Its seeds found **a hang** (seed 6, year 159->160:
+  the tectonic step drowned a village, `FreeLot` walked its drowned streets forever) - **D2-147**, the frontage search bounded by the spiral's reach
+  (test: the drowned village; seeds 4, 5, 1 byte-identical before and after); tools `run --trace FILE`. **Web build and test `s18web1` 6/6** on c7edc68.
+  The full suite on c7edc68 was running at the stop (Arjun stopped the session; the machine held at 60-100 % CPU by other applications for hours).
+  W-FOREST pass 2b prepared, not applied (`tc2/out/tools/s18/pass2b.diff`, `q10.sh`, `d2148.md`). Report: `docs/tc2/SESSION_18_REPORT.md`.
   (4) **The 900-year check** (`_g3` year-300 saves lived 600 years more, bin_d): seed 4 4,488 -> 8,000-11,000 people from year 350 (11,149 at year 900,
   38 villages), hunger 0.3-14 a 1,000 person-years, epidemics at 650 and 800 knocked back and recovered; soil tired 0.37, 15 % resting, a sown ha 0.76
   of a fresh crop; 83 % of households with a garden (mean 153 m2). Seed 42 steady at 4,300-6,000 (5,667 at year 900, 18 villages), hunger 3-10, one

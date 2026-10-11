@@ -247,8 +247,10 @@ second context".
 **Where we are (session 18, 11 Oct 2026)**: **D2-144** - the gardens kept the north's calendar in southern villages; one `SettlementSystem.DayOfYear`
 for every use of a village's calendar (gardens' food x2.05, north and south alike). **D2-145** - the first real shots of the gardens: beds drawn by
 their season (dug, rough, in leaf, cleared), a croft's rectangles never overlap (a 2 m end yard), one wattle fence along each croft. Arjun's resource
-rule (D-1): one low-priority job at a time while RAM < 86 % and CPU < 50 %. Next: queue 6's results, then W-FOREST pass 2b - SESSION_HANDOFF
-"Session 18".
+rule (D-1, D-2): one low-priority job at a time while RAM < 86 % and CPU < 85 %. Then the first full suite since the garden found the garden's
+COARSE day out of order with lived days - **D2-146** (by the lived urges: after the wild when hungry, after one's own roof) - and its seeds a latent
+hang - **D2-147** (a drowned village's households walked its drowned streets forever). The 900-year check passed; Web 6/6. Next: W-FOREST pass 2b
+(`tc2/out/tools/s18/pass2b.diff`) - SESSION_HANDOFF "Session 18", `SESSION_18_REPORT.md`.
 
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
