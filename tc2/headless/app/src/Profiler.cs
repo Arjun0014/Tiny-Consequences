@@ -9,6 +9,19 @@ using TC2.Core.Simulation;
 namespace TC2.Headless
 {
     /// <summary>Wall-clock time per event kind (and per periodic system) for profiling runs.</summary>
+    /// <summary>Tools (`--trace FILE`): every event and part of a day entered and left, written as it happens (flushed) - where a run that hangs
+    /// stopped is its last line. Never affects state.</summary>
+    public sealed class TraceProfiler : ISimProfiler
+    {
+        readonly System.IO.StreamWriter _o;
+        readonly TC2.Core.Simulation.World _w;
+        int _depth;
+        public TraceProfiler(string path, TC2.Core.Simulation.World w) { _o = new System.IO.StreamWriter(path) { AutoFlush = true }; _w = w; }
+        static string Name(int k) => k >= 10000 ? "part " + (k - 10000) : ((EventKind)(k / 16)).ToString() + (k / 16 == (int)EventKind.SystemTick ? "#" + (k % 16) : "");
+        public void Begin(int kind) { _o.WriteLine(new string(' ', 2 * _depth) + "> " + Name(kind) + "  " + TC2.Core.Foundation.SimTime.Format(_w.Now)); _depth++; }
+        public void End(int kind) { _depth--; _o.WriteLine(new string(' ', 2 * _depth) + "< " + Name(kind)); }
+    }
+
     public sealed class KindProfiler : ISimProfiler
     {
         readonly Dictionary<int, (long ticks, long count)> _t = new Dictionary<int, (long, long)>();

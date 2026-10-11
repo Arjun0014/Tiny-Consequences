@@ -488,24 +488,24 @@ namespace TC2.Core.Simulation
         {
             var P = Planet;
             if (P.Plates.Length == 0) return;
-            RideSettlements(Tectonics.StepYears); // with the motion the crust has during this step
-            Volcanism.Ride(this, Tectonics.StepYears);
+            Profiler?.Begin(10200 + 0); RideSettlements(Tectonics.StepYears); Profiler?.End(10200 + 0); // with the motion the crust has during this step
+            Profiler?.Begin(10200 + 1); Volcanism.Ride(this, Tectonics.StepYears); Profiler?.End(10200 + 1);
             var bud = ReliefBudget;   // tools only: the change of the continents' summed elevation by process (null in the game)
             double b0 = bud != null ? ContinentSum(P) : 0;
-            Tect.Step(P, Tectonics.StepYears, Seed, Now);
+            Profiler?.Begin(10200 + 2); Tect.Step(P, Tectonics.StepYears, Seed, Now); Profiler?.End(10200 + 2);
             double b1 = bud != null ? ContinentSum(P) : 0;
-            Volcanism.Step(this, Tectonics.StepYears, Tect.ArcSupply);
+            Profiler?.Begin(10200 + 3); Volcanism.Step(this, Tectonics.StepYears, Tect.ArcSupply); Profiler?.End(10200 + 3);
             double b2 = bud != null ? ContinentSum(P) : 0;
-            TC2.Core.Planet.Quakes.Step(this, Tectonics.StepYears, Tect.Slip);
+            Profiler?.Begin(10200 + 4); TC2.Core.Planet.Quakes.Step(this, Tectonics.StepYears, Tect.Slip); Profiler?.End(10200 + 4);
             double b3 = bud != null ? ContinentSum(P) : 0;
             // rivers cut and carry on the tree of the moved relief (D2-031); the tree is rebuilt again for what they changed
-            Drainage.Rebuild(P);
-            Erosion.Step(this, Tectonics.StepYears);
+            Profiler?.Begin(10200 + 5); Drainage.Rebuild(P); Profiler?.End(10200 + 5);
+            Profiler?.Begin(10200 + 6); Erosion.Step(this, Tectonics.StepYears); Profiler?.End(10200 + 6);
             double b4 = bud != null ? ContinentSum(P) : 0;
-            Coast.Step(this, Tectonics.StepYears); // waves wear headlands, drift fills inlets (D2-034)
+            Profiler?.Begin(10200 + 7); Coast.Step(this, Tectonics.StepYears); Profiler?.End(10200 + 7); // waves wear headlands, drift fills inlets (D2-034)
             if (bud != null) { double b5 = ContinentSum(P); bud[0] += b1 - b0; bud[1] += b2 - b1; bud[2] += b3 - b2; bud[3] += b4 - b3; bud[4] += b5 - b4; }
-            Evolution.Speciate(this);              // isolated, diverged populations become species (D2-037)
-            LandChanged(P.SeaLevel, false);
+            Profiler?.Begin(10200 + 8); Evolution.Speciate(this); Profiler?.End(10200 + 8);              // isolated, diverged populations become species (D2-037)
+            Profiler?.Begin(10200 + 9); LandChanged(P.SeaLevel, false); Profiler?.End(10200 + 9);
             P.ReliefVersion++;
         }
 
@@ -566,9 +566,9 @@ namespace TC2.Core.Simulation
                 }
                 else { emerged++; P.SoilWater[c] = 0.6f; P.Grass[c] = 0.02f; P.Forest[c] = 0; }
             }
-            Drainage.Rebuild(P);
-            Drainage.SettleStored(P);
-            PlanetSys.Climate.Derive(P);
+            Profiler?.Begin(10220); Drainage.Rebuild(P); Profiler?.End(10220);
+            Profiler?.Begin(10221); Drainage.SettleStored(P); Profiler?.End(10221);
+            Profiler?.Begin(10222); PlanetSys.Climate.Derive(P); Profiler?.End(10222);
             PlanetSys.RefreshMeans(P);
             for (int c = 0; c < P.Cells; c++) P.ClassifyBiome(c, Now);
             Routes.Invalidate();
@@ -577,8 +577,8 @@ namespace TC2.Core.Simulation
             long coastEvent = 0;
             if (record && drowned + emerged > 0)
                 coastEvent = Record(new HistoryEvent { Kind = HistoryKind.CoastChanged, Time = Now, Cell = -1, RootKind = RootKind.Nature, Magnitude = (float)(P.SeaLevel - coastBefore), ArgA = drowned, ArgB = emerged * 1000 + villages });
-            if (drowned > 0) Homes.SeaTook(this, coastEvent);   // (homes on drowned lots are lost: D2-087)
-            if (drowned + emerged > 0) Boats.ShoreMoved(this);   // (boats follow the water's edge, risen or fallen: C9.1)
+            Profiler?.Begin(10223); if (drowned > 0) Homes.SeaTook(this, coastEvent); Profiler?.End(10223);   // (homes on drowned lots are lost: D2-087)
+            Profiler?.Begin(10224); if (drowned + emerged > 0) Boats.ShoreMoved(this); Profiler?.End(10224);   // (boats follow the water's edge, risen or fallen: C9.1)
         }
 
         int NearestSettlement(int cell, double maxM)

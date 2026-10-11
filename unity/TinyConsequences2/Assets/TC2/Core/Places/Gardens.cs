@@ -223,6 +223,14 @@ namespace TC2.Core.Places
         }
 
         /// <summary>
+        /// The garden's pull on a grown member's free hours (lived days' urge and COARSE days' order alike, D2-146): 0.32, more as far as it is behindhand
+        /// (up to 0.54 when a quarter of its year's work is due), by the member's diligence - below the fields, the meals and the fuel; below building a
+        /// roof from a camp (0.85); against a hut's house (0.4) by how far behind it is; below the wild when hunger presses. Before the member's age and
+        /// diligence (lived: x elder x (0.6 + 0.4 diligence) + chance).
+        /// </summary>
+        public static double UrgeBase(double behind, double m2) => 0.32 + 0.22 * DMath.Clamp01(behind / DMath.Max(1.0, 0.25 * YearH * m2));
+
+        /// <summary>
         /// Hours of its garden's work still wanted by this day of the year: in the sowing and the growing, the digging and the weeding due by now less
         /// what was done; from the ripening, the gathering due by now less what was gathered (none where the garden bears nothing).
         /// </summary>

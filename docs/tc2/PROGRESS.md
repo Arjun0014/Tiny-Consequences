@@ -13,8 +13,15 @@
   bed carried its own hurdles (crofts read as crates) and the croft beside an end overlapped the croft behind - **D2-145** (d224365): the croft
   beside an end begins beyond a 2 m end yard, one wattle fence along the croft's outline (kit `hurdle`, beds without hurdles); ten seeds `_g3` at
   par; shots `s18c`/`s18d` (`tc2/out/shots/s18_gardens_sheet.png`); the Unity `.meta` files of Gardens.cs and GardenTests.cs committed at last.
-  (3) Queue 6 (`scratchpad/q6.sh`, log `q6.log`): the full suite on d224365, the 900-year check (`_g3` seeds 4, 42, bin_d), the Web build (2 jobs)
-  and the Web test `s18web1`.
+  (3) **The full suite on d224365: 369 of 371** - both failures the garden's COARSE day (D2-143): a camping household dug its garden before raising
+  its house (`MigrationTests.AHomeIsRaisedOnlyByLabourAndWood`) and a short village gardened before it foraged (`WildFoodTests.CoarseAndActivity
+  TurnToTheWildAlikeInAShortage`: COARSE 0.59 of lived) - **D2-146** a COARSE day's garden in the order a lived day's urges give it (after the wild
+  when hunger pulls harder, after the household's own roof where that pulls harder): both pass (wild hours in a shortage COARSE/lived 0.82),
+  neighbours pass, control `--oldgardenorder` = `_g3` byte-identical; ten seeds `_g4`, the Web build and test and the full suite in queue 7.
+  (4) **The 900-year check** (`_g3` year-300 saves lived 600 years more, bin_d): seed 4 4,488 -> 8,000-11,000 people from year 350 (11,149 at year 900,
+  38 villages), hunger 0.3-14 a 1,000 person-years, epidemics at 650 and 800 knocked back and recovered; soil tired 0.37, 15 % resting, a sown ha 0.76
+  of a fresh crop; 83 % of households with a garden (mean 153 m2). Seed 42 steady at 4,300-6,000 (5,667 at year 900, 18 villages), hunger 3-10, one
+  epidemic near 800. No collapse, no runaway.
 - **Session 17, second context (10 Oct 2026, from 06:46 IST; Control Room, Resource Governor LOW; the machine at 75-96 % RAM from other
   applications much of the time)** - (1) queue 3 closed: the controls byte-identical (`_c0` = `_s2`, `_c1`/`_c2` = `_n1`); ten seeds of the
   final binary against `_n1` at par in rates; boats lost x1.68 traced to `_n1`'s luck (the lowest of 65 run families; `place --sheds`: a shed fits

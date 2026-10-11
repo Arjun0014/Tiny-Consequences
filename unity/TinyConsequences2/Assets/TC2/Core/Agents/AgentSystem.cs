@@ -1165,7 +1165,7 @@ namespace TC2.Core.Agents
                 double gBehind = Gardens.Behindhand(in gHh, SettlementSystem.DayOfYear(in here, now), here.CropGrowth);
                 if (gBehind > 0.5)
                 {
-                    double u = (0.32 + 0.22 * DMath.Clamp01(gBehind / DMath.Max(1.0, 0.25 * Gardens.YearH * gHh.Garden))) * elder * (0.6 + 0.4 * p.Diligence / 255.0) + 0.1 * rs.NextUnit();
+                    double u = Gardens.UrgeBase(gBehind, gHh.Garden) * elder * (0.6 + 0.4 * p.Diligence / 255.0) + 0.1 * rs.NextUnit();
                     if (u > best) { best = u; choice = 25; }
                 }
             }
@@ -1750,6 +1750,44 @@ namespace TC2.Core.Agents
             w.Learning.Practice(ref p, Knowledge.Tech.Metal, h);
         }
 
+        /// <summary>Tools: a COARSE day's garden takes its hours before all but the fields, the fuel and the crafts' places, as C3.7a built it
+        /// (`--oldgardenorder`: the worlds before D2-146).</summary>
+        public static bool CoarseGardenOld;
+
+        /// <summary>
+        /// Whether a COARSE day's garden takes this member's hours now (true), after the household's own building (`later`), or not today: what its
+        /// season still wants, against the wild when hunger presses and against building its own roof - each by the urge a lived day gives it.
+        /// </summary>
+        bool GardenOrder(World w, in Settlement s, in Person p, int days, long now, bool shortNow, double ration, bool old, out bool later)
+        {
+            later = false;
+            if (!w.Households.Exists(p.Household)) return false;
+            if (old) return true;
+            ref var hh = ref w.Households.Get(p.Household);
+            double behind = Gardens.Behindhand(in hh, SettlementSystem.DayOfYear(in s, now + (days - 1) * SimTime.Day), s.CropGrowth);
+            if (behind <= 0) return false;
+            double u = Gardens.UrgeBase(behind, hh.Garden) * (0.6 + 0.4 * p.Diligence / 255.0) + 0.05;   // (as a lived day's, its chance 0.05 on average)
+            if (shortNow && WildNeed(in s, now, ration) > u) return false;   // (the wild first)
+            double roof = hh.Shelter == Construction.Camp ? 0.85 : hh.Shelter == Construction.Hut ? 0.4 : 0.0;
+            if (roof > u) { later = true; return false; }
+            return true;
+        }
+
+        /// <summary>A COARSE day's hours in the household's garden (C3.7a): as far as its season wants it by the step's last day. Returns the hours.</summary>
+        double CoarseGarden(World w, in Settlement s, int hid, int days, long now, double hours)
+        {
+            if (hours <= 0 || !w.Households.Exists(hid)) return 0.0;
+            ref var gHh = ref w.Households.Get(hid);
+            int gDoy = SettlementSystem.DayOfYear(in s, now + (days - 1) * SimTime.Day);
+            double gWant = Gardens.Behindhand(in gHh, gDoy, s.CropGrowth);
+            if (gWant <= 0) return 0.0;
+            double gH = DMath.Min(hours, gWant);
+            double gFu = Gardens.Work(ref gHh, gDoy, s.CropGrowth, gH);
+            w.Metrics.GardenHours += gH; w.Metrics.GardenFu += gFu;
+            if (Gardens.Tally != null) Gardens.Count(in s, gDoy, gH, gFu);
+            return gH;
+        }
+
         /// <summary>The household's best at dressing quern stones: it grinds on a rotary quern when one of its people can keep one (D2-062).</summary>
         double QuernBest(int hid) => HouseholdBest(hid, Knowledge.Tech.Quern);
 
@@ -1983,20 +2021,11 @@ namespace TC2.Core.Agents
                 }
                 int lslot = -1;
                 if (LandHours != null) { lslot = LandSlot(w, in s); LandHours[lslot] += days; LandHours[lslot + 1] += cropH; LandHours[lslot + 2] += hours; }
-                if (hours > 0 && !Gardens.Off && w.Households.Exists(p.Household))
-                {
-                    // the household's garden (C3.7a): its own ground after the village's fields, as far as its season wants it by the step's last day
-                    ref var gHh = ref w.Households.Get(p.Household);
-                    int gDoy = SettlementSystem.DayOfYear(in s, now + (days - 1) * SimTime.Day);
-                    double gWant = Gardens.Behindhand(in gHh, gDoy, s.CropGrowth);
-                    if (gWant > 0)
-                    {
-                        double gH = DMath.Min(hours, gWant);
-                        double gFu = Gardens.Work(ref gHh, gDoy, s.CropGrowth, gH);
-                        hours -= gH; w.Metrics.GardenHours += gH; w.Metrics.GardenFu += gFu;
-                        if (Gardens.Tally != null) Gardens.Count(in s, gDoy, gH, gFu);
-                    }
-                }
+                // the household's garden (C3.7a): its own ground after the village's fields, as far as its season wants it by the step's last day - in the
+                // order a lived day's urges give it (D2-146): a hungry day forages first where the wild pulls harder, and a household building its own roof
+                // builds first where that pulls harder (a camp's always, a hut's house unless the garden is far behind)
+                bool gardenLater = false;
+                if (hours > 0 && !Gardens.Off && GardenOrder(w, in s, in p, days, now, shortNow, ration, CoarseGardenOld, out gardenLater)) hours -= CoarseGarden(w, in s, p.Household, days, now, hours);
                 if (hours > 0 && age >= 16 && age < 60 && p.Health > 0.6 && Carts.HasWork(w, p.Household) && !(shortNow && WildNeed(in s, now, ration) > Carts.ShortBound))
                 {
                     // the household is making a cart (C4.2): a couple of its grown members' hours a day go to it before the village's building - their own
@@ -2019,6 +2048,7 @@ namespace TC2.Core.Agents
                         build = false;
                     }
                 }
+                if (gardenLater && hours > 0) hours -= CoarseGarden(w, in s, p.Household, days, now, hours);
                 if (hours > 0 && age >= 16 && age < 60 && p.Health > 0.6 && Boats.HasWork(w, in s, p.Household) && !(shortNow && WildNeed(in s, now, ration) > 0.42))
                 {
                     // the household is making a boat (C9.1): its grown members' free hours go to it, as a lived day's would

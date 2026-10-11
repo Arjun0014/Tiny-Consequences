@@ -321,9 +321,10 @@ namespace TC2.Core.Places
                 break;
             }
             // the frontage along its streets (C13.1) and their back lanes (C13.2): the nearest free lot of each line, weighed against the spiral's -
-            // a street's frontage in a town's core in plots half as wide (C13.3)
+            // a street's frontage in a town's core in plots half as wide (C13.3); where none of the spiral's lots is free (the sea over a village's
+            // every lot), no further out than the spiral looked - before, the walk along a street whose every lot was drowned never ended (D2-147)
             ref var s1 = ref w.Settlements.Get(sid);
-            bool front = false; double fb = sr; float fx = 0f, fy = 0f;
+            bool front = false; double fb = spiral >= 0 ? sr : 15.0 + 9.5 * DMath.Sqrt(limit + 1.0); float fx = 0f, fy = 0f;
             int lines = Streets.Lines(in s1);
             for (int i = 0; i < lines; i++)
             {

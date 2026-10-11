@@ -65,6 +65,25 @@ namespace TC2.Tests.Core
             Assume.That(w.Settlements.Get(sid).StreetN == n, "room for the streets");
         }
 
+        /// <summary>
+        /// The sea over a village's every lot (D2-147: a tectonic step drowned a village of seed 6 at year 160): a household whose home it took still
+        /// gets a lot at once - before, the walk along its streets for a free frontage lot never ended when every one was drowned.
+        /// </summary>
+        [Test]
+        public void ALotIsFoundAtOnceWhenTheSeaTookEveryLot()
+        {
+            var w = TestWorlds.Make(7);
+            int sid = w.Settlements.First();
+            Streets2(w, sid);                        // premise: two streets
+            w.Planet.SeaLevel += 100000.0;           // premise: the sea over all its ground
+            int hid = w.HouseholdsOf(sid)[0];
+            float x = 0f, y = 0f;
+            var t = new System.Threading.Thread(() => Homes.FreeLot(w, sid, hid, out x, out y)) { IsBackground = true };
+            t.Start();
+            Assert.IsTrue(t.Join(10000), "a lot found in time (it never ended)");
+            Assert.IsFalse(float.IsNaN(x) || float.IsNaN(y));
+        }
+
         [Test]
         public void ATownsHousesNeverStandInEachOtherAndItsCoreRowsAreNarrow()
         {

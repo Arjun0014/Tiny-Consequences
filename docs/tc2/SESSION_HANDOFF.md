@@ -11,10 +11,16 @@
 - **Resource rule (Arjun, Decision Inbox D-1, 11 Oct)**: one low-priority job at a time (`cmd //c start "" //belownormal //wait //b ...`) while RAM <
   86 % and CPU < 50 % (`scratchpad/q*.sh`'s `gate`/`low`); the machine's other applications hold RAM at 76-96 %. Ten seeds run one after another
   (~15 min); the Unity batch editor's shots ~1 min a run; never two jobs at once.
-- **Queue 6 running** (`scratchpad/q6.sh`, log `q6.log`; scratchpad `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/
-  1a60904a-17b6-4bc6-af65-f00fb5712a44/scratchpad`): the full suite on d224365 (`suite_d.txt`), the 900-year check (`l9.sh`, `_g3` seeds 4 then 42 with
-  `bin_d`: `tc2/out/civ/s4_l9g3*`, `s42_l9g3*`), the Web build (`--jobs 2`, `webbuild_s18web1.txt`) and the Web test (`tc2/out/webtest/s18web1.log`).
-  **Do not edit the source until its Web build has compiled it.**
+- **Done since**: the full suite on d224365 369/371 (both failures the garden's COARSE day -> **D2-146**, `AgentSystem.GardenOrder`, `--oldgardenorder`);
+  the 900-year check passed (seed 4: 11,149 people at year 900, seed 42: 5,667; no collapse). D2-146's ten seeds found **a hang** (seed 6, year 159->160):
+  `World.LandChanged` -> `Homes.SeaTook` -> `FreeLot`, the frontage search unbounded when the sea took every lot -> **D2-147** (bounded by the spiral's
+  reach; test `FootprintsTests.ALotIsFoundAtOnceWhenTheSeaTookEveryLot`); tools `run --trace FILE` (`TraceProfiler`) and trace points in
+  `TectonicStep`/`LandChanged`. Drafts: `scratchpad/d2146.md`, `d2147.md` (evidence pending).
+- **Queue 8** (`scratchpad/q8.sh`, log `q8.log`; scratchpad `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/
+  1a60904a-17b6-4bc6-af65-f00fb5712a44/scratchpad`): built `bin_f`, FootprintsTests 8/8; **waiting at its gate since 10:26** (Arjun's Chrome GPU process,
+  software WebGL, holds the CPU at 60-99 %; Decision Inbox D-2). Remaining: Migration/WildFood/Garden/HouseholdWork/Coarse/Determinism tests, `unity.mjs
+  cc`, control `--oldgardenorder` seed 4 = `_g3`, ten seeds `_g4` (seeds 4, 5, 1 must equal bin_e's runs: `scratchpad/s*_g4_bin_e.csv`), cmp `g3 g4`,
+  the Web build and test `s18web1`, the full suite. Then write D2-146/D2-147 into DECISIONS and commit.
 
 ### Next, in order
 1. Queue 6's results (suite, 900 years, Web); fix what fails.
