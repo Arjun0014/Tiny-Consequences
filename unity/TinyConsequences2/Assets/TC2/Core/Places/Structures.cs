@@ -113,10 +113,17 @@ namespace TC2.Core.Places
         {
             double cap = StoreCapacity(in s);
             double g0 = s.Granary;
-            if (s.Granary <= cap) { s.Granary *= days == 1 ? 1.0 - rot : SettlementSystem.Keep(rot, days); if (RotTally != null) RotTally[0] += g0 - s.Granary; return; }
+            if (s.Granary <= cap) { s.Granary *= days == 1 ? 1.0 - rot : SettlementSystem.Keep(rot, days); if (RotTally != null) RotTally[0] += g0 - s.Granary; SheavesRot(ref s, g0); return; }
             double over = s.Granary - cap, heap = DMath.Min(0.9, rot * HeapRot);
             s.Granary = cap * (days == 1 ? 1.0 - rot : SettlementSystem.Keep(rot, days)) + over * (days == 1 ? 1.0 - heap : SettlementSystem.Keep(heap, days));
             if (RotTally != null) { double kept = cap * (days == 1 ? rot : 1.0 - SettlementSystem.Keep(rot, days)); RotTally[0] += kept; RotTally[1] += g0 - s.Granary - kept; }
+            SheavesRot(ref s, g0);
+        }
+
+        /// <summary>The sheaves spoil with the store, in proportion (C3.7b: a part of it, in the barns' bays and the ricks).</summary>
+        static void SheavesRot(ref Settlement s, double g0)
+        {
+            if (s.Sheaves > 0 && g0 > 0) s.Sheaves *= s.Granary / g0;
         }
 
         /// <summary>Tools (C3.2 survey): FU of grain rotted in the granaries and in heaps beyond them, and harvested; null in the game.</summary>

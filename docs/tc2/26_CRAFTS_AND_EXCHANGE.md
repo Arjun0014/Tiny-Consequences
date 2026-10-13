@@ -366,6 +366,35 @@ floor (C3.7b: sheaves threshed at the barn or the granary through the year, ~0.2
 D2-132) and the muck (C3.7c: the yards' dung carted onto the holdings before the ploughing - the herds' return to the soil, D2-139, by labour
 and carts instead of free).
 
+### 2i. C3.7b the threshing floor - design (session 19)
+
+**What exists.** The reaped grain goes straight into the village's store as clean grain (`SettlementSystem.Sheaves`, D2-132; the harvest's
+day for the rest). Nobody threshes; the view's "haystacks" are four stacks round the first granary scaled by the whole store and drawn only after
+the harvest (an approximation of nothing in the state).
+
+**The record.** Sheaves were carted to the barn or built into thatched ricks in the stackyard (on staddles against rats) and threshed by flail
+on the barn's floor between its doors through the autumn and winter, a few bushels at a time as the household needed them or the market wanted
+them; the floor's work was a winter staple of the year (4-8 bushels of wheat a man-day, more of barley and oats - §2h; ~0.03-0.06 h a FU here).
+Grain kept better in the sheaf than threshed in bins (Fussell; Dyer), so threshing ran a little ahead of need, more in the slack. A barn's bays
+hold grain in the sheaf, which takes 3-5 times the room of threshed grain.
+
+**Design.** (1) **State**: `Settlement.Sheaves` - the store's grain still in the sheaf, a part of `Granary` (sim version 77); the reaped grain
+comes in as sheaves. (2) **Threshed grain** = Granary - Sheaves: only it is drawn for the larders, the hearth and a meal from the store
+(`SettlementSystem.Threshed`); everything else that counts the store (rationing, trade's spare, relief, the store's fill) counts it whole; what
+leaves the store otherwise (trade, relief, tribute, takings, the migrants' food) leaves threshed first (the sheaves never exceed the store) and
+rot and losses take the sheaves in proportion. (3) **The work**: threshing at the threshing floor - the barn's if the village has one, else beside
+the granary - at `ThreshHour` FU an hour a grown hand (~25: 0.04 h a FU), wanted while the threshed grain is short of the village's need for a
+few days ahead (3 days in the sowing and the reaping, 8 in the slack of the growing and after the harvest); lived days score it as the village's
+work by how short the threshed grain is (urgent when under a day: before the fields and the wild - a hungry hand threshes first); COARSE days give
+it the same hours (before the fields when urgent, else after them); DEEP steps thresh the step's need ahead. (4) **The view**: the stackyard -
+thatched ricks for the sheaves the barns do not hold (a barn's bays hold `BarnSheaves` = a quarter of its grain), a rick a ~1,500 FU, round the
+barn or the granary; people at the floor with flails (a new pose). The old haystacks (by the store's fill) go. (5) Tools: `--nothresh` (the grain
+in threshed as before: the control), `--threshtally`, metrics `ThreshHours`, `ThreshFu`. (6) Tests: the harvest stands as sheaves and is threshed
+through the year; lived and COARSE days thresh alike; a village whose hands are abed eats only what is threshed; saves keep the sheaves.
+**What should change**: little in the worlds (a village's threshing is ~0.1 h an adult-day), some hours of idling into work in the slack, and
+the picture: the stackyard full after the harvest and emptying through the year, empty before a hungry harvest - the village's grain made
+visible - and people threshing at the barns in the off-season.
+
 ## 3. Later slices
 - ~~**C3.1b more looms for towns**~~ (done, D2-120): another shed where the households drain the store most of a year with fibre to weave and
   the people in wares would outwear the looms; eight more makers a shed, each at the shed nearest home; towns of 500+ carry 2-4.

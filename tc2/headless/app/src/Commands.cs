@@ -162,6 +162,7 @@ namespace TC2.Headless
             if (a.Has("noworkclear")) TC2.Core.Places.Footprints.WorkClearOff = true;
             if (a.Has("oldwoods")) TC2.Core.Planet.PlanetSystems.OldWoods = true;   // (D2-142 against D2-140/141 in one binary: trees by the annual mean)
             if (a.Has("nogarden")) TC2.Core.Places.Gardens.Off = true;
+            if (a.Has("nothresh")) TC2.Core.Places.Threshing.Off = true;   // (C3.7b against C3.7a in one binary: the reaped grain in the store threshed)
             if (a.Has("oldgardenorder")) TC2.Core.Agents.AgentSystem.CoarseGardenOld = true;   // (D2-146: a COARSE day's garden before all but the fields, as C3.7a built it)   // (C3.7a against D2-142 in one binary: no gardens)
         }
 
@@ -208,6 +209,7 @@ namespace TC2.Headless
             if (a.Has("nosmithcrew")) TC2.Core.Places.Forge.CrewOff = true;   // (C1.4b against the smithy before it in one binary: every smith at it, no practice)
             if (a.Has("carttally")) TC2.Core.Diagnostics.CartTally.T = new double[12];   // (C4.2 closing: why carts begun are given up)
             if (a.Has("gardentally")) TC2.Core.Places.Gardens.Tally = new double[8];   // (D2-144: the gardens' work by hemisphere and by their village's crop)
+            if (a.Has("threshtally")) TC2.Core.Places.Threshing.Tally = new double[8];   // (C3.7b: the floor's grain and hours by the stage of the year)
             if (a.Has("crafttally")) { var ct = new System.Collections.Generic.Dictionary<int, double>[TC2.Core.Diagnostics.CraftTally.Kinds]; for (int k = 0; k < ct.Length; k++) ct[k] = new System.Collections.Generic.Dictionary<int, double>(); TC2.Core.Diagnostics.CraftTally.By = ct; var vy = new System.Collections.Generic.Dictionary<long, double>[TC2.Core.Diagnostics.CraftTally.Kinds]; for (int k = 0; k < vy.Length; k++) vy[k] = new System.Collections.Generic.Dictionary<long, double>(); TC2.Core.Diagnostics.CraftTally.VillageYear = vy; }   // (roles from practice: whose hours at each craft)
             if (a.Has("loads")) TC2.Core.Places.Trade.LoadTally = new double[4];   // (C4.2 survey: trading loads bound by what one person carries)
             if (a.Has("nokiln")) TC2.Core.Places.Pottery.Off = true;   // (C3.2 against D2-063 in one binary: no kilns - pots and jars from knowing how)
@@ -770,6 +772,31 @@ namespace TC2.Headless
                                 if (gTal != null)
                                     for (int gq = 0; gq < 8; gq += 4)
                                         Console.WriteLine("garden tally " + (gq == 0 ? "north" : "south") + ": " + F(gTal[gq], "0") + " h, " + F(gTal[gq + 1], "0") + " FU (" + F(gTal[gq] > 0 ? gTal[gq + 1] / gTal[gq] : 0, "0.000") + " FU an hour); dug or weeded while the crop was ripe or in " + F(gTal[gq + 2], "0") + " h, gathered while it was sown or growing " + F(gTal[gq + 3], "0") + " FU");
+                            }
+                            {
+                                // the threshing floor (C3.7b): the sheaves standing now, what was threshed over the run and its hours
+                                double shv = 0, grn = 0; int stacked = 0, vil = 0;
+                                for (int sid2 = w.Settlements.First(); sid2 != 0; sid2 = w.Settlements.Next(sid2))
+                                {
+                                    var st2 = w.Settlements.Get(sid2);
+                                    if (!st2.Inhabited) continue;
+                                    vil++; shv += st2.Sheaves; grn += st2.Granary; if (st2.Sheaves > 1.0) stacked++;
+                                }
+                                Console.WriteLine("threshing: " + F(w.Metrics.ThreshFu, "0") + " FU threshed in " + F(w.Metrics.ThreshHours, "0") + " h over the run (" + F(w.Metrics.ThreshFu > 0 ? w.Metrics.ThreshHours / w.Metrics.ThreshFu : 0, "0.000") + " h a FU); in the sheaf now " + F(shv, "0") + " FU of " + F(grn, "0") + " in the stores, " + stacked + " of " + vil + " villages with sheaves");
+                                {
+                                    // the woods' felling remembered (W-FELL): cells with stumps standing, their felled share
+                                    var Pf = w.Planet; int fc = 0; double fs = 0, fmax = 0;
+                                    for (int c = 0; c < Pf.Cells; c++) if (Pf.Felled[c] > 0.02f) { fc++; fs += Pf.Felled[c]; if (Pf.Felled[c] > fmax) fmax = Pf.Felled[c]; }
+                                    Console.WriteLine("felled woods: " + fc + " cells with stumps standing (mean felled share " + F(fc > 0 ? fs / fc : 0, "0.00") + ", most " + F(fmax, "0.00") + ")");
+                                }
+                                var tt = TC2.Core.Places.Threshing.Tally;
+                                if (tt != null)
+                                {
+                                    string[] stn = { "sown", "growing", "ripe", "harvested" };
+                                    var line = "thresh tally:";
+                                    for (int k = 0; k < 4; k++) line += " " + stn[k] + " " + F(tt[2 * k], "0") + " FU " + F(tt[2 * k + 1], "0") + " h;";
+                                    Console.WriteLine(line);
+                                }
                             }
                             if (TC2.Core.Diagnostics.CraftTally.By != null) CraftReport(w);
                             var ctt = TC2.Core.Diagnostics.CartTally.T;

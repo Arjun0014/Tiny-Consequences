@@ -178,6 +178,8 @@ namespace TC2.Core.Places
         public float Rest;              // the share of its arable it rests this year (fallow)
         public double Grazed;           // kg of grass its herds have eaten off the waste since the last harvest (their dung comes back to the fields)
         public long RestEvent;          // the history record of the years it has rested its fields (0: it crops all it sows)
+        public double Sheaves;          // of its granary, the grain still in the sheaf - reaped and stacked, not yet threshed (C3.7b: only threshed grain is eaten)
+        public float ThreshOut;         // FU its people are threshing now in stints under way (lived days; read by the next who would go to the floor)
 
         public float SquareX, SquareY, FieldX, FieldY, WoodX, WoodY, WellX, WellY;
 
@@ -250,6 +252,7 @@ namespace TC2.Core.Places
             w.Double(Tilth); w.Double(TilthDone); w.Float(TilthGain); w.Long(TilthEvent);   // (C3.6, sim version 66)
             w.Double(CropYield); w.Double(Reaped);   // (D2-132, sim version 67)
             w.Double(Tired); w.Float(TiredSeen); w.Float(Rest); w.Double(Grazed); w.Long(RestEvent);   // (C3.6f, sim version 74)
+            w.Double(Sheaves); w.Float(ThreshOut);   // (C3.7b, sim version 77)
         }
 
         public static Settlement Read(BinReader r)
@@ -276,6 +279,7 @@ namespace TC2.Core.Places
             s.Tilth = r.Double(); s.TilthDone = r.Double(); s.TilthGain = r.Float(); s.TilthEvent = r.Long();
             s.CropYield = r.Double(); s.Reaped = r.Double();
             s.Tired = r.Double(); s.TiredSeen = r.Float(); s.Rest = r.Float(); s.Grazed = r.Double(); s.RestEvent = r.Long();
+            s.Sheaves = r.Double(); s.ThreshOut = r.Float();
             return s;
         }
 
@@ -302,6 +306,7 @@ namespace TC2.Core.Places
             h.Add(Tilth); h.Add(TilthDone); h.Add(TilthGain); h.Add(TilthEvent);
             h.Add(CropYield); h.Add(Reaped);
             h.Add(Tired); h.Add(TiredSeen); h.Add(Rest); h.Add(Grazed); h.Add(RestEvent);
+            h.Add(Sheaves); h.Add(ThreshOut);
         }
 
         internal static void WriteV(BinWriter w, Vec3d v) { w.Double(v.X); w.Double(v.Y); w.Double(v.Z); }

@@ -298,6 +298,10 @@ namespace TC2.Core.History
                         return "in the household's garden behind the house, " + (cs == TC2.Core.Places.CropStage.Sown ? "digging and planting beans, peas and cabbages" :
                                cs == TC2.Core.Places.CropStage.Growing ? "weeding and watering the beds" : "gathering leeks, beans and cabbages for the pot") + ": its season wants it";
                     }
+                case ActivityKind.Thresh:
+                    // (C3.7b: the village's sheaves at its floor)
+                    return "threshing " + home + "'s sheaves with a flail " + (w.Settlements.Exists(p.Home) && TC2.Core.Places.Threshing.Barn(w, p.Home) != 0 ? "before its barn's doors" : "at its threshing floor by the granary") + ": " +
+                           (p.Why == WhyCode.Hungry ? "nothing threshed is left in the store and the household is hungry" : "the store's threshed grain runs short of what its people will eat");
                 case ActivityKind.Pot:
                     {
                         // (C3.2: what its potters have to make - the jars its granaries' grain lacks, the pots its hearths lack, or ware for its buyers)

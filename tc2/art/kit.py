@@ -495,6 +495,32 @@ def haystack(name, seed=6):
     return k.finish()
 
 
+def rick(name, seed=71):
+    """A corn rick (C3.7b): the sheaves built into a round stack on staddle stones (mushroom stones under a timber floor, against rats and damp),
+    the butts outward in courses swelling a little to the eaves, a thatched cone pegged down with a straw finial. ~3.6 m across, 4.3 m high."""
+    k = Kit(name, seed)
+    sheaf = srgb(0.80, 0.67, 0.36)
+    course = srgb(0.70, 0.57, 0.30)
+    thatch = srgb(0.62, 0.52, 0.32)
+    for i in range(6):                                                         # the staddles: a stone stem, a stone cap
+        a = i * math.tau / 6.0 + 0.3
+        x, y = 1.25 * math.cos(a), 1.25 * math.sin(a)
+        k.cyl((x, y, 0), 0.16, 0.11, 0.42, STONE, seg=6)
+        k.cyl((x, y, 0.42), 0.30, 0.26, 0.12, STONE_DARK, seg=7)
+    k.cyl((0, 0, 0.54), 1.62, 1.62, 0.12, TIMBER, seg=12)                      # the floor
+    z, r = 0.66, 1.62
+    for i in range(5):                                                         # the sheaves in courses, swelling to the eaves
+        r1 = 1.62 + 0.05 * i
+        k.cyl((0, 0, z), r1, r1 + 0.05, 0.40, sheaf if i % 2 == 0 else course, seg=14, cap=False)
+        z += 0.40; r = r1 + 0.05
+    k.cyl((0, 0, z), r + 0.12, 0.10, 1.75, thatch, seg=14)                    # the thatched cone, its eaves over the courses
+    k.cyl((0, 0, z + 1.70), 0.10, 0.02, 0.45, course, seg=5)                  # the straw finial
+    for i in range(7):                                                         # the thatch's rope ties, pegged at the eaves
+        a = i * math.tau / 7.0
+        k.limb((0.0, 0.0, z + 1.55), ((r + 0.08) * math.cos(a), (r + 0.08) * math.sin(a), z + 0.05), 0.025, 0.025, srgb(0.42, 0.33, 0.20), seg=3)
+    return k.finish()
+
+
 def well(name, seed=7):
     k = Kit(name, seed)
     k.cyl((0, 0, 0), 0.9, 0.9, 0.8, STONE, seg=10)
@@ -1487,6 +1513,7 @@ def build_all():
     objs.append(person("person"))
     objs.append(fence("fence"))
     objs.append(haystack("haystack"))
+    objs.append(rick("rick"))                  # the sheaves in the stackyard (C3.7b)
     objs.append(well("well"))
     # the civilisation kit (D2-089, C1)
     objs.append(barn("barn"))

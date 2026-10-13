@@ -425,6 +425,7 @@ namespace TC2.Game
                     sb.Append("keeps grain: up to ").Append(k.Capacity.ToString("N0", CultureInfo.InvariantCulture)).Append(" days' food for one; ")
                       .Append(place).Append("'s ").Append(s.Granaries).Append(s.Granaries == 1 ? " granary" : " granaries").Append(s.Barns > 0 ? " and " + s.Barns + (s.Barns == 1 ? " barn" : " barns") : "").Append(" hold ").Append(s.Granary.ToString("N0", CultureInfo.InvariantCulture))
                       .Append(" of ").Append(cap.ToString("N0", CultureInfo.InvariantCulture)).Append(s.Granary > cap ? " - the rest lies in heaps and rots fast" : "").Append('\n');
+                    if (s.Sheaves > 0.5) sb.Append(s.Sheaves.ToString("N0", CultureInfo.InvariantCulture)).Append(" of it still in the sheaf, threshed at the floor as its people need it\n");   // (C3.7b)
                 }
                 else if (b.Kind == Structures.Well) sb.Append("water for ").Append(s.Population).Append(" people, drawn by the pot\n");
                 else if (b.Kind == Structures.BoatShed)
