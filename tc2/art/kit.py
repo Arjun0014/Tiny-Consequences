@@ -531,10 +531,11 @@ def grave(name, seed=73):
 
 
 def grave_old(name, seed=74):
-    """An old grave (D2-151): a low grassed mound (tinted: grass) and a small rough stone at its head."""
+    """An old grave (D2-151, D2-154): a low grassed mound (tinted: grass) and a rough upright headstone at its head, leaning a little - the
+    stone reads as a grave from the air where the mound alone read as a garden's row."""
     k = Kit(name, seed)
-    k.ellipsoid((0, 0, -0.02), (0.95, 0.42, 0.16), srgb(0.80, 0.80, 0.80, 1.0), subdiv=2, smooth=False)
-    k.blob((0.95, 0.02, 0.16), 0.16, STONE, subdiv=1, jitter=0.18, squash=1.4)
+    k.ellipsoid((0, 0, -0.02), (0.95, 0.42, 0.13), srgb(0.80, 0.80, 0.80, 1.0), subdiv=2, smooth=False)
+    k.box((1.02, 0, 0.27), (0.13, 0.40, 0.58), STONE, rot_z=0.06, bevel=0.035)
     return k.finish()
 
 

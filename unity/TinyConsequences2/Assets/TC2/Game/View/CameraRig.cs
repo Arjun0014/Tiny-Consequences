@@ -141,7 +141,20 @@ namespace TC2.Game
             }
             if (view.StartsWith("floor") && sid != 0)
             {
-                // (C3.7b) the framed village's threshing floor and its stackyard: "floor" 45 m up, "floorlow" 22 m, "floorfar" 110 m
+                // (C3.7b) the framed village's threshing floor and its stackyard: "floor" 45 m up, "floorlow" 22 m, "floorfar" 110 m; "floorbusy"
+                // (and "floorbusylow"): the floor of the village with the most of its people threshing at this moment - the flails seen at work
+                if (view.StartsWith("floorbusy"))
+                {
+                    int most = 0;
+                    for (int s2 = w.Settlements.First(); s2 != 0; s2 = w.Settlements.Next(s2))
+                    {
+                        if (!w.Settlements.Get(s2).Inhabited) continue;
+                        var r2 = w.Residents(s2); int n2 = 0;
+                        for (int i = 0; i < r2.Count; i++) if (w.People.Get(r2[i]).Act == TC2.Core.Agents.ActivityKind.Thresh) n2++;
+                        if (n2 > most) { most = n2; sid = s2; }
+                    }
+                    Debug.Log("[TC2] the busiest threshing floor now: " + most + " threshing");
+                }
                 ref var st = ref w.Settlements.Get(sid);
                 TC2.Core.Places.Threshing.Floor(w, sid, out double fx, out double fy);
                 d = st.LocalToSphere(fx, fy, w.Planet.Radius);
@@ -150,7 +163,7 @@ namespace TC2.Game
                 for (int i = 0; i < res.Count; i++) if (w.People.Get(res[i]).Act == TC2.Core.Agents.ActivityKind.Thresh) at++;
                 Debug.Log("[TC2] threshing floor of " + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(sid)) + ": in the sheaf " + st.Sheaves.ToString("0") + " FU of " + st.Granary.ToString("0") +
                           ", threshed " + TC2.Core.Places.Threshing.Threshed(in st).ToString("0") + ", barns " + st.Barns + ", at the floor now " + at + ", crop " + st.Crop);
-                LookAt(d, view == "floorfar" ? 110 : view == "floorlow" ? 22 : 45);
+                LookAt(d, view == "floorfar" ? 110 : view == "floorlow" || view == "floorbusylow" ? 22 : 45);
                 return;
             }
             if ((view.StartsWith("woodlot") || view.StartsWith("graves") || view.StartsWith("standard")) && sid != 0)

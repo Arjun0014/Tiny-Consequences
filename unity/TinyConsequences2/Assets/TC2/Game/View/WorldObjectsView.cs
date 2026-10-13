@@ -627,12 +627,17 @@ namespace TC2.Game
                 if (((j < 64 ? blk.lo >> j : blk.hi >> (j - 64)) & 1UL) != 0) continue;
                 if (!Burials.Shows(in s, w.Now, j, out bool fresh, out int age)) continue;
                 Burials.SlotAt(in s, j, out double x, out double y);
-                if (fresh) _graves.Add(0, new Color(0.47f, 0.36f, 0.25f), PlaceFaced(P, s, x, y, 0.0, sc));
+                // (D2-154) the graves lie side by side along their rows, the long way across them (the kit's length on the village's x - at face 0 it
+                // lay along the rows, head to foot, and the ground read as a garden's rows), each dug a little off the line and the square
+                ulong gh = KeyedRng.Mix((ulong)sid * 0x9E3779B97F4A7C15UL ^ (ulong)(j * 7919 + 0x6A7E));
+                x += (KeyedRng.Unit(gh) - 0.5) * 0.5; y += (KeyedRng.Unit(KeyedRng.Mix(gh + 1)) - 0.5) * 0.3;
+                double face = DMath.HalfPi + (KeyedRng.Unit(KeyedRng.Mix(gh + 2)) - 0.5) * 0.22;
+                if (fresh) _graves.Add(0, new Color(0.47f, 0.36f, 0.25f), PlaceFaced(P, s, x, y, face, sc));
                 else
                 {
-                    // (grassing over: earth-brown to the grass's green in its first years, then sinking lower)
+                    // (grassing over: earth-brown to the sward's dull green in its first years, then sinking lower)
                     float g = Mathf.Clamp01(age / 25f);
-                    _gravesOld.Add(1, Color.Lerp(new Color(0.44f, 0.40f, 0.26f), new Color(0.36f, 0.47f, 0.24f), g), PlaceFaced(P, s, x, y, 0.0, sc * (1f - 0.35f * Mathf.Clamp01(age / 90f))));
+                    _gravesOld.Add(1, Color.Lerp(new Color(0.44f, 0.40f, 0.26f), new Color(0.38f, 0.44f, 0.25f), g), PlaceFaced(P, s, x, y, face, sc * (1f - 0.35f * Mathf.Clamp01(age / 90f))));
                 }
             }
         }

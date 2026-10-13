@@ -395,6 +395,35 @@ through the year; lived and COARSE days thresh alike; a village whose hands are 
 the picture: the stackyard full after the harvest and emptying through the year, empty before a hungry harvest - the village's grain made
 visible - and people threshing at the barns in the off-season.
 
+### 2j. C3.7c the muck - design (session 19-20)
+
+**What exists.** The soil (C3.6f, D2-139) tires as it bears and is given back a share each year by rain, rest and **the herds' dung**: the grass the
+village's beasts ate on the waste (`Settlement.Grazed`) comes back to the fields at the next harvest, whole and free - nobody carries it, and in this
+world the beasts graze the waste by day and are penned in the households' yards at night, so most of it could never have reached the fields.
+
+**The record.** The night fold and the byre were the farm's dung factory: beasts penned overnight (and all winter in the north) trod their dung
+into the bedding, and the heaps in the yards were carted out and spread on the fields in the slack after the harvest and before the ploughing -
+a hard, slow job by the basket and the handcart, quicker with an ox cart (~1 t an hour loaded, carted and spread at most). Muck left in the yard
+through a summer lost much of its goodness to the rain. The more beasts a village kept and the more hands and carts it had to cart, the better
+its fields held up - the medieval link between the herds, the labour and the corn.
+
+**Design.** (1) **State** (sim version 79): `Settlement.Muck` (kg in the yards' heaps) and `Settlement.Spread` (kg carted out since the harvest).
+(2) **Made**: each day the herds graze (`Livestock.Day`), the night's share of their dung, with the bedding trodden in, piles in the yards -
+`Muck.PerDm` 3 kg of muck a kg of grass eaten x `NightShare` 0.5 (all of it on a hard-frost day, penned); the day's dung stays on the waste.
+(3) **Leached**: what waits uncarted loses `Leach` 0.3 a year (e-folding: about a quarter gone in a year). (4) **Carted**: from the harvest's end
+through the sowing (`Muck.Window`: the village's own calendar), at `OxHPerT` 0.9 h a tonne with an ox cart, `HandHPerT` 1.6 with a handcart,
+`BackHPerT` 5 by the back (the household's own cart, `Carts.Usable`), at the carter's strength. Lived days: a village work's urge for the grown
+(16-59, well, by day: 0.30 + 0.25 x the heaps a hectare of field / 3 t), stints of 1.5-2.5 h out on the village's fields; COARSE days and DEEP
+steps: after the fields' own work, up to half the free hours. (5) **Given back**: at the harvest the soil's year reads the grass the spread muck
+stands for (`Muck.GrassOf` = spread / (PerDm x NightShare)) in place of the grass grazed - all of the yards' muck carted gives the land what the
+herds' dung gave before (D2-139's calibration kept); none carted gives nothing; the frost's penned days give the cold villages more. (6) **The view**:
+muck heaps in the yards by the size of the village's heaps; carters at work in the fields; the sown plots darker by the muck spread a hectare.
+(7) Tools: `--nomuck` (the dung free as before: the control), `--mucktally` (kg made, carted, leached; hours), metrics `MuckHours`, `MuckKg`.
+(8) Tests: the night's dung piles in the yards while the crop stands and is carted after the harvest at a cart's or a back's pace; only the
+muck spread gives back, all of it as the dung did before; uncarted muck leaches; saves keep it.
+**What should change**: the fields' fertility now depends on the hands and carts to cart the muck - villages with many beasts and few hands lose
+some of the dung's return; a few hours of the slack's idling become work; the picture shows heaps in the yards and carts in the fields in autumn.
+
 ## 3. Later slices
 - ~~**C3.1b more looms for towns**~~ (done, D2-120): another shed where the households drain the store most of a year with fibre to weave and
   the people in wares would outwear the looms; eight more makers a shed, each at the shed nearest home; towns of 500+ carry 2-4.

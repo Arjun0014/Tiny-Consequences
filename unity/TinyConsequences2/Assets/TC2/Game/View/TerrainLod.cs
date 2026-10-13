@@ -730,7 +730,9 @@ namespace TC2.Game
             if (pos == null || wood == null || land == null) return;
             int V = N + 1;
             bool any = false;
-            for (int o = 0; o < V * V && !any; o++) any = wood[o].x > 0.004f;
+            var fellAt = p.Fell;
+            // (W-FELL) ground felled bare still has its stumps: a patch or a square with no wood standing but a felled share is placed too
+            for (int o = 0; o < V * V && !any; o++) any = wood[o].x > 0.004f || fellAt != null && fellAt[o] > 0.01f;
             if (!any) return;
             if (p.Trees == null) { p.Trees = new Matrix4x4[MaxTrees]; p.TreeKind = new byte[MaxTrees]; p.TreeGroup = new ushort[MaxTrees]; }
             Vector3 cd = p.Dirs[(N / 2) * V + N / 2];
@@ -742,7 +744,8 @@ namespace TC2.Game
                 for (int i = 0; i < N; i++)
                 {
                     int a = j * V + i, b = a + 1, c = a + V, d = c + 1;
-                    if (wood[a].x <= 0.004f && wood[b].x <= 0.004f && wood[c].x <= 0.004f && wood[d].x <= 0.004f) continue;
+                    if (wood[a].x <= 0.004f && wood[b].x <= 0.004f && wood[c].x <= 0.004f && wood[d].x <= 0.004f &&
+                        (fellAt == null || fellAt[a] <= 0.01f && fellAt[b] <= 0.01f && fellAt[c] <= 0.01f && fellAt[d] <= 0.01f)) continue;
                     Vector2 qa = Proj(pos[a], ax, sc, off), qb = Proj(pos[b], ax, sc, off), qc = Proj(pos[c], ax, sc, off), qd = Proj(pos[d], ax, sc, off);
                     Vector2 e1 = qb - qa, e2 = qc - qa;
                     float det = e1.x * e2.y - e1.y * e2.x;
@@ -1075,6 +1078,9 @@ namespace TC2.Game
         /// <summary>Works out on the land near this patch - quarries (C1.3): cut rock where they stand, no fields or woods over them.</summary>
         readonly System.Collections.Generic.List<Vec3d> _sites = new System.Collections.Generic.List<Vec3d>();
         readonly System.Collections.Generic.List<Vector4> _grounds = new System.Collections.Generic.List<Vector4>();   // training grounds (xyz) and how beaten (w)
+        readonly System.Collections.Generic.List<int> _graveNear = new System.Collections.Generic.List<int>();   // villages whose burial ground lies on the patch (D2-154)
+        readonly System.Collections.Generic.List<Vec3d> _graveAt = new System.Collections.Generic.List<Vec3d>();
+        static readonly Color Sward = new Color(0.34f, 0.43f, 0.22f);   // (a burial ground's unploughed sward: D2-154)
 
         /// <summary>A village's ground read once a patch (C13.1): each household's home and where its door path goes (its street, or the
         /// square), each street's direction and how far homes line it - not again for every vertex.</summary>
@@ -1252,6 +1258,17 @@ namespace TC2.Game
                         if (dq < reach) _sites.Add(at);
                     }
                 }
+                // the burial grounds (D2-151, D2-154): sward where the dead lie - never ploughed, never wooded
+                _graveNear.Clear(); _graveAt.Clear();
+                double greach = DMath.HalfPi / (1 << p.Level) * 0.9 + 40.0 / P.Radius;
+                for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+                {
+                    ref var st = ref w.Settlements.Get(sid);
+                    if (st.BurialCount <= 0) continue;
+                    Vec3d at = st.LocalToSphere(st.GraveX, st.GraveY, P.Radius);
+                    double dq = System.Math.Acos(System.Math.Min(1.0, at.X * pc.x + at.Y * pc.y + at.Z * pc.z));
+                    if (dq < greach) { _graveNear.Add(sid); _graveAt.Add(at); }
+                }
                 // the beaten earth of training grounds (C1.5, D2-114): bare by the hours of practice put in there (b.Use) - none before
                 _grounds.Clear();
                 for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
@@ -1276,6 +1293,9 @@ namespace TC2.Game
                 p.Wood[o] = Vector4.zero;
                 p.Kind[o] = Vector2.zero;
                 p.Land[o] = Vector4.zero;
+                p.Fell[o] = 0f;   // (W-FELL: none in the sea - a pooled patch kept its last land's stumps, and since the stumps are placed where no wood
+                                  // stands, they would have stood in the water)
+                float graveHere = 0f;   // (the burial ground's share here: no plots drawn - D2-154)
                 if (rel < 0)
                 {
                     // the sea floor as seen through the water: sand in the shallows, dark below
@@ -1318,6 +1338,18 @@ namespace TC2.Game
                         beaten = Mathf.Max(beaten, (1f - Edge(6.5f, 10f, (float)(ang * P.Radius))) * gv.w);
                     }
                     farm *= 1f - beaten;
+                    float grave = 0f;   // (a burial ground's sward: D2-154 - the plough's plots never drawn over the graves)
+                    for (int q = 0; q < _graveNear.Count; q++)
+                    {
+                        Vec3d gv = _graveAt[q];
+                        if (System.Math.Acos(System.Math.Min(1.0, gv.X * d.X + gv.Y * d.Y + gv.Z * d.Z)) * P.Radius > 40.0) continue;
+                        ref var gs = ref w.Settlements.Get(_graveNear[q]);
+                        gs.SphereToLocal(d, P.Radius, out double gx, out double gy);
+                        float e = Mathf.Max(Mathf.Abs((float)(gx - gs.GraveX)) - (float)TC2.Core.Places.Burials.HalfX, Mathf.Abs((float)(gy - gs.GraveY)) - (float)TC2.Core.Places.Burials.HalfY);
+                        grave = Mathf.Max(grave, 1f - Edge(0.5f, 2.5f, e));
+                    }
+                    farm *= 1f - grave;
+                    graveHere = grave;
                     // farmland: the shader draws plots, furrows and hedges in the village's own grid
                     p.Plots[o] = Vector2.zero; p.Farm[o] = Vector2.zero;
                     if (owner != 0 && w.Settlements.Exists(owner))
@@ -1344,6 +1376,7 @@ namespace TC2.Game
                         VillageVerts++;
                     }
                     if (beaten > 0f) { col = Color.Lerp(col, Beaten, beaten * 0.85f); bare = Mathf.Max(bare, beaten); clear = Mathf.Max(clear, beaten); }
+                    if (grave > 0f) { col = Color.Lerp(col, Sward, grave * 0.8f); bare *= 1f - grave; clear = Mathf.Max(clear, grave); }
                     float road = RoadAt(P, d, c, quad) * roadLod;
                     bare = Mathf.Max(bare, road);
                     if (road > 0) col = Color.Lerp(col, Road, road * 0.85f);
@@ -1428,7 +1461,7 @@ namespace TC2.Game
                     p.Land[o] = new Vector4(Mathf.Clamp01((0.45f - moist) / 0.30f), riverNear, Mathf.Max(bare, rock), P.Ice[c] < 1f ? beachWidth : 0f);
                 }
                 var lin = col.linear;
-                lin.a = rel < 0 || p.Farm[o].x <= 0 ? 0f : Mathf.Clamp01(FarmWeight(P, d, c) * CoreMask(p.Plots[o]));
+                lin.a = rel < 0 || p.Farm[o].x <= 0 ? 0f : Mathf.Clamp01(FarmWeight(P, d, c) * CoreMask(p.Plots[o]) * (1f - graveHere));
                 cols[o] = lin;
             }
         }

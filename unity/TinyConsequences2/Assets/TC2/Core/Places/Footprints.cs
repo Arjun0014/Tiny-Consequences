@@ -216,6 +216,11 @@ namespace TC2.Core.Places
                     if (Boxes(x, y, face, cx, cz, hx, hz, h.HomeX, h.HomeY, cf, qx, qz, qhx, qhz, Gap)) return false;
                 }
             }
+            for (int r = 0; r < n; r++)
+            {
+                Rect(plan, r, out double cx, out double cz, out double hx, out double hz);
+                if (Burials.Meets(in s, x, y, face, cx, cz, hx, hz)) return false;   // (never over the burial ground: D2-154)
+            }
             return Open(in s, x, y, face, plan) && !Wet(w, in s, x, y, face, plan);
         }
 
@@ -755,6 +760,7 @@ namespace TC2.Core.Places
             // two into the street as drawn)
             if (Streets.On(in s, x, y, wr + (WorkClearOff ? 1.0 : Streets.Width))) return false;
             if (WetDisc(w, in s, x, y, wr)) return false;   // (nor on a river: D2-118)
+            if (Burials.MeetsDisc(in s, x, y, wr)) return false;   // (nor over the burial ground: D2-154)
             return !Structures.OnRing(in s, x, y, wr + 2.5);
         }
     }

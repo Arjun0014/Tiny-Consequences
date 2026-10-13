@@ -163,7 +163,8 @@ namespace TC2.Headless
             if (a.Has("oldrain")) TC2.Core.Planet.PlanetSystems.OldRain = true;   // (W-FOREST pass 2b: the rain's seasons alike at every latitude)
             if (a.Has("oldwoods")) TC2.Core.Planet.PlanetSystems.OldWoods = true;   // (D2-142 against D2-140/141 in one binary: trees by the annual mean)
             if (a.Has("nogarden")) TC2.Core.Places.Gardens.Off = true;
-            if (a.Has("nothresh")) TC2.Core.Places.Threshing.Off = true;   // (C3.7b against C3.7a in one binary: the reaped grain in the store threshed)
+            if (a.Has("nothresh")) TC2.Core.Places.Threshing.Off = true;
+            if (a.Has("oldgraves")) TC2.Core.Places.Burials.Unkept = true;   // (D2-154 against D2-151 in one binary: homes, works and crofts laid over the graves)   // (C3.7b against C3.7a in one binary: the reaped grain in the store threshed)
             if (a.Has("oldgardenorder")) TC2.Core.Agents.AgentSystem.CoarseGardenOld = true;   // (D2-146: a COARSE day's garden before all but the fields, as C3.7a built it)   // (C3.7a against D2-142 in one binary: no gardens)
         }
 
@@ -793,15 +794,25 @@ namespace TC2.Headless
                                 }
                                 {
                                     // the burial grounds (D2-151): burials over the run, deaths with no grave, the graves marked and fresh now
-                                    double mk = 0, fr = 0; int burialGrounds = 0;
+                                    double mk = 0, fr = 0; int burialGrounds = 0, overGrounds = 0, overSlots = 0;
                                     for (int sid2 = w.Settlements.First(); sid2 != 0; sid2 = w.Settlements.Next(sid2))
                                     {
                                         var st3 = w.Settlements.Get(sid2);
                                         if (st3.BurialCount == 0) continue;
                                         burialGrounds++; TC2.Core.Places.Burials.Read(in st3, w.Now, out double m3, out double f3); mk += m3; fr += f3;
+                                        // (D2-154) the ground's slots a building, the square's earth or a street covers now - the view's rule (graves not drawn there)
+                                        int slotsOver = 0;
+                                        for (int jg = 0; jg < TC2.Core.Places.Burials.Slots; jg++)
+                                        {
+                                            TC2.Core.Places.Burials.SlotAt(in st3, jg, out double gx3, out double gy3);
+                                            if (!TC2.Core.Places.Footprints.DiscFree(w, sid2, 0, gx3, gy3, 0.9)) slotsOver++;
+                                        }
+                                        if (slotsOver > 0) overGrounds++;
+                                        overSlots += slotsOver;
                                     }
                                     var bt = TC2.Core.Places.Burials.Tally;
-                                    Console.WriteLine("burials: " + F(bt != null ? bt[0] : 0, "0") + " over the run, " + F(bt != null ? bt[1] : 0, "0") + " dead with no grave (lost at sea, under the wave or the lava); " + burialGrounds + " burial grounds, graves marked now " + F(mk, "0") + ", fresh " + F(fr, "0"));
+                                    Console.WriteLine("burials: " + F(bt != null ? bt[0] : 0, "0") + " over the run, " + F(bt != null ? bt[1] : 0, "0") + " dead with no grave (lost at sea, under the wave or the lava); " + burialGrounds + " burial grounds, graves marked now " + F(mk, "0") + ", fresh " + F(fr, "0") +
+                                                      "; grounds built over " + overGrounds + " (slots covered " + overSlots + " of " + burialGrounds * TC2.Core.Places.Burials.Slots + ")");
                                 }
                                 var tt = TC2.Core.Places.Threshing.Tally;
                                 if (tt != null)

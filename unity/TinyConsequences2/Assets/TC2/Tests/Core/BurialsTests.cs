@@ -87,5 +87,44 @@ namespace TC2.Tests.Core
             Assert.AreEqual(s.BurialCount, s2.BurialCount); Assert.AreEqual(s.Graves, s2.Graves, 0.0); Assert.AreEqual(s.GravesFresh, s2.GravesFresh, 0.0);
             Assert.AreEqual(s.GravesAt, s2.GravesAt); Assert.AreEqual(s.GraveX, s2.GraveX, 0f); Assert.AreEqual(s.GraveY, s2.GraveY, 0f);
         }
+
+        [Test]
+        public void TheVillageBuildsRoundItsBurialGround()
+        {
+            // D2-154: once laid out, the ground is kept - no home's lot, no work, no croft's bed over the graves (a town grows round its old ground
+            // as round a churchyard); `--oldgraves` lays them as before
+            var w = TestWorlds.Make(4514);
+            int sid = w.Settlements.First();
+            int a = Resident(w, sid);
+            w.Agents.Kill(ref w.People.Get(a), 0, 1);
+            Assume.That(Burials.Laid(in w.Settlements.Get(sid)));
+            // the ground moved onto the very lot the next household would take
+            Homes.FreeLot(w, sid, 0, out float lx, out float ly);
+            ref var s = ref w.Settlements.Get(sid);
+            s.GraveX = lx; s.GraveY = ly;
+            int plan = Footprints.LotPlan(in s, lx, ly);
+            double face = Footprints.FaceAt(in s, lx, ly, 0);
+            Assert.IsFalse(Footprints.HomeFits(w, sid, lx, ly, face, plan, 0, 0), "no home's lot on the graves");
+            Assert.IsFalse(Footprints.WorkFits(w, sid, lx, ly, Structures.Barn, 0.0, false), "no work on them");
+            Homes.FreeLot(w, sid, 0, out float mx, out float my);
+            ref var s1 = ref w.Settlements.Get(sid);
+            int plan2 = Footprints.LotPlan(in s1, mx, my);
+            double face2 = Footprints.FaceAt(in s1, mx, my, 0);
+            for (int r = 0; r < Footprints.Count(plan2); r++)
+            {
+                Footprints.Rect(plan2, r, out double cx, out double cz, out double hx, out double hz);
+                Assert.IsFalse(Footprints.Boxes(mx, my, face2, cx, cz, hx, hz, s1.GraveX, s1.GraveY, 0.0, 0.0, 0.0, Burials.HalfY, Burials.HalfX, 0.0),
+                               "the next household's lot lies off the ground");
+            }
+            System.Console.WriteLine("the lot it would have taken (" + lx.ToString("0.0") + ", " + ly.ToString("0.0") + ") holds the ground; it takes (" + mx.ToString("0.0") + ", " + my.ToString("0.0") + ")");
+            Burials.Unkept = true;
+            try
+            {
+                Assert.IsTrue(Footprints.HomeFits(w, sid, lx, ly, face, plan, 0, 0), "--oldgraves: the lot taken over the graves as before");
+                Homes.FreeLot(w, sid, 0, out float ox, out float oy);
+                Assert.AreEqual(lx, ox, 0f); Assert.AreEqual(ly, oy, 0f);
+            }
+            finally { Burials.Unkept = false; }
+        }
     }
 }

@@ -22,6 +22,26 @@ namespace TC2.Core.Places
         public const double Along = 2.3, Across = 1.4;
         /// <summary>Tools (null in the game): burials, deaths with no grave (lost at sea, under the wave or the lava). Never read by the simulation.</summary>
         public static double[] Tally;
+        /// <summary>Tools: homes, works and crofts may be laid out over the burial ground (`--oldgraves`: the worlds before D2-154), on the same binary.</summary>
+        public static bool Unkept;
+        /// <summary>m a home's, a work's or a croft's ground keeps from the burial ground's edge.</summary>
+        public const double Margin = 1.5;
+        /// <summary>The ground's half extents (m, the village's frame): along its rows (x) and across them (y).</summary>
+        public const double HalfX = 0.5 * Columns * Along, HalfY = 0.5 * (Slots / Columns) * Across;
+
+        /// <summary>Whether the village has laid out its burial ground (at its first burial).</summary>
+        public static bool Laid(in Settlement s) => s.BurialCount > 0 || s.GraveX != 0f || s.GraveY != 0f;
+
+        /// <summary>
+        /// Whether a piece of a plan (`Footprints.Rect`'s frame: at x, y facing `face`) would stand on the burial ground or within `Margin` of it
+        /// (D2-154): the village builds round its dead - a town grows round its old ground as round a churchyard, never over its graves.
+        /// </summary>
+        public static bool Meets(in Settlement s, double x, double y, double face, double cx, double cz, double hx, double hz)
+            => !Unkept && Laid(in s) && Footprints.Boxes(x, y, face, cx, cz, hx, hz, s.GraveX, s.GraveY, 0.0, 0.0, 0.0, HalfY, HalfX, Margin);
+
+        /// <summary>Whether a work's disc would reach the burial ground (within `Margin` of it).</summary>
+        public static bool MeetsDisc(in Settlement s, double x, double y, double r)
+            => !Unkept && Laid(in s) && Footprints.BoxDisc(s.GraveX, s.GraveY, 0.0, 0.0, 0.0, HalfY, HalfX, x, y, r, Margin);
 
         /// <summary>Whether a death leaves a body to bury (the drowned, the wave's and the lava's dead do not: `AgentSystem.Kill`'s causes 12, 6, 4).</summary>
         public static bool Leaves(int why) => why != 4 && why != 6 && why != 12;
@@ -81,6 +101,7 @@ namespace TC2.Core.Places
             }
             double a0 = DMath.Atan2((double)s.SquareY - s.FieldY, (double)s.SquareX - s.FieldX);   // (away from the fields)
             double half = 0.5 * DMath.Sqrt(Columns * Along * Columns * Along + (Slots / Columns) * Across * (Slots / Columns) * Across);
+            var hl = w.HouseholdsOf(sid);
             for (int ring = 0; ring < 4; ring++)
                 for (int k = 0; k < 12; k++)
                 {
@@ -88,10 +109,24 @@ namespace TC2.Core.Places
                     double r = far + 10.0 + half + 12.0 * ring;
                     double x = s.SquareX + r * DMath.Cos(a), y = s.SquareY + r * DMath.Sin(a);
                     if (!Footprints.DiscFree(w, sid, 0, x, y, half)) continue;
+                    if (!Unkept && Camped(w, hl, x, y, half)) continue;   // (nor over a camp's lot, kept for its home: D2-154)
                     s.GraveX = (float)x; s.GraveY = (float)y;
                     return;
                 }
             s.GraveX = (float)(s.SquareX + (far + 10.0 + half) * DMath.Cos(a0)); s.GraveY = (float)(s.SquareY + (far + 10.0 + half) * DMath.Sin(a0));
+        }
+
+        /// <summary>Whether a household camping on its lot (no home built yet) keeps ground within r of (x, y).</summary>
+        static bool Camped(World w, IntList hl, double x, double y, double r)
+        {
+            for (int i = 0; i < hl.Count; i++)
+            {
+                ref var h = ref w.Households.Get(hl[i]);
+                if (h.Building != 0) continue;
+                double dx = (double)h.HomeX - x, dy = (double)h.HomeY - y, rr = r + Footprints.CampR + Margin;
+                if (dx * dx + dy * dy < rr * rr) return true;
+            }
+            return false;
         }
 
         /// <summary>Slot j's place on the ground (the village's frame, metres): rows east to west, ten graves a row.</summary>
