@@ -139,6 +139,33 @@ namespace TC2.Game
                 LookAt(d, view == "mouthfar" ? 900 : 350);
                 return;
             }
+            if (view.StartsWith("act:"))
+            {
+                // the busiest spot of an activity anywhere in the world now (tools: "act:Muck", "act:Thresh:low"): the person drawn at it with the most
+                // others at the same work within 60 m - the shot frames work being done, never a guess of where it might be
+                string[] ap = view.Split(':');
+                if (System.Enum.TryParse(ap[1], out TC2.Core.Agents.ActivityKind ak))
+                {
+                    var at = new System.Collections.Generic.List<Vec3d>();
+                    double tnow = Host.RenderTime;
+                    for (int id = w.People.First(); id != 0; id = w.People.Next(id))
+                    {
+                        ref var pp = ref w.People.Get(id);
+                        if (!pp.Alive || pp.Act != ak) continue;
+                        if (TC2.Core.Agents.Presence.Of(w, in pp, tnow, out Vec3d pd, out _, out _, out _)) at.Add(pd);
+                    }
+                    int bestN = 0;
+                    for (int i = 0; i < at.Count; i++)
+                    {
+                        int n = 0;
+                        for (int j = 0; j < at.Count; j++) if (Vec3d.ArcDistance(at[i], at[j], w.Planet.Radius) < 60.0) n++;
+                        if (n > bestN) { bestN = n; d = at[i]; }
+                    }
+                    Debug.Log("[TC2] " + ap[1] + " now: " + at.Count + " drawn, the busiest spot " + bestN + " within 60 m");
+                }
+                LookAt(d, view.EndsWith(":low") ? 24 : 50);
+                return;
+            }
             if (view.StartsWith("floor") && sid != 0)
             {
                 // (C3.7b) the framed village's threshing floor and its stackyard: "floor" 45 m up, "floorlow" 22 m, "floorfar" 110 m; "floorbusy"
@@ -178,7 +205,22 @@ namespace TC2.Game
                 int wLot = TC2.Core.Places.Woods.Lot(in st);
                 // (the woodlot views look at the lot's own cell - the wood the village cuts now: its wood point is where it first went for wood, and the
                 // woods it cut there have long grown back)
-                if (view.StartsWith("woodlot") && wLot >= 0) d = w.Planet.Grid.Center[wLot];
+                if (view.StartsWith("woodlot") && wLot >= 0)
+                {
+                    // (and within the lot's cell, where its woods stand thickest - the lowest rank of the stands' noise: a glade there has no stumps
+                    // either, the woods never stood in it)
+                    d = w.Planet.Grid.Center[wLot];
+                    st.SphereToLocal(d, w.Planet.Radius, out double lcx, out double lcy);
+                    float bestRank = 2f;
+                    for (int gi = -5; gi <= 5; gi++)
+                        for (int gj = -5; gj <= 5; gj++)
+                        {
+                            var lq = st.LocalToSphere(lcx + 30.0 * gi, lcy + 30.0 * gj, w.Planet.Radius);
+                            if (w.Planet.Grid.CellOf(lq) != wLot) continue;
+                            float lrank = Canopy.StandRank(PlanetGeo.Surface(w.Planet, lq));
+                            if (lrank < bestRank) { bestRank = lrank; d = lq; }
+                        }
+                }
                 Debug.Log("[TC2] " + view + " of " + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(sid)) + ": woodlot cell " + wLot + (wLot >= 0 ? " cover " + w.Planet.Forest[wLot].ToString("0.00") + " felled " + w.Planet.Felled[wLot].ToString("0.00") : "") +
                           "; burials " + st.BurialCount + ", marked " + wMarked.ToString("0") + ", fresh " + wFresh.ToString("0") + "; head household " + st.HeadHh + ", lord " + st.Lord + ", polity head " + w.Conflict.Root(sid));
                 LookAt(d, wAlt);

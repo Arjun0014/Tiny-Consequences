@@ -4359,6 +4359,13 @@ standing (mean share, most)`; the shot views `woodlot`, `woodlotlow`.
 **Evidence.** FellingTests 3/3 (felling leaves stumps of the share felled, never more than the open ground; the woods grow back over them and they
 rot - a woodlot left alone 20 years: cover 0.32 -> 0.44, stumps 0.14 -> 0; saves keep them). It changes no history: `--nothresh` seed 4 = `_g4`
 byte-identical in the worktree's binary, which held the record. Seed 4 at year 300: 53 cells with stumps standing (mean felled share 0.17, most 0.60).
+**Session 20 (the real shots).** The first `woodlot` shots (`s19e20`) showed a heath with heather and four or five stumps where the log said the lot
+cell was half felled (cover 0.29, felled 0.50). Three faults, two of the view and one of the shot: (1) `TerrainLod.PlaceForest` returned early from
+a patch, and skipped a square, where no wood stood now - ground felled bare drew no stumps at all (the felled share now keeps them); (2) a pooled
+patch's sea vertices kept their last land's felled share (reset per vertex: stumps would have stood in the water once (1) was fixed); (3) the view
+aimed at the village's first wood point and then at the lot cell's centre - a glade of the stands' noise, where no tree stood even before the
+felling: the shots' new count (`[TC2] trees on the drawn patches N, stumps M`) gave 242 stumps among ~700 trees on the drawn patches, at the
+frame's edges. The woodlot views now frame the lot cell where its woods stand thickest (the lowest stand rank on a 30 m grid of the cell).
 
 ## D2-151 — 2026-10-13 — The burial ground: graves from the village's dead (`27` §6 - famine and sickness made visible)
 
@@ -4387,4 +4394,28 @@ paid which lord - the beginnings of the kingdoms the standing direction asks for
 colour** - a heraldic dye chosen by the polity's head village (`WorldObjectsView.PolityColour`, ten dyes): a tributary flies its lord's, so a
 lordship reads from above as villages under one colour; taller for a lord by the villages it holds (x1.18 each, up to six). The headman is drawn
 dressed in the same colour. The shot views `standard`, `standardlow` log the head household, the lord and the polity's head.
-**Evidence.** The Unity C# compiles (`unity.mjs cc`); real shots below.
+**Evidence.** The Unity C# compiles (`unity.mjs cc`); real shots (session 20, `tc2/out/shots/s19e20`, `s19f20`): **the standard reads** - a teal swallow-tailed cloth on its pole by the first household's door, the headman sitting by it in the same colour (`standardlow`); in the town (Gaby) it stands behind its house, half hidden by the roof - drawn truly, framed poorly.
+
+## D2-154 — 2026-10-13 — The village builds round its burial ground; graves drawn as graves (`27` §6, D2-151's real shots)
+
+**Context.** The first real shots of D2-151 (`tc2/out/shots/s19e20`, `s19f20`) read wrong twice. (1) In the town (Gaby, seed 4 `_m1`, year 300)
+houses stood on the burial ground laid out beyond the homes at the first burial, and few of its graves showed (the view hides a slot under a
+building): homes, works and crofts were laid out with no regard for the graves. Measured over the whole world (seed 4 `--oldgraves`, year 300):
+**25 of 29 burial grounds built over, 1,145 of their 3,480 slots covered**. In the record the dead were left in peace - towns grew round their
+churchyards. (2) In the village (Tovaldton) the ground lay across the fields' plough plots and its mounds, long along the rows' 1.4 m spacing, read
+as a garden's rows of greens: the kit's length lay along the village's y axis at face 0.
+**Decision.** (1) **Sim** (a history change; `--oldgraves` the control): once a village has laid out its ground (`Burials.Laid`), no home's lot
+(`Footprints.HomeFits`), no work (`WorkFits`) and no croft's bed (`Gardens.Free`) may stand on it or within `Burials.Margin` 1.5 m of it
+(`Burials.Meets`/`MeetsDisc`: the ground's rectangle, `HalfX` 11.5 m along its rows by `HalfY` 8.4 m); the ground is laid where no camp's lot lies
+either. Nothing standing is moved. (2) **View**: the graves lie side by side along their rows, the long way across them (face pi/2), each a little
+off the line and the square (a slot's own hash: +-0.25 m, +-0.15 m, +-6 degrees); a grassed grave dull olive (a saturated green read as a lily
+pad); the old graves' kit `grave_old` carries an upright headstone (0.74 m) where a pebble was; the ground is drawn as unploughed sward - no plots,
+no wood, no village earth over it (`TerrainLod`: `Sward`; the plots' weight cut where the ground lies). (3) Tools: the run's `burials:` line
+counts the grounds built over and the slots covered by cause (a street, the square's earth, a building - the view's own rule).
+**Evidence.** BurialsTests 4/4 (new: the ground moved onto the lot the next household would take - (40.9, 14.9) - that lot refused for a home
+and for a work, the next household given (-41.6, 17.2) clear of the ground; `--oldgraves` gives it the old lot). Neighbours: Footprints 8, Homes
+5, Streets 3, Structures 6, Garden 5, Determinism 6, SaveLoad 8; no float arithmetic. Control: `--oldgraves` seed 4 = `_m1` (annals
+byte-identical). Seed 4 with the ground kept (`_n0`, year 300): **13 grounds with slots covered, 498 slots** (from 25 and 1,145) - the rest by
+streets worn across the ground and the square's earth (counted by cause from `_n1`). Real shots (`s20a20`, `s20g20`, `s20h20`): the village's
+graves in rows across, headstones up, the plough's furrows gone from under them; the largest town of the kept-ground world (Veidasford) with its
+ground open beside its market place, a worn path across it. Ten seeds: with C3.7c (D2-153) - see there.
