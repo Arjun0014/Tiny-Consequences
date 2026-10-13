@@ -1,5 +1,34 @@
 # TC2 Session handoff
 
+## Session 19 (13 Oct 2026, from 14:53 IST; one low-priority job at a time, RAM < 86 %, CPU < 85 %) - context handoff at ~17:10 IST
+
+### Exact state
+- **main 4caf9ee** (clean but for `.claude/launch.json`, `Assets/Resources.meta` - not ours): b312f01 **D2-148 W-FOREST pass 2b** (rain belt follows
+  the sun, `--oldrain`; the seasonal tropics drawn from the soil's water; conifers tinted - `ProcMeshes.Builder.Dim`); 14a9156 merge of
+  `wip/c37b-thresh` (**C3.7b the threshing floor** D2-149, **W-FELL** felling record D2-150 Core; sim version 77); 4caf9ee stumps drawn (D2-150),
+  **D2-151 the burial ground** (`Core/Places/Burials.cs`, sim version 78), **D2-152 the first household's standard** in its polity's colour; kit
+  `rick`, `grave`, `grave_old`, `standard` exported (their `.meta` files and those of Threshing.cs, Burials.cs, the new tests appear on Unity's next
+  import - commit them).
+- **Verified**: the full suite on 86b481d 372/372; pass 2b control/seasons/ten seeds (`_r1`); threshing tests and neighbours; after the merge
+  Threshing 5, Felling 3, Burials 3, Sheaves 5, Determinism 6, SaveLoad 8, Coarse 3, HouseholdWork 4, Climate 7, lint, Unity C# compiles; the merge's
+  control `--nothresh --oldrain` seed 4 = `_g4` byte-identical.
+- **Running at the handoff (scratchpad `f50753be-.../scratchpad`, copies in `tc2/out/tools/s19/`)**: q19 - ten seeds `_m1` (bin_m, sim version 78)
+  then `cmp_r1_m1.txt` (threshing's effect against pass 2b; graves and felling are records); q20 (waits for q19) - real shots `s19e20` (floor,
+  woodlot, graves, standard, village views on `s4_m1/world_y300.tc2`), `s19f20` (`--village town`), `s19g4`/`s19g28` (the four climates after the
+  last view tweaks: inland stands inside the woods, slighter grey dry-season thorn); q21 (waits for q20) - **C3.7c the muck** in worktree
+  `C:/Game Dev/tc-muck` (branch `wip/c37c-muck`, c5429fd, sim version 79, NOT yet built): build, MuckTests and neighbours (Tilth, Livestock, ...),
+  control `--nomuck` seed 4 = `_m1`, seed 4 `_k0` with `--mucktally`.
+- DECISIONS D2-148 (final), D2-149/D2-150/D2-151 (evidence but for ten seeds and shots), D2-152 (shots pending) written; D2-153 (the muck) not yet.
+
+### Next, in order
+1. Read q19's `cmp_r1_m1.txt` (threshing at par? if hunger or famines move, find why); add it to D2-149.
+2. Look at q20's shots (`tc2/out/shots/s19e20`, `s19f20`, `s19g4`, `s19g28`): ricks round the floor, threshers' flails, stumps in the woodlot,
+   graves (fresh and old), standards; fix what reads wrong; record in D2-149..D2-152 and `27` §6/§8.
+3. q21's muck results: fix the build/tests; control; then design text `26` §2j and D2-153; merge `wip/c37c-muck`; Blender `--only muck_heap`; ten
+   seeds `_k1` against `_m1`; shots of heaps and carting (`--days 42` after the harvest, `--days 4` the sowing).
+4. The full suite on the final HEAD; the Web build and test (sim version 79: new worlds); then the remaining `27` items (crop variety is not
+   simulated - a real C-slice), SESSION_19_REPORT.md.
+
 ## Session 18 (11 Oct 2026, 06:48-~16:00 IST; Control Room run #48 session 3, resumed by Arjun; stopped by Arjun) - D2-144 to D2-147; Web 6/6
 
 ### Exact state at the stop
