@@ -4340,7 +4340,10 @@ none. Neighbours: Sheaves 5, Garden 5, HouseholdWork 4, Coarse 3, Determinism 6,
 Woods 6, SaveLoad 8, Climate 7; the lint clean. Control `--nothresh` seed 4 = `_g4` (annals byte-identical, in the worktree's binary); after the
 merge `--nothresh --oldrain` seed 4 = `_g4` (byte-identical). Seed 4 with the floor (`_t0`): 28.8 million FU threshed in 1.21 million hours over 300
 years (0.042 h a FU) - 60 % in the growing stage's slack, 25 % after the harvest, 13 % in the sowing, 2 % in the reaping; at the year's turn 93 %
-of the stores' grain stands in the sheaf (31 of 31 villages). Ten seeds: see D2-149b below (`_m1` against `_r1`). Real shots: below.
+of the stores' grain stands in the sheaf (31 of 31 villages). Ten seeds, 300 years DEEP (`_m1`, sim version 78 - the burials and the felling
+record change no history - against pass 2b's `_r1`): at par - people over years 200-299 x1.000, births and deaths a person-year x0.995 and x1.000,
+hunger a person-year x1.03 (t 0.45), famines x0.96 (t -0.7), relief x0.87 (t -1.6); fish caught x0.94 (t -3.1: the floor's ~0.1 h an adult-day comes
+out of the free hours the shore took - to confirm with `timeuse`); 0.042 h a FU in every seed. Real shots: pending (q20).
 
 ## D2-150 — 2026-10-13 — The woods remember their felling: stumps where the felled trees stood (W-FELL)
 
