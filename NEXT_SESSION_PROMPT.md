@@ -33,7 +33,7 @@ picture?". No simulation theatre: presentation elaborates a real activity, never
   cull by what the spares eat; controls byte-identical; ten seeds: people at par, fields x1.017, cattle x1.84 - **but pigs die out in 3 of 10 worlds**.
 - **Next**: (1) find why the pigs die out where cattle grow (end causes and `stock` lines with `--places`, seeds 5/7/11 `_u2` vs `_n1`), fix with its
   own switch, ten seeds, merge, shots of the herds on the stubble; (2) the full suite on the final HEAD and the Web build and test (saves v79/v80:
-  new worlds); (3) shoot 107c100's woodlot framing and the yards' muck heaps; (4) the next civilisation slice.
+  new worlds); (3) shoot 107c100's woodlot framing (it compiles: `unity.mjs cc` on 4dd9b94) and the yards' muck heaps; (4) the next civilisation slice.
 - **Resource rule (Arjun D-1/D-2)**: one low-priority job at a time while RAM < 86 % and CPU < 85 % - use the queue in `tc2/out/tools/s20/`
   (`runq.sh`, `lib.sh`; set `N`/`S` to the new scratchpad). No subagents.
 

@@ -64,7 +64,7 @@ version 80; draft D2-155 `tc2/out/tools/s20/d2155.md`).
 - **C3.7d's pigs**: find why they die out where the cattle grow, fix, ten seeds, merge; then shots of the herds on the stubble.
 - **The full headless suite on HEAD** (last full run 372/372 on 86b481d, before threshing).
 - **The Web build and test** (saves are now version 79: new worlds).
-- `107c100`'s woodlot framing (aim at the felled band) is not yet compiled or shot.
+- `107c100`'s woodlot framing (aim at the felled band) compiles (`unity.mjs cc` on 4dd9b94, at the handoff) but is not yet shot.
 - Muck heaps in the yards have not yet been seen in a shot (the `close` view at day ~30).
 - The remaining threshing pairs (seeds 13-19, scripts in `tc2/out/tools/s20/q_todo`) are optional now.
 

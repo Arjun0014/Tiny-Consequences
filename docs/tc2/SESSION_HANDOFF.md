@@ -31,7 +31,7 @@
    stubble day ~42, `act:Muck` spread over the fields, `close` at day ~30 for the muck heaps). Then write D2-155 from `tc2/out/tools/s20/d2155.md`.
 2. The full suite on the final HEAD (`node tc2/scripts/headless.mjs test`, ~17 min; through the queue) and the Web build and test
    (`webgate.sh`, one Unity build alone).
-3. Shot `107c100`'s woodlot framing (`woodlot,woodlotlow` on `s4_n1/world_y300.tc2`).
+3. Shot `107c100`'s woodlot framing (`woodlot,woodlotlow` on `s4_n1/world_y300.tc2`; the Unity C# compiles on 4dd9b94 - `unity.mjs cc` at the handoff).
 4. Then the next civilisation slice (`27` §6 gaps: holdings by household not drawn; no held tools; crop variety not simulated).
 
 ### How the queue works (session 20)
