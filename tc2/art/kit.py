@@ -535,7 +535,7 @@ def grave_old(name, seed=74):
     stone reads as a grave from the air where the mound alone read as a garden's row."""
     k = Kit(name, seed)
     k.ellipsoid((0, 0, -0.02), (0.95, 0.42, 0.13), srgb(0.80, 0.80, 0.80, 1.0), subdiv=2, smooth=False)
-    k.box((1.02, 0, 0.27), (0.13, 0.40, 0.58), STONE, rot_z=0.06, bevel=0.035)
+    k.box((1.02, 0, 0.35), (0.15, 0.46, 0.74), STONE, rot_z=0.06, bevel=0.04)
     return k.finish()
 
 

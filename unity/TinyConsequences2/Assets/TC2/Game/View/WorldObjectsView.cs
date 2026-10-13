@@ -635,9 +635,9 @@ namespace TC2.Game
                 if (fresh) _graves.Add(0, new Color(0.47f, 0.36f, 0.25f), PlaceFaced(P, s, x, y, face, sc));
                 else
                 {
-                    // (grassing over: earth-brown to the sward's dull green in its first years, then sinking lower)
+                    // (grassing over: earth-brown to the sward's dull olive in its first years - a saturated green read as a lily pad - then sinking lower)
                     float g = Mathf.Clamp01(age / 25f);
-                    _gravesOld.Add(1, Color.Lerp(new Color(0.44f, 0.40f, 0.26f), new Color(0.38f, 0.44f, 0.25f), g), PlaceFaced(P, s, x, y, face, sc * (1f - 0.35f * Mathf.Clamp01(age / 90f))));
+                    _gravesOld.Add(1, Color.Lerp(new Color(0.44f, 0.40f, 0.26f), new Color(0.43f, 0.43f, 0.28f), g), PlaceFaced(P, s, x, y, face, sc * (1f - 0.35f * Mathf.Clamp01(age / 90f))));
                 }
             }
         }

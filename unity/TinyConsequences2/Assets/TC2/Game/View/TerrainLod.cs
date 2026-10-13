@@ -65,6 +65,8 @@ namespace TC2.Game
         /// from 400 m to 300 m); the finest patches always reach past it.</summary>
         const float ForestReach = 440f, ForestNear = 190f;
         public static int ForestDrawn;
+        /// <summary>Tools (the shots' log): stumps on the patches gathered this frame, and those drawn (near the camera) - W-FELL.</summary>
+        public static int StumpsOnPatches, StumpsDrawn;
         /// <summary>Tools (webperf): the ground cover not drawn.</summary>
         public static bool CoverOff;
         /// <summary>Tools (webperf): whether shrubs and boulders cast shadows.</summary>
@@ -898,7 +900,7 @@ namespace TC2.Game
         void GatherForest()
         {
             for (int k = 0; k < _forest.Length; k++) _forest[k].Clear();
-            ForestDrawn = 0;
+            ForestDrawn = 0; StumpsOnPatches = 0; StumpsDrawn = 0;
             var cam = Rig.Cam;
             Vector3 cp = cam.transform.position;
             if ((WorldObjectsView.Off & 1) == 0 && cp.magnitude - (float)Host.World.Planet.Radius < ForestReach)
@@ -916,7 +918,7 @@ namespace TC2.Game
                     {
                         int g = p.TreeGroup[t];
                         int form = p.TreeKind[t], kind = form / ProcMeshes.TreeVariants;
-                        if (kind == ProcMeshes.TreeStump) { if (close) _forest[form].Add(0, Color.white, p.Trees[t]); }   // (stumps near the camera only: W-FELL)
+                        if (kind == ProcMeshes.TreeStump) { StumpsOnPatches++; if (close) { _forest[form].Add(0, Color.white, p.Trees[t]); StumpsDrawn++; } }   // (stumps near the camera only: W-FELL)
                         else if (ProcMeshes.Needles(kind)) _forest[close ? form : FarForms + kind].Add(g, ConiferTints[g], p.Trees[t]);
                         else if (kind == ProcMeshes.TreeSnag) _forest[close ? form : FarForms + kind].Add(g, BareTints[g], p.Trees[t]);   // (a dead tree keeps its own grey)
                         else if (((g >> 2) & 7) >= 7) _forest[BareBroad].Add(g, BareTints[g], p.Trees[t]);

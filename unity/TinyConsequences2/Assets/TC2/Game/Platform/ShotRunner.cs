@@ -329,6 +329,7 @@ namespace TC2.Game
             if (wild != null) Debug.Log("[TC2] wildlife drawn " + wild.Drawn + " (herds " + wild.HerdsDrawn + ")");
             var objs = FindAnyObjectByType<WorldObjectsView>();
             if (objs != null) Debug.Log("[TC2] people drawn " + objs.PeopleDrawn + " (at work or on the move " + objs.PeopleBusy + "), boats afloat " + objs.BoatsAfloat);
+            Debug.Log("[TC2] trees on the drawn patches " + TerrainLod.ForestDrawn + ", stumps " + TerrainLod.StumpsOnPatches + " (drawn near the camera " + TerrainLod.StumpsDrawn + ")");
             var stock = FindAnyObjectByType<LivestockView>();
             if (stock != null) Debug.Log("[TC2] livestock drawn " + stock.Drawn + " |" + stock.Why);
         }

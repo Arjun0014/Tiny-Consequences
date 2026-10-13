@@ -176,6 +176,9 @@ namespace TC2.Game
                 d = st.LocalToSphere(wvx, wvy, w.Planet.Radius);
                 TC2.Core.Places.Burials.Read(in st, w.Now, out double wMarked, out double wFresh);
                 int wLot = TC2.Core.Places.Woods.Lot(in st);
+                // (the woodlot views look at the lot's own cell - the wood the village cuts now: its wood point is where it first went for wood, and the
+                // woods it cut there have long grown back)
+                if (view.StartsWith("woodlot") && wLot >= 0) d = w.Planet.Grid.Center[wLot];
                 Debug.Log("[TC2] " + view + " of " + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(sid)) + ": woodlot cell " + wLot + (wLot >= 0 ? " cover " + w.Planet.Forest[wLot].ToString("0.00") + " felled " + w.Planet.Felled[wLot].ToString("0.00") : "") +
                           "; burials " + st.BurialCount + ", marked " + wMarked.ToString("0") + ", fresh " + wFresh.ToString("0") + "; head household " + st.HeadHh + ", lord " + st.Lord + ", polity head " + w.Conflict.Root(sid));
                 LookAt(d, wAlt);

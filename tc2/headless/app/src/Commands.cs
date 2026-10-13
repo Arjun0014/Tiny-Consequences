@@ -794,7 +794,7 @@ namespace TC2.Headless
                                 }
                                 {
                                     // the burial grounds (D2-151): burials over the run, deaths with no grave, the graves marked and fresh now
-                                    double mk = 0, fr = 0; int burialGrounds = 0, overGrounds = 0, overSlots = 0;
+                                    double mk = 0, fr = 0; int burialGrounds = 0, overGrounds = 0, overSlots = 0, overStreet = 0, overSquare = 0, overBuilt = 0;
                                     for (int sid2 = w.Settlements.First(); sid2 != 0; sid2 = w.Settlements.Next(sid2))
                                     {
                                         var st3 = w.Settlements.Get(sid2);
@@ -805,14 +805,19 @@ namespace TC2.Headless
                                         for (int jg = 0; jg < TC2.Core.Places.Burials.Slots; jg++)
                                         {
                                             TC2.Core.Places.Burials.SlotAt(in st3, jg, out double gx3, out double gy3);
-                                            if (!TC2.Core.Places.Footprints.DiscFree(w, sid2, 0, gx3, gy3, 0.9)) slotsOver++;
+                                            if (TC2.Core.Places.Footprints.DiscFree(w, sid2, 0, gx3, gy3, 0.9)) continue;
+                                            slotsOver++;
+                                            double sqx = gx3 - st3.SquareX, sqy = gy3 - st3.SquareY, sqr = TC2.Core.Places.Footprints.SquareEarth(in st3) + 0.9;
+                                            if (TC2.Core.Places.Streets.On(in st3, gx3, gy3, 0.9 + TC2.Core.Places.Footprints.DrawnLine)) overStreet++;
+                                            else if (sqx * sqx + sqy * sqy < sqr * sqr) overSquare++;
+                                            else overBuilt++;
                                         }
                                         if (slotsOver > 0) overGrounds++;
                                         overSlots += slotsOver;
                                     }
                                     var bt = TC2.Core.Places.Burials.Tally;
                                     Console.WriteLine("burials: " + F(bt != null ? bt[0] : 0, "0") + " over the run, " + F(bt != null ? bt[1] : 0, "0") + " dead with no grave (lost at sea, under the wave or the lava); " + burialGrounds + " burial grounds, graves marked now " + F(mk, "0") + ", fresh " + F(fr, "0") +
-                                                      "; grounds built over " + overGrounds + " (slots covered " + overSlots + " of " + burialGrounds * TC2.Core.Places.Burials.Slots + ")");
+                                                      "; grounds built over " + overGrounds + " (slots covered " + overSlots + " of " + burialGrounds * TC2.Core.Places.Burials.Slots + ": a street " + overStreet + ", the square " + overSquare + ", a building " + overBuilt + ")");
                                 }
                                 var tt = TC2.Core.Places.Threshing.Tally;
                                 if (tt != null)
