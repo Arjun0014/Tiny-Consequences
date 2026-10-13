@@ -184,6 +184,8 @@ namespace TC2.Core.Places
         public double Graves, GravesFresh;   // its graves still marked and those still fresh earth, as at GravesAt (decaying with the years: Burials.Read)
         public long GravesAt;           // when Graves and GravesFresh were last brought up to date
         public float GraveX, GraveY;    // its burial ground (its frame, m), laid out at the first burial
+        public double Muck;             // kg of muck in its yards' heaps: the herds' night dung and bedding, not yet carted out (C3.7c, D2-153)
+        public double Spread;           // kg of muck carted out and spread on its fields since the last harvest (the soil reads it at the next)
 
         public float SquareX, SquareY, FieldX, FieldY, WoodX, WoodY, WellX, WellY;
 
@@ -258,6 +260,7 @@ namespace TC2.Core.Places
             w.Double(Tired); w.Float(TiredSeen); w.Float(Rest); w.Double(Grazed); w.Long(RestEvent);   // (C3.6f, sim version 74)
             w.Double(Sheaves); w.Float(ThreshOut);   // (C3.7b, sim version 77)
             w.Int(BurialCount); w.Double(Graves); w.Double(GravesFresh); w.Long(GravesAt); w.Float(GraveX); w.Float(GraveY);   // (D2-151, sim version 78)
+            w.Double(Muck); w.Double(Spread);   // (C3.7c, sim version 79)
         }
 
         public static Settlement Read(BinReader r)
@@ -286,6 +289,7 @@ namespace TC2.Core.Places
             s.Tired = r.Double(); s.TiredSeen = r.Float(); s.Rest = r.Float(); s.Grazed = r.Double(); s.RestEvent = r.Long();
             s.Sheaves = r.Double(); s.ThreshOut = r.Float();
             s.BurialCount = r.Int(); s.Graves = r.Double(); s.GravesFresh = r.Double(); s.GravesAt = r.Long(); s.GraveX = r.Float(); s.GraveY = r.Float();
+            s.Muck = r.Double(); s.Spread = r.Double();
             return s;
         }
 
@@ -314,6 +318,7 @@ namespace TC2.Core.Places
             h.Add(Tired); h.Add(TiredSeen); h.Add(Rest); h.Add(Grazed); h.Add(RestEvent);
             h.Add(Sheaves); h.Add(ThreshOut);
             h.Add(BurialCount); h.Add(Graves); h.Add(GravesFresh); h.Add(GravesAt); h.Add(GraveX); h.Add(GraveY);
+            h.Add(Muck); h.Add(Spread);
         }
 
         internal static void WriteV(BinWriter w, Vec3d v) { w.Double(v.X); w.Double(v.Y); w.Double(v.Z); }

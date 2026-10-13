@@ -163,8 +163,10 @@ namespace TC2.Headless
             if (a.Has("oldrain")) TC2.Core.Planet.PlanetSystems.OldRain = true;   // (W-FOREST pass 2b: the rain's seasons alike at every latitude)
             if (a.Has("oldwoods")) TC2.Core.Planet.PlanetSystems.OldWoods = true;   // (D2-142 against D2-140/141 in one binary: trees by the annual mean)
             if (a.Has("nogarden")) TC2.Core.Places.Gardens.Off = true;
-            if (a.Has("nothresh")) TC2.Core.Places.Threshing.Off = true;
-            if (a.Has("oldgraves")) TC2.Core.Places.Burials.Unkept = true;   // (D2-154 against D2-151 in one binary: homes, works and crofts laid over the graves)   // (C3.7b against C3.7a in one binary: the reaped grain in the store threshed)
+            if (a.Has("nothresh")) TC2.Core.Places.Threshing.Off = true;   // (C3.7b against C3.7a in one binary: the reaped grain in the store threshed)
+            if (a.Has("oldgraves")) TC2.Core.Places.Burials.Unkept = true;   // (D2-154 against D2-151 in one binary: homes, works and crofts laid over the graves)
+            if (a.Has("nomuck")) TC2.Core.Places.Muck.Off = true;   // (C3.7c off: the herds' dung reaches the fields carted or not, as D2-139 built it)
+            if (a.Has("mucktally")) TC2.Core.Places.Muck.Tally = new double[4];   // (C3.7c: muck made, carted, leached; hours)
             if (a.Has("oldgardenorder")) TC2.Core.Agents.AgentSystem.CoarseGardenOld = true;   // (D2-146: a COARSE day's garden before all but the fields, as C3.7a built it)   // (C3.7a against D2-142 in one binary: no gardens)
         }
 
@@ -818,6 +820,14 @@ namespace TC2.Headless
                                     var bt = TC2.Core.Places.Burials.Tally;
                                     Console.WriteLine("burials: " + F(bt != null ? bt[0] : 0, "0") + " over the run, " + F(bt != null ? bt[1] : 0, "0") + " dead with no grave (lost at sea, under the wave or the lava); " + burialGrounds + " burial grounds, graves marked now " + F(mk, "0") + ", fresh " + F(fr, "0") +
                                                       "; grounds built over " + overGrounds + " (slots covered " + overSlots + " of " + burialGrounds * TC2.Core.Places.Burials.Slots + ": a street " + overStreet + ", the square " + overSquare + ", a building " + overBuilt + ")");
+                                }
+                                {
+                                    // the muck (C3.7c): in the yards now, carted out over the run and its hours
+                                    double myard = 0;
+                                    for (int sid2 = w.Settlements.First(); sid2 != 0; sid2 = w.Settlements.Next(sid2)) { var stm = w.Settlements.Get(sid2); if (stm.Inhabited) myard += stm.Muck; }
+                                    var mt = TC2.Core.Places.Muck.Tally;
+                                    Console.WriteLine("muck: " + F(w.Metrics.MuckKg / 1000.0, "0") + " t carted out onto the fields in " + F(w.Metrics.MuckHours, "0") + " h over the run (" + F(w.Metrics.MuckKg > 0 ? w.Metrics.MuckHours / (w.Metrics.MuckKg / 1000.0) : 0, "0.00") + " h a tonne); in the yards now " + F(myard / 1000.0, "0") + " t" +
+                                                      (mt != null ? "; made " + F(mt[0] / 1000.0, "0") + " t, leached " + F(mt[2] / 1000.0, "0") + " t" : ""));
                                 }
                                 var tt = TC2.Core.Places.Threshing.Tally;
                                 if (tt != null)

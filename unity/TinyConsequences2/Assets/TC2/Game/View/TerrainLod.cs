@@ -1503,7 +1503,7 @@ namespace TC2.Game
             Color c;
             switch (s.Crop)
             {
-                case TC2.Core.Places.CropStage.Sown: c = earth; break;
+                case TC2.Core.Places.CropStage.Sown: c = Color.Lerp(earth, new Color(0.30f, 0.23f, 0.16f), (float)System.Math.Min(0.6, TC2.Core.Places.Muck.TonnesPerHa(in s) / 12.0)); break;   // (darker where muck is spread: C3.7c)
                 case TC2.Core.Places.CropStage.Growing: c = Color.Lerp(Color.Lerp(earth, young, 0.6f), lush, (float)s.CropGrowth); break;
                 case TC2.Core.Places.CropStage.Ripe: c = gold; break;
                 case TC2.Core.Places.CropStage.Harvested: c = stubble; break;

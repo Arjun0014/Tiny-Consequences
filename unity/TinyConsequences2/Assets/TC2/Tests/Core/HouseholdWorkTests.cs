@@ -66,33 +66,39 @@ namespace TC2.Tests.Core
         [Test]
         public void ChildrenAndGrownPeopleCarryWaterWhenThePotsAreLow()
         {
-            var w = TestWorlds.Make(423);
-            int sid = w.Settlements.First();
-            w.AdvanceTo(w.Now + SimTime.Day);
-            ToLocalHour(w, sid, 8.0);
-            // premise: every pot in the world is empty - and again three hours on (a world's five children of six to eleven were all
-            // at play or with the herds the first time; at 10 km one of them went, D2-085)
-            for (int h = w.Households.First(); h != 0; h = w.Households.Next(h)) w.Households.Get(h).Water = 0f;
-            var kids = new HashSet<int>(); var grown = new HashSet<int>();
-            long again = w.Now + SimTime.Hours(3), end = w.Now + SimTime.Hours(7);
-            while (w.Now < end)
+            // premise: every pot in the world is empty - and again two hours on (a world's five children of six to eleven were all at play or
+            // with the herds the first time; at 10 km one of them went, D2-085; children of eight and more go out with the herds first, so a
+            // world has few at home: with the muck carted, C3.7c, none of world 423's went - three worlds are counted together)
+            int kidsAll = 0, grownAll = 0;
+            foreach (ulong seed in new ulong[] { 423, 427, 431 })
             {
-                w.AdvanceTo(w.Now + 120);
-                if (again > 0 && w.Now >= again) { again = 0; for (int h = w.Households.First(); h != 0; h = w.Households.Next(h)) w.Households.Get(h).Water = 0f; }
-                for (int id = w.People.First(); id != 0; id = w.People.Next(id))
+                var w = TestWorlds.Make(seed);
+                int sid = w.Settlements.First();
+                w.AdvanceTo(w.Now + SimTime.Day);
+                ToLocalHour(w, sid, 8.0);
+                for (int h = w.Households.First(); h != 0; h = w.Households.Next(h)) w.Households.Get(h).Water = 0f;
+                var kids = new HashSet<int>(); var grown = new HashSet<int>();
+                long again = w.Now + SimTime.Hours(2), end = w.Now + SimTime.Hours(6);
+                while (w.Now < end)
                 {
-                    var p = w.People.Get(id);
-                    if (!p.Alive || p.Act != ActivityKind.Water) continue;
-                    if (p.AgeYears(w.Now) < 12) kids.Add(id); else grown.Add(id);
+                    w.AdvanceTo(w.Now + 120);
+                    if (again > 0 && w.Now >= again) { again = 0; for (int h = w.Households.First(); h != 0; h = w.Households.Next(h)) w.Households.Get(h).Water = 0f; }
+                    for (int id = w.People.First(); id != 0; id = w.People.Next(id))
+                    {
+                        var p = w.People.Get(id);
+                        if (!p.Alive || p.Act != ActivityKind.Water) continue;
+                        if (p.AgeYears(w.Now) < 12) kids.Add(id); else grown.Add(id);
+                    }
                 }
+                int homes = 0, watered = 0;
+                var hhs = w.HouseholdsOf(sid);
+                for (int i = 0; i < hhs.Count; i++) { homes++; if (w.Households.Get(hhs[i]).Water > 0) watered++; }
+                Console.WriteLine("world " + seed + ": carried water: children " + kids.Count + ", grown " + grown.Count + "; homes of the first village with water four hours after the second emptying " + watered + "/" + homes);
+                Assert.GreaterOrEqual(watered, (int)(0.9 * homes), "the pots were filled");
+                kidsAll += kids.Count; grownAll += grown.Count;
             }
-            int homes = 0, watered = 0;
-            var hhs = w.HouseholdsOf(sid);
-            for (int i = 0; i < hhs.Count; i++) { homes++; if (w.Households.Get(hhs[i]).Water > 0) watered++; }
-            Console.WriteLine("carried water: children " + kids.Count + ", grown " + grown.Count + "; homes of the first village with water four hours after the second emptying " + watered + "/" + homes);
-            Assert.Greater(kids.Count, 0, "children of six and more carry water");
-            Assert.Greater(grown.Count, 0, "and grown people");
-            Assert.GreaterOrEqual(watered, (int)(0.9 * homes), "the pots were filled");
+            Assert.Greater(kidsAll, 0, "children of six and more carry water");
+            Assert.Greater(grownAll, 0, "and grown people");
         }
 
         [Test]
