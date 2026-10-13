@@ -19,7 +19,7 @@ namespace TC2.Core.Places
         public const double NightShare = 0.5;
         /// <summary>kg of muck in the yard - dung and the bedding trodden into it - for each kg of grass (dry) the herds ate.</summary>
         public const double PerDm = 3.0;
-        /// <summary>The share of a heap's goodness lost a year while it waits uncarted (leached and rotted down).</summary>
+        /// <summary>The rate a heap's goodness is lost a year while it waits uncarted, leached and rotted down (e-folding: about a quarter gone in a year).</summary>
         public const double Leach = 0.3;
         /// <summary>Hours a tonne of muck takes to load, cart out to the fields and spread: by the back in baskets, with a handcart, with an ox cart.</summary>
         public const double BackHPerT = 5.0, HandHPerT = 1.6, OxHPerT = 0.9;

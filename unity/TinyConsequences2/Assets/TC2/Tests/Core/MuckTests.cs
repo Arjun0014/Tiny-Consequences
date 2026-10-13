@@ -24,20 +24,23 @@ namespace TC2.Tests.Core
             int sid = w.Settlements.First();
             Assume.That(w.Stock.Grazers(sid) > 0, "a village with grazing herds");
             double m0 = w.Settlements.Get(sid).Muck, g0 = w.Settlements.Get(sid).Grazed;
-            // the growing stage: no carting - the heaps grow by the night's share of the grass the herds ate
+            // the crop standing (growing, then ripe): no carting - the heaps grow by the night's share of the grass the herds ate
             for (int d = 0; d < 60 && w.Settlements.Get(sid).Crop != CropStage.Growing; d++) w.AdvanceTo(w.Now + SimTime.Day);
             var s0 = w.Settlements.Get(sid);
+            System.Console.WriteLine("muck test: day " + SimTime.FloorDiv(w.Now, SimTime.Day) % SimTime.DaysPerYear + " crop " + s0.Crop + " muck " + s0.Muck.ToString("0") + " grazers " + w.Stock.Grazers(sid));
             double mA = s0.Muck, gA = s0.Grazed;
             w.AdvanceTo(w.Now + SimTime.Days(6));
             var s1 = w.Settlements.Get(sid);
-            Assume.That(s1.Crop == CropStage.Growing);
+            System.Console.WriteLine("muck test: 6 days on, crop " + s1.Crop + " muck " + s1.Muck.ToString("0"));
+            Assume.That(s1.Crop == CropStage.Growing || s1.Crop == CropStage.Ripe, "the crop still standing (no carting till the harvest)");
             Assert.Greater(s1.Muck, mA, "the yards' heaps grow");
             double grass = s1.Grazed - gA;
             Assert.That(s1.Muck - mA, Is.InRange(0.7 * grass * Muck.PerDm * Muck.NightShare, 1.0 * grass * Muck.PerDm + 1e-6), "the night's share of what they ate, as muck (less a little leached)");
-            Assert.AreEqual(0.0, s1.Spread, 1e-9, "none carted while the crop grows");
+            Assert.AreEqual(0.0, s1.Spread, 1e-9, "none carted while the crop stands");
             // after the harvest: carted out and spread
             for (int d = 0; d < 60 && w.Settlements.Get(sid).Crop != CropStage.Harvested; d++) w.AdvanceTo(w.Now + SimTime.Day);
             double mH = w.Settlements.Get(sid).Muck, h0 = w.Metrics.MuckHours, k0 = w.Metrics.MuckKg;
+            System.Console.WriteLine("muck test: at the harvest, crop " + w.Settlements.Get(sid).Crop + " muck " + mH.ToString("0"));
             Assume.That(mH > 100.0);
             w.AdvanceTo(w.Now + SimTime.Days(6));
             var s2 = w.Settlements.Get(sid);
@@ -71,7 +74,7 @@ namespace TC2.Tests.Core
         {
             var s = new Settlement { Muck = 10000 };
             Muck.Age(ref s, SimTime.DaysPerYear);
-            Assert.AreEqual(10000 * (1.0 - Muck.Leach), s.Muck, 10000 * 0.01, "a year waiting: about three tenths gone");
+            Assert.AreEqual(10000 * DMath.Exp(-Muck.Leach), s.Muck, 10000 * 0.001, "a year waiting: about a quarter gone (leached and rotted down at Leach a year)");
             var w = TestWorlds.Make(4612);
             int sid = w.Settlements.First();
             ref var sv = ref w.Settlements.Get(sid); sv.Muck = 1234.5; sv.Spread = 678.9;
