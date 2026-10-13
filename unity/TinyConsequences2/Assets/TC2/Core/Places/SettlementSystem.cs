@@ -53,6 +53,7 @@ namespace TC2.Core.Places
             }
             if (s.AheadTo != 0 && s.AheadTo <= now) { s.Ahead = 0; s.AheadFrom = 0; s.AheadTo = 0; }   // (the last step's days are lived)
             Threshing.Day(ref s);   // (what left the store since went threshed first: C3.7b)
+            Muck.Age(ref s, days);   // (what waits uncarted in the heaps leaches: C3.7c)
             if (s.Sheaves > 0 || s.ThreshOut > 0f) s.ThreshOut = (float)w.Agents.ThreshingUnderWay(sid);   // (the stints at the floor under way, counted again)
             w.Metrics.VillageSteps++; w.Metrics.VillageDays += days;
             var prof = w.Profiler;   // (tools: the parts of a village's day; null in the game)
@@ -589,6 +590,7 @@ namespace TC2.Core.Places
             double arable = s.ArableHa;
             double grazed = s.Grazed;
             s.Grazed = 0;
+            if (!Muck.Off) { grazed = Muck.GrassOf(s.Spread); s.Spread = 0; }   // (only the muck carted out and spread: C3.7c)
             if (SoilOff || arable <= 0 || s.FieldHa <= 0) return;
             double sown = DMath.Clamp01(s.FieldHa / arable);
             double bore = DMath.Clamp(yield / (s.FieldHa * freshPerHa), 0.0, 1.5);

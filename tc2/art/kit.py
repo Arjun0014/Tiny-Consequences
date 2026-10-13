@@ -552,6 +552,18 @@ def standard(name, seed=75):
     return k.finish()
 
 
+def muck_heap(name, seed=76):
+    """A yard's muck heap (C3.7c): a low dark mound of dung and trodden straw, wet at its foot, a fork stuck in it. ~2.2 m across."""
+    k = Kit(name, seed)
+    k.blob((0, 0, 0.12), 1.05, srgb(0.28, 0.21, 0.14), subdiv=2, jitter=0.12, squash=0.42)
+    k.blob((0.35, -0.25, 0.38), 0.55, srgb(0.36, 0.29, 0.17), subdiv=1, jitter=0.18, squash=0.6)
+    for i in range(6):                                                    # straw in it
+        a = i * 1.05
+        k.box((0.55 * math.cos(a), 0.55 * math.sin(a), 0.42), (0.35, 0.03, 0.02), srgb(0.70, 0.60, 0.34), rot_z=a + 0.7)
+    k.limb((-0.2, 0.1, 0.35), (-0.45, 0.25, 1.35), 0.025, 0.02, TIMBER, seg=4)   # the fork's shaft
+    return k.finish()
+
+
 def well(name, seed=7):
     k = Kit(name, seed)
     k.cyl((0, 0, 0), 0.9, 0.9, 0.8, STONE, seg=10)
@@ -1548,6 +1560,7 @@ def build_all():
     objs.append(grave("grave"))                # the burial ground (D2-151)
     objs.append(grave_old("grave_old"))
     objs.append(standard("standard"))         # the first household's standard (D2-152)
+    objs.append(muck_heap("muck_heap"))       # the yards' muck (C3.7c)
     objs.append(well("well"))
     # the civilisation kit (D2-089, C1)
     objs.append(barn("barn"))

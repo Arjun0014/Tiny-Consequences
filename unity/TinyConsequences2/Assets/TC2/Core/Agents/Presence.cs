@@ -96,6 +96,11 @@ namespace TC2.Core.Agents
                     moving = true;
                     break;
                 }
+                case ActivityKind.Muck:
+                    // on the fields with the muck: forking it off the cart's or the basket's load and spreading it, a few metres to and fro
+                    if (Cycle(since + 90.0 * u0, 90.0, 60.0)) { pose = Hoe; fx = DMath.Cos(u1 * DMath.TwoPi); fy = DMath.Sin(u1 * DMath.TwoPi); }
+                    else Fetch(since + 90.0 * u0, 90.0, 60.0, 5.0, ref x, ref y, ref fx, ref fy, out pose, out moving);
+                    break;
                 case ActivityKind.Thresh:
                 {
                     // at the village's threshing floor (C3.7b): in a ring round the sheaves laid out on it, facing its middle, the flails falling to a

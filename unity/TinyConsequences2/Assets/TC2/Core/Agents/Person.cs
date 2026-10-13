@@ -26,6 +26,7 @@ namespace TC2.Core.Agents
         Pot = 36,                                       // at the village's kiln by its clay: digging, throwing and firing its pots and jars (C3.2)
         Garden = 37,                                    // in the household's garden behind its house: digging, weeding, gathering (C3.7a)
         Thresh = 38,                                    // threshing the village's sheaves with a flail at its floor (C3.7b)
+        Muck = 39,                                      // carting the yards' muck out to the fields and spreading it (C3.7c)
     }
 
     /// <summary>The kind of the current step of an activity.</summary>
@@ -74,6 +75,7 @@ namespace TC2.Core.Agents
         Cart = 47,        // the household makes a cart: its traders carried a back's load where more was spared and wanted (C4.2)
         Garden = 48,      // the household's garden wants its season's work: dug and planted, weeded, gathered (C3.7a)
         Thresh = 49,      // the store's threshed grain runs short of its people's need and its days ahead; its sheaves wait (C3.7b)
+        Muck = 50,        // the yards' muck waits to go out on the fields before the ploughing (C3.7c)
     }
 
     public static class Sex { public const byte Female = 0, Male = 1; }

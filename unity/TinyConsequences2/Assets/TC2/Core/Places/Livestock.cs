@@ -279,6 +279,7 @@ namespace TC2.Core.Places
             if (Diag != null && sid * 4 + 3 < Diag.Length) { Diag[sid * 4] = offer; Diag[sid * 4 + 1] = wantG; Diag[sid * 4 + 2] = mast * MastFind; Diag[sid * 4 + 3] = wantM; }
             double eatenG = wantG * fedG, eatenM = wantM * fedM;
             s.Grazed += eatenG * days;   // (their dung comes back to the fields: C3.6f)
+            Muck.Make(ref s, eatenG * days, Frost(sid, now));   // (the night's in the yards' heaps - a day's in a hard frost, penned: C3.7c)
             if (eatenG > 0 && offer > 0)
             {
                 // (DEEP: the step's grazing - each cell gives its day's share for each day; capped at one day's offer, a step of twelve

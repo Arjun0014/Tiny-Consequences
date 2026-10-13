@@ -580,6 +580,14 @@ namespace TC2.Core.Agents
                         if (Gardens.Tally != null) Gardens.Count(in s, gDoy, gH, gFu);
                     }
                     break;
+                case ActivityKind.Muck:
+                    if (p.At != 0 && p.At == p.Home && hours > 0)
+                    {
+                        // the yards' muck carted out to the fields and spread (C3.7c): the stint's loads, at the household's cart's pace or a back's
+                        ref var s = ref w.Settlements.Get(p.At);
+                        Muck.Cart(w, ref s, hours, Muck.HoursPerTonne(w, p.Household), 0.5 + 0.5 * p.Health);
+                    }
+                    break;
                 case ActivityKind.Thresh:
                     if (p.At != 0 && w.Settlements.Exists(p.At))
                     {
@@ -640,7 +648,7 @@ namespace TC2.Core.Agents
         /// <summary>Activities that are work: they count toward a day's labour.</summary>
         static bool IsWork(ActivityKind a) => a == ActivityKind.Fields || a == ActivityKind.Wood || a == ActivityKind.Build || a == ActivityKind.Hunt ||
                                               a == ActivityKind.Fish || a == ActivityKind.Gather || a == ActivityKind.Haul || a == ActivityKind.Tend ||
-                                              a == ActivityKind.Cook || a == ActivityKind.Water || a == ActivityKind.Craft || a == ActivityKind.Quarry || a == ActivityKind.Smith || a == ActivityKind.Train || a == ActivityKind.Mine || a == ActivityKind.Burn || a == ActivityKind.Sail || a == ActivityKind.Weave || a == ActivityKind.Pot || a == ActivityKind.Garden || a == ActivityKind.Thresh;
+                                              a == ActivityKind.Cook || a == ActivityKind.Water || a == ActivityKind.Craft || a == ActivityKind.Quarry || a == ActivityKind.Smith || a == ActivityKind.Train || a == ActivityKind.Mine || a == ActivityKind.Burn || a == ActivityKind.Sail || a == ActivityKind.Weave || a == ActivityKind.Pot || a == ActivityKind.Garden || a == ActivityKind.Thresh || a == ActivityKind.Muck;
 
         /// <summary>How much a day's labour still leaves for the slack's work: whole until five hours, a fifth past eight.</summary>
         static double DayLeft(in Person p) => DMath.Clamp(1.0 - (p.Worked - 5.0) / 3.0, 0.2, 1.0);
@@ -1201,6 +1209,13 @@ namespace TC2.Core.Agents
                     if (u > best) { best = u; choice = 26; }
                 }
             }
+            if (day && atHome && age >= 16 && age < 60 && p.Health > 0.6 && lsec < 17 * SimTime.Hour && here.Muck > 1.0 && Muck.Window(in here))
+            {
+                // the yards' muck out on the fields before the ploughing (C3.7c): wanted as a village work is, the more the bigger the heaps for its fields
+                double heaps = here.Muck / 1000.0 / DMath.Max(1.0, here.FieldHa);
+                double u = (0.30 + 0.25 * DMath.Clamp01(heaps / 3.0)) * elder * (0.6 + 0.4 * p.Diligence / 255.0) + 0.1 * rs.NextUnit();
+                if (u > best) { best = u; choice = 27; }
+            }
             if (day && atHome && age >= 16 && age < 60 && p.Health > 0.6 && Carts.HasWork(w, p.Household))
             {
                 // the household is making a cart (C4.2): its grown members cut and shape the wheels, the axle and the bed in the yard - their own small job,
@@ -1366,6 +1381,14 @@ namespace TC2.Core.Agents
                 case 26:
                     BeginThresh(ref p, ref here, false, ref rs);
                     return;
+                case 27:
+                    {
+                        // (out on the village's fields, where its field hands work; a stint of a few loads)
+                        double mx = here.FieldX + rs.Range(-50, 50), my = here.FieldY + rs.Range(-50, 50);
+                        Ashore(here.Id, ref mx, ref my);
+                        BeginLocal(ref p, ActivityKind.Muck, WhyCode.Muck, 0, mx, my, SimTime.Hours(1.5 + 1.0 * rs.NextUnit()));
+                        return;
+                    }
                 case 24:
                     {
                         ref var ch = ref w.Households.Get(p.Household);   // (in the yard by the house)
@@ -2120,6 +2143,13 @@ namespace TC2.Core.Agents
                     TC2.Core.Diagnostics.HouseLedger.Work(p.Household, h * rate);
                     w.Learning.Practice(ref p, Knowledge.Tech.Ard, h);
                     p.SkFarm = (float)DMath.Min(1.0, p.SkFarm + 0.0015 * h);
+                }
+                if (hours > 0 && age >= 16 && age < 60 && p.Health > 0.6 && s.Muck > 1.0 && Muck.Window(in s))
+                {
+                    // the yards' muck out on the fields before the ploughing (C3.7c): after the fields' own work, at most half the free hours (as a lived
+                    // day's urge gives it beside the rest), at the household's cart's pace or a back's
+                    double used = Muck.Cart(w, ref s, hours * 0.5, Muck.HoursPerTonne(w, p.Household), 0.5 + 0.5 * p.Health);
+                    hours -= used;
                 }
                 int lslot = -1;
                 if (LandHours != null) { lslot = LandSlot(w, in s); LandHours[lslot] += days; LandHours[lslot + 1] += cropH; LandHours[lslot + 2] += hours; }

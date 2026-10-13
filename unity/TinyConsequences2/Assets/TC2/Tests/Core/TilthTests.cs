@@ -189,6 +189,7 @@ namespace TC2.Tests.Core
             for (int y = 0; y < years; y++)
             {
                 s.Grazed = grazedKgHaDay * SimTime.DaysPerYear * arable;
+                s.Spread = s.Grazed * Muck.PerDm * Muck.NightShare;   // (its yards' muck all carted out: C3.7c)
                 double yield = s.FieldHa * fresh * 0.9 * SettlementSystem.Heart(in s);   // (an ordinary season: nine tenths of the crop grown)
                 SettlementSystem.SoilYear(ref s, yield, fresh);
             }

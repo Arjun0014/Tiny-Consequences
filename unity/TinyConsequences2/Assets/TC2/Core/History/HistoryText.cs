@@ -298,6 +298,10 @@ namespace TC2.Core.History
                         return "in the household's garden behind the house, " + (cs == TC2.Core.Places.CropStage.Sown ? "digging and planting beans, peas and cabbages" :
                                cs == TC2.Core.Places.CropStage.Growing ? "weeding and watering the beds" : "gathering leeks, beans and cabbages for the pot") + ": its season wants it";
                     }
+                case ActivityKind.Muck:
+                    // (C3.7c: the yards' muck out on the fields)
+                    return "carting the muck from " + home + "'s yards out to its fields and spreading it" + (w.Households.Exists(p.Household) && TC2.Core.Places.Carts.Usable(w, p.Household) != TC2.Core.Places.Carts.None ? " with the household's " + TC2.Core.Places.Carts.NameOf(TC2.Core.Places.Carts.Usable(w, p.Household)) : " in baskets") +
+                           ": the herds' dung gives back to the land, and the ploughing is near";
                 case ActivityKind.Thresh:
                     // (C3.7b: the village's sheaves at its floor)
                     return "threshing " + home + "'s sheaves with a flail " + (w.Settlements.Exists(p.Home) && TC2.Core.Places.Threshing.Barn(w, p.Home) != 0 ? "before its barn's doors" : "at its threshing floor by the granary") + ": " +
