@@ -116,6 +116,7 @@ namespace TC2.Core.Places
                 double per = KgPerHa / LoadKg * P.AreaHa(c);   // loads in a whole share of the cell
                 double take = DMath.Min(loads - had, LoadsIn(P, c));
                 P.Forest[c] = (float)DMath.Max(Floor, (double)P.Forest[c] - take / per);
+                P.Felled[c] = (float)DMath.Min(1.0 - P.Forest[c], P.Felled[c] + take / per);   // (its stumps: W-FELL - a record the view draws)
                 had += take;
                 w.Metrics.WoodFelled += take;
                 if (P.Forest[c] < Worth) Choose(w, sid);   // (cut down: the next woodlot for the next loads)

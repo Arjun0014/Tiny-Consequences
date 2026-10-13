@@ -139,6 +139,20 @@ namespace TC2.Game
                 LookAt(d, view == "mouthfar" ? 900 : 350);
                 return;
             }
+            if (view.StartsWith("floor") && sid != 0)
+            {
+                // (C3.7b) the framed village's threshing floor and its stackyard: "floor" 45 m up, "floorlow" 22 m, "floorfar" 110 m
+                ref var st = ref w.Settlements.Get(sid);
+                TC2.Core.Places.Threshing.Floor(w, sid, out double fx, out double fy);
+                d = st.LocalToSphere(fx, fy, w.Planet.Radius);
+                int at = 0;
+                var res = w.Residents(sid);
+                for (int i = 0; i < res.Count; i++) if (w.People.Get(res[i]).Act == TC2.Core.Agents.ActivityKind.Thresh) at++;
+                Debug.Log("[TC2] threshing floor of " + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(sid)) + ": in the sheaf " + st.Sheaves.ToString("0") + " FU of " + st.Granary.ToString("0") +
+                          ", threshed " + TC2.Core.Places.Threshing.Threshed(in st).ToString("0") + ", barns " + st.Barns + ", at the floor now " + at + ", crop " + st.Crop);
+                LookAt(d, view == "floorfar" ? 110 : view == "floorlow" ? 22 : 45);
+                return;
+            }
             if (view == "hall" && sid != 0)
             {
                 // (C13.3) the framed village's hall-house, 40 m up: its cross wing against its footprint

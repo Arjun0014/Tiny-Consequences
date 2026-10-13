@@ -52,6 +52,8 @@ namespace TC2.Core.Places
                 days = Math.Min(days, Math.Max(1, DaysUntil(w.NextPlantTick, now)));
             }
             if (s.AheadTo != 0 && s.AheadTo <= now) { s.Ahead = 0; s.AheadFrom = 0; s.AheadTo = 0; }   // (the last step's days are lived)
+            Threshing.Day(ref s);   // (what left the store since went threshed first: C3.7b)
+            if (s.Sheaves > 0 || s.ThreshOut > 0f) s.ThreshOut = (float)w.Agents.ThreshingUnderWay(sid);   // (the stints at the floor under way, counted again)
             w.Metrics.VillageSteps++; w.Metrics.VillageDays += days;
             var prof = w.Profiler;   // (tools: the parts of a village's day; null in the game)
             prof?.Begin(10000); Crops(ref s, doy, 1); prof?.End(10000);   // (the step's first day: a stage begins on it, before its work)
@@ -481,6 +483,7 @@ namespace TC2.Core.Places
             double add = s.CropYield * (1.0 - s.CropBurnt) * reaped - s.Reaped;
             if (add <= 1e-9) return;
             s.Granary += add; s.Reaped += add;
+            Threshing.In(ref s, add);   // (in the sheaf, to be threshed: C3.7b)
             _w.Holdings.Harvest(s.Id, add, false);
         }
 
@@ -669,6 +672,7 @@ namespace TC2.Core.Places
                 if (LandTally != null) TallyLand(in s, yield);
                 if (SheafTally != null) { SheafTally[0]++; SheafTally[1] += yield; SheafTally[2] += yield - inNow; }
                 s.Granary += inNow;
+                Threshing.In(ref s, inNow);   // (in the sheaf, to be threshed: C3.7b)
                 s.LastHarvest = yield;
                 SoilYear(ref s, yield, cfg.FieldYieldPerHa);   // (what the crop took from the fields, what rest, the floor and the herds' dung gave back: C3.6f)
                 TC2.Core.Diagnostics.HouseLedger.Harvest(w, s.Id, yield);   // (tools: the harvest by whose work it was; null in the game)
@@ -842,7 +846,7 @@ namespace TC2.Core.Places
             double gFill = s.Granary;   // (DEEP: the store before the step's larders and decay)
             double cover = days == 1 ? 2.0 : days + 1.0;   // (the larders hold the step's meals and a day more: two days for a day)
             double total = daily * cover * ration;
-            double share = total > 0 ? Math.Min(1.0, s.Granary / total) : 1.0;
+            double share = total > 0 ? Math.Min(1.0, Threshing.Threshed(in s) / total) : 1.0;   // (only grain out of the sheaf: C3.7b)
             w.Holdings.Reconcile(s.Id);   // (whose grain the store holds: what went out or came in since, by no household's hand - C3.3)
             for (int i = 0; i < hhs.Count; i++)
             {
@@ -851,7 +855,7 @@ namespace TC2.Core.Places
                 double want = HouseholdNeed(hid) * cover * ration - hh.Larder - hh.Ready;
                 if (want <= 0) continue;
                 double give = Math.Min(want, want * share);
-                give = Math.Min(give, s.Granary);
+                give = Math.Min(give, Threshing.Threshed(in s));
                 give = w.Holdings.Provide(s.Id, hid, give, horizon);   // (its own grain, the common grain, its kin's spare, a loan; in hard times no more: C3.3)
                 hh.Larder += give; s.Granary -= give;
                 TC2.Core.Diagnostics.HouseLedger.Draw(w, hid, s.Id, give);

@@ -136,6 +136,15 @@ Shader "TC2/Instanced"
                 armL = 1.0 + 0.06 * sin(ph * 1.3); armR = armL;
                 lean = -0.06;
             }
+            else if (code == 17)
+            {
+                // threshing with a flail (C3.7b): the swingle whirled up over the shoulder and brought down flat on the sheaves on the floor,
+                // upright, to the beat of the others on the floor
+                float s = TC2Stroke(ph * 1.2, 0.45);
+                armL = 0.75 + 2.1 * s; armR = armL;
+                lean = -(0.10 + 0.22 * (1.0 - s));
+                legA = 0.18 * side;
+            }
             if (arm)
             {
                 float a = lp.x < 0 ? armL : armR;

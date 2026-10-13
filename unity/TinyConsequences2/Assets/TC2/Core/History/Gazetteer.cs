@@ -152,6 +152,9 @@ namespace TC2.Core.History
             sb.Append("The store holds ").Append(F(s.Granary, "0")).Append(" days' food (").Append(F(days, "0")).Append(" days for its people), in ")
               .Append(s.Granaries).Append(s.Granaries == 1 ? " granary" : " granaries").Append(s.Barns > 0 ? " and " + s.Barns + (s.Barns == 1 ? " barn" : " barns") : "")
               .Append(" holding ").Append(F(Structures.StoreCapacity(in s), "0")).Append(s.Ration < 0.999 ? "; meals rationed to " + F(100 * s.Ration, "0") + " %" : "").Append(".\n");
+            if (s.Sheaves > 0.5)   // (C3.7b: the harvest stands in the sheaf until its people thresh it)
+                sb.Append("Of it ").Append(F(s.Sheaves, "0")).Append(" stands in the sheaf").Append(s.Sheaves > s.Barns * Places.Threshing.BarnSheaves + 0.15 * Places.Threshing.RickFu ? (s.Barns > 0 ? " - in the barns' bays and in ricks in the stackyard" : " in ricks in the stackyard") : " in the barns' bays")
+                  .Append("; ").Append(F(Places.Threshing.Threshed(in s), "0")).Append(" is threshed (").Append(F(Places.Threshing.Threshed(in s) / System.Math.Max(1.0, Places.Threshing.DayNeed(w, in s)), "0")).Append(" days for its people).\n");
             // its fishing and its boats (C9.1)
             if (s.Fish.A >= 0)
             {

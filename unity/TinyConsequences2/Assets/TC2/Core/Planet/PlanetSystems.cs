@@ -247,6 +247,22 @@ namespace TC2.Core.Planet
         public static bool OldWoods;
 
         /// <summary>A step of plant growth (dt in years): forests and grass toward what climate and water allow.</summary>
+        /// <summary>Years in which a felled wood's stumps rot to a third (an oak's or a pine's stump stands decades; coppice stools resprout).</summary>
+        public const double StumpYears = 25.0;
+
+        /// <summary>
+        /// The felled share of a cell after a step of the woods' growth (W-FELL): what the woods regrew stands first where they were cut (coppice
+        /// shoots from the stools, seedlings in the gaps), the stumps left rot, and none stand where the woods stand again. A record only: nothing
+        /// in the simulation reads it (the view draws the stumps).
+        /// </summary>
+        public static double Regrown(double felled, double grew, double forest, double dtY)
+        {
+            double f = felled - DMath.Max(0.0, grew);
+            f *= 1.0 - DMath.Min(1.0, dtY / StumpYears);
+            f = DMath.Min(f, 1.0 - forest);
+            return f < 0.002 ? 0.0 : f;
+        }
+
         public void GrowVegetation(World w, double dtY)
         {
             var P = w.Planet;
@@ -265,7 +281,7 @@ namespace TC2.Core.Planet
                 double tSuitG = DMath.SmoothStep(-6, 4, tm);
                 double kF = DMath.Clamp01(1.25 * m - 0.12) * tSuitF;
                 double kG = DMath.Clamp01(0.25 + 0.9 * wet) * tSuitG;
-                double f = P.Forest[c], g = P.Grass[c];
+                double f = P.Forest[c], g = P.Grass[c], f0 = f;
                 f += 0.085 * dtY * f * (1.0 - f / DMath.Max(0.02, kF));
                 if (f < 0.03 && kF > 0.15)
                 {
@@ -279,6 +295,7 @@ namespace TC2.Core.Planet
                 if (g < 0.02 && kG > 0.1) g += dtY * 0.05;
                 P.Forest[c] = (float)DMath.Clamp01(f);
                 P.Grass[c] = (float)DMath.Clamp01(g);
+                if (P.Felled[c] > 0f) P.Felled[c] = (float)Regrown(P.Felled[c], P.Forest[c] - f0, P.Forest[c], dtY);
                 P.ClassifyBiome(c, w.Now);
             }
         }

@@ -580,6 +580,17 @@ namespace TC2.Core.Agents
                         if (Gardens.Tally != null) Gardens.Count(in s, gDoy, gH, gFu);
                     }
                     break;
+                case ActivityKind.Thresh:
+                    if (p.At != 0 && w.Settlements.Exists(p.At))
+                    {
+                        // the village's sheaves threshed with the flail at its floor (C3.7b): the stint's grain out of the sheaf, as far as it lasted
+                        ref var s = ref w.Settlements.Get(p.At);
+                        double rate = Threshing.PerHour * (0.5 + 0.5 * p.Health);
+                        if (hours > 0) Threshing.Thresh(w, ref s, hours * rate, hours);
+                        double planned = (p.T1 - Math.Max(p.T0, p.TA)) / (double)SimTime.Hour * rate;
+                        s.ThreshOut = (float)DMath.Max(0.0, s.ThreshOut - planned);
+                    }
+                    break;
                 case ActivityKind.Craft:
                     if (p.At != 0 && p.At == p.Home && hours > 0 && w.Households.Exists(p.Household))
                     {
@@ -603,7 +614,7 @@ namespace TC2.Core.Agents
                         w.Learning.Practice(ref p, Knowledge.Tech.Quern, hours);
                         double fromLarder = Math.Min(made, hh.Larder);
                         hh.Larder -= fromLarder;
-                        double fromStore = Math.Min(made - fromLarder, DMath.Min(s.Granary, w.Holdings.Available(p.At, p.Household)));   // (in hard times its own grain and the common's only: C3.3c)
+                        double fromStore = Math.Min(made - fromLarder, DMath.Min(Threshing.Threshed(in s), w.Holdings.Available(p.At, p.Household)));   // (in hard times its own grain and the common's only: C3.3c; out of the sheaf: C3.7b)
                         s.Granary -= fromStore;
                         w.Holdings.Take(p.At, p.Household, fromStore);   // (its own grain first: C3.3)
                         double done = fromLarder + fromStore;
@@ -629,7 +640,7 @@ namespace TC2.Core.Agents
         /// <summary>Activities that are work: they count toward a day's labour.</summary>
         static bool IsWork(ActivityKind a) => a == ActivityKind.Fields || a == ActivityKind.Wood || a == ActivityKind.Build || a == ActivityKind.Hunt ||
                                               a == ActivityKind.Fish || a == ActivityKind.Gather || a == ActivityKind.Haul || a == ActivityKind.Tend ||
-                                              a == ActivityKind.Cook || a == ActivityKind.Water || a == ActivityKind.Craft || a == ActivityKind.Quarry || a == ActivityKind.Smith || a == ActivityKind.Train || a == ActivityKind.Mine || a == ActivityKind.Burn || a == ActivityKind.Sail || a == ActivityKind.Weave || a == ActivityKind.Pot || a == ActivityKind.Garden;
+                                              a == ActivityKind.Cook || a == ActivityKind.Water || a == ActivityKind.Craft || a == ActivityKind.Quarry || a == ActivityKind.Smith || a == ActivityKind.Train || a == ActivityKind.Mine || a == ActivityKind.Burn || a == ActivityKind.Sail || a == ActivityKind.Weave || a == ActivityKind.Pot || a == ActivityKind.Garden || a == ActivityKind.Thresh;
 
         /// <summary>How much a day's labour still leaves for the slack's work: whole until five hours, a fifth past eight.</summary>
         static double DayLeft(in Person p) => DMath.Clamp(1.0 - (p.Worked - 5.0) / 3.0, 0.2, 1.0);
@@ -742,7 +753,7 @@ namespace TC2.Core.Agents
         {
             var w = _w;
             if (p.At == 0 || p.At != p.Home || !w.Households.Exists(p.Household)) return false;
-            return w.Households.Get(p.Household).Larder > 0.01 || w.Settlements.Get(p.At).Granary > 0.01;
+            return w.Households.Get(p.Household).Larder > 0.01 || Threshing.Threshed(in w.Settlements.Get(p.At)) > 0.01;   // (grain out of the sheaf: C3.7b)
         }
 
         /// <summary>Grinding and cooking at the household's hearth until the next two meals are made (D2-056).</summary>
@@ -802,7 +813,7 @@ namespace TC2.Core.Agents
             var w = _w;
             // at home, what is cooked (D2-056); away, a host's table
             if (p.At == p.Home && w.Households.Exists(p.Household)) return w.Households.Get(p.Household).Ready >= 0.4 * Portion(in p, w.Now);   // a meal, not scraps
-            return p.At != 0 && w.Settlements.Get(p.At).Granary > 0.01;
+            return p.At != 0 && Threshing.Threshed(in w.Settlements.Get(p.At)) > 0.01;   // (grain out of the sheaf: C3.7b)
         }
 
         internal void EatNow(ref Person p) => Eat(ref p, Portion(in p, _w.Now), false);
@@ -840,7 +851,7 @@ namespace TC2.Core.Agents
             if (got < need - 1e-9 && p.At != 0 && (coarse || !home))
             {
                 ref var s = ref w.Settlements.Get(p.At);
-                double take = Math.Min(need - got, DMath.Min(s.Granary, w.Holdings.Available(p.At, p.Household)));   // (in hard times its own grain and the common's only: C3.3c)
+                double take = Math.Min(need - got, DMath.Min(Threshing.Threshed(in s), w.Holdings.Available(p.At, p.Household)));   // (in hard times its own grain and the common's only: C3.3c; out of the sheaf: C3.7b)
                 s.Granary -= take; got += take;
                 w.Holdings.Take(p.At, p.Household, take);   // (one of its own: its grain first; a visitor's meal is the village's: C3.3)
             }
@@ -959,6 +970,15 @@ namespace TC2.Core.Agents
                 }
                 // nothing cooked at home: a hungry one of eight or more makes the meal (D2-056); the small wait for someone who will
                 if (age >= 8 && CanCook(in p)) { BeginCook(ref p, WhyCode.Hungry, homeX, homeY, ref rs); return; }
+                // nothing threshed left in the store but its sheaves: a hungry hand threshes before foraging - an hour at the floor feeds a household
+                // for days (C3.7b); while enough of the village's people are at the floor, the rest wait at home for the grain rather than go out
+                if (age >= 12 && p.At == p.Home && p.Health > 0.3 && lsec >= 6 * SimTime.Hour && lsec < 19 * SimTime.Hour && !Threshing.Off && here.Sheaves > 0.5 &&
+                    Threshing.Threshed(in here) < 1.0)
+                {
+                    if (here.ThreshOut < Threshing.DayNeed(w, in here)) { BeginThresh(ref p, ref here, true, ref rs); return; }
+                    BeginLocal(ref p, ActivityKind.Idle, WhyCode.Hungry, 0, homeX, homeY, 40 * SimTime.Minute);
+                    return;
+                }
                 if (p.HungryFrom == 0 && now - p.LastMeal > SimTime.Day) p.HungryFrom = now;
                 // nothing at home or in the store: go out to what the woods, the game or the shore still hold (by day; D2-042)
                 if (!child && lsec >= 6 * SimTime.Hour && lsec < 19 * SimTime.Hour && p.At == p.Home)
@@ -1169,6 +1189,18 @@ namespace TC2.Core.Agents
                     if (u > best) { best = u; choice = 25; }
                 }
             }
+            if (day && atHome && age >= 14 && age < 65 && p.Health > 0.5 && lsec < 18 * SimTime.Hour && here.Sheaves > 0.5 && !Threshing.Off)
+            {
+                // the village's sheaves at its threshing floor (C3.7b): its threshed grain short of its need and its days ahead, less what others are
+                // threshing now - wanted as a village work is, the more the shorter (a few days' worth in the sowing and the reaping, more in the slack)
+                double target = Threshing.DayNeed(w, in here) * Threshing.AheadDays(here.Crop);
+                double have = Threshing.Threshed(in here) + here.ThreshOut;
+                if (have < target)
+                {
+                    double u = (0.25 + 0.6 * (1.0 - have / DMath.Max(1e-6, target))) * elder * (0.6 + 0.4 * p.Diligence / 255.0) + 0.1 * rs.NextUnit();
+                    if (u > best) { best = u; choice = 26; }
+                }
+            }
             if (day && atHome && age >= 16 && age < 60 && p.Health > 0.6 && Carts.HasWork(w, p.Household))
             {
                 // the household is making a cart (C4.2): its grown members cut and shape the wheels, the axle and the bed in the yard - their own small job,
@@ -1331,6 +1363,9 @@ namespace TC2.Core.Agents
                         BeginLocal(ref p, ActivityKind.Garden, WhyCode.Garden, 0, gx + rs.Range(-2, 2), gy + rs.Range(-2, 2), SimTime.Hours(1.5 + 1.0 * rs.NextUnit()));
                         return;
                     }
+                case 26:
+                    BeginThresh(ref p, ref here, false, ref rs);
+                    return;
                 case 24:
                     {
                         ref var ch = ref w.Households.Get(p.Household);   // (in the yard by the house)
@@ -1788,6 +1823,72 @@ namespace TC2.Core.Agents
             return gH;
         }
 
+        /// <summary>A stint at the village's threshing floor (C3.7b): at their place in the ring round its middle, as long as the floor's want
+        /// shared by a few takes (half an hour to three hours); a hungry hand an hour - what the household eats today and more.</summary>
+        void BeginThresh(ref Person p, ref Settlement here, bool hungry, ref RandomSequence rs)
+        {
+            var w = _w;
+            Threshing.Floor(w, here.Id, out double fx, out double fy);
+            double a = Threshing.RingAngle(p.Id);
+            double rate = Threshing.PerHour * (0.5 + 0.5 * p.Health);
+            double h = hungry ? 1.0 : DMath.Clamp(Threshing.Want(w, in here, 1.0) / (4.0 * rate), 0.5, 2.0 + 1.0 * rs.NextUnit());
+            here.ThreshOut = (float)(here.ThreshOut + h * rate);
+            BeginLocal(ref p, ActivityKind.Thresh, hungry ? WhyCode.Hungry : WhyCode.Thresh, 0, fx + Threshing.Ring * DMath.Cos(a), fy + Threshing.Ring * DMath.Sin(a), SimTime.Hours(h));
+        }
+
+        /// <summary>FU a village's people are threshing now in stints under way at its floor (lived days; C3.7b) - counted again each day.</summary>
+        public double ThreshingUnderWay(int sid)
+        {
+            var w = _w;
+            var res = w.Residents(sid);
+            long now = w.Now;
+            double fu = 0;
+            for (int i = 0; i < res.Count; i++)
+            {
+                ref var q = ref w.People.Get(res[i]);
+                if (!q.Alive || q.Act != ActivityKind.Thresh || q.T1 <= now) continue;
+                fu += (q.T1 - Math.Max(now, Math.Max(q.T0, q.TA))) / (double)SimTime.Hour * Threshing.PerHour * (0.5 + 0.5 * q.Health);
+            }
+            return fu;
+        }
+
+        /// <summary>
+        /// A COARSE day's (a DEEP step's) threshing (C3.7b): the village's sheaves threshed as far as its threshed grain is short of the step's need
+        /// and its days ahead - by its grown and able people alike, a thresher's grain by their strength - charged before their other work as the
+        /// households' chores are (the step's meals come out of it). Lived days thresh the same grain by the floor's urge.
+        /// </summary>
+        void CoarseThresh(int sid, int days)
+        {
+            var w = _w;
+            ref var s = ref w.Settlements.Get(sid);
+            double want = Threshing.Want(w, in s, days);
+            if (want <= 1e-9) return;
+            long now = w.Now;
+            var res = w.Residents(sid);
+            _grown.Clear();
+            double pace = 0;
+            for (int i = 0; i < res.Count; i++)
+            {
+                ref var q = ref w.People.Get(res[i]);
+                if (!q.Alive || q.At != sid) continue;
+                double age = q.AgeYears(now);
+                if (age < 14 || q.Health < 0.3 || q.SickPhase == TC2.Core.Health.Disease.Infectious || q.Hurt >= TC2.Core.Society.Conflict.AbedHurt) continue;
+                _grown.Add(res[i]);
+                pace += (age > 60 ? 0.6 : 1.0) * (0.5 + 0.5 * q.Health);
+            }
+            if (pace <= 0) return;
+            double each = DMath.Min(6.0 * days, want / (Threshing.PerHour * pace));   // (hours each; never more than a long day's at the floor)
+            double fu = 0, hours = 0;
+            for (int k = 0; k < _grown.Count; k++)
+            {
+                ref var q = ref w.People.Get(_grown[k]);
+                Add(_grown[k], each);
+                hours += each;
+                fu += each * Threshing.PerHour * (q.AgeYears(now) > 60 ? 0.6 : 1.0) * (0.5 + 0.5 * q.Health);
+            }
+            Threshing.Thresh(w, ref s, fu, hours);
+        }
+
         /// <summary>The household's best at dressing quern stones: it grinds on a rotary quern when one of its people can keep one (D2-062).</summary>
         double QuernBest(int hid) => HouseholdBest(hid, Knowledge.Tech.Quern);
 
@@ -1815,6 +1916,7 @@ namespace TC2.Core.Agents
             var w = _w;
             long now = w.Now;
             _chore.Clear();
+            CoarseThresh(sid, days);   // (the village's sheaves threshed first, as far as the step's meals and its days ahead want: C3.7b)
             var hhs = w.HouseholdsOf(sid);
             for (int i = 0; i < hhs.Count; i++)
             {
@@ -1839,7 +1941,7 @@ namespace TC2.Core.Agents
                 bool wood = s.Woodstore > 0.05;
                 double quern = Knowledge.Tech.QuernFactor(QuernBest(hid));   // (a rotary quern in the household: D2-062)
                 // food: what is not yet cooked of what they will eat today
-                double raw = DMath.Max(0.0, DMath.Min(stepNeed, hh.Ready + hh.Larder + s.Granary) - hh.Ready);
+                double raw = DMath.Max(0.0, DMath.Min(stepNeed, hh.Ready + hh.Larder + Threshing.Threshed(in s)) - hh.Ready);   // (out of the sheaf: C3.7b)
                 double left = raw, hoursAll = 0;
                 for (int k = 0; k < _kids.Count && left > 1e-9; k++)
                 {

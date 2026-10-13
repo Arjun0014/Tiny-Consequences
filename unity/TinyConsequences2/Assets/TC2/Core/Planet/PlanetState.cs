@@ -61,6 +61,7 @@ namespace TC2.Core.Planet
         public float[] Stress;      // slip deficit on fault patches (m; quakes, D2-030); 0 off the faults
         public float[] StormRain;   // storm rain waiting for the next weather day (rain units; D2-032)
         public float[] Gathered;    // kg of mast, roots and berries people took from a cell since the animals last ate (D2-042)
+        public float[] Felled;      // the share of a cell's cover people felled that has not grown back - its stumps (W-FELL; a record, read by the view only)
         public System.Collections.Generic.List<Storm> Storms = new System.Collections.Generic.List<Storm>();
         // wildlife (D2-035): the species and, per species and cell, how many animals and in what condition
         public System.Collections.Generic.List<Species> Species = new System.Collections.Generic.List<Species>();
@@ -92,6 +93,7 @@ namespace TC2.Core.Planet
             Crust = new byte[Cells]; CrustAge = new float[Cells]; CrustOx = new float[Cells]; CrustOy = new float[Cells];
             DrainIce = new float[Cells]; Magma = new float[Cells]; Stress = new float[Cells]; StormRain = new float[Cells];
             Gathered = new float[Cells];
+            Felled = new float[Cells];
         }
 
         public bool IsLand(int c) => Elev[c] > SeaLevel;
@@ -346,6 +348,7 @@ namespace TC2.Core.Planet
             w.Double(SupplyRef);
             w.Double(FreeLandRef);
             w.FloatArray(Gathered, Cells);
+            w.FloatArray(Felled, Cells);   // (W-FELL, sim version 77)
         }
 
         public static PlanetState Read(BinReader r)
@@ -393,6 +396,7 @@ namespace TC2.Core.Planet
             p.SupplyRef = r.Double();
             p.FreeLandRef = r.Double();
             r.FloatArray(p.Gathered);
+            r.FloatArray(p.Felled);
             return p;
         }
 
@@ -416,6 +420,7 @@ namespace TC2.Core.Planet
                 h.Add(Elev[i]); h.Add(Plate[i]); h.Add(Moist[i]); h.Add(Temp[i]); h.Add(SoilWater[i]);
                 h.Add(RainToday[i]); h.Add(Grass[i]); h.Add(Forest[i]); h.Add(Biome[i]); h.Add(DryCause[i]); h.Add(FieldOwner[i]); h.Add(RiverFlow[i]); h.Add(LakeWater[i]);
                 h.Add(Gathered[i]);
+                h.Add(Felled[i]);
             }
         }
     }

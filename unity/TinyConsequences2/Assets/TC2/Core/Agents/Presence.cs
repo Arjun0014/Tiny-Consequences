@@ -21,7 +21,7 @@ namespace TC2.Core.Agents
         /// or a pick, hammering, sitting, talking, walking with a load, rowing, working with the hands standing (a loom), drawing water, sparring,
         /// running (children at play), fishing from the shore, sitting at work with the hands (spinning, mending, throwing pots), sitting and talking.</summary>
         public const byte Stand = 0, Walk = 1, Hoe = 2, Reap = 3, Chop = 4, Hammer = 5, Sit = 6, Talk = 7, Carry = 8, Row = 9, Loom = 10, Draw = 11,
-                          Spar = 12, Run = 13, Fish = 14, SitWork = 15, SitTalk = 16;
+                          Spar = 12, Run = 13, Fish = 14, SitWork = 15, SitTalk = 16, Flail = 17;
 
         /// <summary>Whether a pose shows the body at work or moving (else it stands or sits still: true of leisure and waiting).</summary>
         public static bool Busy(byte pose) => pose != Stand && pose != Sit;
@@ -94,6 +94,15 @@ namespace TC2.Core.Agents
                     fx = DMath.Cos(a) * TriSlope(since * 0.04 / 3.0 + u0); fy = DMath.Sin(a) * TriSlope(since * 0.04 / 3.0 + u0);
                     pose = s.Crop == CropStage.Ripe || s.Crop == CropStage.Harvested ? Reap : Hoe;
                     moving = true;
+                    break;
+                }
+                case ActivityKind.Thresh:
+                {
+                    // at the village's threshing floor (C3.7b): in a ring round the sheaves laid out on it, facing its middle, the flails falling to a
+                    // beat - a breather now and then, the straw turned and the grain swept up
+                    double a = Threshing.RingAngle(p.Id);
+                    fx = -DMath.Cos(a); fy = -DMath.Sin(a);
+                    pose = Cycle(since + 150.0 * u0, 150.0, 125.0) ? Flail : Stand;
                     break;
                 }
                 case ActivityKind.Craft:

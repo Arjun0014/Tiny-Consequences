@@ -9,7 +9,7 @@ namespace TC2.Game
 {
     /// <summary>
     /// Everything standing on the planet (13 §2, D2-026), drawn with the asset kit: each household's house (four types
-    /// by a stable hash), the village granary and well, haystacks once the harvest is in, orchard trees and bushes in the
+    /// by a stable hash), the village granary and well, the stackyard's ricks of its sheaves (C3.7b), orchard trees and bushes in the
     /// yards; forests by species (conifers where it is cold, broadleaf and birch where it is mild) in groves and glades;
     /// fire in burning cells; people at their analytic positions at render time, in natural dyed clothes. Things stay
     /// close to their real size near the camera and grow a little with distance so villages read from afar.
@@ -20,7 +20,7 @@ namespace TC2.Game
         public SimHost Host;
         public CameraRig Rig;
 
-        Instancer _people, _granaries, _wells, _hay, _flames, _huts, _tents, _ruins, _beached, _afloat, _walls, _woodpiles;
+        Instancer _people, _granaries, _wells, _ricks, _flames, _huts, _tents, _ruins, _beached, _afloat, _walls, _woodpiles;
         Instancer _beachedP, _afloatP;   // plank boats on the beach and out on the water (C9.2b); _beached/_afloat are the dugouts
         // the boats out this frame (C9.2): a boat's hull is drawn once, its crew seated in it
         readonly System.Collections.Generic.Dictionary<int, int> _hulls = new System.Collections.Generic.Dictionary<int, int>();
@@ -137,7 +137,7 @@ namespace TC2.Game
             _oxen = new Instancer(Models.Get("animal_cow", ProcMeshes.Granary), _mat, true);
             _parked = new Instancer(Models.Get("handcart", ProcMeshes.Granary), _mat, true);
             _parkedOx = new Instancer(Models.Get("ox_cart", ProcMeshes.Granary), _mat, true);
-            _hay = new Instancer(Models.Get("haystack", ProcMeshes.Granary), _mat, true);
+            _ricks = new Instancer(Models.Get("rick", ProcMeshes.Granary), _mat, true);   // (the stackyard's ricks: C3.7b)
             _woodpiles = new Instancer(ProcMeshes.Woodpile(), _mat, true);   // the village's woodstore, by the homes (D2-081)
             _trees = new Instancer[TreeModels.Length];
             for (int i = 0; i < TreeModels.Length; i++) _trees[i] = new Instancer(Models.Get(TreeModels[i], i <= ConiferSmall ? (System.Func<Mesh>)ProcMeshes.Conifer : ProcMeshes.Broadleaf), _mat, true);
@@ -274,7 +274,7 @@ namespace TC2.Game
                 _chimneys.Draw(cam); _plinths.Draw(cam); _outshuts.Draw(cam); _pens.Draw(cam); _stalls.Draw(cam); _gardens.Draw(cam); _gardensBare.Draw(cam); _hurdles.Draw(cam); _tenters.Draw(cam); _clayPits.Draw(cam); _jars.Draw(cam); _ware.Draw(cam); _handcarts.Draw(cam); _oxcarts.Draw(cam); _cartLoads.Draw(cam); _oxen.Draw(cam); _parked.Draw(cam); _parkedOx.Draw(cam);
                 _stonePiles.Draw(cam);
                 for (int i = 0; i < _works.Length; i++) _works[i]?.Draw(cam);
-                _hay.Draw(cam); _huts.Draw(cam); _tents.Draw(cam); _ruins.Draw(cam); _walls.Draw(cam); _woodpiles.Draw(cam);
+                _ricks.Draw(cam); _huts.Draw(cam); _tents.Draw(cam); _ruins.Draw(cam); _walls.Draw(cam); _woodpiles.Draw(cam);
             }
             if ((Off & 1) == 0) for (int i = 0; i < _trees.Length; i++) _trees[i].Draw(cam);
             _flames.Draw(cam);
@@ -474,7 +474,7 @@ namespace TC2.Game
             _chimneys.Clear(); _plinths.Clear(); _outshuts.Clear(); _pens.Clear(); _stalls.Clear(); _gardens.Clear(); _gardensBare.Clear(); _hurdles.Clear(); _tenters.Clear(); _clayPits.Clear(); _jars.Clear(); _ware.Clear(); _parked.Clear(); _parkedOx.Clear();
             _stonePiles.Clear();
             for (int i = 0; i < _works.Length; i++) _works[i]?.Clear();
-            _hay.Clear(); _huts.Clear(); _tents.Clear(); _ruins.Clear(); _beached.Clear(); _beachedP.Clear(); _walls.Clear(); _woodpiles.Clear();
+            _ricks.Clear(); _huts.Clear(); _tents.Clear(); _ruins.Clear(); _beached.Clear(); _beachedP.Clear(); _walls.Clear(); _woodpiles.Clear();
             _smoke.Clear(); _lights.Clear(); _watch.Clear();
             for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
             {
@@ -541,12 +541,41 @@ namespace TC2.Game
                     for (int k = 0; k < piles; k++)
                         if (StoreSpot(w, in s, sid, gsx, gsy, ref spot, out double px, out double py)) _stonePiles.Add(0, Color.white, PlaceFaced(P, s, px, py, 0.35 * k, Mathf.Min(ex, 1.3f) * 1.1f));
                 }
-                // haystacks once the harvest is in
-                float fill = Mathf.Clamp01((float)(s.Granary / System.Math.Max(1.0, s.Population * 30.0)));
-                if (s.Crop == CropStage.Harvested || s.Crop == CropStage.Fallow)
-                    for (int k = 0; k < Mathf.RoundToInt(fill * 4); k++)
-                        if (StoreSpot(w, in s, sid, gsx, gsy, ref spot, out double hx, out double hy)) _hay.Add(0, Color.white, PlaceFaced(P, s, hx, hy, 0.7 * k, Mathf.Min(ex, 1.3f) * (0.8f + 0.1f * k)));
+                // the stackyard (C3.7b): the village's sheaves its barns' bays do not hold, built into ricks round its threshing floor - full from the
+                // reaping, emptying through the year as its people thresh them, none before a hungry harvest; the last rick as far built as its sheaves
+                double loose = s.Sheaves - s.Barns * Threshing.BarnSheaves;
+                if (loose > 0.15 * Threshing.RickFu)
+                {
+                    int ricks = Mathf.Clamp(Mathf.CeilToInt((float)(loose / Threshing.RickFu)), 1, MaxRicks);
+                    float last = Mathf.Clamp((float)(loose / Threshing.RickFu - (ricks - 1)), 0.55f, 1f);
+                    Threshing.Floor(w, sid, out double tfx, out double tfy);
+                    int rspot = 0;
+                    for (int k = 0; k < ricks; k++)
+                        if (RickSpot(w, in s, sid, tfx, tfy, ref rspot, out double rx, out double ry))
+                            _ricks.Add(0, Color.white, PlaceFaced(P, s, rx, ry, 0.9 * k, Mathf.Min(ex, 1.3f) * (k == ricks - 1 ? Mathf.Sqrt(last) : 1f)));
+                }
             }
+        }
+
+        /// <summary>The most ricks a stackyard draws (a town's sheaves beyond them stand in more ricks than the eye counts).</summary>
+        const int MaxRicks = 12;
+
+        /// <summary>The next free spot of the stackyard round the threshing floor for a rick (C3.7b): on rings 6.5 m and 11 m round its middle,
+        /// from the side away from the square, clear of every building's ground, the streets and the square's earth.</summary>
+        static bool RickSpot(TC2.Core.Simulation.World w, in Settlement s, int sid, double fx, double fy, ref int spot, out double x, out double y)
+        {
+            double a0 = DMath.Atan2(fy - s.SquareY, fx - s.SquareX);
+            for (; spot < 28; spot++)
+            {
+                bool inner = spot < 10;
+                int k = inner ? spot : spot - 10;
+                double r = inner ? 6.5 : 11.0, step = inner ? 0.68 : 0.40;
+                double a = a0 + ((k & 1) == 0 ? 1 : -1) * ((k + 1) >> 1) * step;
+                x = fx + r * DMath.Cos(a); y = fy + r * DMath.Sin(a);
+                if (Footprints.DiscFree(w, sid, 0, x, y, 2.0)) { spot++; return true; }
+            }
+            x = fx; y = fy;
+            return false;
         }
 
         /// <summary>The next free spot round the village's store for a stack (stone, hay): on a ring 5.5 m round the first granary, from the side
