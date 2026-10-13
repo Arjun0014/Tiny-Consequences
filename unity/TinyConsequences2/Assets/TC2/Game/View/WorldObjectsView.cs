@@ -423,7 +423,7 @@ namespace TC2.Game
         /// may be drawn before it meets a neighbour (`Footprints.Room`), and where its yard has free ground - a kitchen garden behind or beside, a
         /// pen behind, a woodpile at its end or its back - so no garden, pen or woodpile is drawn into another house, a street or the green.
         /// </summary>
-        sealed class Plot { public float Room; public bool Back, Pen, SideL, SideR, WoodEnd, WoodBack, CartEnd, OxEnd; public System.Collections.Generic.List<(double cx, double cz, double hx, double hz)> Beds; }
+        sealed class Plot { public float Room; public bool Back, Pen, SideL, SideR, WoodEnd, WoodBack, CartEnd, OxEnd, MuckBack; public System.Collections.Generic.List<(double cx, double cz, double hx, double hz)> Beds; }
         readonly Dictionary<int, Plot> _plots = new Dictionary<int, Plot>();
         readonly Dictionary<int, long> _plotSig = new Dictionary<int, long>();
         readonly Dictionary<int, float> _plotAt = new Dictionary<int, float>();
@@ -465,6 +465,7 @@ namespace TC2.Game
             pl.SideR = Footprints.YardFree(w, sid, bid, L / 2.0 + 4.6, -W / 2.0 - 0.6, 3.9, 2.4);
             pl.WoodEnd = Footprints.YardFree(w, sid, bid, L / 2.0 + 1.6, 0.0, 1.0, 1.3);
             pl.WoodBack = Footprints.YardFree(w, sid, bid, L / 2.0 - 1.2, -W / 2.0 - 1.4, 1.3, 1.0);
+            pl.MuckBack = Footprints.YardFree(w, sid, bid, -L / 2.0 + 1.3, -W / 2.0 - 1.6, 1.4, 1.3);   // (the muck heap behind the other back corner: C3.7c)
             pl.CartEnd = Footprints.YardFree(w, sid, bid, -(L / 2.0 + 1.9), -0.3, 1.0, 1.7);   // (a handcart by the other end wall, its shafts along it: C4.2)
             pl.OxEnd = Footprints.YardFree(w, sid, bid, -(L / 2.0 + 2.1), -0.8, 1.2, 2.8);     // (an ox cart and its pole)
             if (pl.Beds == null) pl.Beds = new System.Collections.Generic.List<(double, double, double, double)>();
@@ -1101,12 +1102,12 @@ namespace TC2.Game
             }
             // its muck heap (C3.7c, D2-153): behind its other back corner, its share of the village's yards' muck by the grass its beasts eat - growing
             // through the year, carted out to the fields after the harvest and through the sowing
-            if (plot != null && s.Muck > 0 && _muckShare.TryGetValue(b.Household, out float mshare) && mshare > 0f)
+            if (plot != null && plot.MuckBack && s.Muck > 0 && _muckShare.TryGetValue(b.Household, out float mshare) && mshare > 0f)
             {
                 double mkg = s.Muck * mshare;
                 if (mkg > 150.0)
                 {
-                    float hs = Mathf.Clamp(Mathf.Pow((float)(mkg / 1500.0), 1f / 3f), 0.45f, 1.7f);
+                    float hs = Mathf.Clamp(Mathf.Pow((float)(mkg / 1500.0), 1f / 3f), 0.45f, 1.3f);   // (within its corner's free ground)
                     double Lm = hut ? 4.6 : PlanL[plan], Wm = hut ? 4.6 : PlanW[plan];
                     Local(b.X, b.Y, face, (-Lm / 2.0 + 1.3) * ex, (-Wm / 2.0 - 1.6) * ex, out double hx, out double hy);
                     _muck.Add(0, Color.white, PlaceFaced(P, s, hx, hy, face + 0.6, ex * hs));
