@@ -153,6 +153,21 @@ namespace TC2.Game
                 LookAt(d, view == "floorfar" ? 110 : view == "floorlow" ? 22 : 45);
                 return;
             }
+            if ((view.StartsWith("woodlot") || view.StartsWith("graves") || view.StartsWith("standard")) && sid != 0)
+            {
+                // (W-FELL, D2-151, D2-152) the framed village's woodlot with its stumps, its burial ground, the first household's standard: "...low" closer
+                ref var st = ref w.Settlements.Get(sid);
+                double wvx = st.WoodX, wvy = st.WoodY, wAlt = view == "woodlotlow" ? 30 : 70;
+                if (view.StartsWith("graves")) { wvx = st.GraveX; wvy = st.GraveY; wAlt = view == "graveslow" ? 22 : 45; }
+                if (view.StartsWith("standard") && st.HeadHh != 0 && w.Households.Exists(st.HeadHh)) { ref var wHh = ref w.Households.Get(st.HeadHh); wvx = wHh.HomeX; wvy = wHh.HomeY; wAlt = view == "standardlow" ? 18 : 40; }
+                d = st.LocalToSphere(wvx, wvy, w.Planet.Radius);
+                TC2.Core.Places.Burials.Read(in st, w.Now, out double wMarked, out double wFresh);
+                int wLot = TC2.Core.Places.Woods.Lot(in st);
+                Debug.Log("[TC2] " + view + " of " + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(sid)) + ": woodlot cell " + wLot + (wLot >= 0 ? " cover " + w.Planet.Forest[wLot].ToString("0.00") + " felled " + w.Planet.Felled[wLot].ToString("0.00") : "") +
+                          "; burials " + st.BurialCount + ", marked " + wMarked.ToString("0") + ", fresh " + wFresh.ToString("0") + "; head household " + st.HeadHh + ", lord " + st.Lord + ", polity head " + w.Conflict.Root(sid));
+                LookAt(d, wAlt);
+                return;
+            }
             if (view == "hall" && sid != 0)
             {
                 // (C13.3) the framed village's hall-house, 40 m up: its cross wing against its footprint

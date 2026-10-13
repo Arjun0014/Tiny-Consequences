@@ -264,12 +264,12 @@ namespace TC2.Game
         }
 
         /// <summary>The kinds of the woods' trees near the camera (D2-084), each in <see cref="TreeVariants"/> variants.</summary>
-        public const int TreeRound = 0, TreeTall = 1, TreeWide = 2, TreeBirch = 3, TreeWillow = 4, TreeSpruce = 5, TreePine = 6, TreeKinds = 17, TreeVariants = 3;
+        public const int TreeRound = 0, TreeTall = 1, TreeWide = 2, TreeBirch = 3, TreeWillow = 4, TreeSpruce = 5, TreePine = 6, TreeKinds = 18, TreeVariants = 3;
         /// <summary>The forms of W-FOREST (18 §8): firs (a narrow drooping spire), the treeline's krummholz (a low wind-shorn mat), the rain
         /// forest's emergents (a tall pale bole under a broad flat crown) and its canopy trees (a dense dome on a straight bole), palms, umbrella
         /// trees of the dry tropics (a forked trunk under a flat crown), alders of the carr (several stems, a low bushy crown), poplars of the
         /// river galleries (a column), mangroves (stilt roots under a low dense crown) and snags (a dead trunk, bare and broken).</summary>
-        public const int TreeFir = 7, TreeKrumm = 8, TreeEmergent = 9, TreeRainCanopy = 10, TreePalm = 11, TreeUmbrella = 12, TreeAlder = 13, TreePoplar = 14, TreeMangrove = 15, TreeSnag = 16;
+        public const int TreeFir = 7, TreeKrumm = 8, TreeEmergent = 9, TreeRainCanopy = 10, TreePalm = 11, TreeUmbrella = 12, TreeAlder = 13, TreePoplar = 14, TreeMangrove = 15, TreeSnag = 16, TreeStump = 17;
         /// <summary>Whether a form's leaves are needles (drawn with the conifers' colours and their far form).</summary>
         public static bool Needles(int kind) => kind == TreeSpruce || kind == TreePine || kind == TreeFir || kind == TreeKrumm;
 
@@ -470,6 +470,23 @@ namespace TC2.Game
                         b.Stick(new Vector3(0f, 0.6f, 0f), new Vector3(Mathf.Cos(a) * J(0.45f, 0.6f), -0.05f, Mathf.Sin(a) * J(0.45f, 0.6f)), 0.035f, 0.025f, 3, bark);
                     }
                     b.Crown(rnd, 9, tr + J(0.5f, 0.6f), J(0.95f, 1.08f), J(0.42f, 0.5f), 0.32f, 0.52f, 0.7f);
+                    break;
+                }
+                case TreeStump:
+                {
+                    // a stump (W-FELL): where a tree was felled, a short cut trunk, its sawn face pale, a few shoots from the stool on some (it keeps its
+                    // own colours; drawn at the felled crown's radius - a unit here is the crown's)
+                    Color face = Lin(0.70f, 0.60f, 0.44f); face.a = 0f;
+                    Color shoot = Lin(0.40f, 0.52f, 0.24f); shoot.a = 0f;
+                    float h = J(0.08f, 0.14f), r = J(0.085f, 0.11f);
+                    b.Prism(0f, h, r, 7, bark);
+                    b.Prism(h, h + 0.004f, r * 0.94f, 7, face);
+                    if (variant > 0)
+                        for (int k = 0; k < 2 + variant; k++)
+                        {
+                            float a = J(0f, 6.28f);
+                            b.Stick(new Vector3(Mathf.Cos(a) * r * 0.8f, h * 0.7f, Mathf.Sin(a) * r * 0.8f), new Vector3(Mathf.Cos(a) * r * 1.6f, h + J(0.10f, 0.22f), Mathf.Sin(a) * r * 1.6f), 0.012f, 0.005f, 3, shoot);
+                        }
                     break;
                 }
                 case TreeSnag:

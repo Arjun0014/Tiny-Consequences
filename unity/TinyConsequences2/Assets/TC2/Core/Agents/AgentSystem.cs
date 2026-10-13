@@ -2629,6 +2629,7 @@ namespace TC2.Core.Agents
                 RootKind = cause == 0 ? RootKind.Nature : RootKind.Unknown,
             });
             w.History.EndEntity(EntityRef.Person(p.Id), w.Now);
+            Burials.Bury(w, in p, why);   // (in the village they lived or died in - none for the drowned, the wave's or the lava's dead: D2-151)
             if (p.At != 0 && p.At != p.Home) w.Visitors(p.At).Remove(p.Id);
             w.Residents(p.Home).Remove(p.Id);
             if (w.Households.Exists(p.Household)) w.Members(p.Household).Remove(p.Id);

@@ -4308,3 +4308,80 @@ season, and from 900 m the region green against straw; the rain forest dense and
 spires among birches (they were pale grey); the broadleaf woods' autumn (day 44). From the last shots: the dry season's leafless thorn drawn
 slighter and grey-brown (it read as rocks), the views' stands inside the woods (the boreal view framed an isolated wooded cell among meadows).
 W-FOREST stays OPEN for Arjun's judgement.
+
+## D2-149 — 2026-10-13 — The threshing floor: the harvest stands in the sheaf until its people thresh it (C3.7b)
+
+**Context.** `26` §2h/§2i, `27` §6: the reaped grain went straight into the village's store as clean grain (`SettlementSystem.Sheaves`, D2-132),
+nobody threshed, and the view drew four "haystacks" round the first granary scaled by the store's fill after the harvest - an approximation of
+nothing in the state. In the record the sheaves were stacked in the barn's bays and in thatched ricks on staddles in the stackyard and threshed
+by flail on the barn's floor a few bushels at a time through the autumn and winter, as the household needed them (4-8 bushels of wheat a
+man-day); the stackyard was the village's visible store, full after the harvest and empty before the next.
+**Decision.** (1) `Settlement.Sheaves`: the store's grain still in the sheaf, a part of `Granary` (sim version 77); the first sheaves and the
+harvest's last day come in as sheaves (`Threshing.In`). (2) Only grain threshed out of the sheaf (`Threshing.Threshed` = Granary - Sheaves) is
+drawn for the larders (`Food`), a meal cooked from the store, a meal eaten from it and the COARSE hearths' cooking; everything else that counts the
+store counts it whole; what leaves it otherwise leaves threshed first (`Threshing.Day` at each village's day: the sheaves never exceed the store);
+rot and a quake's spill take the sheaves in proportion. (3) The work: `Threshing.PerHour` 25 FU an hour a grown hand (0.04 h a FU), at the floor -
+9 m before the first barn's doors, else beside the first granary on its far side from the square - wanted while the threshed grain is short of
+`AheadDays` of the village's need (3 in the sowing and the reaping, 8 in the slack). Lived days: a village work's urge (0.25 + 0.6 x how short,
+less what stints under way will thresh - `Settlement.ThreshOut`, counted again each day), stints of half an hour to three hours; a hungry hand
+with nothing threshed left threshes before it forages (and while enough are at the floor the rest wait for the grain at home). COARSE days and
+DEEP steps: the step's want threshed by the village's grown and able people alike before their other work, as the households' chores are.
+(4) The view: the stackyard - a thatched rick on staddle stones (kit `rick`) for each ~1,500 FU of sheaves the barns' bays do not hold (a barn's
+bays a quarter of what it keeps), round the floor; threshers in a ring round the floor's middle swinging flails (pose `Flail`, 17); the old
+haystacks gone. The pages: the store's sheaves and threshed grain (settlement), "still in the sheaf" (a granary's or barn's page); the person
+page: "threshing ... with a flail before its barn's doors: the store's threshed grain runs short of what its people will eat". (5) Tools:
+`--nothresh` (the control), `--threshtally`, metrics `ThreshHours`, `ThreshFu`; shot views `floor`, `floorlow`, `floorfar`.
+**Evidence.** ThreshingTests 5/5: the harvest stands in the sheaf on its day and is threshed through the year (COARSE, the old grain eaten down:
+133 FU threshed in 5.7 h over 16 days, 0.043 h a FU; threshed grain never under 4 days of the village's need), only threshed grain is eaten and
+with no able hand the sheaves stand (nothing drawn from the store; threshed once hands are well), lived days thresh at the floor ahead of their need
+(22 threshers seen in 12 hours, all in the floor's ring, 16 swinging the flail; threshed grain 1 -> 8.4 days of need), a hungry hand threshes before
+it forages (6 at the floor, none out to the wild for want of food, 16 of 18 fed within the morning), saves keep the sheaves and `--nothresh` has
+none. Neighbours: Sheaves 5, Garden 5, HouseholdWork 4, Coarse 3, Determinism 6, WildFood 11, Migration 9, Holdings 12, Trade 7, Taking 18,
+Woods 6, SaveLoad 8, Climate 7; the lint clean. Control `--nothresh` seed 4 = `_g4` (annals byte-identical, in the worktree's binary); after the
+merge `--nothresh --oldrain` seed 4 = `_g4` (byte-identical). Seed 4 with the floor (`_t0`): 28.8 million FU threshed in 1.21 million hours over 300
+years (0.042 h a FU) - 60 % in the growing stage's slack, 25 % after the harvest, 13 % in the sowing, 2 % in the reaping; at the year's turn 93 %
+of the stores' grain stands in the sheaf (31 of 31 villages). Ten seeds: see D2-149b below (`_m1` against `_r1`). Real shots: below.
+
+## D2-150 — 2026-10-13 — The woods remember their felling: stumps where the felled trees stood (W-FELL)
+
+**Context.** `27` §6, `18` §8: woodlots thinned as they were felled (C1.2) but the woods kept no record of it - a felled wood looked like any thin
+wood; "stand age as state (only fire's is real; felling and windthrow leave none)". The smallest real state that lets the picture tell felling from
+thinness: how much of a cell's cover people cut that has not grown back.
+**Decision.** `PlanetState.Felled` (a field a cell; sim version 77): `Woods.Fell` adds the share it takes (never more than the open share);
+`PlanetSystems.GrowVegetation` takes it back as the woods regrow (they regrow where they were cut first: coppice stools, seedlings in the gaps) and
+the stumps left rot (`StumpYears` 25: e-folding); the sea takes it with the land. **A record**: nothing in the simulation reads it. The view
+(`TerrainLod.PlaceForest`): where the crowns the share before the felling would have stood are missing now, a stump (`ProcMeshes.TreeStump`: a
+short cut trunk, its sawn face pale, coppice shoots on some), near the camera only. Tools: the run's report `felled woods: N cells with stumps
+standing (mean share, most)`; the shot views `woodlot`, `woodlotlow`.
+**Evidence.** FellingTests 3/3 (felling leaves stumps of the share felled, never more than the open ground; the woods grow back over them and they
+rot - a woodlot left alone 20 years: cover 0.32 -> 0.44, stumps 0.14 -> 0; saves keep them). It changes no history: `--nothresh` seed 4 = `_g4`
+byte-identical in the worktree's binary, which held the record. Seed 4 at year 300: 53 cells with stumps standing (mean felled share 0.17, most 0.60).
+
+## D2-151 — 2026-10-13 — The burial ground: graves from the village's dead (`27` §6 - famine and sickness made visible)
+
+**Context.** `27` §6: famine was "weak" in the picture (gatherers in the wild, an empty store) and death invisible - an epidemic or a famine that
+took a third of a village left no trace a viewer could see; the history lived only in the pages.
+**Decision.** `Core/Places/Burials.cs`; on `Settlement` (sim version 78): `BurialCount` (burials ever), `Graves` and `GravesFresh` (graves still
+marked and still fresh earth, as at `GravesAt`, decaying with the years - `MarkedYears` 30, `FreshYears` 1 e-folding; brought up to date at each
+burial and read at any time), `GraveX/GraveY` (the ground, laid out at the first burial beyond the village's farthest building on the side away
+from its fields, where the ground is free). `AgentSystem.Kill` buries the dead at the village they died in, else at home; the drowned, the wave's
+and the lava's dead leave no grave (causes 12, 6, 4). The k-th burial lies in slot k mod 120 (rows of ten): the oldest ground is dug again. **A
+record**: nothing in the simulation reads it. The view (`WorldObjectsView.DrawGraves`): each slot showing a grave (`Burials.Shows`: the last
+`Graves` burials marked, the last `GravesFresh` fresh) - fresh earth with a wooden board, or a grassed mound with a stone sinking with its years
+(kit `grave`, `grave_old`); none drawn where a later building stands over the ground (counted again when the village's buildings change). The
+settlement page: "Its burial ground: N burials since it was founded, ~M graves still marked, K of them fresh earth". Tools: `burials:` in the run's
+report (burials, dead with no grave, graves marked and fresh); shot views `graves`, `graveslow`.
+**Evidence.** BurialsTests 3/3 (buried at home, the drowned leave no grave, the ground laid out beyond the homes and kept; fresh for a year and
+sinking over decades - ten graves, three years on nine marked and none fresh; the oldest ground dug again; saves keep it). It changes no history:
+after the merge `--nothresh --oldrain` seed 4 = `_g4` byte-identical with the burials in the binary.
+
+## D2-152 — 2026-10-13 — The first household's standard in its polity's colour (`27` §6 - headmen and lordship made visible)
+
+**Context.** `27` §6: headmen and the first household (C10.2) and lordship (C10.1, D2-075) were "not drawn": who led a village and which villages
+paid which lord - the beginnings of the kingdoms the standing direction asks for - could only be read in the pages.
+**Decision.** View only (reads `Settlement.HeadHh`, `Settlement.Head`, `Conflict.Root`, `Conflict.PolitySize`): a standard (kit `standard`: a
+6 m ash pole on a stone foot, a cross-bar, a long swallow-tailed cloth tinted) by the door of the first household's house, in its **polity's
+colour** - a heraldic dye chosen by the polity's head village (`WorldObjectsView.PolityColour`, ten dyes): a tributary flies its lord's, so a
+lordship reads from above as villages under one colour; taller for a lord by the villages it holds (x1.18 each, up to six). The headman is drawn
+dressed in the same colour. The shot views `standard`, `standardlow` log the head household, the lord and the polity's head.
+**Evidence.** The Unity C# compiles (`unity.mjs cc`); real shots below.

@@ -4,6 +4,22 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 19 (13 Oct 2026, from 14:53 IST; Arjun's resource rule D-1/D-2: one low-priority job at a time while RAM < 86 % and CPU < 85 %)** -
+  (1) **The full suite on 86b481d: 372/372** (14 min). (2) **D2-148 W-FOREST pass 2b** (b312f01): the rain belt follows the sun in the outer
+  tropics (`--oldrain` = `_g4` byte-identical; the dry tropics' soil 0.09-0.43 through the year, was 0.15-0.25; ten seeds `_r1` at par in rates,
+  people x1.04-1.08, the wild's food x0.90); the view reads the soil's water - the seasonal tropics' grass flush and straw, their woods withering
+  and dropping leaves tree by tree, tall grass, the cool lands' duller turf; **every conifer had been drawn pale grey** (the mesh builder's
+  shading scaled the tint alpha: `ProcMeshes.Builder.Dim`); forest views pick inland stands inside the woods. Real shots `s19b-s19d`
+  (`tc2/out/shots/s19d_dry.png`: one stand at 16 N green in the rains, straw and bare in the dry season). (3) **C3.7b the threshing floor**
+  (worktree `C:/Game Dev/tc-thresh`, branch `wip/c37b-thresh`, merged 14a9156; sim version 77): the harvest stands in the sheaf (`Settlement.
+  Sheaves`, part of `Granary`) and only threshed grain is eaten; threshing at the floor (before the first barn's doors, else beside the granary)
+  ahead of need - lived urge and stints (`Settlement.ThreshOut`), a hungry hand first, COARSE/DEEP before the day's work; the stackyard's ricks
+  (kit `rick`), the flail pose (17), shot views `floor`/`floorlow`/`floorfar`; `--nothresh`, `--threshtally`. Threshing 5/5, neighbours pass,
+  `--nothresh` = `_g4`; seed 4: 0.042 h a FU, 60 % threshed in the growing stage's slack. (4) **W-FELL** (same branch): `PlanetState.Felled` - the
+  woods' felled share not grown back (a record the view draws as stumps; regrowth takes it back, stumps rot over 25 years); FellingTests 3/3.
+  (5) In progress (q18): the stumps' view, **the burial ground** (D2-151: graves from real deaths, fresh for a year, sinking over decades; none for
+  the drowned; `Burials.cs`, sim version 78) and **the first household's standard** (D2-152: a pole by the head household's door in its polity's
+  colour - a tributary flies its lord's; the headman dressed in it); kit `grave`, `grave_old`, `standard`; the merge's control and ten seeds `_m1`.
 - **Session 18 (11 Oct 2026, from 06:48 IST; Control Room run #48 session 3 continued; Resource Governor LOW, Arjun's rule D-1: one low-priority
   job at a time while RAM < 86 % and CPU < 50 % - other applications hold the machine at 76-96 % RAM)** - (1) **D2-144** (e23e5b7): the gardens
   kept the north's calendar in southern villages (dug at the reaping, gathered while the crop grew; found reading the code for its shots) - one

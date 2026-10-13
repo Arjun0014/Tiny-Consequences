@@ -211,6 +211,7 @@ namespace TC2.Headless
             if (a.Has("carttally")) TC2.Core.Diagnostics.CartTally.T = new double[12];   // (C4.2 closing: why carts begun are given up)
             if (a.Has("gardentally")) TC2.Core.Places.Gardens.Tally = new double[8];   // (D2-144: the gardens' work by hemisphere and by their village's crop)
             if (a.Has("threshtally")) TC2.Core.Places.Threshing.Tally = new double[8];   // (C3.7b: the floor's grain and hours by the stage of the year)
+            TC2.Core.Places.Burials.Tally = new double[2];   // (D2-151: burials and deaths with no grave - read by the report only)
             if (a.Has("crafttally")) { var ct = new System.Collections.Generic.Dictionary<int, double>[TC2.Core.Diagnostics.CraftTally.Kinds]; for (int k = 0; k < ct.Length; k++) ct[k] = new System.Collections.Generic.Dictionary<int, double>(); TC2.Core.Diagnostics.CraftTally.By = ct; var vy = new System.Collections.Generic.Dictionary<long, double>[TC2.Core.Diagnostics.CraftTally.Kinds]; for (int k = 0; k < vy.Length; k++) vy[k] = new System.Collections.Generic.Dictionary<long, double>(); TC2.Core.Diagnostics.CraftTally.VillageYear = vy; }   // (roles from practice: whose hours at each craft)
             if (a.Has("loads")) TC2.Core.Places.Trade.LoadTally = new double[4];   // (C4.2 survey: trading loads bound by what one person carries)
             if (a.Has("nokiln")) TC2.Core.Places.Pottery.Off = true;   // (C3.2 against D2-063 in one binary: no kilns - pots and jars from knowing how)
@@ -789,6 +790,18 @@ namespace TC2.Headless
                                     var Pf = w.Planet; int fc = 0; double fs = 0, fmax = 0;
                                     for (int c = 0; c < Pf.Cells; c++) if (Pf.Felled[c] > 0.02f) { fc++; fs += Pf.Felled[c]; if (Pf.Felled[c] > fmax) fmax = Pf.Felled[c]; }
                                     Console.WriteLine("felled woods: " + fc + " cells with stumps standing (mean felled share " + F(fc > 0 ? fs / fc : 0, "0.00") + ", most " + F(fmax, "0.00") + ")");
+                                }
+                                {
+                                    // the burial grounds (D2-151): burials over the run, deaths with no grave, the graves marked and fresh now
+                                    double mk = 0, fr = 0; int burialGrounds = 0;
+                                    for (int sid2 = w.Settlements.First(); sid2 != 0; sid2 = w.Settlements.Next(sid2))
+                                    {
+                                        var st3 = w.Settlements.Get(sid2);
+                                        if (st3.BurialCount == 0) continue;
+                                        burialGrounds++; TC2.Core.Places.Burials.Read(in st3, w.Now, out double m3, out double f3); mk += m3; fr += f3;
+                                    }
+                                    var bt = TC2.Core.Places.Burials.Tally;
+                                    Console.WriteLine("burials: " + F(bt != null ? bt[0] : 0, "0") + " over the run, " + F(bt != null ? bt[1] : 0, "0") + " dead with no grave (lost at sea, under the wave or the lava); " + burialGrounds + " burial grounds, graves marked now " + F(mk, "0") + ", fresh " + F(fr, "0"));
                                 }
                                 var tt = TC2.Core.Places.Threshing.Tally;
                                 if (tt != null)

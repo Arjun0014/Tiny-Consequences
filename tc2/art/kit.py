@@ -521,6 +521,37 @@ def rick(name, seed=71):
     return k.finish()
 
 
+def grave(name, seed=73):
+    """A fresh grave (D2-151): a low mound of earth (tinted: bare earth) with a wooden board at its head, ~1.9 m long."""
+    k = Kit(name, seed)
+    k.ellipsoid((0, 0, 0.02), (0.95, 0.40, 0.26), srgb(0.80, 0.80, 0.80, 1.0), subdiv=2, smooth=False)
+    k.box((0.98, 0, 0.36), (0.06, 0.30, 0.72), TIMBER, bevel=0.01)
+    k.box((0.98, 0, 0.58), (0.07, 0.44, 0.07), TIMBER)
+    return k.finish()
+
+
+def grave_old(name, seed=74):
+    """An old grave (D2-151): a low grassed mound (tinted: grass) and a small rough stone at its head."""
+    k = Kit(name, seed)
+    k.ellipsoid((0, 0, -0.02), (0.95, 0.42, 0.16), srgb(0.80, 0.80, 0.80, 1.0), subdiv=2, smooth=False)
+    k.blob((0.95, 0.02, 0.16), 0.16, STONE, subdiv=1, jitter=0.18, squash=1.4)
+    return k.finish()
+
+
+def standard(name, seed=75):
+    """The first household's standard (D2-152): a tall ash pole on a stone foot with a cross-bar and a long hanging cloth (tinted: its polity's
+    colour), a finial on top. ~6 m."""
+    k = Kit(name, seed)
+    k.cyl((0, 0, 0), 0.32, 0.26, 0.22, STONE, seg=6)
+    k.cyl((0, 0, 0.2), 0.06, 0.045, 5.6, TIMBER, seg=6)
+    k.box((0.0, 0, 5.35), (0.08, 1.30, 0.08), TIMBER)
+    k.box((0.03, 0, 4.45), (0.03, 1.20, 1.75), srgb(0.80, 0.80, 0.80, 1.0))
+    for sy in (-0.42, 0.0, 0.42):                                        # the cloth's swallowtail ends
+        k.box((0.03, sy, 3.40), (0.03, 0.30, 0.40), srgb(0.80, 0.80, 0.80, 1.0))
+    k.blob((0, 0, 5.85), 0.12, srgb(0.70, 0.58, 0.25), subdiv=1, jitter=0.05)
+    return k.finish()
+
+
 def well(name, seed=7):
     k = Kit(name, seed)
     k.cyl((0, 0, 0), 0.9, 0.9, 0.8, STONE, seg=10)
@@ -1514,6 +1545,9 @@ def build_all():
     objs.append(fence("fence"))
     objs.append(haystack("haystack"))
     objs.append(rick("rick"))                  # the sheaves in the stackyard (C3.7b)
+    objs.append(grave("grave"))                # the burial ground (D2-151)
+    objs.append(grave_old("grave_old"))
+    objs.append(standard("standard"))         # the first household's standard (D2-152)
     objs.append(well("well"))
     # the civilisation kit (D2-089, C1)
     objs.append(barn("barn"))

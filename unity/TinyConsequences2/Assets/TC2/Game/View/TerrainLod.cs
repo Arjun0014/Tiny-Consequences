@@ -40,6 +40,7 @@ namespace TC2.Game
             public Vector4[] Wood;    // the woods here (D2-079): x forest share, y conifers' share, z the leaves' season, w snow
             public Vector2[] Kind;    // the kind of wood (W-FOREST): x how tropical (warmth), y how seasonally dry among the tropical
             public Vector4[] Land;    // the land's own (D2-081): x dryness of the climate, y meadow (grass where no wood), z bare earth or rock, w beach
+            public float[] Fell;      // the woods' felled share not grown back (W-FELL: where their stumps stand; read by the trees' placing only)
             public Vector3[] Pos, Nrm; // the vertices as drawn and their normals (where the woods' trees and the ground cover stand)
             public Matrix4x4[] Trees; public byte[] TreeKind; public ushort[] TreeGroup; public int TreeCount;   // the woods' trees (finest level)
             public Matrix4x4[] Tufts; public byte[] TuftKind, TuftGroup; public int TuftCount; // ground cover (finest level)
@@ -397,7 +398,7 @@ namespace TC2.Game
             int count = V * V + 4 * V;
             var pos = new Vector3[count];
             var nrm = new Vector3[count];
-            if (p.Dirs == null || p.Dirs.Length != count) { p.Dirs = new Vector3[count]; p.Cells = new int[count]; p.Rel = new float[count]; p.Slope = new float[count]; p.Colours = new Color[count]; p.Plots = new Vector2[count]; p.Farm = new Vector2[count]; p.Wood = new Vector4[count]; p.Kind = new Vector2[count]; p.Land = new Vector4[count]; }
+            if (p.Dirs == null || p.Dirs.Length != count) { p.Dirs = new Vector3[count]; p.Cells = new int[count]; p.Rel = new float[count]; p.Slope = new float[count]; p.Colours = new Color[count]; p.Plots = new Vector2[count]; p.Farm = new Vector2[count]; p.Wood = new Vector4[count]; p.Kind = new Vector2[count]; p.Land = new Vector4[count]; p.Fell = new float[count]; }
             for (int j = 0; j < V; j++)
                 for (int i = 0; i < V; i++)
                 {
@@ -762,7 +763,21 @@ namespace TC2.Game
                             if (p.TreeCount >= MaxTrees) continue;
                             Vector3 at = Vector3.Lerp(Vector3.Lerp(pos[a], pos[b], s), Vector3.Lerp(pos[c], pos[d], s), t);
                             float near = Mathf.Lerp(Mathf.Lerp(land[a].y, land[b].y, s), Mathf.Lerp(land[c].y, land[d].y, s), t);
-                            if (num >= Canopy.Threshold(Canopy.Stands(wd.x, at, near))) continue;   // (the share as stands and glades: D2-084)
+                            if (num >= Canopy.Threshold(Canopy.Stands(wd.x, at, near)))   // (the share as stands and glades: D2-084)
+                            {
+                                // (W-FELL) where the woods were felled and have not grown back: the stumps of the trees that stood here - the crowns the
+                                // share before the felling would have stood
+                                float fell = p.Fell != null ? Mathf.Lerp(Mathf.Lerp(p.Fell[a], p.Fell[b], s), Mathf.Lerp(p.Fell[c], p.Fell[d], s), t) : 0f;
+                                if (fell > 0.01f && num < Canopy.Threshold(Canopy.Stands(Mathf.Min(1f, wd.x + fell), at, near)))
+                                {
+                                    float rs = Canopy.Radius[k] * Canopy.Spacing;
+                                    p.Trees[p.TreeCount] = Matrix4x4.TRS(at, PlanetGeo.Upright(at, num * 2617f), new Vector3(rs, rs, rs));
+                                    p.TreeKind[p.TreeCount] = (byte)(ProcMeshes.TreeStump * ProcMeshes.TreeVariants + Mathf.Clamp((int)(Frac(num * 9.13f) * ProcMeshes.TreeVariants), 0, ProcMeshes.TreeVariants - 1));
+                                    p.TreeGroup[p.TreeCount] = 0;
+                                    p.TreeCount++;
+                                }
+                                continue;
+                            }
                             int cell = p.Cells[a];
                             // the kind of wood here (W-FOREST, 18 §8): the climate at this height (the lapse rate over the point's height above its
                             // cell's ground), the stream's corridor, the ground's wetness - the simulation's own climate and water
@@ -898,7 +913,8 @@ namespace TC2.Game
                     {
                         int g = p.TreeGroup[t];
                         int form = p.TreeKind[t], kind = form / ProcMeshes.TreeVariants;
-                        if (ProcMeshes.Needles(kind)) _forest[close ? form : FarForms + kind].Add(g, ConiferTints[g], p.Trees[t]);
+                        if (kind == ProcMeshes.TreeStump) { if (close) _forest[form].Add(0, Color.white, p.Trees[t]); }   // (stumps near the camera only: W-FELL)
+                        else if (ProcMeshes.Needles(kind)) _forest[close ? form : FarForms + kind].Add(g, ConiferTints[g], p.Trees[t]);
                         else if (kind == ProcMeshes.TreeSnag) _forest[close ? form : FarForms + kind].Add(g, BareTints[g], p.Trees[t]);   // (a dead tree keeps its own grey)
                         else if (((g >> 2) & 7) >= 7) _forest[BareBroad].Add(g, BareTints[g], p.Trees[t]);
                         else if (!close) _forest[FarForms + kind].Add(g, LeafTints[g], p.Trees[t]);
@@ -1271,14 +1287,14 @@ namespace TC2.Game
                     int n = Ground.ColourWeights(P, d, c, _wc, _ww);
                     col = new Color(0, 0, 0, 1);
                     float farm = 0; int owner = 0; float ow = 0;
-                    float forest = 0, clear = 0;   // (the woods' share here, and how much of it is cleared ground)
+                    float forest = 0, clear = 0, felled = 0;   // (the woods' share here, how much of it is cleared ground, its felled share: W-FELL)
                     float moist = 0, grass = 0;    // (the climate's moisture, the grass)
                     float relief = 0;              // (valley floor -1 .. ridge +1: Ground.Relief)
                     for (int q = 0; q < n; q++)
                     {
                         int cq = _wc[q]; var cc = _cellColour[cq]; float ww = _ww[q];
                         col.r += cc.r * ww; col.g += cc.g * ww; col.b += cc.b * ww;
-                        forest += P.Forest[cq] * ww;
+                        forest += P.Forest[cq] * ww; felled += P.Felled[cq] * ww;
                         relief += Ground.Relief(P, cq) * ww;
                         moist += P.Moist[cq] * ww; grass += P.Grass[cq] * ww;
                         if (w.Fire.Intensity[cq] > 0) clear += ww * Mathf.Clamp01(w.Fire.Intensity[cq] * 2f);
@@ -1373,8 +1389,10 @@ namespace TC2.Game
                     // the woods (D2-079): the simulation's forest share, less what is fields, village, road, beach, rock, lava or ice;
                     // conifers in the cold, broadleaves in the warm (as the trees drawn near the camera); the leaves' season where
                     // there is an autumn; the snow lying on them
-                    float wood = forest * (1f - Mathf.SmoothStep(0f, 1f, farm)) * (1f - Mathf.Clamp01(clear)) * (1f - road) * (1f - Edge(0f, 0.5f, beach)) * (1f - rock) * Edge(-1f, 3f, bank)
+                    float open = (1f - Mathf.SmoothStep(0f, 1f, farm)) * (1f - Mathf.Clamp01(clear)) * (1f - road) * (1f - Edge(0f, 0.5f, beach)) * (1f - rock) * Edge(-1f, 3f, bank)
                                  * (1f - Mathf.Clamp01(vrock * 1.15f)) * (P.Ice[c] > 2f ? 0f : 1f);
+                    float wood = forest * open;
+                    p.Fell[o] = felled * open;   // (stumps only where the woods could stand: W-FELL)
                     // (the woods' stands and glades are drawn from this share per pixel, and per tree near the camera: Canopy.Stands, D2-084)
                     // clumps of trees with gaps between, some twenty to forty metres across, where the woods are open; a closed wood
                     // stays closed (D2-081: the canopy's own tile repeats, so the woods' pattern lives here, where nothing repeats)

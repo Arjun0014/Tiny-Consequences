@@ -20,6 +20,8 @@ namespace TC2.Game
         public SimHost Host;
         public CameraRig Rig;
 
+        Instancer _graves, _gravesOld;   // (the burial grounds: D2-151)
+        Instancer _standards;            // (the first household's standard in its polity's colour: D2-152)
         Instancer _people, _granaries, _wells, _ricks, _flames, _huts, _tents, _ruins, _beached, _afloat, _walls, _woodpiles;
         Instancer _beachedP, _afloatP;   // plank boats on the beach and out on the water (C9.2b); _beached/_afloat are the dugouts
         // the boats out this frame (C9.2): a boat's hull is drawn once, its crew seated in it
@@ -138,6 +140,9 @@ namespace TC2.Game
             _parked = new Instancer(Models.Get("handcart", ProcMeshes.Granary), _mat, true);
             _parkedOx = new Instancer(Models.Get("ox_cart", ProcMeshes.Granary), _mat, true);
             _ricks = new Instancer(Models.Get("rick", ProcMeshes.Granary), _mat, true);   // (the stackyard's ricks: C3.7b)
+            _graves = new Instancer(Models.Get("grave", ProcMeshes.Granary), _mat, false);
+            _standards = new Instancer(Models.Get("standard", ProcMeshes.Granary), _mat, true);
+            _gravesOld = new Instancer(Models.Get("grave_old", ProcMeshes.Granary), _mat, false);
             _woodpiles = new Instancer(ProcMeshes.Woodpile(), _mat, true);   // the village's woodstore, by the homes (D2-081)
             _trees = new Instancer[TreeModels.Length];
             for (int i = 0; i < TreeModels.Length; i++) _trees[i] = new Instancer(Models.Get(TreeModels[i], i <= ConiferSmall ? (System.Func<Mesh>)ProcMeshes.Conifer : ProcMeshes.Broadleaf), _mat, true);
@@ -274,7 +279,7 @@ namespace TC2.Game
                 _chimneys.Draw(cam); _plinths.Draw(cam); _outshuts.Draw(cam); _pens.Draw(cam); _stalls.Draw(cam); _gardens.Draw(cam); _gardensBare.Draw(cam); _hurdles.Draw(cam); _tenters.Draw(cam); _clayPits.Draw(cam); _jars.Draw(cam); _ware.Draw(cam); _handcarts.Draw(cam); _oxcarts.Draw(cam); _cartLoads.Draw(cam); _oxen.Draw(cam); _parked.Draw(cam); _parkedOx.Draw(cam);
                 _stonePiles.Draw(cam);
                 for (int i = 0; i < _works.Length; i++) _works[i]?.Draw(cam);
-                _ricks.Draw(cam); _huts.Draw(cam); _tents.Draw(cam); _ruins.Draw(cam); _walls.Draw(cam); _woodpiles.Draw(cam);
+                _ricks.Draw(cam); _graves.Draw(cam); _gravesOld.Draw(cam); _standards.Draw(cam); _huts.Draw(cam); _tents.Draw(cam); _ruins.Draw(cam); _walls.Draw(cam); _woodpiles.Draw(cam);
             }
             if ((Off & 1) == 0) for (int i = 0; i < _trees.Length; i++) _trees[i].Draw(cam);
             _flames.Draw(cam);
@@ -474,7 +479,7 @@ namespace TC2.Game
             _chimneys.Clear(); _plinths.Clear(); _outshuts.Clear(); _pens.Clear(); _stalls.Clear(); _gardens.Clear(); _gardensBare.Clear(); _hurdles.Clear(); _tenters.Clear(); _clayPits.Clear(); _jars.Clear(); _ware.Clear(); _parked.Clear(); _parkedOx.Clear();
             _stonePiles.Clear();
             for (int i = 0; i < _works.Length; i++) _works[i]?.Clear();
-            _ricks.Clear(); _huts.Clear(); _tents.Clear(); _ruins.Clear(); _beached.Clear(); _beachedP.Clear(); _walls.Clear(); _woodpiles.Clear();
+            _ricks.Clear(); _graves.Clear(); _gravesOld.Clear(); _standards.Clear(); _huts.Clear(); _tents.Clear(); _ruins.Clear(); _beached.Clear(); _beachedP.Clear(); _walls.Clear(); _woodpiles.Clear();
             _smoke.Clear(); _lights.Clear(); _watch.Clear();
             for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
             {
@@ -528,6 +533,12 @@ namespace TC2.Game
                     Vector3 fireAt = PlanetGeo.Surface(P, s.LocalToSphere(wx + 4.5, wy - 3.0, P.Radius));
                     _watch.Add(new Vector4(fireAt.x, fireAt.y, fireAt.z, 1f));
                 }
+                // its burial ground (D2-151): its dead in rows beyond its homes - fresh earth for the last year's burials, grassed mounds sinking from
+                // sight over decades (an abandoned village's too); none drawn where a later building stands over the ground
+                if (s.BurialCount > 0) DrawGraves(w, P, in s, sid, ex);
+                // the first household's standard (D2-152): a pole by the door of the house of the household most of the village follows (C10.2), its
+                // cloth in its polity's colour - the head of its lordship's (C10.1: a tributary flies its lord's), taller for a lord over more villages
+                if (s.Inhabited && s.HeadHh != 0) DrawStandard(w, P, in s, sid, ex);
                 // its palisade (D2-074): standing (an abandoned village's too, as it rots), or as far as its people have set it
                 if (s.Wall == 1 || s.Wall == 2 || s.OldR > 0f) DrawWall(w, P, in s, sid, ex);
                 if (!s.Inhabited) continue;   // (an abandoned village's well and granary decay as structures: C1.1)
@@ -553,6 +564,75 @@ namespace TC2.Game
                     for (int k = 0; k < ricks; k++)
                         if (RickSpot(w, in s, sid, tfx, tfy, ref rspot, out double rx, out double ry))
                             _ricks.Add(0, Color.white, PlaceFaced(P, s, rx, ry, 0.9 * k, Mathf.Min(ex, 1.3f) * (k == ricks - 1 ? Mathf.Sqrt(last) : 1f)));
+                }
+            }
+        }
+
+        /// <summary>The polities' colours (D2-152): a heraldic dye for each polity, by its head village (a tributary's is its lord's).</summary>
+        static readonly Color[] Heraldry =
+        {
+            new Color(0.70f, 0.10f, 0.10f), new Color(0.12f, 0.24f, 0.62f), new Color(0.10f, 0.45f, 0.20f), new Color(0.85f, 0.65f, 0.10f),
+            new Color(0.45f, 0.15f, 0.50f), new Color(0.92f, 0.90f, 0.84f), new Color(0.10f, 0.10f, 0.12f), new Color(0.85f, 0.40f, 0.10f),
+            new Color(0.15f, 0.55f, 0.60f), new Color(0.55f, 0.08f, 0.25f),
+        };
+
+        /// <summary>A village's polity's colour: its lordship's head's (its own when it pays nobody), by that village's number.</summary>
+        public static Color PolityColour(TC2.Core.Simulation.World w, int sid)
+        {
+            int root = w.Conflict.Root(sid);
+            return Heraldry[(int)(KeyedRng.Mix((ulong)root * 0x9E3779B97F4A7C15UL ^ 0xBA22E7) % (ulong)Heraldry.Length)];
+        }
+
+        /// <summary>The first household's standard (D2-152): by its house's door, toward the house's front; taller for a lord's village by the villages
+        /// it holds.</summary>
+        void DrawStandard(TC2.Core.Simulation.World w, PlanetState P, in Settlement s, int sid, float ex)
+        {
+            if (!w.Households.Exists(s.HeadHh)) return;
+            ref var hh = ref w.Households.Get(s.HeadHh);
+            double x = hh.HomeX, y = hh.HomeY, face = 0.0;
+            if (hh.Building != 0 && w.Buildings.Exists(hh.Building))
+            {
+                ref var b = ref w.Buildings.Get(hh.Building);
+                face = Footprints.FaceOf(in s, in b);
+                double reach = Footprints.Reach(Footprints.PlanOf(in b)) + 1.5;
+                x = b.X + reach * DMath.Cos(face) + 2.2 * DMath.Cos(face + DMath.HalfPi); y = b.Y + reach * DMath.Sin(face) + 2.2 * DMath.Sin(face + DMath.HalfPi);
+            }
+            int held = s.Lord == 0 ? w.Conflict.PolitySize(sid) : 0;
+            float tall = 1f + 0.18f * Mathf.Min(6, held);
+            _standards.Add(0, PolityColour(w, sid), PlaceFaced(P, s, x, y, face, Mathf.Min(ex, 1.6f) * tall));
+        }
+
+        // the burial grounds' slots a later building covers, by village (counted again when its buildings change)
+        readonly Dictionary<int, (int count, ulong lo, ulong hi)> _graveBlocked = new Dictionary<int, (int, ulong, ulong)>();
+
+        /// <summary>A village's burial ground (D2-151): each slot showing a grave (`Burials.Shows`) - fresh earth with its marker for the last year's
+        /// burials, a grassed mound sinking with the years for the older; rows east to west.</summary>
+        void DrawGraves(TC2.Core.Simulation.World w, PlanetState P, in Settlement s, int sid, float ex)
+        {
+            var bl = w.BuildingsOf(sid);
+            if (!_graveBlocked.TryGetValue(sid, out var blk) || blk.count != bl.Count)
+            {
+                ulong lo = 0, hi = 0;
+                for (int j = 0; j < Burials.Slots; j++)
+                {
+                    Burials.SlotAt(in s, j, out double gx, out double gy);
+                    if (Footprints.DiscFree(w, sid, 0, gx, gy, 0.9)) continue;
+                    if (j < 64) lo |= 1UL << j; else hi |= 1UL << (j - 64);
+                }
+                blk = (bl.Count, lo, hi); _graveBlocked[sid] = blk;
+            }
+            float sc = Mathf.Min(ex, 1.3f);
+            for (int j = 0; j < Burials.Slots; j++)
+            {
+                if (((j < 64 ? blk.lo >> j : blk.hi >> (j - 64)) & 1UL) != 0) continue;
+                if (!Burials.Shows(in s, w.Now, j, out bool fresh, out int age)) continue;
+                Burials.SlotAt(in s, j, out double x, out double y);
+                if (fresh) _graves.Add(0, new Color(0.47f, 0.36f, 0.25f), PlaceFaced(P, s, x, y, 0.0, sc));
+                else
+                {
+                    // (grassing over: earth-brown to the grass's green in its first years, then sinking lower)
+                    float g = Mathf.Clamp01(age / 25f);
+                    _gravesOld.Add(1, Color.Lerp(new Color(0.44f, 0.40f, 0.26f), new Color(0.36f, 0.47f, 0.24f), g), PlaceFaced(P, s, x, y, 0.0, sc * (1f - 0.35f * Mathf.Clamp01(age / 90f))));
                 }
             }
         }
@@ -1371,6 +1451,7 @@ namespace TC2.Game
                 pos = PlanetGeo.Surface(P, d);
                 float sc = (age < 12 ? 0.55f + age * 0.038f : 1f) * PeopleScale(pos);   // a little larger than life, to be read
                 int dye = (int)(KeyedRng.Mix((ulong)id * 0x2545F4914F6CDD1DUL) % (ulong)Dyes.Length);
+                bool head = w.Settlements.Exists(p.Home) && w.Settlements.Get(p.Home).Head == p.Id;   // (the village's first: its polity's colour, D2-152)
                 float yaw = (id * 53) % 360;
                 {
                     Vector3 up = pos.normalized;
@@ -1379,7 +1460,7 @@ namespace TC2.Game
                     else flat = Vector3.ProjectOnPlane(PlanetGeo.ToVector(face), up);
                     if (flat.sqrMagnitude > 1e-6f) yaw = Vector3.SignedAngle(Vector3.ProjectOnPlane(PlanetGeo.Upright(pos, 0) * Vector3.forward, up), flat, up);
                 }
-                _people.Add(dye + (moving ? 100 : 0), Dyes[dye], Matrix4x4.TRS(pos, PlanetGeo.Upright(pos, yaw), Vector3.one * sc), 0f, pose);
+                _people.Add(head ? 50 + (moving ? 100 : 0) : dye + (moving ? 100 : 0), head ? PolityColour(w, p.Home) : Dyes[dye], Matrix4x4.TRS(pos, PlanetGeo.Upright(pos, yaw), Vector3.one * sc), 0f, pose);
                 PeopleDrawn++;
                 if (Presence.Busy(pose) || moving) PeopleBusy++;
                 byte cart = WithCart(w, in p);
