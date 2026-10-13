@@ -1285,7 +1285,8 @@ namespace TC2.Core.Agents
                 {
                     // (out of the water: a village's field spot lies where its founders' arable land lay, and where the sea or a lake has come over it
                     // since, its field hands stood in the water - 0.6 % of all person-hours in a year-300 world, `wet`; D2-111's rule)
-                    double fx = here.FieldX + rs.Range(-60, 60), fy = here.FieldY + rs.Range(-60, 60);
+                    // (on its household's own part of the fields since session 20 - every hand of a village stood on its one field spot before)
+                    FieldSpots.Spot(w, in here, p.Household, 60.0, ref rs, out double fx, out double fy);
                     Ashore(here.Id, ref fx, ref fy);
                     BeginLocal(ref p, ActivityKind.Fields, here.Crop == CropStage.Ripe ? WhyCode.Harvest : WhyCode.CropNeedsWork, 0, fx, fy, SimTime.Hours(3 + 1.5 * rs.NextUnit()));
                     return;
@@ -1384,7 +1385,7 @@ namespace TC2.Core.Agents
                 case 27:
                     {
                         // (out on the village's fields, where its field hands work; a stint of a few loads)
-                        double mx = here.FieldX + rs.Range(-50, 50), my = here.FieldY + rs.Range(-50, 50);
+                        FieldSpots.Spot(w, in here, p.Household, 50.0, ref rs, out double mx, out double my);   // (onto its household's own part of them)
                         Ashore(here.Id, ref mx, ref my);
                         BeginLocal(ref p, ActivityKind.Muck, WhyCode.Muck, 0, mx, my, SimTime.Hours(1.5 + 1.0 * rs.NextUnit()));
                         return;

@@ -168,6 +168,7 @@ namespace TC2.Headless
             if (a.Has("nomuck")) TC2.Core.Places.Muck.Off = true;   // (C3.7c off: the herds' dung reaches the fields carted or not, as D2-139 built it)
             if (a.Has("mucktally")) TC2.Core.Places.Muck.Tally = new double[4];   // (C3.7c: muck made, carted, leached; hours)
             if (a.Has("nostubble")) TC2.Core.Places.Stubble.Off = true;   // (C3.7d off: the herds keep off the fields, as before)
+            if (a.Has("onefieldspot")) TC2.Core.Places.FieldSpots.One = true;   // (every field hand and carter of a village on its one field spot, as before session 20)
             if (a.Has("stubbletally")) TC2.Core.Places.Stubble.Tally = new double[3];   // (C3.7d: kg eaten on the stubble and the fallow, day dung on the fields)
             if (a.Has("oldgardenorder")) TC2.Core.Agents.AgentSystem.CoarseGardenOld = true;   // (D2-146: a COARSE day's garden before all but the fields, as C3.7a built it)   // (C3.7a against D2-142 in one binary: no gardens)
         }

@@ -54,34 +54,43 @@ namespace TC2.Tests.Core
             finally { Stubble.Tally = null; }
         }
 
-        [Test]
-        public void TheFallowIsGrazedByItsPartOfTheFieldCells()
+        /// <summary>One day of a world whose first village rests a third of its arable (the premise), from its growing stage: the kg of grass its
+        /// field cells lost that day and what its herds ate off the fallow.</summary>
+        static void FallowDay(bool off, out double lostKg, out double eaten)
         {
             var w = TestWorlds.Make(4611);
             Coarse(w);
             int sid = w.Settlements.First();
-            Assume.That(w.Stock.Grazers(sid) > 0);
             ToStage(w, sid, CropStage.Growing);
             // premise: the village rests a third of its arable this year (a young village's land is fresh: it rests none)
             ref var s = ref w.Settlements.Get(sid);
             s.ArableHa = s.FieldHa * 1.5;
             var fc = w.FieldCellsOf(sid);
-            double g0 = 0, a = 0;
-            for (int i = 0; i < fc.Count; i++) { g0 += w.Planet.Grass[fc[i]] * w.Planet.AreaHa(fc[i]); a += w.Planet.AreaHa(fc[i]); }
-            Stubble.Tally = new double[3];
+            double g0 = 0;
+            for (int i = 0; i < fc.Count; i++) g0 += w.Planet.Grass[fc[i]] * w.Planet.AreaHa(fc[i]);
+            Stubble.Off = off; Stubble.Tally = new double[3];
             try
             {
                 w.AdvanceTo(w.Now + SimTime.Day);
-                Assert.Greater(Stubble.Tally[1], 0.0, "the herds graze the fallow");
-                Assert.AreEqual(0.0, Stubble.Tally[0], 0.0, "no stubble while the crop grows");
                 double g1 = 0;
                 for (int i = 0; i < fc.Count; i++) g1 += w.Planet.Grass[fc[i]] * w.Planet.AreaHa(fc[i]);
-                // the kg the fallow lost is what was eaten off it (a day's regrowth aside): the field cells' grass falls by the fallow's part only
-                double lostKg = (g0 - g1) * Ecology.GrassMax;
-                System.Console.WriteLine("fallow: " + (Stubble.Tally[1]).ToString("0") + " kg eaten in a day; the field cells' grass " + (g0 / a).ToString("0.000") + " -> " + (g1 / a).ToString("0.000") + " (" + lostKg.ToString("0") + " kg)");
-                Assert.Less(lostKg, 2.0 * Stubble.Tally[1] + 1.0, "never more grass gone than eaten (the whole cells were not grazed at the fallow's rate)");
+                lostKg = (g0 - g1) * Ecology.GrassMax; eaten = Stubble.Tally[1];
+                Assert.AreEqual(0.0, Stubble.Tally[0], 0.0, "no stubble while the crop grows");
             }
-            finally { Stubble.Tally = null; }
+            finally { Stubble.Off = false; Stubble.Tally = null; }
+        }
+
+        [Test]
+        public void TheFallowIsGrazedByItsPartOfTheFieldCells()
+        {
+            FallowDay(false, out double lostOn, out double eaten);
+            FallowDay(true, out double lostOff, out double eatenOff);
+            System.Console.WriteLine("fallow: " + eaten.ToString("0.0") + " kg eaten in a day; the field cells lost " + lostOn.ToString("0.0") + " kg of grass, " + lostOff.ToString("0.0") + " kg with --nostubble");
+            Assert.Greater(eaten, 0.0, "the herds graze the fallow");
+            Assert.AreEqual(0.0, eatenOff, 0.0, "--nostubble: not at all");
+            // the twin worlds differ by what was eaten off the fallow: the field cells' grass falls by that, less the day's quicker regrowth of a
+            // grazed sward, and no more (the whole cells grazed at the fallow's rate lost ten times as much)
+            Assert.That(lostOn - lostOff, Is.InRange(0.5 * eaten, 1.3 * eaten + 0.5), "the field cells lose what the herds ate off their fallow");
         }
 
         [Test]
