@@ -85,6 +85,8 @@ namespace TC2.Core.Places
         public const double FailingCond = 0.45;   // herders kill an animal this thin (better eaten than starved)
         public const double StockShare = 0.6;     // herders keep what their herds eat to this share of what the land offers a day
         public const int CoreMales = 2;           // males of a kind a household keeps: the sire and his successor
+        /// <summary>Tools: the cull takes from the kind with the most spares (`--oldspare`: before session 20), on the same binary.</summary>
+        public static bool OldSpare;
         public const double TendKg = 50;          // food a day (kg) of the animals one pair of grown hands can herd, milk and pen
 
         World _w;
@@ -95,6 +97,7 @@ namespace TC2.Core.Places
         readonly int[] _prime = new int[Kinds], _young = new int[Kinds], _seenP = new int[Kinds], _seenY = new int[Kinds], _seenA = new int[Kinds];
         readonly int[] _spares = new int[Kinds], _pickOf = new int[Kinds];
         readonly double[] _pickEats = new double[Kinds];
+        readonly double[] _spareEats = new double[Kinds];   // (what each kind's spares eat of what is short: Spare)
         readonly bool[] _pickMale = new bool[Kinds];
         readonly sbyte[] _sireNear = new sbyte[Kinds];   // today's answer per kind: -1 not yet asked, 0 none, 1 a sire near
         double _season;   // the season's phase today (the grass's leanness reads the day's mean temperature)
@@ -664,8 +667,8 @@ namespace TC2.Core.Places
 
         /// <summary>
         /// The animal a household would kill first: of what it would spare beyond its breeding core, from the kind it has most to
-        /// spare of (herders keep a mixed herd), a male before a female, the most grown first; among the animals that eat (mode 0),
-        /// eat grass (1) or mast (2). 0 if none. The core of each kind: its first two males (the sire and his successor) and its few
+        /// spare of (herders keep a mixed herd) when its hands are short, from the kind whose spares eat most of a food that is short
+        /// (session 20), a male before a female, the most grown first; among the animals that eat (mode 0), eat grass (1) or mast (2). 0 if none. The core of each kind: its first two males (the sire and his successor) and its few
         /// breeding females - the youngest in their prime, then the eldest of the young ones growing up to replace them, then the
         /// ageing.
         /// </summary>
@@ -683,7 +686,7 @@ namespace TC2.Core.Places
                 if (age < Laws[b.Kind].Mature) _young[b.Kind]++;
                 else if (age < 0.6 * Laws[b.Kind].Lifespan) _prime[b.Kind]++;
             }
-            for (int k = 0; k < Kinds; k++) { _spares[k] = 0; _pickOf[k] = 0; _pickEats[k] = 0; _pickMale[k] = false; }
+            for (int k = 0; k < Kinds; k++) { _spares[k] = 0; _spareEats[k] = 0; _pickOf[k] = 0; _pickEats[k] = 0; _pickMale[k] = false; }
             for (int j = 0; j < mine.Count; j++)   // (id order: the eldest first, the youngest last)
             {
                 ref var b = ref w.Beasts.Get(mine[j]);
@@ -700,12 +703,19 @@ namespace TC2.Core.Places
                 if (core) continue;
                 double eats = _intake[b.Kind] * GrownShare(in b, now) * (mode == 0 ? 1.0 : mode == 2 ? Laws[b.Kind].MastShare : Laws[b.Kind].GrassShare);
                 if (eats <= 0) continue;
-                _spares[k]++;
+                _spares[k]++; _spareEats[k] += eats;
                 bool male = b.Sex == Sex.Male;
                 if (_pickOf[k] == 0 || (male && !_pickMale[k]) || (male == _pickMale[k] && eats > _pickEats[k])) { _pickOf[k] = b.Id; _pickEats[k] = eats; _pickMale[k] = male; }
             }
             int kind = -1;
-            for (int k = 0; k < Kinds; k++) if (_spares[k] > 0 && (kind < 0 || _spares[k] > _spares[kind])) kind = k;
+            if (mode == 0 || OldSpare) { for (int k = 0; k < Kinds; k++) if (_spares[k] > 0 && (kind < 0 || _spares[k] > _spares[kind])) kind = k; }
+            else
+            {
+                // (session 20) for a food that is short, the kind whose spares eat most of it: the kind with the most spares was taken whatever was
+                // short - a sow's litter of six made the pigs the grass's cull, each relieving a third of a pig's food, until enough had died; with
+                // more cattle on the stubble (C3.7d) the pigs were culled out of two worlds (the hands' cull keeps the mixed herd as before)
+                for (int k = 0; k < Kinds; k++) if (_spares[k] > 0 && (kind < 0 || _spareEats[k] > _spareEats[kind])) kind = k;
+            }
             return kind < 0 ? 0 : _pickOf[kind];
         }
 

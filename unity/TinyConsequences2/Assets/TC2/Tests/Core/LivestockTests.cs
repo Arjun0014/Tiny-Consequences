@@ -254,6 +254,53 @@ namespace TC2.Tests.Core
             Assert.Less(kinds[Livestock.Goat], 60);
         }
 
+        /// <summary>Kills by cause over twelve days of a world whose first villages' pastures are grazed short each morning (the premise), the households
+        /// of the village with most people holding spare grown cattle and young pigs: [kind * Causes + cause] (Livestock.CauseNames).</summary>
+        static long[] ShortPastureKills(bool oldSpare)
+        {
+            var w = TestWorlds.Make(408);
+            Coarse(w);
+            int sid = VillageWithMost(w);
+            var hhs = w.HouseholdsOf(sid);
+            for (int i = 0; i < hhs.Count && i < 6; i++)
+            {
+                for (int k = 0; k < 4; k++) w.Stock.Add(Livestock.Cattle, Sex.Female, w.Now - SimTime.Years(4 + k), 0, hhs[i]);   // (beyond the core of three)
+                for (int k = 0; k < 6; k++) w.Stock.Add(Livestock.Pig, Sex.Female, w.Now - SimTime.Days(10 + k), 0, hhs[i]);      // (a litter growing)
+            }
+            Livestock.OldSpare = oldSpare;
+            Livestock.DiagEnds = new long[(Livestock.Kinds + 1) * Livestock.Causes];
+            try
+            {
+                var P = w.Planet;
+                for (int d = 0; d < 12; d++)
+                {
+                    // premise: the pastures round the village grazed short (a dry year): a third of their grass above its floor left each morning
+                    for (int c = 0; c < P.Cells; c++)
+                        if (P.FieldOwner[c] == 0 && TC2.Core.Foundation.Vec3d.ArcDistance(P.Grid.Center[c], w.Settlements.Get(sid).Anchor, P.Radius) < Livestock.FarReach + 200)
+                            P.Grass[c] = (float)(Ecology.GrassFloor + (P.Grass[c] - Ecology.GrassFloor) / 3.0);
+                    w.AdvanceTo(w.Now + SimTime.Day);
+                }
+                return (long[])Livestock.DiagEnds.Clone();
+            }
+            finally { Livestock.OldSpare = false; Livestock.DiagEnds = null; }
+        }
+
+        [Test]
+        public void AShortPastureCullsWhatEatsItNotThePigs()
+        {
+            // session 20: a food that is short is relieved by culling the kind whose spares eat most of it - the kind with the most spares was taken
+            // before, and a sow's litter made the pigs the grass's cull (each relieving a third of a pig's food), until enough had died
+            var a = ShortPastureKills(false);
+            var b = ShortPastureKills(true);
+            const int pasture = 8;
+            long cattleA = a[Livestock.Cattle * Livestock.Causes + pasture], pigsA = a[Livestock.Pig * Livestock.Causes + pasture];
+            long cattleB = b[Livestock.Cattle * Livestock.Causes + pasture], pigsB = b[Livestock.Pig * Livestock.Causes + pasture];
+            Console.WriteLine("culled for the pasture in 12 short days: cattle " + cattleA + ", pigs " + pigsA + "; --oldspare: cattle " + cattleB + ", pigs " + pigsB);
+            Assert.Greater(cattleA + pigsA, 0, "(the premise: the pasture short enough to cull)");
+            Assert.Less(pigsA, pigsB, "fewer pigs culled for the grass");
+            Assert.LessOrEqual(pigsA + cattleA, pigsB + cattleB, "and fewer beasts killed to relieve it");
+        }
+
         [Test]
         public void SaveLoadWithHerdsContinuesIdentically()
         {
