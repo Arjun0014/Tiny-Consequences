@@ -1,5 +1,46 @@
 # TC2 Session handoff
 
+## Session 20 (13 Oct 2026, 17:25-~21:00 IST; Control Room run #55 session 2) - stopped by Arjun; nothing running
+
+### Exact state
+- **main** (after the handoff commit): D2-154 the burial ground kept and graves drawn as graves; W-FELL view faults fixed; **C3.7c the muck merged**
+  (d601c24, sim version 79, D2-153 - ten seeds `_n1` at par); the threshing floor in use drawn; shot views `floorbusy`, `floorbusylow`,
+  `act:<Activity>[:low]`; the shots log stumps placed and drawn. `.claude/launch.json` and `Assets/Resources.meta` are not ours - leave them.
+- **Branch `wip/c37d-stubble`** (worktree `C:/Game Dev/tc-stubble`, sim version 80; NOT merged): C3.7d the herds on the stubble and the fallow
+  (`Core/Places/Stubble.cs`, `Livestock.FieldOffer`/`GrazeFallow`/`GroundOf`), each household on its own field cell (`Core/Places/FieldSpots.cs`),
+  a food's cull by what the spares eat (`Livestock.Spare`, `--oldspare`); switches `--nostubble --onefieldspot --oldspare` (together = `_n1`
+  byte-identical); `26` §2k; draft D2-155 in `tc2/out/tools/s20/d2155.md`.
+- Other worktrees: `tc-merge20` (branch `wip/s20-merge`, fast-forwarded into main - may be removed), `tc-muck` (merged), `tc-thresh` (merged),
+  `tc-g2`, `tc-g4`, `tc-wild` (earlier sessions') - leave them unless cleaning up deliberately.
+- Saves: `tc2/out/civ/s4_m1` (v78), `s4_n0` (v78, graves kept), `s4_n1` (v79, main), `s4_u2` (v80, the stubble branch).
+
+### Verified
+- On merged main: Muck 3, HouseholdWork 4, Burials 4, Tilth 9, Livestock 14, Coarse 3, Determinism 6, SaveLoad 8, Threshing 5, Carts 6, Footprints 8,
+  Garden 5, Homes 5; no float arithmetic; `unity.mjs cc` (633466f). Controls byte-identical: `--oldgraves` = `_m1`, `--nomuck --oldgraves` = `_m1`.
+  Ten seeds `_n1` (muck + graves kept) against `_m1`: at par (`tc2/out/tools/s20/cmp_m1_n1.txt`).
+- On the stubble branch: Stubble 3, Livestock 15 (new: a short pasture culls what eats it), Muck 3 and the seven neighbours; control
+  `--nostubble --onefieldspot --oldspare` = `_n1`. Ten seeds `_u2` (`cmp_n1_u2.txt`): people at par, fields x1.017, cattle x1.84, goats x1.38 -
+  **pigs gone from 3 of 10 worlds** (seeds 5, 11, 7), foundings x0.77 (t -2.4).
+
+### Next, in order
+1. **C3.7d's pigs.** Why do pigs die out where cattle grow? Two leads from the reports' end causes:
+   - The hands cull (mode 0) still takes the kind with the most spares - a sow's litter.
+   - Mast culls (cause 9).
+   Trace with `--places` (village lines `stock cattle/goats/pigs` every 10 years; end causes by kind) on seed 5 or 7 `_u2` against `_n1`. Find the
+   mechanism, fix it with its own switch, ten seeds again, then merge `wip/c37d-stubble` (the merge's Unity cc; then shots: `herd` views on a
+   stubble day ~42, `act:Muck` spread over the fields, `close` at day ~30 for the muck heaps). Then write D2-155 from `tc2/out/tools/s20/d2155.md`.
+2. The full suite on the final HEAD (`node tc2/scripts/headless.mjs test`, ~17 min; through the queue) and the Web build and test
+   (`webgate.sh`, one Unity build alone).
+3. Shot `107c100`'s woodlot framing (`woodlot,woodlotlow` on `s4_n1/world_y300.tc2`).
+4. Then the next civilisation slice (`27` §6 gaps: holdings by household not drawn; no held tools; crop variety not simulated).
+
+### How the queue works (session 20)
+Start `bash tc2/out/tools/s20/runq.sh` in the background with the scratchpad `Q` and `S19` paths set to this session's (it waits for session 19's
+q21 to end: delete that line). Jobs are `P_name.sh` files in `$Q/todo` that source `lib.sh` (paths `S`, `N`, `R`, `O`, `DN`, `BL`, `gate`, `low`,
+`world seed bin tag [switches]`); `touch $Q/stop` ends it after the current job. Copies of every job, log and comparison:
+`tc2/out/tools/s20/{q_todo,q_done,q_log}`. Fix `N`/`S` in `lib.sh` to the new scratchpad and copy `bin_s0` (stubble) / `bin_n1` (main) builds
+again (`0_p_stubblebuild.sh`, `0_i_mergebuild.sh` show how).
+
 ## Session 19 (13 Oct 2026, from 14:53 IST; one low-priority job at a time, RAM < 86 %, CPU < 85 %) - context handoff at ~17:10 IST
 
 ### Exact state

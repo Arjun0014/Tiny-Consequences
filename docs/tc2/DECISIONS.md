@@ -4343,7 +4343,16 @@ years (0.042 h a FU) - 60 % in the growing stage's slack, 25 % after the harvest
 of the stores' grain stands in the sheaf (31 of 31 villages). Ten seeds, 300 years DEEP (`_m1`, sim version 78 - the burials and the felling
 record change no history - against pass 2b's `_r1`): at par - people over years 200-299 x1.000, births and deaths a person-year x0.995 and x1.000,
 hunger a person-year x1.03 (t 0.45), famines x0.96 (t -0.7), relief x0.87 (t -1.6); fish caught x0.94 (t -3.1: the floor's ~0.1 h an adult-day comes
-out of the free hours the shore took - to confirm with `timeuse`); 0.042 h a FU in every seed. Real shots: pending (q20).
+out of the free hours the shore took - to confirm with `timeuse`); 0.042 h a FU in every seed. 
+**Session 20.** The fish's x0.94 follows the villages, not the hours: fish a person-year x0.95 (t -1.5) - the threshing worlds ended with fewer
+fishing villages (8 of 10 seeds fewer places at year 300; foundings never more than without the floor in session 19's seeds: 26->23, 12->9, 20->16,
+17->14, 13->11). Fresh pairs on one binary (`_m1` with the floor against `_m0` `--nothresh`, seeds 9, 10, 12): foundings 15/15, 11/11, 26/27 - no
+deficit; the rest of the pairs (13-19) are queued scripts (`tc2/out/tools/s20/q_todo`). Real shots: the town's stackyard reads (Gaby: three
+thatched ricks on staddles before its barn, `s19f20`); at the first village on day 20 the stackyard stood empty and its 1,666 FU all threshed - the
+crop still growing (true). Threshers are few at any moment (one in the world at day 41 10 h; six at Drikkawick at day 24 15 h - `floorbusy`,
+`act:Thresh`): they stand in a ring in the flail pose, and since session 20 **the floor in use is drawn** - the sheaves laid out between them, the
+grain swept up in the middle (`ProcMeshes.ThreshingFloor`, only while someone threshes there). No flail is drawn in the hand (no held tools are
+drawn anywhere).
 
 ## D2-150 — 2026-10-13 — The woods remember their felling: stumps where the felled trees stood (W-FELL)
 

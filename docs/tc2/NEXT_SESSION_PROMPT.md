@@ -259,6 +259,12 @@ flail; ricks in the stackyard); **D2-150** stumps where the woods were felled (`
 deaths); **D2-152** the first household's standard in its polity's colour; C3.7c the muck in progress (worktree `C:/Game Dev/tc-muck`). Sim version
 78 on main (79 on the muck branch). See SESSION_HANDOFF "Session 19".
 
+**Where we are (session 20, 13 Oct 2026)**: real shots judged and fixed - **D2-154** the village builds round its burial ground (25 of 29 grounds had
+been built over) and graves are drawn as graves; stumps drawn on felled-bare ground; the threshing floor drawn in use; shot views `floorbusy` and
+`act:<Activity>`. **C3.7c the muck merged** (D2-153, sim version 79, ten seeds at par). **C3.7d the herds on the stubble and the fallow** is built on
+branch `wip/c37d-stubble` (sim version 80) with each household's own field cell (`FieldSpots`) and a food's cull by what the spares eat - **not merged:
+pigs die out in 3 of 10 worlds** (people at par, fields x1.017, cattle x1.84). See SESSION_HANDOFF "Session 20", `SESSION_20_REPORT.md`.
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.

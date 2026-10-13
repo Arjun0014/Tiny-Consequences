@@ -7,7 +7,7 @@
 - **Session 20 (13 Oct 2026, from 17:25 IST; Control Room run #55 session 2; Arjun's rule D-1/D-2 kept by one job queue,
   `tc2/out/tools/s20/runq.sh`: one job at a time, gated, below-normal priority; builds jump the seed runs)** - (1) **q19 read**: threshing at par
   in ten seeds; fish x0.94 follows fewer fishing villages (fish a person-year x0.95, t -1.5); foundings with the floor were never more than without
-  in session 19's seeds - ten fresh pairs on one binary (`_m1`/`_m0` `--nothresh`, seeds 9-19) running: first pairs 15/15 and 11/11. (2) **q20's real
+  in session 19's seeds - ten fresh pairs on one binary (`_m1`/`_m0` `--nothresh`, seeds 9-19) seeds 9, 10, 12: 15/15, 11/11, 26/27 - no deficit (D2-149). (2) **q20's real
   shots judged** (`tc2/out/shots/s19e20`, `s19f20`, `s19g4`, `s19g28`): the town's stackyard and the standards read; stumps nearly absent; graves read as
   a garden's rows over the fields; **the town's burial ground built over (25 of 29 grounds, 1,145 of 3,480 slots)** -> **D2-154** (homes, works and
   crofts keep off the ground, `--oldgraves` = `_m1`; graves side by side across their rows, jittered, headstones, sward without plots: 13 grounds and
@@ -15,10 +15,10 @@
   a glade - 242 stumps were drawn at its edges; now framed where the woods stood thickest), the threshing floor drawn in use (the sheaves laid out
   between the threshers), `act:<Activity>` and `floorbusy` shot views. (3) **C3.7c the muck merged** (D2-153, sim version 79; tests repaired: the
   heaps while the crop stands, the leach e-folding, the water test over three worlds): `--nomuck --oldgraves` = `_m1` byte-identical; seed 4: 69,691 t
-  made, 64,606 t carted in 193,771 h (3.0 h a tonne), 4,953 t leached; ten seeds `_n1` against `_m1` RESULT. (4) **C3.7d the herds on the stubble and
+  made, 64,606 t carted in 193,771 h (3.0 h a tonne), 4,953 t leached; ten seeds `_n1` against `_m1` **at par** (92.5 % carted, 7.4 % leached, 3.2 h a tonne). (4) **C3.7d the herds on the stubble and
   the fallow** (worktree `C:/Game Dev/tc-stubble`, branch `wip/c37d-stubble`, sim version 80, D2-155): measured first - the herds are fed (grass short
   in 17 of 472 village-reports) because the herders keep them to the pasture's lean days (`Destock`: cattle's commonest end the `pasture` cull, 5,156
-  of 9,548); the stubble from the harvest to the sowing and the rested arable grazed before the waste, their day's dung on the fields; RESULT.
+  of 9,548); the stubble from the harvest to the sowing and the rested arable grazed before the waste, their day's dung on the fields, each household on its own field cell (`FieldSpots`), a food's cull by what the spares eat; controls byte-identical; ten seeds `_u2`: people at par, fields x1.017, cattle x1.84 - **pigs gone from 3 of 10 worlds: not merged** (SESSION_HANDOFF "Session 20", `SESSION_20_REPORT.md`). Stopped by Arjun ~20:55 IST; nothing running.
 - **Session 19 (13 Oct 2026, from 14:53 IST; Arjun's resource rule D-1/D-2: one low-priority job at a time while RAM < 86 % and CPU < 85 %)** -
   (1) **The full suite on 86b481d: 372/372** (14 min). (2) **D2-148 W-FOREST pass 2b** (b312f01): the rain belt follows the sun in the outer
   tropics (`--oldrain` = `_g4` byte-identical; the dry tropics' soil 0.09-0.43 through the year, was 0.15-0.25; ten seeds `_r1` at par in rates,
