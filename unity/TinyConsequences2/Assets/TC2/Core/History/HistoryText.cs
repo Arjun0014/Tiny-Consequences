@@ -318,7 +318,10 @@ namespace TC2.Core.History
                 case ActivityKind.Quarry: return "cutting stone at " + home + "'s quarry and carrying it home: the village wants stone for its houses' footings";
                 case ActivityKind.Scout: return "gone to look at the land beyond: " + home + " is crowded or hungry and knows no good place";
                 case ActivityKind.Move: return "walking with the household to a new home" + (dest.Length > 0 ? " at " + dest : "");
-                case ActivityKind.Tend: return "watching " + home + "'s herd on the pasture" + ground + ": the animals must graze, and the wolves keep off a watched herd";
+                case ActivityKind.Tend:
+                    if (p.WhyArg >= 0 && p.WhyArg < w.Planet.Cells && w.Planet.FieldOwner[p.WhyArg] != 0 && w.Settlements.Exists(p.Home) && w.Settlements.Get(p.Home).Crop == TC2.Core.Places.CropStage.Harvested)
+                        return "watching " + home + "'s herd on its stubble: from the harvest to the sowing the reaped fields are the beasts', and their dung stays on them";   // (C3.7d)
+                    return "watching " + home + "'s herd on the pasture" + ground + ": the animals must graze, and the wolves keep off a watched herd";
                 default: return p.Act + " (" + p.Why + ")";
             }
         }

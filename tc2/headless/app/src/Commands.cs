@@ -167,6 +167,8 @@ namespace TC2.Headless
             if (a.Has("oldgraves")) TC2.Core.Places.Burials.Unkept = true;   // (D2-154 against D2-151 in one binary: homes, works and crofts laid over the graves)
             if (a.Has("nomuck")) TC2.Core.Places.Muck.Off = true;   // (C3.7c off: the herds' dung reaches the fields carted or not, as D2-139 built it)
             if (a.Has("mucktally")) TC2.Core.Places.Muck.Tally = new double[4];   // (C3.7c: muck made, carted, leached; hours)
+            if (a.Has("nostubble")) TC2.Core.Places.Stubble.Off = true;   // (C3.7d off: the herds keep off the fields, as before)
+            if (a.Has("stubbletally")) TC2.Core.Places.Stubble.Tally = new double[3];   // (C3.7d: kg eaten on the stubble and the fallow, day dung on the fields)
             if (a.Has("oldgardenorder")) TC2.Core.Agents.AgentSystem.CoarseGardenOld = true;   // (D2-146: a COARSE day's garden before all but the fields, as C3.7a built it)   // (C3.7a against D2-142 in one binary: no gardens)
         }
 
@@ -826,6 +828,9 @@ namespace TC2.Headless
                                     double myard = 0;
                                     for (int sid2 = w.Settlements.First(); sid2 != 0; sid2 = w.Settlements.Next(sid2)) { var stm = w.Settlements.Get(sid2); if (stm.Inhabited) myard += stm.Muck; }
                                     var mt = TC2.Core.Places.Muck.Tally;
+                                    var stt = TC2.Core.Places.Stubble.Tally;
+                                    if (stt != null)
+                                        Console.WriteLine("stubble: the herds ate " + F(stt[0] / 1000.0, "0") + " t on the stubble and " + F(stt[1] / 1000.0, "0") + " t on the fallow over the run; their day dung on the fields " + F(stt[2] / 1000.0, "0") + " t (carted muck " + F(w.Metrics.MuckKg / 1000.0, "0") + " t)");
                                     Console.WriteLine("muck: " + F(w.Metrics.MuckKg / 1000.0, "0") + " t carted out onto the fields in " + F(w.Metrics.MuckHours, "0") + " h over the run (" + F(w.Metrics.MuckKg > 0 ? w.Metrics.MuckHours / (w.Metrics.MuckKg / 1000.0) : 0, "0.00") + " h a tonne); in the yards now " + F(myard / 1000.0, "0") + " t" +
                                                       (mt != null ? "; made " + F(mt[0] / 1000.0, "0") + " t, leached " + F(mt[2] / 1000.0, "0") + " t" : ""));
                                 }

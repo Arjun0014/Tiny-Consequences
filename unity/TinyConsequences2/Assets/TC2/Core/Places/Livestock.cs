@@ -174,6 +174,20 @@ namespace TC2.Core.Places
         {
             var w = _w; var P = w.Planet;
             ref var s = ref w.Settlements.Get(sid);
+            if (!Stubble.Off && s.Crop == CropStage.Harvested && s.Stubble > 0.25 * Stubble.PerHa * s.FieldHa)
+            {
+                // (C3.7d) from the harvest to the sowing the herds go out onto the village's own stubble while it lasts: one of its field cells a day
+                // (beyond the houses and on dry ground, as the waste's grounds are)
+                var fc = w.FieldCellsOf(sid);
+                _ground.Clear();
+                for (int i = 0; i < fc.Count; i++)
+                {
+                    int c = fc[i];
+                    if (!P.IsLand(c) || P.LakeDepth[c] > 0.3f || Vec3d.ArcDistance(P.Grid.Center[c], s.Anchor, P.Radius) < 160.0) continue;
+                    _ground.Add(c);
+                }
+                if (_ground.Count > 0) return _ground[(int)(KeyedRng.Unit(KeyedRng.Mix((ulong)sid * 0x9E3779B97F4A7C15UL + (ulong)day * 0xC2B2AE3D27D4EB4FUL + 0x57B8)) * _ground.Count) % _ground.Count];
+            }
             w.Hazards.CellsWithin(w, s.Cell, PastureReach, _ground);
             int n = 0;
             for (int i = 0; i < _ground.Count && n < 10; i++)
@@ -242,6 +256,49 @@ namespace TC2.Core.Places
             }
         }
 
+        /// <summary>
+        /// What the village's own fields offer its herds today (C3.7d, kg of grass): the stubble's day share from the harvest's end to the sowing, and
+        /// the sward of the arable it rests this year (its fallow hectares at the field cells' own grass, as lean in the cold as the waste's). None on a
+        /// day of hard frost (the beasts are penned) or with `--nostubble`.
+        /// </summary>
+        void FieldOffer(int sid, in Settlement s, out double stubble, out double fallow)
+        {
+            stubble = 0; fallow = 0;
+            if (Stubble.Off || Frost(sid, _w.Now)) return;
+            var P = _w.Planet;
+            if (s.Crop == CropStage.Harvested && s.Stubble > 0) stubble = s.Stubble * Stubble.DayShare;
+            double restHa = DMath.Max(0.0, s.ArableHa - s.FieldHa);
+            if (restHa <= 0) return;
+            var fc = _w.FieldCellsOf(sid);
+            double area = 0, sward = 0;
+            for (int i = 0; i < fc.Count; i++)
+            {
+                int c = fc[i]; double a = P.AreaHa(c);
+                area += a; sward += a * DMath.Max(0.0, P.Grass[c] - Ecology.GrassFloor) * Ecology.GrassMax * GrazeShare(c);
+            }
+            if (area > 0) fallow = restHa * sward / area;
+        }
+
+        /// <summary>The fallow's grass grazed (C3.7d): `kg` taken from the rested arable of the village's field cells, each by its share of the sward -
+        /// a cell's grass is its whole ground's, so it falls by the fallow's part of the cell only.</summary>
+        void GrazeFallow(int sid, in Settlement s, double kg, double fallowOffer)
+        {
+            if (kg <= 0 || fallowOffer <= 0) return;
+            var P = _w.Planet;
+            var fc = _w.FieldCellsOf(sid);
+            double area = 0;
+            for (int i = 0; i < fc.Count; i++) area += P.AreaHa(fc[i]);
+            if (area <= 0) return;
+            double part = DMath.Min(1.0, DMath.Max(0.0, s.ArableHa - s.FieldHa) / area);
+            double share = DMath.Min(1.0, kg / fallowOffer);
+            for (int i = 0; i < fc.Count; i++)
+            {
+                int c = fc[i];
+                double take = DMath.Max(0.0, P.Grass[c] - Ecology.GrassFloor) * share * GrazeShare(c) * part;
+                P.Grass[c] = (float)DMath.Max(Ecology.GrassFloor * 0.5, P.Grass[c] - take);
+            }
+        }
+
         /// <summary>A village's herds live a day (both resolutions; SettlementSystem.Daily).</summary>
         public void Day(int sid, int days = 1)
         {
@@ -268,23 +325,30 @@ namespace TC2.Core.Places
             double fedS = wantS > 0 ? DMath.Min(1.0, ScrapsKg * s.Population / wantS) : 1.0;
             w.Hazards.CellsWithin(w, s.Cell, PastureReach, _cells);
             Offer(out double offer, out double mast);
-            if (wantG > StockShare * offer || wantM > StockShare * mast * MastFind)
+            FieldOffer(sid, in s, out double stubOffer, out double fallowOffer);   // (their own fields first: the stubble, the fallow - C3.7d)
+            double fieldOffer = stubOffer + fallowOffer;
+            if (wantG > StockShare * (offer + fieldOffer) || wantM > StockShare * mast * MastFind)
             {
                 // the near pasture is short: the herders take the herds further out (onto land the neighbours' herds may graze too)
                 w.Hazards.CellsWithin(w, s.Cell, FarReach, _cells);
                 Offer(out offer, out mast);
             }
-            double fedG = wantG > 0 ? DMath.Min(1.0, offer / wantG) : 1.0;
+            double fedG = wantG > 0 ? DMath.Min(1.0, (offer + fieldOffer) / wantG) : 1.0;
             double fedM = wantM > 0 ? DMath.Min(1.0, mast * MastFind / wantM) : 1.0;
             if (Diag != null && sid * 4 + 3 < Diag.Length) { Diag[sid * 4] = offer; Diag[sid * 4 + 1] = wantG; Diag[sid * 4 + 2] = mast * MastFind; Diag[sid * 4 + 3] = wantM; }
             double eatenG = wantG * fedG, eatenM = wantM * fedM;
+            double onStub = DMath.Min(eatenG, stubOffer), onFallow = DMath.Min(eatenG - onStub, fallowOffer), onWaste = eatenG - onStub - onFallow;
+            if (onStub > 0) s.Stubble = DMath.Max(0.0, s.Stubble - onStub * days);
+            if (onFallow > 0) GrazeFallow(sid, in s, onFallow * days, fallowOffer * days);
+            Stubble.Dung(ref s, (onStub + onFallow) * days);   // (the day's dung dropped on the fields themselves: C3.7d)
+            if (Stubble.Tally != null) { Stubble.Tally[0] += onStub * days; Stubble.Tally[1] += onFallow * days; }
             s.Grazed += eatenG * days;   // (their dung comes back to the fields: C3.6f)
             Muck.Make(ref s, eatenG * days, Frost(sid, now));   // (the night's in the yards' heaps - a day's in a hard frost, penned: C3.7c)
-            if (eatenG > 0 && offer > 0)
+            if (onWaste > 0 && offer > 0)
             {
                 // (DEEP: the step's grazing - each cell gives its day's share for each day; capped at one day's offer, a step of twelve
                 // days grazed less than two, the pastures stayed lush and the cattle tripled: F8 calibration)
-                double share = days == 1 ? eatenG / offer : eatenG * days / offer;
+                double share = days == 1 ? onWaste / offer : onWaste * days / offer;
                 for (int i = 0; i < _cells.Count; i++)
                 {
                     int c = _cells[i];
@@ -356,8 +420,8 @@ namespace TC2.Core.Places
             //    grazed to its offer every day wears thin), and eat from them when hungry
             // (DEEP: to the pasture as the step leaves it - days lived keep the herds to the grass at its leanest, before it grows
             // again, not to the grass as it stood before the step's grazing, which kept herds half as large again: F8 calibration)
-            if (days > 1) Offer(out offer, out mast);
-            Destock(sid, StockShare * offer, StockShare * mast * MastFind);
+            if (days > 1) { Offer(out offer, out mast); FieldOffer(sid, in w.Settlements.Get(sid), out stubOffer, out fallowOffer); fieldOffer = stubOffer + fallowOffer; }
+            Destock(sid, StockShare * (offer + fieldOffer), StockShare * mast * MastFind);
             Cull(sid);
         }
 
@@ -397,7 +461,8 @@ namespace TC2.Core.Places
             _season = PlanetSystems.Season(now);
             w.Hazards.CellsWithin(w, s.Cell, PastureReach, _cells);
             Offer(out double offer, out double mast);
-            if (wantG > StockShare * offer || wantM > StockShare * mast * MastFind) { w.Hazards.CellsWithin(w, s.Cell, FarReach, _cells); Offer(out offer, out mast); }
+            FieldOffer(sid, in s, out double stubOffer, out double fallowOffer);   // (as the day weighs it: C3.7d)
+            if (wantG > StockShare * (offer + stubOffer + fallowOffer) || wantM > StockShare * mast * MastFind) { w.Hazards.CellsWithin(w, s.Cell, FarReach, _cells); Offer(out offer, out mast); }
             perDay = wantM;
             inReach = mast;
         }

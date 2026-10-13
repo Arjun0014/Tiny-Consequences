@@ -614,6 +614,7 @@ namespace TC2.Core.Places
             if (doy == 0)
             {
                 s.Crop = CropStage.Sown; s.CropWork = 0; s.Sown = 0; s.Harvested = 0; s.CropGrowth = 0; s.CropBurnt = 0; s.CropCause = 0;
+                Stubble.Ploughed(ref s);   // (the stubble ploughed in: C3.7d)
                 // a village that remembers famine sows more than it needs, as far as its land allows (D2-042)
                 double perPerson = HaPerHead(w, in s) * (1.0 + 0.5 * s.Memory);   // (more where the land is seen tired: C3.6f)
                 // the fields' rest (C3.6f): a share of the arable rests this year by the tiredness its people have seen in their crops, and the
@@ -683,6 +684,7 @@ namespace TC2.Core.Places
                 // and the flax grown on a corner of the fields: fibre for clothes and cordage (D2-063)
                 s.Fibre += s.FieldHa * FibrePerHa * DMath.Clamp01(s.ExpectedHarvest > 0 ? yield / s.ExpectedHarvest : 1.0);
                 s.Crop = CropStage.Harvested; s.CropWorkNeed = 0; s.CropWork = 0;
+                Stubble.Harvested(ref s);   // (the reaped fields thrown open to the herds until the sowing: C3.7d)
                 long hev = w.Record(new HistoryEvent { Kind = HistoryKind.Harvest, Time = w.Now, Cell = s.FieldCell, Settlement = s.Id, Subject = EntityRef.Settlement(s.Id), Magnitude = (float)yield });
                 Structures.AfterHarvest(w, s.Id, hev);   // (an overfilled store wants another granary: C1.1)
                 w.Conflict.Harvested(s.Id, yield);   // (a tributary pays its lord: D2-075)
