@@ -4272,3 +4272,39 @@ same worlds). Tools: `TraceProfiler` (`--trace FILE`) and trace points in `World
 **Evidence.** `FootprintsTests.ALotIsFoundAtOnceWhenTheSeaTookEveryLot` (two streets, the sea over all the village's ground: a lot at once - the
 test runs FreeLot on a thread with a 10 s limit); Footprints 8/8. Seed 6 of D2-146 runs its 300 years (82 s); seeds 4, 5 and 1 byte-identical to their
 runs before the fix (a spiral that found a free lot bounds the search as before).
+
+## D2-148 — 2026-10-13 — The rain belt follows the sun in the outer tropics; the seasonal tropics drawn from their soil's water; conifers drawn tinted (W-FOREST pass 2b)
+
+**Context.** W-FOREST (`18` §8): the shots' dry tropics and wet woods read alike - dense dark crowns on bright green. Measured (session 17, `place
+--seasons`, seed 42): the dry tropics' soil water sat at 0.15-0.25 in every season. The weather's rain chance swung with the seasons by only
++-0.08 x moisture at every latitude (`PlanetSystems.Weather`), so the outer tropics had no dry season in the state, and the view's leaf fall was
+keyed to a fixed window of the year (an elaboration of the climate's class, not of the state). In the record the outer tropics' rain follows the
+sun: the ITCZ brings a wet summer and leaves a long dry winter from ~8 to ~25 degrees of latitude (the savanna's and the monsoon's), two rains a
+year near the equator, little in the subtropical highs. Found in the shots: every spruce, fir and pine was drawn pale grey (`ProcMeshes.Builder`
+shaded its cones, prisms and boxes with `Color * k`, which scaled the vertex alpha that marks what the draw tints - needles at alpha 0.7-1 were
+half untinted, the cones' undersides at 0.5 counted as windows), so the boreal and mixed woods read as dead or snow-dusted in summer.
+**Decision.** (1) The simulation: the rain chance in the outer tropics swings with the local season by up to 0.9 of its mean -
+`_wetSeason` = 0.9 x SmoothStep(4, 9) of the latitude x (1 - SmoothStep(22, 28)); the rain's annual mean kept (the swing is about its mean; the
+0.85 ceiling trims the wettest summers), none on the equator and in the subtropical highs; `--oldrain` (`PlanetSystems.OldRain`) the control; the
+wet season peaks on day 18 of the local year, inside the crops' growing stage (12-30) in both hemispheres. (2) The view, from the soil's own
+water (`TerrainLod.SeasonalTropic` - warm, too dry for rain forest - and `RainsGreen`): the seasonal tropics' open ground greens with the rains
+(`SavannaFlush`) and goes to straw as the soil dries (`SavannaStraw`); their woodland's leaves wither khaki and fall as the soil dries further
+(the trees' roots reach deeper than the grass's), each tree in its own time (a mosaic of green, withered and bare crowns, near and in the far
+canopy's crowns), never autumn's rust; their ground cover's grass and thorn by the same water, the grass taller; the far canopy's kind uses the same
+gate. The cool lands' open ground a duller, greyer turf (`CoolTurf`, the boreal and cool mixed woods' lands). `ProcMeshes.Builder.Dim`: a face's
+shading darkens its colour and keeps its alpha. Shot views `forest:KIND` pick a representative stand (not on a volcano's cone, not on steep ground,
+inland) and log its latitude and soil water. (3) Tools: `place` applies the rule switches before it loads (`place --load S --seasons --oldrain`).
+**Evidence.** Control `--oldrain` seed 4 = `_g4` (annals byte-identical). StormTests 3, VolcanismTests 6, BoatTests 19, GardenTests 5,
+DeterminismTests 6; the lint clean; the Unity C# compiles. `place --seasons` (seed 42 `_g4` at year 300, a COARSE year from the save, soil water
+by the local year's four-day bins): the dry tropics before 0.15/0.18/0.18/0.24/0.25/0.24/0.23/0.20/0.17/0.18/0.16/0.15, after
+0.10/0.14/0.17/0.31/0.40/0.43/0.39/0.31/0.24/0.19/0.14/0.09 - a wet season and a dry one in the state; the rain forest 0.35-0.76 (green all
+year); other kinds unchanged. Ten seeds, 300 years DEEP (`_r1` against `_g4`): per-person rates at par - births x0.999 (t -0.1), deaths x0.986
+(t -1.0), hunger x0.96 (t -0.6), famines x0.91 (t -1.7); people at year 300 x1.08 (t 2.1), over years 200-299 x1.04 (t 1.4); the wild's food x0.90
+(t -2.5: the dry season thins it). Real shots (seed 4 `_g4` year 300 lived to days 4, 20, 28, 44 - the south's wet and dry, the north's;
+`tc2/out/shots/s19b*`, `s19c*`, `s19d*`): a dry-tropics stand at 20 S (soil water 0.68 on day 4, 0.14 on day 28) green grass and green umbrella
+crowns in the rains, straw ground and withered khaki crowns in the dry season (`s19b_dry428.png`); an inland stand at 16 N (soil water 0.63 on day
+28, 0.10 on day 4: `s19d_dry.png`) green grass, crowns and fields in the rains, straw ground, bare and withered trees and bare fields in the dry
+season, and from 900 m the region green against straw; the rain forest dense and dark with emergents; the mixed and boreal woods dark green
+spires among birches (they were pale grey); the broadleaf woods' autumn (day 44). From the last shots: the dry season's leafless thorn drawn
+slighter and grey-brown (it read as rocks), the views' stands inside the woods (the boreal view framed an isolated wooded cell among meadows).
+W-FOREST stays OPEN for Arjun's judgement.

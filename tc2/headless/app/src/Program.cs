@@ -44,6 +44,7 @@ namespace TC2.Headless
                     case "person":
                         return Commands.PersonPage(args);
                     case "place":
+                        Commands.Switches(args);   // (the rules before the world loads: `--oldrain` sets the rain's seasons as the planet's systems are built)
                         return Commands.PlacePage(args);
                     case "wet":
                         return Commands.Wet(args);

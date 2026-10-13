@@ -175,6 +175,16 @@ thin out on the dry pasture, the deciduous woodland's leaf fall becomes the soil
 water only in the growing stage, local summer), so harvests should hold. Ten seeds against pass 2 (hunger, herds, fires, people), then shots of
 the four climates side by side in the dry and the wet season.
 
+**W-FOREST pass 2b (session 19, D2-148) - still OPEN for Arjun's judgement.** Built as above: the rain belt follows the sun (`--oldrain` the
+control, byte-identical); the dry tropics' soil now dries to ~0.10 in the dry season and wets to ~0.43 in the rains (`place --seasons`, seed 42);
+ten seeds at par in per-person rates (people x1.04-1.08, the wild's food x0.90). The view reads the soil's own water: the seasonal tropics' grass
+greens with the rains and goes to straw, their woodland withers khaki and drops its leaves tree by tree (a mosaic, near and in the far canopy), the
+grass tall; the cool lands' open ground a duller turf. **Found in the shots**: every spruce, fir and pine had been drawn pale grey since the forms
+were made - the mesh builder's face shading scaled the vertex alpha that marks what the draw tints (`ProcMeshes.Builder.Dim` now keeps it); the
+boreal and mixed woods are now dark green spires among birches. Shot views `forest:KIND` pick a representative inland stand off the fields
+and away from cones and steep ground, and log its latitude and soil water. Shots `tc2/out/shots/s19b*`, `s19c*`, `s19d*`;
+`s19b_dry428.png` (one stand at 20 S in the rains and the dry season).
+
 ## 9. The civilisation made visible (D2-089)
 
 Done so far (D2-090-D2-097): works drawn from the structure table (granaries on staddles, barns, the smithy with smoke while a smith works,

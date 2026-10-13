@@ -277,6 +277,9 @@ Shader "TC2/Terrain"
                     half coverK = lerp(1.0h, 0.8h, con) * lerp(1.0h, 0.45h, bare * (1.0h - con));   // (narrow conifers; bare boughs)
                     fc *= coverK; fcs *= coverK;
                     half hue = frac(cid * 5.31h);   // (the trees near the camera take the same green: TerrainLod.Tints)
+                    // (pass 2b) each crown turns and drops its leaves in its own time, as the trees near the camera do (TerrainLod.PlaceForest)
+                    half lvc = saturate(leaves + (frac(cid * 13.7h) - 0.5h) * 0.42h * saturate(leaves * 4.0h));
+                    half bareC = saturate((lvc - 0.8h) * 5.0h), turnC = saturate((lvc - 0.1h) / 0.55h);
                     half3 broad = lerp(lerp(half3(0.046h, 0.125h, 0.036h), half3(0.090h, 0.200h, 0.040h), saturate(hue * 2.0h)), half3(0.170h, 0.262h, 0.046h), saturate(hue * 2.0h - 1.0h));
                     broad = lerp(broad, half3(broad.r * 1.6h + 0.015h, broad.g * 0.90h, broad.b * 0.60h), dry * 0.8h);   // (dry lands: olive)
                     // (W-FOREST) the kind of wood: the rain forest's deep glossy greens, the dry tropics' olive - TerrainLod.Tints' palettes 2 and 3
@@ -284,14 +287,16 @@ Shader "TC2/Terrain"
                     half3 rainC = lerp(lerp(half3(0.010h, 0.059h, 0.013h), half3(0.020h, 0.089h, 0.016h), saturate(hue * 2.0h)), half3(0.040h, 0.120h, 0.017h), saturate(hue * 2.0h - 1.0h));
                     half3 dryC = lerp(half3(0.069h, 0.119h, 0.024h), half3(0.140h, 0.170h, 0.040h), hue);
                     broad = lerp(broad, lerp(rainC, dryC, saturate(seas / max(warm, 0.01h))), warm);
-                    broad = lerp(broad, lerp(half3(0.52h, 0.31h, 0.035h), half3(0.42h, 0.11h, 0.025h), hue), turn);
-                    broad = lerp(broad, half3(0.105h, 0.082h, 0.064h), bare);
+                    // (W-FOREST pass 2b) the dry tropics' leaves wither khaki in the dry season (TerrainLod.Tints' `withered`), not autumn's rust
+                    half dryT = saturate(seas / max(warm, 0.01h)) * warm;
+                    broad = lerp(broad, lerp(lerp(half3(0.52h, 0.31h, 0.035h), half3(0.42h, 0.11h, 0.025h), hue), lerp(half3(0.20h, 0.16h, 0.050h), half3(0.26h, 0.20h, 0.060h), hue), dryT), turnC);
+                    broad = lerp(broad, half3(0.105h, 0.082h, 0.064h), bareC);
                     half3 needle = lerp(half3(0.020h, 0.058h, 0.028h), half3(0.040h, 0.092h, 0.042h), hue);
                     needle = lerp(needle, needle * half3(1.35h, 0.95h, 0.75h), dry * 0.5h);
                     half3 crown = lerp(broad, needle, isCon);
                     crown = lerp(crown, half3(0.78h, 0.80h, 0.84h), snowy * isCon * saturate(h * 1.4h - 0.25h) * 0.65h);
                     crown *= 0.50h + 0.50h * h;                                   // (the lower parts of a crown are in its own shade)
-                    half mask = smoothstep(0.02h, 0.12h, h) * lerp(1.0h, 0.4h, bare * (1.0h - isCon)) * handOver;
+                    half mask = smoothstep(0.02h, 0.12h, h) * lerp(1.0h, 0.4h, bareC * (1.0h - isCon)) * handOver;
                     half3 litter = lerp(albedo, half3(0.060h, 0.050h, 0.028h), 0.45h * dl) * (1.0h - 0.25h * dl);   // (leaf litter)
                     half3 floorCol = litter * shade;
                     half3 nearCol = lerp(floorCol, crown * lerp(1.0h, shade, 0.7h), mask);
@@ -301,7 +306,7 @@ Shader "TC2/Terrain"
                     half3 summer = lerp(half3(0.072h, 0.160h, 0.036h), half3(0.120h, 0.228h, 0.044h), hue);
                     summer = lerp(summer, half3(summer.r * 1.6h + 0.015h, summer.g * 0.90h, summer.b * 0.60h), dry * 0.8h);
                     summer = lerp(summer, lerp(lerp(half3(0.014h, 0.068h, 0.015h), half3(0.032h, 0.105h, 0.017h), hue), lerp(half3(0.075h, 0.125h, 0.026h), half3(0.120h, 0.160h, 0.036h), hue), saturate(seas / max(warm, 0.01h))), warm);   // (W-FOREST)
-                    half3 meanCrown = lerp(lerp(lerp(summer, half3(0.47h, 0.21h, 0.03h), turn), half3(0.105h, 0.082h, 0.064h), bare),
+                    half3 meanCrown = lerp(lerp(lerp(summer, lerp(half3(0.47h, 0.21h, 0.03h), half3(0.23h, 0.18h, 0.055h), dryT), turn), half3(0.105h, 0.082h, 0.064h), bare),
                                            lerp(half3(0.026h, 0.068h, 0.032h), half3(0.70h, 0.72h, 0.76h), snowy * 0.35h), con) * 0.70h;
                     // stands of a few hundred metres, older and darker or younger and lighter: the far woods' own grain (from orbit too)
                     half stand = Tri(i.positionWS, ub, 1.0 / 1700.0);

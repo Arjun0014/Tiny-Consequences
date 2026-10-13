@@ -24,6 +24,10 @@ namespace TC2.Game
                 T.Add(i); T.Add(i + 1); T.Add(i + 2); T.Add(i); T.Add(i + 2); T.Add(i + 3);
             }
 
+            /// <summary>A colour darkened for a face's own shading, its alpha kept: the alpha marks what the draw tints (`Color * k` scaled it too -
+            /// conifers' needles, at alpha 0.7-1, were drawn half untinted: pale grey spires; the cones' undersides at 0.5 counted as windows).</summary>
+            public static Color Dim(Color c, float k) => new Color(c.r * k, c.g * k, c.b * k, c.a);
+
             public void Tri(Vector3 a, Vector3 b, Vector3 c, Color col)
             {
                 Vector3 n = Vector3.Cross(b - a, c - a).normalized;
@@ -38,11 +42,11 @@ namespace TC2.Game
                 Vector3 a = new Vector3(min.x, min.y, min.z), b = new Vector3(max.x, min.y, min.z), c = new Vector3(max.x, min.y, max.z), d = new Vector3(min.x, min.y, max.z);
                 Vector3 e = new Vector3(min.x, max.y, min.z), f = new Vector3(max.x, max.y, min.z), g = new Vector3(max.x, max.y, max.z), h = new Vector3(min.x, max.y, max.z);
                 Quad(e, h, g, f, col); // top
-                Quad(a, b, c, d, col * 0.6f); // bottom
-                Quad(a, e, f, b, col * 0.9f); // -z
-                Quad(c, g, h, d, col * 0.9f); // +z
-                Quad(d, h, e, a, col * 0.8f); // -x
-                Quad(b, f, g, c, col * 0.8f); // +x
+                Quad(a, b, c, d, Dim(col, 0.6f)); // bottom
+                Quad(a, e, f, b, Dim(col, 0.9f)); // -z
+                Quad(c, g, h, d, Dim(col, 0.9f)); // +z
+                Quad(d, h, e, a, Dim(col, 0.8f)); // -x
+                Quad(b, f, g, c, Dim(col, 0.8f)); // +x
             }
 
             /// <summary>A cone/pyramid with <paramref name="sides"/> sides along +Y.</summary>
@@ -53,8 +57,8 @@ namespace TC2.Game
                 {
                     float a0 = s * Mathf.PI * 2 / sides, a1 = (s + 1) * Mathf.PI * 2 / sides;
                     Vector3 p0 = new Vector3(Mathf.Cos(a0) * r, y0, Mathf.Sin(a0) * r), p1 = new Vector3(Mathf.Cos(a1) * r, y0, Mathf.Sin(a1) * r);
-                    Tri(p0, tip, p1, col * (0.85f + 0.15f * Mathf.Cos(a0)));
-                    Tri(p1, new Vector3(0, y0, 0), p0, col * 0.5f);
+                    Tri(p0, tip, p1, Dim(col, 0.85f + 0.15f * Mathf.Cos(a0)));
+                    Tri(p1, new Vector3(0, y0, 0), p0, Dim(col, 0.5f));
                 }
             }
 
@@ -65,7 +69,7 @@ namespace TC2.Game
                     float a0 = s * Mathf.PI * 2 / sides, a1 = (s + 1) * Mathf.PI * 2 / sides;
                     Vector3 p0 = new Vector3(Mathf.Cos(a0) * r, y0, Mathf.Sin(a0) * r), p1 = new Vector3(Mathf.Cos(a1) * r, y0, Mathf.Sin(a1) * r);
                     Vector3 q0 = new Vector3(p0.x, y1, p0.z), q1 = new Vector3(p1.x, y1, p1.z);
-                    Quad(p0, q0, q1, p1, col * (0.8f + 0.2f * Mathf.Cos(a0)));
+                    Quad(p0, q0, q1, p1, Dim(col, 0.8f + 0.2f * Mathf.Cos(a0)));
                     Tri(q0, new Vector3(0, y1, 0), q1, col);
                 }
             }
@@ -507,7 +511,7 @@ namespace TC2.Game
                 var mid = new Vector3(Mathf.Cos(a) * 0.55f, 1.75f + 0.1f * (k % 3), Mathf.Sin(a) * 0.55f);
                 var tip = new Vector3(Mathf.Cos(a + 0.25f) * 0.95f, 2.35f + 0.15f * (k % 2), Mathf.Sin(a + 0.25f) * 0.95f);
                 b.Stick(from, mid, 0.05f, 0.032f, 4, col);
-                b.Stick(mid, tip, 0.03f, 0.012f, 3, col * 0.95f);
+                b.Stick(mid, tip, 0.03f, 0.012f, 3, Builder.Dim(col, 0.95f));
             }
             b.Stick(new Vector3(0f, 1.25f, 0f), new Vector3(0.05f, 2.6f, -0.04f), 0.06f, 0.015f, 4, col);
             return b.Build("tc2-forest-bare");

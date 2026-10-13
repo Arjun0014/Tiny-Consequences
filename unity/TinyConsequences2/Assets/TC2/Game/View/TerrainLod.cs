@@ -84,7 +84,7 @@ namespace TC2.Game
             new[] { Color.white },
             new[] { Color.white },
             new[] { new Color(0.22f, 0.35f, 0.16f), new Color(0.31f, 0.44f, 0.19f), new Color(0.46f, 0.48f, 0.25f), new Color(0.60f, 0.33f, 0.16f),
-                    new Color(0.74f, 0.56f, 0.22f), new Color(0.44f, 0.36f, 0.29f), new Color(0.22f, 0.37f, 0.24f) },
+                    new Color(0.74f, 0.56f, 0.22f), new Color(0.52f, 0.46f, 0.40f), new Color(0.22f, 0.37f, 0.24f) },   // (5: bare twigs, grey-brown)
             new[] { new Color(0.36f, 0.56f, 0.22f), new Color(0.48f, 0.64f, 0.27f), new Color(0.66f, 0.42f, 0.20f), new Color(0.16f, 0.36f, 0.14f), new Color(0.40f, 0.30f, 0.16f) },   // (3: the rain forest's dark fronds; 4: bracken gone brown)
             new[] { new Color(0.40f, 0.37f, 0.25f), new Color(0.62f, 0.38f, 0.60f), new Color(0.52f, 0.56f, 0.40f), new Color(0.74f, 0.76f, 0.60f),
                     new Color(0.42f, 0.52f, 0.20f), new Color(0.78f, 0.80f, 0.70f) },   // (4: the boreal floor's moss, 5: its pale lichen)
@@ -151,6 +151,7 @@ namespace TC2.Game
             var palm = new[] { new Color(0.27f, 0.42f, 0.16f), new Color(0.33f, 0.46f, 0.18f), new Color(0.24f, 0.38f, 0.15f), new Color(0.38f, 0.50f, 0.21f) };
             var light = new[] { new Color(0.38f, 0.53f, 0.23f), new Color(0.45f, 0.58f, 0.25f), new Color(0.52f, 0.62f, 0.28f), new Color(0.42f, 0.56f, 0.26f) };
             var gold = new[] { new Color(0.86f, 0.70f, 0.22f), new Color(0.90f, 0.76f, 0.28f), new Color(0.80f, 0.62f, 0.20f), new Color(0.88f, 0.66f, 0.18f) };
+            var withered = new[] { new Color(0.50f, 0.45f, 0.26f), new Color(0.56f, 0.47f, 0.27f), new Color(0.46f, 0.40f, 0.24f), new Color(0.58f, 0.52f, 0.30f) };   // (the dry season's khaki, before the leaves fall: W-FOREST pass 2b)
             var willowAutumn = new[] { new Color(0.66f, 0.62f, 0.30f), new Color(0.60f, 0.55f, 0.26f), new Color(0.72f, 0.64f, 0.32f), new Color(0.56f, 0.50f, 0.24f) };
             var snow = new Color(0.88f, 0.90f, 0.94f);
             for (int g = 0; g < Groups; g++)
@@ -163,7 +164,7 @@ namespace TC2.Game
                 switch (pal)
                 {
                     case 2: c = Dry(rain[shade], dry * 0.5f, 1.4f, 0.01f, 0.95f, 0.70f); break;                     // (no autumn in the tropics)
-                    case 3: c = Dry(dryTropic[shade], dry * 0.4f, 1.3f, 0.01f, 0.94f, 0.70f); break;
+                    case 3: c = Color.Lerp(Dry(dryTropic[shade], dry * 0.4f, 1.3f, 0.01f, 0.94f, 0.70f), withered[shade], turn); break;   // (the dry season: W-FOREST pass 2b)
                     case 4: c = Color.Lerp(Dry(carr[shade], dry * 0.6f, 1.4f, 0.01f, 0.92f, 0.70f), willowAutumn[shade], turn); break;
                     case 5: c = Dry(warm[shade], dry * 0.6f, 1.4f, 0.01f, 0.93f, 0.70f); break;
                     case 6: c = Dry(palm[shade], dry * 0.6f, 1.5f, 0.015f, 0.92f, 0.62f); break;
@@ -565,11 +566,15 @@ namespace TC2.Game
                                     else continue;
                                     break;
                                 case ForestTypes.DryTropic:
-                                    if (pick < 0.16) { kind = Shrub; group = pick < 0.08 ? 2 : 5; scale = 0.8f + 0.9f * grow; }
+                                {
+                                    // (W-FOREST pass 2b) by the soil's own water: green grass and leafy thorn in the rains, straw and bare twigs in the dry season
+                                    float rains = RainsGreen(P.SoilWater[cell]);
+                                    if (pick < 0.16) { kind = Shrub; group = rains < 0.35f ? 5 : (pick < 0.08 ? 2 : 1); scale = (0.8f + 0.9f * grow) * (rains < 0.35f ? 0.65f : 1f); }   // (leafless thorn is slight)
                                     else if (pick < 0.21) { kind = Stone; group = 2; scale = 0.4f + 0.8f * grow; }
-                                    else if (grow < 0.85f) { kind = Grass; group = dry > 0.35f || f > 0.55f ? 5 : 6; scale = 1.1f; }
+                                    else if (grow < 0.85f) { kind = Grass; group = rains > 0.65f ? (dry > 0.45f ? 2 : 3) : rains > 0.30f ? 1 : 5; scale = 1.1f; }
                                     else continue;
                                     break;
+                                }
                                 case ForestTypes.WarmTemperate:
                                     if (pick < (edge ? 0.45 : 0.35)) { kind = Shrub; group = pick < 0.2 ? 6 : 2; scale = 0.8f + 0.8f * grow; }
                                     else if (grow < lushness * 0.6f) { kind = Grass; group = dry > 0.4f ? 5 : 0; }
@@ -617,6 +622,7 @@ namespace TC2.Game
                             else if (bloom && pick < 0.16 * (1f - dry)) { kind = Flowers; group = (int)((h >> 20) % 6UL); }
                             else if (pick > 0.975) { kind = Shrub; group = leafGroup >= 0 ? leafGroup : (dry > 0.5f ? 2 : 1); scale = 0.8f + 0.8f * grow; }
                         }
+                        if (kind == Grass && !sandy && !water) scale *= 1f + 0.45f * SeasonalTropic(tm, P.Moist[cell]);   // (pass 2b: the seasonal tropics' tall grass)
                         float u = (float)KeyedRng.Unit(h), v = (float)KeyedRng.Unit(KeyedRng.Mix(h ^ 0x51UL));
                         Vector3 at = Vector3.Lerp(Vector3.Lerp(pos[a], pos[b], u), Vector3.Lerp(pos[c], pos[d], u), v);
                         Vector3 up = Vector3.Lerp(Vector3.Lerp(nrm[a], nrm[b], u), Vector3.Lerp(nrm[c], nrm[d], u), v).normalized;
@@ -800,7 +806,10 @@ namespace TC2.Game
                             p.Trees[p.TreeCount] = Matrix4x4.TRS(at, PlanetGeo.Upright(at, num * 2617f), new Vector3(r, h, r));
                             p.TreeKind[p.TreeCount] = form;
                             int shade = (int)(Frac(num * 5.31f) * 4f) & 3;   // (the shader's hue)
-                            int leaf = Mathf.Clamp((int)(wd.z * 8f), 0, 7), snowB = Mathf.Clamp((int)(wd.w * 4f), 0, 3);
+                            // (pass 2b) each tree turns and drops its leaves in its own time - a mosaic of green, withered and bare crowns in a drying wood
+                            // (and an autumn's), none before the season turns: the season's own share, a tree's day a little before or after it
+                            float lv = Mathf.Clamp01(wd.z + (Frac(num * 13.7f) - 0.5f) * 0.42f * Mathf.Clamp01(wd.z * 4f));
+                            int leaf = Mathf.Clamp((int)(lv * 8f), 0, 7), snowB = Mathf.Clamp((int)(wd.w * 4f), 0, 3);
                             int dryB = Mathf.Clamp(Mathf.RoundToInt(dryHere * 3f), 0, 3);
                             p.TreeGroup[p.TreeCount] = (ushort)(shade | (leaf << 2) | (snowB << 5) | (dryB << 7) | (Palette(kind, type) << 9));
                             p.TreeCount++;
@@ -1381,19 +1390,20 @@ namespace TC2.Game
                         float f = P.SinLat[c] < 0 ? (yearNorth + 0.5f) % 1f : yearNorth;
                         float leaves = f < 0.5f ? 0f : (f < 0.875f ? (f - 0.5f) / 0.375f * 0.8f : 1f);
                         leaves *= 1f - Edge(17f, 22f, tm);   // (no autumn in the tropics)
-                        // (W-FOREST pass 2) the dry tropics' woodland is deciduous in the dry season: the leaves brown and fall through the dry half
-                        // of the year (the cool months), bare at its height where the climate is driest - ForestTypes' thresholds, smoothed
-                        float dryWood = Edge(16f, 20f, tm) * (1f - Edge(0.40f, 0.60f, P.Moist[c]));
+                        // (W-FOREST pass 2b) the dry tropics' woodland is deciduous in the dry season: its leaves brown and fall as its soil dries
+                        // (the simulation's own water: the rain belt follows the sun, PlanetSystems.Weather) - ForestTypes' thresholds, smoothed
+                        // (their roots reach deeper than the grass's: the crowns brown after the grass, as the soil dries further)
+                        float dryWood = SeasonalTropic(tm, moist);
                         if (dryWood > 0.01f)
                         {
-                            float ds = f >= 0.55f && f < 0.95f ? Mathf.Sin((f - 0.55f) / 0.40f * Mathf.PI) : 0f;
+                            float ds = 1f - Edge(0.06f, 0.26f, P.SoilWater[c]);
                             leaves = Mathf.Max(leaves, dryWood * ds * 0.97f);
                         }
                         p.Wood[o] = new Vector4(wood, con, leaves, snow);
                         // (W-FOREST) the far canopy's kind: the rain forest's deep greens where it is hot, the dry tropics' olive where hot and
                         // seasonally dry - ForestTypes' own thresholds, smoothed so the woods blend across a climate's edge
                         float warm = Edge(16f, 22f, tm);
-                        p.Kind[o] = new Vector2(warm, warm * (1f - Edge(0.45f, 0.62f, moist)));
+                        p.Kind[o] = new Vector2(warm, SeasonalTropic(tm, moist));   // (pass 2b: the same seasonal tropics as the leaves' fall, so they wither khaki, never autumn's rust)
                     }
                     // the land's own (D2-081): how dry its climate is (leaves olive, grass straw), how near a river's water (D2-084: its
                     // corridor), bare earth or rock, the beach's width
@@ -1404,6 +1414,15 @@ namespace TC2.Game
                 cols[o] = lin;
             }
         }
+
+        /// <summary>How far a climate is the seasonal tropics' (W-FOREST pass 2b): warm, and too dry for rain forest - ForestTypes' dry tropics,
+        /// smoothed across its edges. Its woods and grass follow the soil's water through the year.</summary>
+        public static float SeasonalTropic(float tMean, float moist) => Edge(16f, 20f, tMean) * (1f - Edge(0.50f, 0.62f, moist));
+
+        /// <summary>How green the seasonal tropics are now: 0 at the dry season's height (the soil dried out), 1 in the rains.</summary>
+        public static float RainsGreen(float soilWater) => Edge(0.10f, 0.32f, soilWater);
+
+        static readonly Color SavannaFlush = new Color(0.40f, 0.54f, 0.20f), SavannaStraw = new Color(0.76f, 0.64f, 0.38f), CoolTurf = new Color(0.40f, 0.46f, 0.29f);
 
         /// <summary>GLSL smoothstep(edge0, edge1, x) - not Unity's Mathf.SmoothStep, which interpolates between its first two arguments.</summary>
         static float Edge(float e0, float e1, float x) { float t = Mathf.Clamp01((x - e0) / (e1 - e0)); return t * t * (3f - 2f * t); }
@@ -1459,6 +1478,13 @@ namespace TC2.Game
             Color col = Color.Lerp(lush, steppe, Edge(0.15f, 0.85f, aridity));
             col = Color.Lerp(col, sand, Edge(0.7f, 1.0f, aridity) * (1f - Mathf.Clamp01(grass * 2.5f)));
             col = Color.Lerp(col, browned, Mathf.Clamp01((0.42f - soil) * 2.2f) * (1f - aridity) * 0.8f);
+            // (W-FOREST pass 2b) the seasonal tropics' grass greens with the rains and goes to straw as the dry season dries the soil - the
+            // simulation's own water (the rain belt follows the sun, PlanetSystems.Weather), where there is grass to green
+            float seasonal = SeasonalTropic(tm, P.Moist[c]) * Mathf.Clamp01(grass * 2.5f);
+            if (seasonal > 0.01f) col = Color.Lerp(col, Color.Lerp(SavannaStraw, SavannaFlush, RainsGreen(soil)), seasonal * 0.8f);
+            // (W-FOREST pass 2b) the cool lands' open ground: a duller, greyer green of short turf, heath and moss where the growing season is short
+            // (the boreal and the cool mixed woods' lands), as the meadows of the mild lands are lush
+            col = Color.Lerp(col, CoolTurf, (1f - Edge(4f, 11f, tm)) * 0.55f);
             col = Color.Lerp(col, tundra, 1f - Edge(-5f, 2f, tm));
             col = Color.Lerp(col, new Color(0.53f, 0.52f, 0.45f), Edge(1300f, 2400f, P.Elev[c] - (float)P.SeaLevel) * 0.8f);   // thin alpine turf and stone
             float valley =Mathf.Clamp01(-Ground.Relief(P, c) * 1.8f) * Mathf.Clamp01(soil * 1.6f) * (1f - aridity);

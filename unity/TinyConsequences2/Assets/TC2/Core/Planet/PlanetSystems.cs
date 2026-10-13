@@ -32,7 +32,10 @@ namespace TC2.Core.Planet
         readonly double[] _blockDraw;
         readonly float[] _tmean; // annual mean temperature per cell (static for a static climate)
         // closed-form temperature terms per cell (derived): T = base + amp*season + dAmp*cos(dayPhase + phase)
-        readonly double[] _base, _amp, _dAmp, _cosPh, _sinPh, _hemi;
+        readonly double[] _base, _amp, _dAmp, _cosPh, _sinPh, _hemi, _wetSeason;
+
+        /// <summary>`--oldrain`: the rain's seasons alike at every latitude (before W-FOREST pass 2b), on the same binary.</summary>
+        public static bool OldRain;
         readonly float[] _runoff;
         public readonly Climate Climate;
 
@@ -41,7 +44,7 @@ namespace TC2.Core.Planet
             var coarse = new CubeSphere(8);
             int n = P.Cells;
             _block = new int[n]; _tmean = new float[n];
-            _base = new double[n]; _amp = new double[n]; _dAmp = new double[n]; _cosPh = new double[n]; _sinPh = new double[n]; _hemi = new double[n];
+            _base = new double[n]; _amp = new double[n]; _dAmp = new double[n]; _cosPh = new double[n]; _sinPh = new double[n]; _hemi = new double[n]; _wetSeason = new double[n];
             _runoff = new float[n];
             _blocks = coarse.CellCount;
             _blockDraw = new double[_blocks];
@@ -70,6 +73,10 @@ namespace TC2.Core.Planet
             {
                 _block[c] = coarse.CellOf(P.Grid.Center[c]);
                 _hemi[c] = P.Lat[c] >= 0 ? 1.0 : -1.0;
+                // the rain belt follows the sun (W-FOREST pass 2b): from ~8 to ~25 degrees of latitude the summer is the wet season and the winter
+                // dry (the savanna's, the monsoon's), none on the equator (two rains a year, near even) and in the subtropical highs
+                double alat = DMath.Abs(P.Lat[c]) * 180.0 / DMath.PI;
+                _wetSeason[c] = OldRain ? 0.0 : 0.9 * DMath.SmoothStep(4.0, 9.0, alat) * (1.0 - DMath.SmoothStep(22.0, 28.0, alat));
                 // local solar hour = world hour + lon/2pi*24; diurnal peak at 15:00 local
                 double ph = P.Lon[c] - DMath.TwoPi * 15.0 / 24.0;
                 _cosPh[c] = DMath.Cos(ph); _sinPh[c] = DMath.Sin(ph);
@@ -169,7 +176,8 @@ namespace TC2.Core.Planet
                 // wetter summers at mid latitudes, wet season shifting with the sun in the tropics
                 double season = seasonN * _hemi[c];
                 double moist = DMath.Min(1.0, P.Moist[c] * P.MoistFactor); // a warmer world is a wetter one
-                double pRain = DMath.Clamp(0.06 + 0.5 * moist + 0.08 * season * moist, 0.02, 0.85);
+                double pBase = 0.06 + 0.5 * moist;
+                double pRain = DMath.Clamp(pBase * (1.0 + _wetSeason[c] * season) + 0.08 * season * moist, 0.02, 0.85);
                 double z = 0;
                 int o = c * Taps;
                 for (int k = 0; k < Taps; k++) z += _tapWeight[o + k] * _blockDraw[_tapBlock[o + k]];

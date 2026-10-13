@@ -351,17 +351,33 @@ namespace TC2.Game
                 int best = -1; double bv = 0;
                 for (int c = 0; c < P.Cells; c++)
                 {
-                    if (!P.IsLand(c) || P.Forest[c] <= bv) continue;
-                    if (want >= 0) { if (ForestTypes.OfCell(P, c) != want || System.Math.Abs(Wrap(P.Grid.Center[c].Longitude - d.Longitude)) > 0.9) continue; }   // (in the first village's half of the day: its hour lights the shot)
+                    // (a kind's stand: the most wooded cell counting its four neighbours - inside the woods, not an isolated wooded cell among meadows)
+                    double fv = P.Forest[c];
+                    if (want >= 0) { for (int q = 0; q < 4; q++) fv += P.Forest[P.Grid.Nbr4[c * 4 + q]]; fv /= 5.0; }
+                    if (!P.IsLand(c) || fv <= bv) continue;
+                    if (want >= 0)
+                    {
+                        if (ForestTypes.OfCell(P, c) != want || System.Math.Abs(Wrap(P.Grid.Center[c].Longitude - d.Longitude)) > 0.9) continue;   // (in the first village's half of the day: its hour lights the shot)
+                        // (a representative stand of its kind: not on a volcano's cone nor on steep ground - the shot framed a cone's ash before)
+                        VolcanoShape.At(P, P.Grid.Center[c], c, out float vrock, out _);
+                        if (vrock > 0.02f) continue;
+                        double steep = 0;
+                        for (int q = 0; q < 4; q++) steep = System.Math.Max(steep, System.Math.Abs((double)P.Elev[c] - P.Elev[P.Grid.Nbr4[c * 4 + q]]));
+                        if (steep > 160.0) continue;
+                        bool coast = false;   // (inland: a coastal cell framed mostly sea and beach)
+                        for (int q = 0; q < 4; q++) if (!P.IsLand(P.Grid.Nbr4[c * 4 + q])) coast = true;
+                        if (coast) continue;
+                        if (P.FieldOwner[c] != 0) continue;   // (woods, not a village's fields: the woods under fields are cleared as they are farmed)
+                    }
                     else if (Vec3d.ArcDistance(P.Grid.Center[c], d, P.Radius) > 6000) continue;
                     bool near = false;
                     for (int sid2 = w.Settlements.First(); sid2 != 0; sid2 = w.Settlements.Next(sid2))
                         if (Vec3d.ArcDistance(w.Settlements.Get(sid2).Anchor, P.Grid.Center[c], P.Radius) < 600) { near = true; break; }
                     if (near) continue;
-                    bv = P.Forest[c]; best = c;
+                    bv = fv; best = c;
                 }
                 if (best >= 0) d = P.Grid.Center[best];
-                if (want >= 0) Debug.Log("[TC2] forest view " + kindOf[1] + ": cell " + best + " forest " + bv.ToString("0.00") + (best >= 0 ? " mean " + P.TMean[best].ToString("0.0") + " degC, moisture " + P.Moist[best].ToString("0.00") : ""));
+                if (want >= 0) Debug.Log("[TC2] forest view " + kindOf[1] + ": cell " + best + " forest " + bv.ToString("0.00") + (best >= 0 ? " mean " + P.TMean[best].ToString("0.0") + " degC, moisture " + P.Moist[best].ToString("0.00") + ", latitude " + (P.Lat[best] * 180.0 / System.Math.PI).ToString("0.0") + ", soil water now " + P.SoilWater[best].ToString("0.00") : ""));
                 bool low = view == "forestlow" || view.EndsWith(":low"), far = view == "forestfar" || view.EndsWith(":far");
                 LookAt(d, far ? 900 : low ? 95 : 260);
                 return;

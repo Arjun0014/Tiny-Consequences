@@ -160,6 +160,7 @@ namespace TC2.Headless
             if (a.Has("noniche")) TC2.Core.Places.SettlementSystem.NicheOn = false;
             if (a.Has("nowallworks")) TC2.Core.Society.Conflict.WallWorksOff = true;
             if (a.Has("noworkclear")) TC2.Core.Places.Footprints.WorkClearOff = true;
+            if (a.Has("oldrain")) TC2.Core.Planet.PlanetSystems.OldRain = true;   // (W-FOREST pass 2b: the rain's seasons alike at every latitude)
             if (a.Has("oldwoods")) TC2.Core.Planet.PlanetSystems.OldWoods = true;   // (D2-142 against D2-140/141 in one binary: trees by the annual mean)
             if (a.Has("nogarden")) TC2.Core.Places.Gardens.Off = true;
             if (a.Has("oldgardenorder")) TC2.Core.Agents.AgentSystem.CoarseGardenOld = true;   // (D2-146: a COARSE day's garden before all but the fields, as C3.7a built it)   // (C3.7a against D2-142 in one binary: no gardens)
