@@ -15,16 +15,31 @@ long/Web/visual checks -> a real-game visual truth audit (people, houses and roa
 picture?". No simulation theatre: presentation elaborates a real activity, never invents one.
 
 ## Read first (this order), then work autonomously
-1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the standing prompt (architecture, rules, every direction; "Where we are (session 18)").
-2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 18"**: exact state, "Next, in order"; and `docs/tc2/SESSION_18_REPORT.md`.
-3. `docs/tc2/DECISIONS.md` newest: **D2-147** (a drowned village's lots), **D2-146** (a COARSE day's garden by the lived urges), **D2-145** (a croft
-   counted once, its wattle), **D2-144** (the gardens' own calendar), D2-143 (the household's garden), D2-142 (trees by the growing season's warmth).
-4. `docs/tc2/27_VISUAL_TRUTH.md` (§8 the real shots), `docs/tc2/26_CRAFTS_AND_EXCHANGE.md` §2h (the household's own year: the garden built,
-   the threshing floor and the muck designed), `docs/tc2/18_WORLD_READABILITY.md` §8 (W-FOREST pass 2 and the pass 2b design).
-5. `docs/tc2/PROGRESS.md` CURRENT STATE (the session 18 entry first).
+1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the standing prompt (architecture, rules, every direction; "Where we are (session 19)").
+2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 19"**: exact state, what was running at the handoff, "Next, in order".
+3. `docs/tc2/DECISIONS.md` newest: **D2-152** (the first household's standard), **D2-151** (the burial ground), **D2-150** (stumps: the woods'
+   felling record), **D2-149** (the threshing floor), **D2-148** (W-FOREST pass 2b: the rain belt, the seasonal tropics, conifers tinted).
+4. `docs/tc2/27_VISUAL_TRUTH.md` §6 (the systems in the picture, updated), `docs/tc2/26_CRAFTS_AND_EXCHANGE.md` §2i (the threshing floor),
+   `docs/tc2/18_WORLD_READABILITY.md` §8 (W-FOREST pass 2b - still OPEN for Arjun's judgement).
+5. `docs/tc2/PROGRESS.md` CURRENT STATE (the session 19 entry first).
 6. `git status` (the modified `.claude/launch.json` and untracked `unity/TinyConsequences2/Assets/Resources.meta` are not ours - leave them;
-   the worktrees `C:/Game Dev/tc-g2`, `tc-g4`, `tc-wild` are earlier sessions' - leave them), `git log --oneline -6` (HEAD 93ad626 or a handoff
-   commit on it).
+   worktrees `C:/Game Dev/tc-g2`, `tc-g4`, `tc-wild` are earlier sessions' - leave them; `C:/Game Dev/tc-thresh` (merged) and `C:/Game Dev/tc-muck`
+   (branch `wip/c37c-muck`, C3.7c in progress) are session 19's), `git log --oneline -6` (HEAD 908ab98).
+
+## Session 19 (13 Oct 2026, 14:53-~17:10 IST) - context handoff; queues still running
+- Done and verified: the full suite on 86b481d 372/372 (**stale for HEAD**: run it once on the final HEAD); **D2-148** W-FOREST pass 2b (b312f01);
+  **C3.7b the threshing floor** (merged 14a9156; sim version 77); **W-FELL** stumps, **D2-151** burial grounds (sim version 78), **D2-152** standards
+  (4caf9ee) - tests, Unity C#, the merge's control `--nothresh --oldrain` seed 4 = `_g4` byte-identical.
+- **Running at the handoff** (detached bash queues in the scratchpad `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/
+  f50753be-dec6-4e7f-8c7e-01e86c05c761/scratchpad`, logs `q19.log`, `q20.log`, `q21.log`; copies of the scripts in `tc2/out/tools/s19/`; do not
+  start another heavy job until they end): q19 ten seeds `_m1` (sim version 78) -> `cmp_r1_m1.txt`; q20 real shots `tc2/out/shots/s19e20`,
+  `s19f20`, `s19g4`, `s19g28` (threshing floor and ricks, stumps, graves, standards, the town, the four climates); q21 the muck worktree's build,
+  tests, control `--nomuck` = `_m1`, seed 4 `_k0`. If the logs are gone, rerun from `tc2/out/tools/s19/q19.sh`-`q21.sh` (fix `S=`).
+- Next: read q19-q21's results, judge the shots and fix what reads wrong, finish C3.7c (D2-153), the full suite on the final HEAD, the Web build
+  and test, SESSION_19_REPORT.md - details in `docs/tc2/SESSION_HANDOFF.md` "Session 19".
+- **Resource rules (Arjun, Decision Inbox D-1, D-2)**: one low-priority job at a time (`cmd //c start "" //belownormal //wait //b ...`) while CPU < 85 %
+  and RAM < 86 %; gate every heavy job (`tc2/out/tools/s19/q*.sh`'s `gate`/`low`). Pitfalls hit this session: a local named like one in an
+  enclosing scope fails the build (CS0136 - `grounds`, `alt`); `place --seasons` and the shot views' logs give latitude and soil water.
 
 ## Session 18 (11 Oct 2026) - stopped by Arjun at ~16:00 IST; nothing of ours running
 - Done and verified: **D2-144** (the gardens keep their village's own calendar), **D2-145** (a croft counted once, one wattle fence, beds by season),

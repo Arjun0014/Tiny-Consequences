@@ -252,6 +252,13 @@ COARSE day out of order with lived days - **D2-146** (by the lived urges: after 
 hang - **D2-147** (a drowned village's households walked its drowned streets forever). The 900-year check passed; Web 6/6. Next: W-FOREST pass 2b
 (`tc2/out/tools/s18/pass2b.diff`) - SESSION_HANDOFF "Session 18", `SESSION_18_REPORT.md`.
 
+**Where we are (session 19, 13 Oct 2026)**: **D2-148 W-FOREST pass 2b** - the rain belt follows the sun in the outer tropics (the dry tropics' soil
+dries to ~0.1 and wets to ~0.4), the seasonal tropics drawn from that water (grass flush and straw, leaves withering and falling tree by tree), and
+every conifer drawn tinted at last (`ProcMeshes.Builder.Dim`); **D2-149 C3.7b the threshing floor** (sheaves held in the store until threshed by
+flail; ricks in the stackyard); **D2-150** stumps where the woods were felled (`PlanetState.Felled`); **D2-151** the burial ground (graves from real
+deaths); **D2-152** the first household's standard in its polity's colour; C3.7c the muck in progress (worktree `C:/Game Dev/tc-muck`). Sim version
+78 on main (79 on the muck branch). See SESSION_HANDOFF "Session 19".
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.
