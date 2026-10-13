@@ -207,17 +207,19 @@ namespace TC2.Game
                 // woods it cut there have long grown back)
                 if (view.StartsWith("woodlot") && wLot >= 0)
                 {
-                    // (and within the lot's cell, where its woods stand thickest - the lowest rank of the stands' noise: a glade there has no stumps
-                    // either, the woods never stood in it)
+                    // (and within the lot's cell, where its woods stood before the felling and stand no more - the stands' noise ranks a point: trees
+                    // stand where the rank is under today's cover, stumps where it is between that and the cover before the felling; a glade above
+                    // both had no trees ever - the view aims at the middle of the felled band)
                     d = w.Planet.Grid.Center[wLot];
                     st.SphereToLocal(d, w.Planet.Radius, out double lcx, out double lcy);
+                    float aimRank = (float)(w.Planet.Forest[wLot] + 0.5 * w.Planet.Felled[wLot]);
                     float bestRank = 2f;
                     for (int gi = -5; gi <= 5; gi++)
                         for (int gj = -5; gj <= 5; gj++)
                         {
                             var lq = st.LocalToSphere(lcx + 30.0 * gi, lcy + 30.0 * gj, w.Planet.Radius);
                             if (w.Planet.Grid.CellOf(lq) != wLot) continue;
-                            float lrank = Canopy.StandRank(PlanetGeo.Surface(w.Planet, lq));
+                            float lrank = Mathf.Abs(Canopy.StandRank(PlanetGeo.Surface(w.Planet, lq)) - aimRank);
                             if (lrank < bestRank) { bestRank = lrank; d = lq; }
                         }
                 }
