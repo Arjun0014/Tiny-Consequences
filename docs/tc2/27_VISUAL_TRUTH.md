@@ -90,8 +90,8 @@ ploughed (the fallow's summer ploughing).
 |---|---|---|---|
 | Fields, crop stages, extra tilth (C3.6a) | the village's plots in its grid, crop colour by stage, furrows, hedges | field hands hoe, reap, sow along the rows (s17) | holdings by household not drawn |
 | Fallow, the soil (D2-139) | unsown strips at the true share, turning yearly, some ploughed in summer (s17) | yearly | tiredness itself (yields) not drawn |
-| Harvest, the sheaves (C3.7b, D2-149) | the stackyard: a thatched rick on staddles for each ~1,500 FU of sheaves the barns' bays do not hold, round the threshing floor - full from the reaping, emptying through the year as threshed, none before a hungry harvest (the old haystacks by the store's fill are gone) | reaping (s17); threshers in a ring at the floor swinging flails (pose 17), a hungry hand first | - |
-| Woodlots felled (C1.2, W-FELL D2-150) | the woods' share thins; stumps where the felled trees stood (`PlanetState.Felled`, the felled share not grown back), coppice shoots on some, until the woods regrow over them and they rot | woodcutters swing, with breathers (s17) | - |
+| Harvest, the sheaves (C3.7b, D2-149) | the stackyard: a thatched rick on staddles for each ~1,500 FU of sheaves the barns' bays do not hold, round the threshing floor - full from the reaping, emptying through the year as threshed, none before a hungry harvest (the old haystacks by the store's fill are gone) | reaping (s17); threshers in a ring at the floor swinging flails (pose 17) over the sheaves laid out on it - the floor drawn in use only while someone threshes there (s20, `act:Thresh`, `floorbusy`) | no flail in the hand (no held tools are drawn anywhere) |
+| Woodlots felled (C1.2, W-FELL D2-150) | the woods' share thins; stumps where the felled trees stood (`PlanetState.Felled`, the felled share not grown back), coppice shoots on some, until the woods regrow over them and they rot (s20: drawn on ground felled bare too; the `woodlot` views frame the felled band - 211-242 stumps drawn) | woodcutters swing, with breathers (s17) | stumps small from 70 m |
 | Quarry, mines, bog pits, charcoal (C1.3, C5) | quarry face and cut ground, pits, clamps | cutting and carrying to the pile, raking the clamp (s17) | - |
 | Smithy (C1.4b) | smithy, smoke while a smith works | hammering at its front (s17) | - |
 | Weaver's shed (C3.1) | shed, tenters while it has wares | at the loom (s17) | - |
@@ -99,14 +99,14 @@ ploughed (the fallow's summer ploughing).
 | Market (C1.6, C13.3) | cross, stalls, the widened market place | traders come and go | - |
 | Ways, streets, lanes (C4.1, C13) | ribbons by wear along the streets (s17), streets and lanes by frontage | travellers walk them, loads in arms, carts | - |
 | Carts (C4.2) | hand and ox carts with their people, parked in yards | yes | - |
-| Herds, tending (D2-050) | animals graze the day's ground, yard pens (s17) | herders walk with the herd (s17) | herds on the fallow (not simulated) |
+| Herds, tending (D2-050), the stubble and the fallow (C3.7d, D2-155) | animals graze the day's ground - from the harvest to the sowing the village's own stubble - yard pens (s17); muck heaps behind the yards by the beasts' share (C3.7c) | herders walk with the herd (s17); carters on each household's own part of the fields after the harvest (s20, `act:Muck`) | grazing on the fallow strips not drawn (the strips are the shader's) |
 | Boats, fishing, voyages (C9) | boats on the beach, out with their crews | rowing (s17); shore fishers hold their lines (s17) | - |
 | Training (C1.5) | beaten ground by hours of practice | sparring (s17) | - |
 | Palisades (D2-074, C7.1) | posts by condition, gates where the ways cross (s17) | raised stretch by stretch | - |
 | Homes by means, plans, age (D2-114) | forms, roofs, extensions, gardens, wear | smoke, lit windows | - |
 | Gardens (C3.7a, D2-143-145) | beds on each croft as the simulation measures it, by its season: fresh earth dug, in leaf, cleared as gathered, weedy where undug; one wattle fence round the croft | people hoe and stoop in the beds | the beds' crops by kind (one kit bed) |
 | Headmen, the first household, lordship (C10.1-2, D2-152) | a standard by the first household's door in its polity's colour (a tributary flies its lord's; taller for a lord over more villages); the headman dressed in it | - | moots, successions as gatherings (not simulated as gatherings) |
-| Famine, sickness, death (D2-151) | gatherers in the wild; an empty stackyard before a hungry harvest; the burial ground - fresh earth for the last year's dead, grassed mounds sinking over decades (a famine or an epidemic shows as a field of fresh graves) | - | the hungry's bodies (not drawn thinner) |
+| Famine, sickness, death (D2-151, D2-154) | gatherers in the wild; an empty stackyard before a hungry harvest; the burial ground - fresh earth for the last year's dead, grassed mounds with headstones sinking over decades, side by side across their rows on unploughed sward, kept clear of homes and works (a famine or an epidemic shows as a field of fresh graves) | - | the hungry's bodies (not drawn thinner); worn paths may cross a ground |
 | Abandonment, ruins (D2-052) | empty homes weather, roofs go, walls fall | - | - |
 
 ## 7. Open
