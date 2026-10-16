@@ -15,16 +15,30 @@ long/Web/visual checks -> a real-game visual truth audit (people, houses and roa
 picture?". No simulation theatre: presentation elaborates a real activity, never invents one.
 
 ## Read first (this order), then work autonomously
-1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the standing prompt (architecture, rules, every direction; "Where we are (session 21)").
-2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 21"**: exact state, the job queue still running, "Next, in order".
-3. `docs/tc2/SESSION_20_REPORT.md` - session 20 (session 21 has no report: its handoff block is the record).
-4. `docs/tc2/DECISIONS.md` newest: **D2-154**, **D2-153**; the draft **D2-155** (the stubble, the culls by what loads the shortage, each household's
-   field work dry-shod) is `tc2/out/tools/s21/d2155.md` - its "Evidence" waits for the 20-seed comparison.
-5. On the branch (`C:/Game Dev/tc-stubble`): `docs/tc2/26_CRAFTS_AND_EXCHANGE.md` §2k (the stubble; session 21's paragraph on the pigs),
-   `docs/tc2/27_VISUAL_TRUTH.md` §9 (session 21's real shots), `docs/tc2/08_CIVILIZATION.md` (the culls).
-6. `docs/tc2/PROGRESS.md` CURRENT STATE (the session 21 entry first).
-7. `git status`, `git log --oneline -8`, `git worktree list` (the stubble work is branch `wip/c37d-stubble` in `C:/Game Dev/tc-stubble`, tip 161fa63; the
-   modified `.claude/launch.json` and untracked `Assets/Resources.meta` are not ours - leave them).
+1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the standing prompt (architecture, rules, every direction; "Where we are (session 22)").
+2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 22"**: exact state, the full suite's result to read first, "Next, in order".
+3. `docs/tc2/SESSION_22_REPORT.md` - what session 22 did and found.
+4. `docs/tc2/DECISIONS.md` newest: **D2-156**, **D2-155**; the drafts **D2-157** (C10.4 bread and dependence) and **D2-158** (a COARSE day's muck after
+   the household's own roof) are `tc2/out/tools/s22/d2157.md` and `d2158.md` - write them in when the branch merges.
+5. On the branch (`C:/Game Dev/tc-bread`, `wip/c104-bread`): `docs/tc2/10_CONFLICT_AND_POLITICS.md` §12f (bread and dependence).
+6. `docs/tc2/PROGRESS.md` CURRENT STATE (the session 22 entry first).
+7. `git status`, `git log --oneline -10`, `git worktree list`.
+
+## Session 22 (16 Oct 22:19 - 17 Oct ~02:15 IST) - stopped by Arjun; nothing of ours left running but the full suite's last minutes
+- **Merged on main**: **D2-155** C3.7d the herds on the stubble (twenty seeds at par; a placebo shows end-of-run pig counts and sickness are noise at
+  ten seeds - a 300-year run lives its first day before going COARSE); **D2-156 nobody walks through the water** (sim version 81: walks bend round
+  lakes and bays, every lived spot out of the water, crofts not in it, woods by the walk; the same save 0.178 % -> 0.013 % of person-hours in the
+  water; open: island woodcutters and a town on two shores - boats across water, C9.5).
+- **On branch `wip/c104-bread` (tip 08e16b2, sim version 82), NOT merged**: **C10.4 bread and dependence** - a village that cannot give back a month
+  of the famine grain a stronger neighbour within a day's walk gave it bows to that neighbour (ten seeds: vital rates untouched, lords 8 -> 21, the
+  lord's call answered, raids up as lordships fight); **D2-158** - the full suite's one failure since C3.7c (a camp carted muck before raising its
+  roof) fixed.
+- **First thing**: the full suite on the final code (`bin_b4`) was running at the stop - its result is `fullsuite_b4.txt` in
+  `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/4c5113ad-667d-4fde-9df2-13e8ffdf1a90/scratchpad` (expect 403/403; if the
+  file is gone, run `node tc2/scripts/headless.mjs test` in `C:/Game Dev/tc-bread`). Then merge the branch, D2-157/D2-158, `unity.mjs cc`, the Web
+  build and test, real shots of a bread lordship (`shots --village tributary|lord`), the 900-year check - SESSION_HANDOFF "Session 22".
+- **Resource rule (Arjun D-1/D-2)**: one low-priority job at a time while RAM < 86 % and CPU < 85 % - use a job queue (copy `tc2/out/tools/s21/runq.sh`
+  and `lib.sh`, set `Q`/`S`/`N` to the new scratchpad; jobs of session 22 in `tc2/out/tools/s22/`). No subagents.
 
 ## Session 21 (16 Oct 2026, 19:12-22:05 IST) - context handoff; the job queue is still running
 - **Running**: `tc2/out/tools/s21/runq.sh` (background task `ba1sj2iw2`), queue `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/
