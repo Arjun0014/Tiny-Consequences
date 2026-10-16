@@ -1125,7 +1125,9 @@ namespace TC2.Game
                     Local(b.X, b.Y, face, (-Lm / 2.0 + 1.3) * ex, (-Wm / 2.0 - 1.6) * ex, out double hx, out double hy);
                     _muck.Add(0, Color.white, PlaceFaced(P, s, hx, hy, face + 0.6, ex * hs));
                     MuckHeaps++;
-                    if (mkg > MuckLargestKg) { MuckLargestKg = mkg; MuckLargestAt = s.LocalToSphere(hx, hy, P.Radius); }
+                    // (the "muck" views: the framed village's largest heap on its house's south side - the camera looks north, the roof hides the rest)
+                    int focus = CameraRig.FocusSid != 0 ? CameraRig.FocusSid : w.Settlements.First();
+                    if (s.Id == focus && hy < b.Y - 1.0 && mkg > MuckLargestKg) { MuckLargestKg = mkg; MuckLargestAt = s.LocalToSphere(hx, hy, P.Radius); }
                 }
             }
             // its share of the village's woodstore stacked by the wall (D2-081): none when the store is all but empty, a bigger pile the
