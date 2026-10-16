@@ -4,6 +4,18 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 22 (16 Oct 2026, from 22:19 IST; Control Room run #51 session 2; session 21's job queue kept running, one job at a time)** - (1) **C3.7d
+  merged** (9d68eaa, sim version 80) and **D2-155** written (a512839): twenty seeds `_u7` against `_c6` - births and deaths a person-year at par,
+  pig-years x0.98 (t -0.2), cattle-years x1.64, pigs gone by year 300 in 2 of 19 worlds (the control 1); sickness from animals x1.7 with the herds
+  (D2-070's spillover by beasts kept: 61 new sicknesses against 36, sickness deaths 10,338 against 4,505); a placebo (`_u4` against `_u7`, the same
+  rules apart by the first lived day) shows end-of-run pig counts are chance (x0.46). Found on the way: a 300-year run lives its first day before it
+  goes COARSE, so a rule of lived walks alone still sends the whole history another way. (2) **D2-156 nobody walks through the water** (branch
+  `wip/dry-ways`, worktree `C:/Game Dev/tc-dry`, 4a5ecdc + merge 2f02a7b; sim version 81): a lived walk bends once round a lake or a bay across its
+  way (`Core/Places/Afoot.cs`, `Person.BendX/BendY/TBend`), every lived spot out of the water, crofts' beds not laid into it, the woods by the way
+  their cutters walk; `--wetways` = `_u7` byte-identical (seed 4); AfootTests 5/5 (88 walks bent, none left in the water - the old rule 79 of 180
+  walking looks in it; 40 of 840 crofts had a bed in the water, now 0; woods across a bay at the 784 m way round, was 614 m straight) and 66
+  neighbour tests pass. Evaluation in the queue (seed 4 saves, `wet` before/after, ten seeds `_x1`). (3) Tools: `polity --load SAVE` (the ties a
+  polity could be made of: mothers and daughters, kin between villages, first households' kin, relief owed, harms) for the governance slice.
 - **Session 21 (16 Oct 2026, 19:12-22:05 IST; Control Room run #51 session 1; one low-priority job queue, `tc2/out/tools/s21/runq.sh`)** - (1) **C3.7d's
   pigs traced** (branch `wip/c37d-stubble`, still NOT merged): tools-only herd diagnostics (`--places`: births and ends by village, kind and cause, by
   the village's day of the year, hard times told apart, herds by household; `--stocktally`); where pigs vanished the land was plentiful and the sows fed
