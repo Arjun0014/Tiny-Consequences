@@ -15,16 +15,27 @@ long/Web/visual checks -> a real-game visual truth audit (people, houses and roa
 picture?". No simulation theatre: presentation elaborates a real activity, never invents one.
 
 ## Read first (this order), then work autonomously
-1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the standing prompt (architecture, rules, every direction; "Where we are (session 19)").
-2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 19"**: exact state, what was running at the handoff, "Next, in order".
-3. `docs/tc2/DECISIONS.md` newest: **D2-152** (the first household's standard), **D2-151** (the burial ground), **D2-150** (stumps: the woods'
-   felling record), **D2-149** (the threshing floor), **D2-148** (W-FOREST pass 2b: the rain belt, the seasonal tropics, conifers tinted).
-4. `docs/tc2/27_VISUAL_TRUTH.md` §6 (the systems in the picture, updated), `docs/tc2/26_CRAFTS_AND_EXCHANGE.md` §2i (the threshing floor),
-   `docs/tc2/18_WORLD_READABILITY.md` §8 (W-FOREST pass 2b - still OPEN for Arjun's judgement).
-5. `docs/tc2/PROGRESS.md` CURRENT STATE (the session 19 entry first).
-6. `git status` (the modified `.claude/launch.json` and untracked `unity/TinyConsequences2/Assets/Resources.meta` are not ours - leave them;
-   worktrees `C:/Game Dev/tc-g2`, `tc-g4`, `tc-wild` are earlier sessions' - leave them; `C:/Game Dev/tc-thresh` (merged) and `C:/Game Dev/tc-muck`
-   (branch `wip/c37c-muck`, C3.7c in progress) are session 19's), `git log --oneline -6` (HEAD 908ab98).
+1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the standing prompt (architecture, rules, every direction; "Where we are (session 20)").
+2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 20"**: exact state, "Next, in order", how the job queue works.
+3. `docs/tc2/SESSION_20_REPORT.md` - what was done, verified and left.
+4. `docs/tc2/DECISIONS.md` newest: **D2-154** (the burial ground kept, graves drawn as graves), **D2-153** (the muck), D2-149 (threshing, session 20
+   paragraph), D2-150 (stumps, session 20 paragraph); the draft **D2-155** (the stubble) is `tc2/out/tools/s20/d2155.md` (not yet a decision).
+5. `docs/tc2/26_CRAFTS_AND_EXCHANGE.md` §2j (the muck) and, on the branch, §2k (the stubble); `docs/tc2/27_VISUAL_TRUTH.md` §6.
+6. `docs/tc2/PROGRESS.md` CURRENT STATE (the session 20 entry first).
+7. `git status`, `git log --oneline -8`, `git worktree list` (the stubble work is branch `wip/c37d-stubble` in `C:/Game Dev/tc-stubble`; the
+   modified `.claude/launch.json` and untracked `Assets/Resources.meta` are not ours - leave them).
+
+## Session 20 (13 Oct 2026, 17:25-~21:00 IST) - stopped by Arjun; nothing running
+- Done and verified on main: **D2-154** the village builds round its burial ground (`--oldgraves` = `_m1`) and graves drawn as graves; stumps on
+  felled-bare ground; the threshing floor drawn in use; shot views `floorbusy`, `act:<Activity>`; **C3.7c the muck merged** (sim version 79; ten
+  seeds `_n1` at par).
+- **On branch `wip/c37d-stubble`, NOT merged**: C3.7d the herds on the stubble and the fallow, each household's own field cell (`FieldSpots`), a food's
+  cull by what the spares eat; controls byte-identical; ten seeds: people at par, fields x1.017, cattle x1.84 - **but pigs die out in 3 of 10 worlds**.
+- **Next**: (1) find why the pigs die out where cattle grow (end causes and `stock` lines with `--places`, seeds 5/7/11 `_u2` vs `_n1`), fix with its
+  own switch, ten seeds, merge, shots of the herds on the stubble; (2) the full suite on the final HEAD and the Web build and test (saves v79/v80:
+  new worlds); (3) shoot 107c100's woodlot framing (it compiles: `unity.mjs cc` on 4dd9b94) and the yards' muck heaps; (4) the next civilisation slice.
+- **Resource rule (Arjun D-1/D-2)**: one low-priority job at a time while RAM < 86 % and CPU < 85 % - use the queue in `tc2/out/tools/s20/`
+  (`runq.sh`, `lib.sh`; set `N`/`S` to the new scratchpad). No subagents.
 
 ## Session 19 (13 Oct 2026, 14:53-~17:10 IST) - context handoff; queues still running
 - Done and verified: the full suite on 86b481d 372/372 (**stale for HEAD**: run it once on the final HEAD); **D2-148** W-FOREST pass 2b (b312f01);

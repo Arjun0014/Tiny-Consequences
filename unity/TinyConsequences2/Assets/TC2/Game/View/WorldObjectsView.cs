@@ -25,6 +25,8 @@ namespace TC2.Game
         Instancer _muck;                 // (the yards' muck heaps: C3.7c)
         readonly Dictionary<int, float> _muckShare = new Dictionary<int, float>();   // (each household's share of its village's muck, by the grass its beasts eat)
         Instancer _people, _granaries, _wells, _ricks, _flames, _huts, _tents, _ruins, _beached, _afloat, _walls, _woodpiles;
+        Instancer _floors;   // (a threshing floor in use: the sheaves laid out while people thresh there - C3.7b)
+        readonly HashSet<int> _floorsUsed = new HashSet<int>();
         Instancer _beachedP, _afloatP;   // plank boats on the beach and out on the water (C9.2b); _beached/_afloat are the dugouts
         // the boats out this frame (C9.2): a boat's hull is drawn once, its crew seated in it
         readonly System.Collections.Generic.Dictionary<int, int> _hulls = new System.Collections.Generic.Dictionary<int, int>();
@@ -142,6 +144,7 @@ namespace TC2.Game
             _parked = new Instancer(Models.Get("handcart", ProcMeshes.Granary), _mat, true);
             _parkedOx = new Instancer(Models.Get("ox_cart", ProcMeshes.Granary), _mat, true);
             _ricks = new Instancer(Models.Get("rick", ProcMeshes.Granary), _mat, true);   // (the stackyard's ricks: C3.7b)
+            _floors = new Instancer(ProcMeshes.ThreshingFloor(), _mat, false);
             _graves = new Instancer(Models.Get("grave", ProcMeshes.Granary), _mat, false);
             _standards = new Instancer(Models.Get("standard", ProcMeshes.Granary), _mat, true);
             _muck = new Instancer(Models.Get("muck_heap", ProcMeshes.Granary), _mat, false);
@@ -286,7 +289,7 @@ namespace TC2.Game
             }
             if ((Off & 1) == 0) for (int i = 0; i < _trees.Length; i++) _trees[i].Draw(cam);
             _flames.Draw(cam);
-            if ((Off & 2) == 0) { _people.Draw(cam); _afloat.Draw(cam); _afloatP.Draw(cam); }
+            if ((Off & 2) == 0) { _people.Draw(cam); _afloat.Draw(cam); _afloatP.Draw(cam); _floors.Draw(cam); }
             if ((Off & 4) == 0) { _beached.Draw(cam); _beachedP.Draw(cam); }
             EmitSmoke(w);
             EmitLights();
@@ -1427,6 +1430,7 @@ namespace TC2.Game
         {
             var P = w.Planet;
             _people.Clear(); _afloat.Clear(); _afloatP.Clear(); _hulls.Clear(); _handcarts.Clear(); _oxcarts.Clear(); _cartLoads.Clear(); _oxen.Clear();
+            _floors.Clear(); _floorsUsed.Clear();
             PeopleDrawn = 0; PeopleBusy = 0; BoatsAfloat = 0;
             float waterR = (float)(P.Radius + Ground.WaterHeight(P, P.SeaLevel));
             double t = Host.RenderTime;
@@ -1504,6 +1508,12 @@ namespace TC2.Game
                 _people.Add(head ? 50 + (moving ? 100 : 0) : dye + (moving ? 100 : 0), head ? PolityColour(w, p.Home) : Dyes[dye], Matrix4x4.TRS(pos, PlanetGeo.Upright(pos, yaw), Vector3.one * sc), 0f, pose);
                 PeopleDrawn++;
                 if (Presence.Busy(pose) || moving) PeopleBusy++;
+                if (pose == Presence.Flail && p.At != 0 && w.Settlements.Exists(p.At) && _floorsUsed.Add(p.At))
+                {
+                    // the floor they thresh on: its sheaves laid out between them (C3.7b - drawn while someone threshes there, never ahead of it)
+                    TC2.Core.Places.Threshing.Floor(w, p.At, out double flx, out double fly);
+                    _floors.Add(0, Color.white, PlaceFaced(P, w.Settlements.Get(p.At), flx, fly, 0.0, 1f));
+                }
                 byte cart = WithCart(w, in p);
                 if (cart != Carts.None) DrawCart(in p, pos, yaw, sc, moving && (pose == Presence.Walk || pose == Presence.Carry), cart);
             }

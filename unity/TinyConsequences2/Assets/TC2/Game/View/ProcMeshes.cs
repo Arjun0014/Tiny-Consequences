@@ -629,6 +629,31 @@ namespace TC2.Game
             return b.Build("tc2-woodpile");
         }
 
+        /// <summary>
+        /// A threshing floor in use (C3.7b): the sheaves spread on the beaten floor inside the threshers' ring (1.6 m), loose straw over it, a few
+        /// sheaves still bound lying ears inward, and the threshed grain swept into a small heap in the middle - drawn only while people thresh there.
+        /// </summary>
+        public static Mesh ThreshingFloor()
+        {
+            var b = new Builder();
+            Color straw = Lin(0.80f, 0.68f, 0.40f), loose = Lin(0.86f, 0.76f, 0.47f), ears = Lin(0.70f, 0.56f, 0.28f), grain = Lin(0.62f, 0.48f, 0.26f), band = Lin(0.45f, 0.36f, 0.20f);
+            straw.a = 0f; loose.a = 0f; ears.a = 0f; grain.a = 0f; band.a = 0f;
+            b.Prism(0f, 0.05f, 1.35f, 11, straw);
+            b.Prism(0.05f, 0.08f, 0.95f, 9, loose);
+            for (int k = 0; k < 6; k++)
+            {
+                float a = k * 1.047f + 0.3f * (k & 1), c = Mathf.Cos(a), s = Mathf.Sin(a);
+                var foot = new Vector3(c * 1.25f, 0.12f, s * 1.25f);
+                var head = new Vector3(c * 0.45f, 0.13f, s * 0.45f);
+                b.Stick(foot, head, 0.11f, 0.14f, 6, straw);                       // (a sheaf, its ears inward)
+                b.Stick(head, head + (head - foot).normalized * 0.22f, 0.15f, 0.10f, 6, ears);
+                var mid = Vector3.Lerp(foot, head, 0.45f);
+                b.Stick(mid - (head - foot).normalized * 0.03f, mid + (head - foot).normalized * 0.03f, 0.125f, 0.125f, 6, band);   // (its band)
+            }
+            b.Cone(0.08f, 0.30f, 0.32f, 8, grain);   // (the threshed grain swept up)
+            return b.Build("tc2-threshing-floor");
+        }
+
         /// <summary>A person 1.7 m tall: body and head (colour comes from the draw).</summary>
         public static Mesh Person()
         {

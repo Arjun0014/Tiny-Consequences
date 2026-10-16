@@ -4343,7 +4343,16 @@ years (0.042 h a FU) - 60 % in the growing stage's slack, 25 % after the harvest
 of the stores' grain stands in the sheaf (31 of 31 villages). Ten seeds, 300 years DEEP (`_m1`, sim version 78 - the burials and the felling
 record change no history - against pass 2b's `_r1`): at par - people over years 200-299 x1.000, births and deaths a person-year x0.995 and x1.000,
 hunger a person-year x1.03 (t 0.45), famines x0.96 (t -0.7), relief x0.87 (t -1.6); fish caught x0.94 (t -3.1: the floor's ~0.1 h an adult-day comes
-out of the free hours the shore took - to confirm with `timeuse`); 0.042 h a FU in every seed. Real shots: pending (q20).
+out of the free hours the shore took - to confirm with `timeuse`); 0.042 h a FU in every seed. 
+**Session 20.** The fish's x0.94 follows the villages, not the hours: fish a person-year x0.95 (t -1.5) - the threshing worlds ended with fewer
+fishing villages (8 of 10 seeds fewer places at year 300; foundings never more than without the floor in session 19's seeds: 26->23, 12->9, 20->16,
+17->14, 13->11). Fresh pairs on one binary (`_m1` with the floor against `_m0` `--nothresh`, seeds 9, 10, 12): foundings 15/15, 11/11, 26/27 - no
+deficit; the rest of the pairs (13-19) are queued scripts (`tc2/out/tools/s20/q_todo`). Real shots: the town's stackyard reads (Gaby: three
+thatched ricks on staddles before its barn, `s19f20`); at the first village on day 20 the stackyard stood empty and its 1,666 FU all threshed - the
+crop still growing (true). Threshers are few at any moment (one in the world at day 41 10 h; six at Drikkawick at day 24 15 h - `floorbusy`,
+`act:Thresh`): they stand in a ring in the flail pose, and since session 20 **the floor in use is drawn** - the sheaves laid out between them, the
+grain swept up in the middle (`ProcMeshes.ThreshingFloor`, only while someone threshes there). No flail is drawn in the hand (no held tools are
+drawn anywhere).
 
 ## D2-150 — 2026-10-13 — The woods remember their felling: stumps where the felled trees stood (W-FELL)
 
@@ -4359,6 +4368,13 @@ standing (mean share, most)`; the shot views `woodlot`, `woodlotlow`.
 **Evidence.** FellingTests 3/3 (felling leaves stumps of the share felled, never more than the open ground; the woods grow back over them and they
 rot - a woodlot left alone 20 years: cover 0.32 -> 0.44, stumps 0.14 -> 0; saves keep them). It changes no history: `--nothresh` seed 4 = `_g4`
 byte-identical in the worktree's binary, which held the record. Seed 4 at year 300: 53 cells with stumps standing (mean felled share 0.17, most 0.60).
+**Session 20 (the real shots).** The first `woodlot` shots (`s19e20`) showed a heath with heather and four or five stumps where the log said the lot
+cell was half felled (cover 0.29, felled 0.50). Three faults, two of the view and one of the shot: (1) `TerrainLod.PlaceForest` returned early from
+a patch, and skipped a square, where no wood stood now - ground felled bare drew no stumps at all (the felled share now keeps them); (2) a pooled
+patch's sea vertices kept their last land's felled share (reset per vertex: stumps would have stood in the water once (1) was fixed); (3) the view
+aimed at the village's first wood point and then at the lot cell's centre - a glade of the stands' noise, where no tree stood even before the
+felling: the shots' new count (`[TC2] trees on the drawn patches N, stumps M`) gave 242 stumps among ~700 trees on the drawn patches, at the
+frame's edges. The woodlot views now frame the lot cell where its woods stand thickest (the lowest stand rank on a 30 m grid of the cell).
 
 ## D2-151 — 2026-10-13 — The burial ground: graves from the village's dead (`27` §6 - famine and sickness made visible)
 
@@ -4387,4 +4403,57 @@ paid which lord - the beginnings of the kingdoms the standing direction asks for
 colour** - a heraldic dye chosen by the polity's head village (`WorldObjectsView.PolityColour`, ten dyes): a tributary flies its lord's, so a
 lordship reads from above as villages under one colour; taller for a lord by the villages it holds (x1.18 each, up to six). The headman is drawn
 dressed in the same colour. The shot views `standard`, `standardlow` log the head household, the lord and the polity's head.
-**Evidence.** The Unity C# compiles (`unity.mjs cc`); real shots below.
+**Evidence.** The Unity C# compiles (`unity.mjs cc`); real shots (session 20, `tc2/out/shots/s19e20`, `s19f20`): **the standard reads** - a teal swallow-tailed cloth on its pole by the first household's door, the headman sitting by it in the same colour (`standardlow`); in the town (Gaby) it stands behind its house, half hidden by the roof - drawn truly, framed poorly.
+
+## D2-153 — 2026-10-13 — The muck: the herds' night dung piles in the yards and reaches the fields only when carted out (C3.7c)
+
+**Context.** `26` §2h/§2j: the soil (C3.6f, D2-139) was given back the dung of all the grass the herds ate on the waste - whole and free, though
+the beasts graze the waste by day and are penned in the yards at night, and nobody carried anything to the fields. The record's link between the
+herds, the hands and the corn was missing: the yards' muck was carted out and spread in the slack after the harvest and before the ploughing.
+**Decision.** `Core/Places/Muck.cs` (sim version 79): `Settlement.Muck` (kg in the yards' heaps) and `Settlement.Spread` (kg spread since the
+harvest). The herds' day (`Livestock.Day`) piles the night's share of their dung in the yards with the bedding trodden in (`PerDm` 3 kg a kg of
+grass eaten x `NightShare` 0.5; all of the day's on a hard-frost day, penned); uncarted it leaches at `Leach` 0.3 a year (e-folding); it is carted
+from the harvest's end through the sowing (`Muck.Window`, the village's own calendar) at 0.9 h a tonne with an ox cart, 1.6 with a handcart, 5 by
+the back (the household's own cart), at the carter's strength - lived days a village work's urge for the grown (0.30 + 0.25 x the heaps a field
+hectare / 3 t; stints of 1.5-2.5 h on the fields), COARSE days and DEEP steps up to half the free hours after the fields' work. At the harvest
+the soil's year reads the grass the spread muck stands for (`Muck.GrassOf` = spread / (PerDm x NightShare)) in place of the grass grazed: all the
+yards' muck carted gives what the dung gave before (D2-139's calibration kept); none carted gives nothing; the frost's penned days give the cold
+villages more (the north's winter housing - the record's main source of manure). The view: a muck heap behind a back corner of each house whose
+beasts made it (its share by the grass they eat), growing through the year and carted down after the harvest; carters forking and spreading in
+the fields (`Presence`: hoe and fetch); the sown plots darker by the muck spread a hectare (`TerrainLod.CropColour`). Tools: `--nomuck`, `--mucktally`,
+metrics `MuckHours`, `MuckKg`.
+**Evidence.** MuckTests 3/3 (a test world: the yards' heaps 1.1 t in six days while the crop stood, none carted; after the harvest 1.7 t carted in
+six days in 9 h - 5.0 h a tonne, the back's pace: that village has no cart; only the spread muck gives back and all of it as the dung did before;
+uncarted muck leaches a quarter a year; saves keep it). Two tests repaired on the way: the muck test assumed the crop still growing six days
+after a world opened on the growing stage's last week; the water test's five children were all with the herds in world 423 - three worlds counted
+(children 0/3/2). Neighbours: Tilth 9, Livestock 14, Coarse 3, Determinism 6, SaveLoad 8, Threshing 5, Carts 6, HouseholdWork 4. Control:
+`--nomuck` seed 4 = `_m1` (annals byte-identical); merged with D2-154, `--nomuck --oldgraves` seed 4 = `_m1` (byte-identical). Seed 4 (`_k0`):
+69,691 t made over 300 years, 64,606 t carted in 193,771 h, 4,953 t leached. **Ten seeds** (`_n1`, with D2-154, against `_m1`): **at par** - people
+over years 200-299 x1.004 (t 0.13), births and deaths a person-year x0.996 / x0.988, hunger a person-year x0.97, famines x0.97; 477 kt of muck made, 92.5 %
+carted out and 7.4 % leached, 3.2 h a tonne (carts and backs), the carting's hours 18 % of the threshing floor's. Real shots (`s20l42`, `act:Muck`
+at day 42, after the harvest): carters with their handcarts all over the stubble - **126 of them within 60 m of one spot**: every carter of a village
+went to its one field spot (as every field hand did): each household's own part of the fields since D2-155 (`FieldSpots`).
+
+## D2-154 — 2026-10-13 — The village builds round its burial ground; graves drawn as graves (`27` §6, D2-151's real shots)
+
+**Context.** The first real shots of D2-151 (`tc2/out/shots/s19e20`, `s19f20`) read wrong twice. (1) In the town (Gaby, seed 4 `_m1`, year 300)
+houses stood on the burial ground laid out beyond the homes at the first burial, and few of its graves showed (the view hides a slot under a
+building): homes, works and crofts were laid out with no regard for the graves. Measured over the whole world (seed 4 `--oldgraves`, year 300):
+**25 of 29 burial grounds built over, 1,145 of their 3,480 slots covered**. In the record the dead were left in peace - towns grew round their
+churchyards. (2) In the village (Tovaldton) the ground lay across the fields' plough plots and its mounds, long along the rows' 1.4 m spacing, read
+as a garden's rows of greens: the kit's length lay along the village's y axis at face 0.
+**Decision.** (1) **Sim** (a history change; `--oldgraves` the control): once a village has laid out its ground (`Burials.Laid`), no home's lot
+(`Footprints.HomeFits`), no work (`WorkFits`) and no croft's bed (`Gardens.Free`) may stand on it or within `Burials.Margin` 1.5 m of it
+(`Burials.Meets`/`MeetsDisc`: the ground's rectangle, `HalfX` 11.5 m along its rows by `HalfY` 8.4 m); the ground is laid where no camp's lot lies
+either. Nothing standing is moved. (2) **View**: the graves lie side by side along their rows, the long way across them (face pi/2), each a little
+off the line and the square (a slot's own hash: +-0.25 m, +-0.15 m, +-6 degrees); a grassed grave dull olive (a saturated green read as a lily
+pad); the old graves' kit `grave_old` carries an upright headstone (0.74 m) where a pebble was; the ground is drawn as unploughed sward - no plots,
+no wood, no village earth over it (`TerrainLod`: `Sward`; the plots' weight cut where the ground lies). (3) Tools: the run's `burials:` line
+counts the grounds built over and the slots covered by cause (a street, the square's earth, a building - the view's own rule).
+**Evidence.** BurialsTests 4/4 (new: the ground moved onto the lot the next household would take - (40.9, 14.9) - that lot refused for a home
+and for a work, the next household given (-41.6, 17.2) clear of the ground; `--oldgraves` gives it the old lot). Neighbours: Footprints 8, Homes
+5, Streets 3, Structures 6, Garden 5, Determinism 6, SaveLoad 8; no float arithmetic. Control: `--oldgraves` seed 4 = `_m1` (annals
+byte-identical). Seed 4 with the ground kept (`_n0`, year 300): **13 grounds with slots covered, 498 slots** (from 25 and 1,145) - the rest by
+streets worn across the ground (ten seeds `_n1`: 2,159 of 22,200 slots covered - a street 2,126, the square's earth 12, a building 4). Real shots (`s20a20`, `s20g20`, `s20h20`): the village's
+graves in rows across, headstones up, the plough's furrows gone from under them; the largest town of the kept-ground world (Veidasford) with its
+ground open beside its market place, a worn path across it. Ten seeds with C3.7c (`_n1` against `_m1`): at par (D2-153).
