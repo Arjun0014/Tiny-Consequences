@@ -430,7 +430,7 @@ namespace TC2.Game
         /// may be drawn before it meets a neighbour (`Footprints.Room`), and where its yard has free ground - a kitchen garden behind or beside, a
         /// pen behind, a woodpile at its end or its back - so no garden, pen or woodpile is drawn into another house, a street or the green.
         /// </summary>
-        sealed class Plot { public float Room; public bool Back, Pen, SideL, SideR, WoodEnd, WoodBack, CartEnd, OxEnd, MuckBack; public System.Collections.Generic.List<(double cx, double cz, double hx, double hz)> Beds; }
+        sealed class Plot { public float Room; public bool Back, Pen, SideL, SideR, WoodEnd, WoodBack, CartEnd, OxEnd, MuckBack, MuckBack2; public System.Collections.Generic.List<(double cx, double cz, double hx, double hz)> Beds; }
         readonly Dictionary<int, Plot> _plots = new Dictionary<int, Plot>();
         readonly Dictionary<int, long> _plotSig = new Dictionary<int, long>();
         readonly Dictionary<int, float> _plotAt = new Dictionary<int, float>();
@@ -473,6 +473,7 @@ namespace TC2.Game
             pl.WoodEnd = Footprints.YardFree(w, sid, bid, L / 2.0 + 1.6, 0.0, 1.0, 1.3);
             pl.WoodBack = Footprints.YardFree(w, sid, bid, L / 2.0 - 1.2, -W / 2.0 - 1.4, 1.3, 1.0);
             pl.MuckBack = Footprints.YardFree(w, sid, bid, -L / 2.0 + 1.3, -W / 2.0 - 1.6, 1.4, 1.3);   // (the muck heap behind the other back corner: C3.7c)
+            pl.MuckBack2 = Footprints.YardFree(w, sid, bid, L / 2.0 - 1.3, -W / 2.0 - 1.6, 1.4, 1.3);   // (or behind the woodpile's, where it stands at the end)
             pl.CartEnd = Footprints.YardFree(w, sid, bid, -(L / 2.0 + 1.9), -0.3, 1.0, 1.7);   // (a handcart by the other end wall, its shafts along it: C4.2)
             pl.OxEnd = Footprints.YardFree(w, sid, bid, -(L / 2.0 + 2.1), -0.8, 1.2, 2.8);     // (an ox cart and its pole)
             if (pl.Beds == null) pl.Beds = new System.Collections.Generic.List<(double, double, double, double)>();
@@ -481,6 +482,13 @@ namespace TC2.Game
         }
 
         Plot PlotOf(int bid) => _plots.TryGetValue(bid, out var p) ? p : null;
+
+        /// <summary>How far a point lies from a croft bed's rectangle (0 inside it), in the house's frame.</summary>
+        static double RectGap((double cx, double cz, double hx, double hz) r, double x, double z)
+        {
+            double dx = System.Math.Max(0.0, System.Math.Abs(x - r.cx) - r.hx), dz = System.Math.Max(0.0, System.Math.Abs(z - r.cz) - r.hz);
+            return System.Math.Sqrt(dx * dx + dz * dz);
+        }
 
         void RebuildPlaces(TC2.Core.Simulation.World w)
         {
@@ -1115,24 +1123,41 @@ namespace TC2.Game
             }
             // its muck heap (C3.7c, D2-153): behind its other back corner, its share of the village's yards' muck by the grass its beasts eat - growing
             // through the year, carted out to the fields after the harvest and through the sowing
-            // (session 21: where its yard pen is drawn the heap is piled in the pen's front corner, clear of its fences - behind the back corner the
-            // pen's side fence ran through a big heap)
-            bool inPen = lived && plot != null && plot.Pen && HasBeasts(w, b.Household);
-            if (plot != null && (plot.MuckBack || inPen) && s.Muck > 0 && _muckShare.TryGetValue(b.Household, out float mshare) && mshare > 0f)
+            // its muck heap (C3.7c, D2-153): its share of the village's yards' muck by the grass its beasts eat - growing through the year, carted out to
+            // the fields after the harvest and through the sowing; behind a back corner, else behind the other (where the woodpile is not), else in its
+            // yard pen's front corner - each on free ground, clear of its croft's beds and their wattle, no bigger than the room it has there (session 21:
+            // the croft's fence ran through big heaps)
+            if (plot != null && s.Muck > 0 && _muckShare.TryGetValue(b.Household, out float mshare) && mshare > 0f)
             {
                 double mkg = s.Muck * mshare;
                 if (mkg > 150.0)
                 {
-                    float hs = Mathf.Clamp(Mathf.Pow((float)(mkg / 1500.0), 1f / 3f), 0.45f, inPen ? 1.0f : 1.3f);   // (within its corner's or its pen corner's free ground)
                     double Lm = hut ? 4.6 : PlanL[plan], Wm = hut ? 4.6 : PlanW[plan];
                     int acrossM = plan == Architecture.Hall ? 4 : 3;
-                    double lx = inPen ? -acrossM * 2.1 / 2.0 + 1.35 : -Lm / 2.0 + 1.3, lz = inPen ? -Wm / 2.0 - 3.2 - 1.35 : -Wm / 2.0 - 1.6;
-                    Local(b.X, b.Y, face, lx * ex, lz * ex, out double hx, out double hy);
-                    _muck.Add(0, Color.white, PlaceFaced(P, s, hx, hy, face + 0.6, ex * hs));
-                    MuckHeaps++;
-                    // (the "muck" views: the framed village's largest heap on its house's south side - the camera looks north, the roof hides the rest)
-                    int focus = CameraRig.FocusSid != 0 ? CameraRig.FocusSid : w.Settlements.First();
-                    if (s.Id == focus && hy < b.Y - 1.0 && mkg > MuckLargestKg) { MuckLargestKg = mkg; MuckLargestAt = s.LocalToSphere(hx, hy, P.Radius); }
+                    bool inPen = lived && plot.Pen && HasBeasts(w, b.Household);
+                    float want = Mathf.Clamp(Mathf.Pow((float)(mkg / 1500.0), 1f / 3f), 0.45f, 1.3f);
+                    double lx = 0, lz = 0; float hs = 0f;
+                    for (int cand = 0; cand < 3 && hs <= 0f; cand++)
+                    {
+                        double cx = cand == 0 ? -Lm / 2.0 + 1.3 : cand == 1 ? Lm / 2.0 - 1.3 : -acrossM * 2.1 / 2.0 + 1.35;
+                        double cz = cand == 2 ? -Wm / 2.0 - 3.2 - 1.35 : -Wm / 2.0 - 1.6;
+                        bool free = cand == 0 ? plot.MuckBack : cand == 1 ? plot.MuckBack2 && (plot.WoodEnd || !plot.WoodBack) : inPen;
+                        if (!free) continue;
+                        double room = cand == 2 ? 1.2 : 1.6;   // (the pen's corner inside its fences; the corner's free ground)
+                        if (plot.Beds != null) for (int k = 0; k < plot.Beds.Count; k++) room = System.Math.Min(room, RectGap(plot.Beds[k], cx, cz) - 0.3);   // (and the wattle)
+                        float fit = (float)(room / 1.17);   // (the kit's heap spreads ~1.17 m from its middle)
+                        if (fit < 0.45f) continue;
+                        hs = Mathf.Min(want, fit); lx = cx; lz = cz;
+                    }
+                    if (hs > 0f)
+                    {
+                        Local(b.X, b.Y, face, lx * ex, lz * ex, out double hx, out double hy);
+                        _muck.Add(0, Color.white, PlaceFaced(P, s, hx, hy, face + 0.6, ex * hs));
+                        MuckHeaps++;
+                        // (the "muck" views: the framed village's largest heap on its house's south side - the camera looks north, the roof hides the rest)
+                        int focus = CameraRig.FocusSid != 0 ? CameraRig.FocusSid : w.Settlements.First();
+                        if (s.Id == focus && hy < b.Y - 1.0 && mkg > MuckLargestKg) { MuckLargestKg = mkg; MuckLargestAt = s.LocalToSphere(hx, hy, P.Radius); }
+                    }
                 }
             }
             // its share of the village's woodstore stacked by the wall (D2-081): none when the store is all but empty, a bigger pile the
