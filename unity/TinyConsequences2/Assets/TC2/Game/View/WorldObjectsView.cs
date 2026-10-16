@@ -1115,14 +1115,19 @@ namespace TC2.Game
             }
             // its muck heap (C3.7c, D2-153): behind its other back corner, its share of the village's yards' muck by the grass its beasts eat - growing
             // through the year, carted out to the fields after the harvest and through the sowing
-            if (plot != null && plot.MuckBack && s.Muck > 0 && _muckShare.TryGetValue(b.Household, out float mshare) && mshare > 0f)
+            // (session 21: where its yard pen is drawn the heap is piled in the pen's front corner, clear of its fences - behind the back corner the
+            // pen's side fence ran through a big heap)
+            bool inPen = lived && plot != null && plot.Pen && HasBeasts(w, b.Household);
+            if (plot != null && (plot.MuckBack || inPen) && s.Muck > 0 && _muckShare.TryGetValue(b.Household, out float mshare) && mshare > 0f)
             {
                 double mkg = s.Muck * mshare;
                 if (mkg > 150.0)
                 {
-                    float hs = Mathf.Clamp(Mathf.Pow((float)(mkg / 1500.0), 1f / 3f), 0.45f, 1.3f);   // (within its corner's free ground)
+                    float hs = Mathf.Clamp(Mathf.Pow((float)(mkg / 1500.0), 1f / 3f), 0.45f, inPen ? 1.0f : 1.3f);   // (within its corner's or its pen corner's free ground)
                     double Lm = hut ? 4.6 : PlanL[plan], Wm = hut ? 4.6 : PlanW[plan];
-                    Local(b.X, b.Y, face, (-Lm / 2.0 + 1.3) * ex, (-Wm / 2.0 - 1.6) * ex, out double hx, out double hy);
+                    int acrossM = plan == Architecture.Hall ? 4 : 3;
+                    double lx = inPen ? -acrossM * 2.1 / 2.0 + 1.35 : -Lm / 2.0 + 1.3, lz = inPen ? -Wm / 2.0 - 3.2 - 1.35 : -Wm / 2.0 - 1.6;
+                    Local(b.X, b.Y, face, lx * ex, lz * ex, out double hx, out double hy);
                     _muck.Add(0, Color.white, PlaceFaced(P, s, hx, hy, face + 0.6, ex * hs));
                     MuckHeaps++;
                     // (the "muck" views: the framed village's largest heap on its house's south side - the camera looks north, the roof hides the rest)
