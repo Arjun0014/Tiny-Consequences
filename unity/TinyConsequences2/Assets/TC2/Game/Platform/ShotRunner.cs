@@ -175,7 +175,7 @@ namespace TC2.Game
             Debug.Log("[TC2] shots at " + SimTime.Format(w.Now) + " seed " + seed);
             if (sid != 0 && w.Settlements.Exists(sid))
             {
-                ref var fs = ref w.Settlements.Get(sid);   // (the framed village's own season: what its fields and herds should show)
+                var fs = w.Settlements.Get(sid);   // (the framed village's own season: what its fields and herds should show; a copy - this is a coroutine)
                 Debug.Log("[TC2] framed village " + sid + ": day " + TC2.Core.Places.SettlementSystem.DayOfYear(in fs, w.Now) + " of its year, crop " + fs.Crop +
                           ", stubble " + (fs.Stubble / 1000.0).ToString("0.0", CultureInfo.InvariantCulture) + " t on " + fs.FieldHa.ToString("0", CultureInfo.InvariantCulture) + " ha, muck in the yards " +
                           (fs.Muck / 1000.0).ToString("0.0", CultureInfo.InvariantCulture) + " t, spread " + (fs.Spread / 1000.0).ToString("0.0", CultureInfo.InvariantCulture) + " t");
