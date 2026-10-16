@@ -99,7 +99,7 @@ ploughed (the fallow's summer ploughing).
 | Market (C1.6, C13.3) | cross, stalls, the widened market place | traders come and go | - |
 | Ways, streets, lanes (C4.1, C13) | ribbons by wear along the streets (s17), streets and lanes by frontage | travellers walk them, loads in arms, carts | - |
 | Carts (C4.2) | hand and ox carts with their people, parked in yards | yes | - |
-| Herds, tending (D2-050), the stubble and the fallow (C3.7d, D2-155) | animals graze the day's ground - from the harvest to the sowing the village's own stubble - yard pens (s17); muck heaps behind the yards by the beasts' share (C3.7c) | herders walk with the herd (s17); carters on each household's own part of the fields after the harvest (s20, `act:Muck`) | grazing on the fallow strips not drawn (the strips are the shader's) |
+| Herds, tending (D2-050), the stubble and the fallow (C3.7d, D2-155) | animals graze the day's ground - from the harvest to the sowing the village's own stubble - yard pens (s17); muck heaps behind the yards by the beasts' share (C3.7c); the reaped fields' straw dulled as the herds eat the stubble down (s21) | herders walk with the herd (s17); field hands and carters on each household's own part of the fields, one it walks to dry-shod (s20-s21, `act:Fields`, `act:Muck`) | grazing on the fallow strips not drawn (the strips are the shader's) |
 | Boats, fishing, voyages (C9) | boats on the beach, out with their crews | rowing (s17); shore fishers hold their lines (s17) | - |
 | Training (C1.5) | beaten ground by hours of practice | sparring (s17) | - |
 | Palisades (D2-074, C7.1) | posts by condition, gates where the ways cross (s17) | raised stretch by stretch | - |
@@ -145,3 +145,27 @@ in the batch editor with the shaders (`unity.mjs shots`; `TC2Pose` compiled in t
   along its outline), and the croft beside an end overlapped the croft behind (2 x 4 m a side counted twice, drawn twice, over the end yard where
   the woodpile and the cart stand). Before them, D2-144: southern crofts kept the north's calendar (dug at the reaping, gathered while the crop
   grew) - one `SettlementSystem.DayOfYear` for every use of a village's calendar.
+
+## 9. Real shots (session 21, C3.7d: `tc2/out/shots/s21a`-`s21j`, seed 4 `_u4`/`_u7` at year 300, by the framed village's own day of its year)
+
+- **The herds on the stubble read** (`herd`, `herdfar`, day 41 and 44): the village's cattle and goats graze a reaped field among the open field's
+  straw strips and green resting strips; from 260 m the herd is one patch on one field of the furlongs; `act:Tend` frames two herders standing
+  with theirs by the shore. The stubble is barely eaten in a shot's days (33.1 of 33.6 t left two days on; a town 48.3 of 50.4 t five days on),
+  so its dun "grazed" tone is faint - truthfully: the herds are small against 300 kg a reaped hectare.
+- **Each household on its own part of the fields reads better than the old crowd**: the reaping at day 31 - 1,242 field hands, the busiest
+  spot 13 within 60 m, reapers stooped in ones and twos across many strips; the carting after the harvest - the busiest spot 2-4 within 60 m
+  (session 20: 126), a town's two households with their handcarts on their own stubble.
+- **A carter stood in the sea** (`s21a` `act:Muck`): a household's field cell across a bay was walked to in a straight line through the water;
+  the `wet` audit found carters 96-224 m from dry ground. Fixed in `FieldSpots` (a cell its hands can walk to dry-shod from home): field work in
+  the water 2-4 person-hours of ~0.5 M (was 55-68). **Still open (older than C3.7d, D2-123's rule): 0.10-0.14 % of person-hours under the drawn
+  water in the control world, 0.22-0.28 % in the stubble world** - in a few villages by the water: woodcutters on a straight walk across water
+  to their woodlot, the hungry eating at a wild spot in the water, a well's drawing spot at a lake's edge the lake has risen over, people idle
+  at doors on the shore (`wet --doy D` lists them by village).
+- **A crowd on the fields** east of the first village at day 41 (`village`): measured with `crowds` - 111 of 386 people hunting for want of
+  food (`Hunt/FoodShort`), 42 within 60 m 1.3 km out; the control world has it too (184 hunting): the village has outgrown its land (389 people,
+  rations at 0.66, its granary down from 57,000 FU to 8,000). Real. Open: the hunters of a village crowd onto its best hunting cell.
+- **The woodlot framing (107c100) works**: the `woodlot` views look at the felled band beside the fields; the stumps are drawn (17-25 near the
+  camera) but read small among the ground cover's dark lumps.
+- **Muck heaps in the yards** (`muck`, `mucklow`: new views framing the framed village's largest heap on its house's south side - the camera
+  looks north and the roof hid the rest; the shot log counts the heaps drawn): 170 drawn round the first village at day 36, the largest 6.9 t,
+  153 round the town (8.2 t).
