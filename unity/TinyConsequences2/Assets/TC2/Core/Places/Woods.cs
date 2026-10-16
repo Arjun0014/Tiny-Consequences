@@ -62,6 +62,7 @@ namespace TC2.Core.Places
             ref var s = ref w.Settlements.Get(sid);
             w.Hazards.CellsWithin(w, s.Cell, Reach, _cells);
             int best = -1; double bv = double.MaxValue, bd = 0;
+            var ways = Afoot.Off ? null : Afoot.WoodsList();
             for (int i = 0; i < _cells.Count; i++)
             {
                 int c = _cells[i];
@@ -72,8 +73,11 @@ namespace TC2.Core.Places
                 double d = Vec3d.ArcDistance(s.Anchor, P.Grid.Center[c], P.Radius);
                 if (d > Reach) continue;
                 double v = (d + 200.0) / ((double)P.Forest[c] + 0.2);
+                if (ways != null) { ways.Add((v, c, d)); continue; }
                 if (v < bv) { bv = v; best = c; bd = d; }
             }
+            // (by the way its cutters walk: round a lake or a bay that lies across the straight line - they had walked through it: D2-156)
+            if (ways != null && ways.Count > 0) best = Afoot.BestWoods(w, in w.Settlements.Get(sid), ways, out bd);
             ref var s2 = ref w.Settlements.Get(sid);
             s2.WoodLot = best + 1;
             if (best < 0) { Receded(w, sid, 4, 0); return -1; }

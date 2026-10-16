@@ -41,6 +41,23 @@ namespace TC2.Core.Agents
         {
             if ((p.Step == StepKind.Local || p.Step == StepKind.Stay) && t < p.TA)
             {
+                if (p.TBend > p.T0 && p.TBend < p.TA)
+                {
+                    // round the water: to the bend, then on from it (D2-156)
+                    if (t < p.TBend)
+                    {
+                        double u0 = DMath.Clamp01((t - p.T0) / (double)(p.TBend - p.T0));
+                        x = p.FromX + ((double)p.BendX - p.FromX) * u0;
+                        y = p.FromY + ((double)p.BendY - p.FromY) * u0;
+                    }
+                    else
+                    {
+                        double u1 = DMath.Clamp01((t - p.TBend) / (double)(p.TA - p.TBend));
+                        x = p.BendX + ((double)p.ToX - p.BendX) * u1;
+                        y = p.BendY + ((double)p.ToY - p.BendY) * u1;
+                    }
+                    return;
+                }
                 double span = p.TA - p.T0;
                 double u = span > 0 ? DMath.Clamp01((t - p.T0) / span) : 1.0;
                 x = p.FromX + ((double)p.ToX - p.FromX) * u;
@@ -119,13 +136,36 @@ namespace TC2.Core.Agents
             long now = _w.Now;
             LocalAt(p, now, out double x, out double y);
             p.Act = act; p.Why = why; p.WhyArg = whyArg; p.ActVer++;
+            // (out of the water, D2-156: every lived spot on dry ground - a well's spot under a lake's edge, a herd's ground by a bay, a threshing floor
+            // a lake has come up to: the dry ground nearest it - and round a lake or a bay that lies across the straight way, by the shortest bend
+            // found on dry ground beside it; a boat's crew rows out over the water)
+            double bx = 0, by = 0, d1 = 0;
+            bool bent = false;
+            int sid = p.At != 0 ? p.At : p.Home;   // (the village whose frame they walk in: PositionAt's)
+            bool afoot = !Afoot.Off && act != ActivityKind.Sail && _w.Settlements.Exists(sid);
+            if (afoot) Boats.OutOfTheWater(_w, in _w.Settlements.Get(sid), ref tx, ref ty);
             double dx = tx - x, dy = ty - y;
             double d = DMath.Sqrt(dx * dx + dy * dy);
+            if (afoot && d > Afoot.Short && !Afoot.Dry(_w, in _w.Settlements.Get(sid), x, y, tx, ty))
+            {
+                bent = Afoot.Bend(_w, in _w.Settlements.Get(sid), x, y, tx, ty, out bx, out by);
+                if (bent)
+                {
+                    double ex = bx - x, ey = by - y, fx = tx - bx, fy = ty - by;
+                    d1 = DMath.Sqrt(ex * ex + ey * ey);
+                    d = d1 + DMath.Sqrt(fx * fx + fy * fy);
+                    _w.Metrics.BentWalks++;
+                }
+                else _w.Metrics.WetWalks++;
+                if (Afoot.Tally != null) Afoot.Tally[(bent ? 0 : 64) + Math.Min(63, (int)act)]++;
+            }
             long walk = d > 2.0 ? Math.Max(1L, DMath.ToLong(DMath.RoundHalfUp(d / (Speed(p, now) * pace)))) : 0;   // (pace: rowed out in a plank boat, C9.2b)
             p.Step = StepKind.Local;
             p.FromX = (float)x; p.FromY = (float)y; p.ToX = (float)tx; p.ToY = (float)ty;
             p.T0 = now; p.TA = now + walk; p.T1 = endAt > 0 ? Math.Max(p.TA + 60L, endAt) : p.TA + Math.Max(60L, stay);   // (endAt: done with others - a boat's crew back together)
             p.StayDur = 0;
+            if (bent && walk >= 2) { p.BendX = (float)bx; p.BendY = (float)by; p.TBend = now + Math.Max(1L, Math.Min(walk - 1, DMath.ToLong(DMath.RoundHalfUp(walk * d1 / d)))); }
+            else if (p.TBend != 0) { p.BendX = 0f; p.BendY = 0f; p.TBend = 0; }
             Schedule(in p);
             _w.Metrics.Activities++;
         }
@@ -251,6 +291,7 @@ namespace TC2.Core.Agents
                 case StepKind.Local:
                 case StepKind.Stay:
                     p.FromX = p.ToX; p.FromY = p.ToY;
+                    if (p.TBend != 0) { p.BendX = 0f; p.BendY = 0f; p.TBend = 0; }
                     Complete(ref p, 1.0);
                     if (!p.Alive) return;   // (drowned when their boat overturned: C9.1)
                     Decide(ref p);
@@ -407,6 +448,7 @@ namespace TC2.Core.Agents
                 LocalAt(p, now, out double x, out double y);
                 p.FromX = (float)x; p.FromY = (float)y; p.ToX = p.FromX; p.ToY = p.FromY;
                 p.TA = now;
+                if (p.TBend != 0) { p.BendX = 0f; p.BendY = 0f; p.TBend = 0; }
             }
             p.T1 = now;
         }

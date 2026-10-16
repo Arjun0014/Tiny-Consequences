@@ -154,6 +154,8 @@ namespace TC2.Core.Agents
         public float SkCraft;                // a maker's practised hand at a workshop, 0..1: grown by hours at the weaver's shed (C3.1); their role is read from it
         public float SkPot;                  // a potter's practised hand at the kiln, 0..1: grown by hours there (C3.2); their role is read from it
         public float SkSmith;                // a smith's practised hand at the smithy or the open hearth, 0..1: grown by hours there (C1.4b, D2-125); their role is read from it
+        public float BendX, BendY;           // a local walk's bend round the water: From -> Bend over [T0, TBend], Bend -> To over [TBend, TA] (D2-156)
+        public long TBend;                   // when they reach the bend (none unless T0 < TBend < TA)
 
         // derived from the world's seed and the person's id - never saved or hashed: filled when a person is made or loaded (Derive);
         // readers fall back to computing them where it is 0 (the same values: an exact speedup, F8)
@@ -191,6 +193,7 @@ namespace TC2.Core.Agents
             w.Int(Sick); w.Byte(SickPhase); w.Long(SickUntil); w.Long(SickCause); w.Int(Imm0); w.Int(Imm1); w.Long(ImmUntil0); w.Long(ImmUntil1); w.Byte(Cargo); w.Float(CargoQty); w.Byte(CargoTo);
             w.Int(Imm2); w.Int(Imm3); w.Int(Imm4); w.Int(Imm5); w.Long(ImmUntil2); w.Long(ImmUntil3); w.Long(ImmUntil4); w.Long(ImmUntil5);
             w.Float(Hurt); w.Int(HurtDeed); w.Int(Errand); w.Int(Band); w.Float(SkFight); w.Byte(Fights); w.Int(Voyage); w.Float(SkCraft); w.Float(SkPot); w.Float(SkSmith);
+            w.Float(BendX); w.Float(BendY); w.Long(TBend);
         }
 
         public static Person Read(BinReader r)
@@ -207,6 +210,7 @@ namespace TC2.Core.Agents
             p.Sick = r.Int(); p.SickPhase = r.Byte(); p.SickUntil = r.Long(); p.SickCause = r.Long(); p.Imm0 = r.Int(); p.Imm1 = r.Int(); p.ImmUntil0 = r.Long(); p.ImmUntil1 = r.Long(); p.Cargo = r.Byte(); p.CargoQty = r.Float(); p.CargoTo = r.Byte();
             p.Imm2 = r.Int(); p.Imm3 = r.Int(); p.Imm4 = r.Int(); p.Imm5 = r.Int(); p.ImmUntil2 = r.Long(); p.ImmUntil3 = r.Long(); p.ImmUntil4 = r.Long(); p.ImmUntil5 = r.Long();
             p.Hurt = r.Float(); p.HurtDeed = r.Int(); p.Errand = r.Int(); p.Band = r.Int(); p.SkFight = r.Float(); p.Fights = r.Byte(); p.Voyage = r.Int(); p.SkCraft = r.Float(); p.SkPot = r.Float(); p.SkSmith = r.Float();
+            p.BendX = r.Float(); p.BendY = r.Float(); p.TBend = r.Long();
             return p;
         }
 
@@ -223,6 +227,7 @@ namespace TC2.Core.Agents
             h.Add(Sick); h.Add(SickPhase); h.Add(SickUntil); h.Add(SickCause); h.Add(Imm0); h.Add(Imm1); h.Add(ImmUntil0); h.Add(ImmUntil1); h.Add(Cargo); h.Add(CargoQty); h.Add(CargoTo);
             h.Add(Imm2); h.Add(Imm3); h.Add(Imm4); h.Add(Imm5); h.Add(ImmUntil2); h.Add(ImmUntil3); h.Add(ImmUntil4); h.Add(ImmUntil5);
             h.Add(Hurt); h.Add(HurtDeed); h.Add(Errand); h.Add(Band); h.Add(SkFight); h.Add(Fights); h.Add(Voyage); h.Add(SkCraft); h.Add(SkPot); h.Add(SkSmith);
+            h.Add(BendX); h.Add(BendY); h.Add(TBend);
         }
     }
 }
