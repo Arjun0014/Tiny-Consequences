@@ -47,7 +47,11 @@ namespace TC2.Headless
                         Commands.Switches(args);   // (the rules before the world loads: `--oldrain` sets the rain's seasons as the planet's systems are built)
                         return Commands.PlacePage(args);
                     case "wet":
+                        Commands.Switches(args);   // (the rules a save was lived under: a control world's switches)
                         return Commands.Wet(args);
+                    case "crowds":
+                        Commands.Switches(args);
+                        return Commands.Crowds(args);
                     case "planet":
                         return Commands.Planet(args);
                     case "climate":

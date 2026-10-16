@@ -218,6 +218,7 @@ namespace TC2.Headless
             if (a.Has("mucktally")) TC2.Core.Places.Muck.Tally = new double[4];   // (C3.7c: muck made, carted, leached; hours)
             if (a.Has("nostubble")) TC2.Core.Places.Stubble.Off = true;   // (C3.7d off: the herds keep off the fields, as before)
             if (a.Has("onefieldspot")) TC2.Core.Places.FieldSpots.One = true;   // (every field hand and carter of a village on its one field spot, as before session 20)
+            if (a.Has("wetfieldspot")) TC2.Core.Places.FieldSpots.WetWay = true;   // (a household's field cell whether or not its hands can walk there dry-shod, as session 20 built it)
             if (a.Has("oldspare")) TC2.Core.Places.Livestock.OldSpare = true;   // (a food's cull from the kind with the most spares, as before session 20)
             if (a.Has("stocktally")) TC2.Core.Places.Livestock.StockYears = new double[TC2.Core.Places.Livestock.Kinds];   // (tools: head x years of each kind over the run)
             if (a.Has("oldhands")) TC2.Core.Places.Livestock.OldHands = true;   // (the hands' cull from the kind with the most spares, as session 20's branch)
