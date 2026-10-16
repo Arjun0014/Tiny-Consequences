@@ -87,6 +87,8 @@ namespace TC2.Core.Places
         public const int CoreMales = 2;           // males of a kind a household keeps: the sire and his successor
         /// <summary>Tools: the cull takes from the kind with the most spares (`--oldspare`: before session 20), on the same binary.</summary>
         public static bool OldSpare;
+        /// <summary>Tools: the hands' cull takes from the kind with the most spares (`--oldhands`: session 20's branch), on the same binary.</summary>
+        public static bool OldHands;
         public const double TendKg = 50;          // food a day (kg) of the animals one pair of grown hands can herd, milk and pen
 
         World _w;
@@ -107,9 +109,27 @@ namespace TC2.Core.Places
 
         /// <summary>Tools only (null in the game): ends by kind (x Causes) - see CauseNames - and births by kind at [Kinds * Causes + kind].</summary>
         public static long[] DiagEnds;
-        public static readonly string[] CauseNames = { "age", "wolves", "hunger", "spare sire", "old", "failing", "eaten hungry", "hands", "pasture", "mast" };
-        public const int Causes = 10;
-        static void Count(byte kind, int cause) { if (DiagEnds != null) DiagEnds[kind * Causes + cause]++; }
+        public static readonly string[] CauseNames = { "age", "wolves", "hunger", "spare sire", "old", "failing", "eaten hungry", "hands", "pasture", "mast", "hard pasture", "hard mast" };
+        public const int Causes = 12;
+        /// <summary>Tools only (null in the game): per village id (below 4096), kind and cause, the ends since the tool last read them; births at
+        /// cause index Causes (`[(sid * Kinds + kind) * (Causes + 1) + cause]`).</summary>
+        public static long[] DiagVillage;
+        /// <summary>Tools only (null in the game): ends and births by kind, cause and the village's own day of the year
+        /// (`[((kind * (Causes + 1)) + cause) * DaysPerYear + doy]`).</summary>
+        public static long[] DiagDoy;
+        int _diagSid, _diagDoy;   // (tools: the village whose day is being lived, and its own day of the year)
+        /// <summary>Tools only (null in the game): the herds' days - [0] village-days with pigs, [1] of them out far, [2] far for the grass alone,
+        /// [3] far for the mast alone, [4] sum of fedM, [5] fedG, [6] fedS (village-days with pigs), [7] mast found a day (kg), [8] mast wanted a day,
+        /// [9] pig-days.</summary>
+        public static double[] DiagReach;
+        /// <summary>Tools only (null in the game): head x years of each kind kept at the villages over the run (`--stocktally`).</summary>
+        public static double[] StockYears;
+        void Count(byte kind, int cause, long n = 1)
+        {
+            if (DiagEnds != null) DiagEnds[(cause == Causes ? Kinds * Causes : kind * Causes) + (cause == Causes ? kind : cause)] += n;
+            if (DiagVillage != null && _diagSid < 4096) DiagVillage[(_diagSid * Kinds + kind) * (Causes + 1) + cause] += n;
+            if (DiagDoy != null) DiagDoy[(kind * (Causes + 1) + cause) * SimTime.DaysPerYear + _diagDoy] += n;
+        }
 
         public void Bind(World w) { _w = w; }
 
@@ -308,9 +328,11 @@ namespace TC2.Core.Places
             var w = _w; var P = w.Planet;
             ref var s = ref w.Settlements.Get(sid);
             if (s.Population <= 0) return;   // nobody left to keep them: the village's end leaves them to the land (Feral)
+            if (DiagVillage != null || DiagDoy != null) { _diagSid = sid; _diagDoy = SettlementSystem.DayOfYear(in s, w.Now); }   // (tools only)
             Settle(sid);
             HerdOf(sid, _herd);
             if (_herd.Count == 0) return;
+            if (StockYears != null) for (int i = 0; i < _herd.Count; i++) StockYears[w.Beasts.Get(_herd[i]).Kind] += days / (double)SimTime.DaysPerYear;   // (tools only)
             long now = w.Now;
             ulong seed = w.Seed;
             long day = SimTime.FloorDiv(now, SimTime.Day);
@@ -330,7 +352,8 @@ namespace TC2.Core.Places
             Offer(out double offer, out double mast);
             FieldOffer(sid, in s, out double stubOffer, out double fallowOffer);   // (their own fields first: the stubble, the fallow - C3.7d)
             double fieldOffer = stubOffer + fallowOffer;
-            if (wantG > StockShare * (offer + fieldOffer) || wantM > StockShare * mast * MastFind)
+            bool farG = wantG > StockShare * (offer + fieldOffer), farM = wantM > StockShare * mast * MastFind;   // (tools read the two apart)
+            if (farG || farM)
             {
                 // the near pasture is short: the herders take the herds further out (onto land the neighbours' herds may graze too)
                 w.Hazards.CellsWithin(w, s.Cell, FarReach, _cells);
@@ -338,6 +361,13 @@ namespace TC2.Core.Places
             }
             double fedG = wantG > 0 ? DMath.Min(1.0, (offer + fieldOffer) / wantG) : 1.0;
             double fedM = wantM > 0 ? DMath.Min(1.0, mast * MastFind / wantM) : 1.0;
+            if (DiagReach != null && wantM > 0)
+            {
+                var dr = DiagReach;
+                dr[0] += days; if (farG || farM) dr[1] += days; if (farG && !farM) dr[2] += days; if (farM && !farG) dr[3] += days;
+                dr[4] += fedM * days; dr[5] += fedG * days; dr[6] += fedS * days; dr[7] += mast * MastFind * days; dr[8] += wantM * days;
+                for (int i = 0; i < _herd.Count; i++) if (w.Beasts.Get(_herd[i]).Kind == Pig) dr[9] += days;
+            }
             if (Diag != null && sid * 4 + 3 < Diag.Length) { Diag[sid * 4] = offer; Diag[sid * 4 + 1] = wantG; Diag[sid * 4 + 2] = mast * MastFind; Diag[sid * 4 + 3] = wantM; }
             double eatenG = wantG * fedG, eatenM = wantM * fedM;
             double onStub = DMath.Min(eatenG, stubOffer), onFallow = DMath.Min(eatenG - onStub, fallowOffer), onWaste = eatenG - onStub - onFallow;
@@ -646,7 +676,7 @@ namespace TC2.Core.Places
                 double e = _intake[be.Kind] * GrownShare(in be, now);
                 wantG -= e * Laws[be.Kind].GrassShare; wantM -= e * Laws[be.Kind].MastShare;
                 if (male) _males[kind]--; else _kept[kind]--;
-                Count(be.Kind, mastShort ? 9 : 8);
+                Count(be.Kind, mastShort ? 11 : 10);   // (tools: hard times told from the herders' ordinary cull)
                 Slaughter(ref be, be.Owner, sid);
             }
         }
@@ -666,9 +696,9 @@ namespace TC2.Core.Places
         }
 
         /// <summary>
-        /// The animal a household would kill first: of what it would spare beyond its breeding core, from the kind it has most to
-        /// spare of (herders keep a mixed herd) when its hands are short, from the kind whose spares eat most of a food that is short
-        /// (session 20), a male before a female, the most grown first; among the animals that eat (mode 0), eat grass (1) or mast (2). 0 if none. The core of each kind: its first two males (the sire and his successor) and its few
+        /// The animal a household would kill first: of what it would spare beyond its breeding core, from the kind whose spares take most
+        /// of what is short - its hands (all they eat: mode 0, session 21), the grass (1) or the mast (2) (session 20; the kind it had most
+        /// to spare of before, `--oldspare`, `--oldhands`) - a male before a female, the most grown first. 0 if none. The core of each kind: its first two males (the sire and his successor) and its few
         /// breeding females - the youngest in their prime, then the eldest of the young ones growing up to replace them, then the
         /// ageing.
         /// </summary>
@@ -708,12 +738,16 @@ namespace TC2.Core.Places
                 if (_pickOf[k] == 0 || (male && !_pickMale[k]) || (male == _pickMale[k] && eats > _pickEats[k])) { _pickOf[k] = b.Id; _pickEats[k] = eats; _pickMale[k] = male; }
             }
             int kind = -1;
-            if (mode == 0 || OldSpare) { for (int k = 0; k < Kinds; k++) if (_spares[k] > 0 && (kind < 0 || _spares[k] > _spares[kind])) kind = k; }
+            if (OldSpare || (mode == 0 && OldHands)) { for (int k = 0; k < Kinds; k++) if (_spares[k] > 0 && (kind < 0 || _spares[k] > _spares[kind])) kind = k; }
             else
             {
                 // (session 20) for a food that is short, the kind whose spares eat most of it: the kind with the most spares was taken whatever was
                 // short - a sow's litter of six made the pigs the grass's cull, each relieving a third of a pig's food, until enough had died; with
-                // more cattle on the stubble (C3.7d) the pigs were culled out of two worlds (the hands' cull keeps the mixed herd as before)
+                // more cattle on the stubble (C3.7d) the pigs were culled out of two worlds.
+                // (session 21) and for hands that are short, the kind whose spares take most of them (the hands are measured by all a herd eats,
+                // TendKg): the kind with the most spares made a sow's litter the hands' cull too - a piglet eases the hands of a quarter of a pig's
+                // food, a spare cow of three pigs' - so where the stubble's cattle filled the households' hands the young sows were culled before
+                // they could replace the breeding ones and the pigs died out of three worlds of ten
                 for (int k = 0; k < Kinds; k++) if (_spares[k] > 0 && (kind < 0 || _spareEats[k] > _spareEats[kind])) kind = k;
             }
             return kind < 0 ? 0 : _pickOf[kind];
@@ -791,7 +825,7 @@ namespace TC2.Core.Places
             int young = Math.Max(1, (int)DMath.Floor(k.Litter * (0.6 + 0.8 * rs.NextUnit()) * DMath.Clamp01(mother.Cond / 0.7) + 0.5));
             for (int y = 0; y < young; y++) Add(mother.Kind, rs.Chance(0.5) ? Sex.Female : Sex.Male, w.Now, mother.Id, mother.Owner, 0.7f);
             w.Metrics.BeastBirths += young;
-            if (DiagEnds != null) DiagEnds[Kinds * Causes + mother.Kind] += young;
+            Count(mother.Kind, Causes, young);   // (tools: births)
         }
 
         void Die(ref Beast b, bool wolf)

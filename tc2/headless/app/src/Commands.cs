@@ -49,6 +49,55 @@ namespace TC2.Headless
             return sb.ToString();
         }
 
+        /// <summary>Tools (reads only): a village's herd of one kind by household - households keeping it, grown females (mean condition, carrying or in
+        /// milk), grown males, young.</summary>
+        static string KindLine(World w, int sid, byte kind)
+        {
+            var law = TC2.Core.Places.Livestock.Laws[kind];
+            int hh = 0, fem = 0, carrying = 0, males = 0, young = 0, hhNoMale = 0; double cond = 0;
+            var hhs = w.HouseholdsOf(sid);
+            for (int i = 0; i < hhs.Count; i++)
+            {
+                var mine = w.BeastsOf(hhs[i]);
+                int n = 0, m = 0, f = 0;
+                for (int j = 0; j < mine.Count; j++)
+                {
+                    ref var b = ref w.Beasts.Get(mine[j]);
+                    if (!b.Alive || b.Kind != kind) continue;
+                    n++;
+                    if (b.AgeYears(w.Now) < law.Mature) { young++; continue; }
+                    if (b.Sex == TC2.Core.Agents.Sex.Male) { males++; m++; }
+                    else { fem++; f++; cond += b.Cond; if (b.Due != 0 || b.MilkUntil > w.Now) carrying++; }
+                }
+                if (n > 0) hh++;
+                if (f > 0 && m == 0) hhNoMale++;
+            }
+            if (hh == 0) return "";
+            return "  " + law.Name + "s: hh " + hh + ", F " + fem + " (c " + F(fem > 0 ? cond / fem : 0, "0.00") + ", carrying " + carrying + "), M " + males + ", young " + young + ", hh with F but no M " + hhNoMale;
+        }
+
+        static readonly string[] EndShort = { "age", "wolf", "hung", "sire", "old", "fail", "eaten", "hands", "past", "mast", "HARDp", "HARDm" };
+
+        /// <summary>Tools: a village's births and ends by kind and cause since the last report (and resets them).</summary>
+        static string VillageEnds(int sid)
+        {
+            var d = TC2.Core.Places.Livestock.DiagVillage;
+            if (d == null || sid >= 4096) return "";
+            int K = TC2.Core.Places.Livestock.Kinds, C = TC2.Core.Places.Livestock.Causes;
+            var sb = new StringBuilder();
+            for (int k = 0; k < K; k++)
+            {
+                int o = (sid * K + k) * (C + 1);
+                long ended = 0;
+                for (int c = 0; c < C; c++) ended += d[o + c];
+                if (d[o + C] == 0 && ended == 0) continue;
+                sb.Append(sb.Length == 0 ? "  since: " : "; ").Append(TC2.Core.Places.Livestock.Laws[k].Name).Append(" +").Append(d[o + C]);
+                for (int c = 0; c < C; c++) if (d[o + c] > 0) sb.Append(' ').Append(EndShort[c]).Append(d[o + c]);
+                for (int c = 0; c <= C; c++) d[o + c] = 0;
+            }
+            return sb.ToString();
+        }
+
         static string PastureLine(int sid)
         {
             var d = TC2.Core.Places.Livestock.Diag;
@@ -170,6 +219,8 @@ namespace TC2.Headless
             if (a.Has("nostubble")) TC2.Core.Places.Stubble.Off = true;   // (C3.7d off: the herds keep off the fields, as before)
             if (a.Has("onefieldspot")) TC2.Core.Places.FieldSpots.One = true;   // (every field hand and carter of a village on its one field spot, as before session 20)
             if (a.Has("oldspare")) TC2.Core.Places.Livestock.OldSpare = true;   // (a food's cull from the kind with the most spares, as before session 20)
+            if (a.Has("stocktally")) TC2.Core.Places.Livestock.StockYears = new double[TC2.Core.Places.Livestock.Kinds];   // (tools: head x years of each kind over the run)
+            if (a.Has("oldhands")) TC2.Core.Places.Livestock.OldHands = true;   // (the hands' cull from the kind with the most spares, as session 20's branch)
             if (a.Has("stubbletally")) TC2.Core.Places.Stubble.Tally = new double[3];   // (C3.7d: kg eaten on the stubble and the fallow, day dung on the fields)
             if (a.Has("oldgardenorder")) TC2.Core.Agents.AgentSystem.CoarseGardenOld = true;   // (D2-146: a COARSE day's garden before all but the fields, as C3.7a built it)   // (C3.7a against D2-142 in one binary: no gardens)
         }
@@ -177,7 +228,7 @@ namespace TC2.Headless
         public static int Run(Args a)
         {
             var sw = Stopwatch.StartNew();
-            if (a.Has("places")) { TC2.Core.Places.Livestock.Diag = new double[4 * 4096]; TC2.Core.Places.Livestock.DiagEnds = new long[4 * TC2.Core.Places.Livestock.Causes]; TC2.Core.Places.SettlementSystem.Unrests = new long[7]; TC2.Core.Agents.AgentSystem.Hours = new double[44]; TC2.Core.Places.SettlementSystem.Harvests = new double[6]; TC2.Core.Places.Migration.Weighs = new double[8]; TC2.Core.Places.SettlementSystem.Demo = new double[10]; }
+            if (a.Has("places")) { TC2.Core.Places.Livestock.Diag = new double[4 * 4096]; TC2.Core.Places.Livestock.DiagEnds = new long[4 * TC2.Core.Places.Livestock.Causes]; TC2.Core.Places.Livestock.DiagVillage = new long[4096 * TC2.Core.Places.Livestock.Kinds * (TC2.Core.Places.Livestock.Causes + 1)]; TC2.Core.Places.Livestock.DiagDoy = new long[TC2.Core.Places.Livestock.Kinds * (TC2.Core.Places.Livestock.Causes + 1) * SimTime.DaysPerYear]; TC2.Core.Places.Livestock.DiagReach = new double[10]; TC2.Core.Places.SettlementSystem.Unrests = new long[7]; TC2.Core.Agents.AgentSystem.Hours = new double[44]; TC2.Core.Places.SettlementSystem.Harvests = new double[6]; TC2.Core.Places.Migration.Weighs = new double[8]; TC2.Core.Places.SettlementSystem.Demo = new double[10]; }
             if (a.Has("nosea")) TC2.Core.Places.Trade.NoSea = true;
             if (a.Has("seashort")) TC2.Core.Places.Trade.SeaShort = new double[3];   // (C9.4 survey: relief by sea bound by the boats' room)
             if (a.Has("noweave")) TC2.Core.Places.Weaving.Off = true;
@@ -323,7 +374,7 @@ namespace TC2.Headless
                                           ((st.TechKnown & 8) != 0 ? "P" : "-") + ((st.TechKnown & 16) != 0 ? "A" : "-") + ((st.TechKnown & 32) != 0 ? "M" : "-") +
                                           " (" + F(st.BestNets, "0.00") + "/" + F(st.BestLoom, "0.00") + "/" + F(st.BestQuern, "0.00") + "/" + F(st.BestPottery, "0.00") + "/" + F(st.BestArd, "0.00") + ")" +
                                           "  fibre " + F(st.Fibre, "0") + " hides " + F(st.Hides, "0") + " metal " + F(st.Metal, "0.0") + (w.Learning.Clay(st.Cell) ? " clay" : "") + (w.Learning.Rock(st.Cell) ? " rock" : "") + (st.OreCell != 0 ? " copper " + F(st.OreDist, "0") + " m" : "") +
-                                          "  stock cattle " + w.Stock.CountOf(sid, TC2.Core.Places.Livestock.Cattle) + " goats " + w.Stock.CountOf(sid, TC2.Core.Places.Livestock.Goat) + " pigs " + w.Stock.CountOf(sid, TC2.Core.Places.Livestock.Pig) + PastureLine(sid) + HerdLine(w, sid));
+                                          "  stock cattle " + w.Stock.CountOf(sid, TC2.Core.Places.Livestock.Cattle) + " goats " + w.Stock.CountOf(sid, TC2.Core.Places.Livestock.Goat) + " pigs " + w.Stock.CountOf(sid, TC2.Core.Places.Livestock.Pig) + PastureLine(sid) + HerdLine(w, sid) + VillageEnds(sid) + KindLine(w, sid, TC2.Core.Places.Livestock.Pig) + KindLine(w, sid, TC2.Core.Places.Livestock.Cattle));
                     }
                 }
                 int from = w.History.FirstIndexAfter(histCursor);
@@ -1007,6 +1058,29 @@ namespace TC2.Headless
             Console.WriteLine("stock: cattle " + live[0] + " goats " + live[1] + " pigs " + live[2] + "  born " + m.BeastBirths + "  died " + m.BeastDeaths + "  taken by wolves " + m.BeastsTaken +
                               "  slaughtered " + m.BeastsEaten + " (" + F(m.BeastFu, "0") + " FU)  gone wild " + m.BeastsFeral +
                               "  parties " + m.Parties + "  foundings " + m.Foundings + "  scouts " + m.Scouts);
+            var sty = TC2.Core.Places.Livestock.StockYears;
+            if (sty != null)
+                Console.WriteLine("stock-years: cattle " + F(sty[0], "0") + " goats " + F(sty[1], "0") + " pigs " + F(sty[2], "0") + " (head x years kept at the villages over the run)");
+            var drc = TC2.Core.Places.Livestock.DiagReach;
+            if (drc != null && drc[0] > 0)
+                Console.WriteLine("herds with pigs: " + F(drc[0], "0") + " village-days, out far " + F(drc[1] / drc[0], "0.000") + " (for the grass alone " + F(drc[2] / drc[0], "0.000") + ", the mast alone " + F(drc[3] / drc[0], "0.000") +
+                                  "); fed mast " + F(drc[4] / drc[0], "0.000") + ", grass " + F(drc[5] / drc[0], "0.000") + ", scraps " + F(drc[6] / drc[0], "0.000") + "; mast found " + F(drc[7] / drc[0], "0.0") + " of " + F(drc[8] / drc[0], "0.0") + " kg wanted a village-day; " + F(drc[9] / drc[0], "0.0") + " pigs a village-day");
+            var dd = TC2.Core.Places.Livestock.DiagDoy;
+            if (dd != null)
+            {
+                int K = TC2.Core.Places.Livestock.Kinds, C = TC2.Core.Places.Livestock.Causes, D = SimTime.DaysPerYear;
+                Console.WriteLine("stock by the village's own day of the year, 4-day bins from day 0 (the sowing; growing 12, ripe 30, harvest 39):");
+                for (int k = 0; k < K; k++)
+                    for (int c = 0; c <= C; c++)
+                    {
+                        long tot = 0;
+                        for (int d = 0; d < D; d++) tot += dd[(k * (C + 1) + c) * D + d];
+                        if (tot == 0) continue;
+                        var sb = new System.Text.StringBuilder("  " + TC2.Core.Places.Livestock.Laws[k].Name.PadRight(7) + (c == C ? "born" : TC2.Core.Places.Livestock.CauseNames[c]).PadRight(13) + tot.ToString().PadLeft(7) + " :");
+                        for (int b = 0; b < D / 4; b++) { long n = 0; for (int d = b * 4; d < b * 4 + 4; d++) n += dd[(k * (C + 1) + c) * D + d]; sb.Append(n.ToString().PadLeft(6)); }
+                        Console.WriteLine(sb.ToString());
+                    }
+            }
             var ends = TC2.Core.Places.Livestock.DiagEnds;
             if (ends != null)
                 for (int k = 0; k < TC2.Core.Places.Livestock.Kinds; k++)
