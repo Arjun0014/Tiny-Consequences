@@ -4,7 +4,7 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
-- **Session 22 (16 Oct 2026, from 22:19 IST; Control Room run #51 session 2; session 21's job queue kept running, one job at a time)** - (1) **C3.7d
+- **Session 22 (16 Oct 22:19 - 17 Oct ~02:15 IST; Control Room run #51 session 2; stopped by Arjun; `SESSION_22_REPORT.md`)** - (1) **C3.7d
   merged** (9d68eaa, sim version 80) and **D2-155** written (a512839): twenty seeds `_u7` against `_c6` - births and deaths a person-year at par,
   pig-years x0.98 (t -0.2), cattle-years x1.64, pigs gone by year 300 in 2 of 19 worlds (the control 1); sickness from animals x1.7 with the herds
   (D2-070's spillover by beasts kept: 61 new sicknesses against 36, sickness deaths 10,338 against 4,505); a placebo (`_u4` against `_u7`, the same
@@ -20,7 +20,11 @@
   (branch `wip/c104-bread`, worktree `C:/Game Dev/tc-bread`; sim version 82; `10` §12f): measured first - kin does not mark mother and daughter
   villages, relief does (38 % of neighbour pairs, 57 villages owe at year 300 over ten worlds); a village that cannot give back a month of the famine
   grain a stronger neighbour within a day's walk gave it bows to that neighbour; the tribute gives it back, a lord feeds its own. BreadTests 5/5 and
-  six neighbour classes; ten seeds `_y2` in the queue.
+  seven neighbour classes; ten seeds `_y2`: vital rates untouched, lords 8 -> 21 (tribute agreed 9 -> 35, 21 for bread), the lord's call answered (471
+  men), raids 79 -> 118 - NOT merged (branch tip 08e16b2). (5) **D2-158**: the first full suite since session 19 (402/403) failed
+  `MigrationTests.AHomeIsRaisedOnlyByLabourAndWood` since C3.7c - a COARSE day's muck before a camp's own roof; fixed in the lived urges' order on the
+  branch (ten seeds at par, foundings x1.14). The full suite on the final code was running at the stop (`fullsuite_b4.txt`). Not done: the Web build
+  and test, real shots, the 900-year check - SESSION_HANDOFF "Session 22".
 - **Session 21 (16 Oct 2026, 19:12-22:05 IST; Control Room run #51 session 1; one low-priority job queue, `tc2/out/tools/s21/runq.sh`)** - (1) **C3.7d's
   pigs traced** (branch `wip/c37d-stubble`, still NOT merged): tools-only herd diagnostics (`--places`: births and ends by village, kind and cause, by
   the village's day of the year, hard times told apart, herds by household; `--stocktally`); where pigs vanished the land was plentiful and the sows fed
