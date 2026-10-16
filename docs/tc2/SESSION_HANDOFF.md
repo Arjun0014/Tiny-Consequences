@@ -13,8 +13,8 @@
   placed clear of the croft's beds, the pen and the woodpile/cart** (`WorldObjectsView`), 161fa63 docs (`26` §2k session 21, `08` culls, `27` §9).
 - **RUNNING: the session-21 job queue** - `bash tc2/out/tools/s21/runq.sh` (background task `ba1sj2iw2`), queue dir `Q` =
   `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/4c5113ad-667d-4fde-9df2-13e8ffdf1a90/scratchpad/q` (jobs in `todo`,
-  `done`, `log`, `runq.log`; `touch $Q/stop` ends it after the current job). At 22:00 31 jobs left (~60 min): `1_zz_tests_s6` (the focused and
-  neighbour tests on bin_s6 - **the dry-way code's tests, not yet run**), `6_u7_*` (19 seeds, the branch's final rules, `--stocktally`),
+  `done`, `log`, `runq.log`; `touch $Q/stop` ends it after the current job). At 22:10 29 jobs left (~55 min; the dry-way binary's tests
+  `1_zz_tests_s6` passed), `6_u7_*` (18 seeds left, the branch's final rules, `--stocktally`),
   `7_zz_cmp_c6_r4`, `8_c6_*` (control seeds 9-19), `9_zz_cmp_c6_u7_10`, `9_zz_cmp_c6_u7_20`. Outputs: `tc2/out/civ/s*_{c6,u7,r4}.{txt,csv}`;
   comparisons `$N/cmp_*.txt` (`N` = the queue's scratchpad). **If the scratchpad is gone**: every run is in `tc2/out/civ` - redo a comparison with
   `cd tc2/out/civ && python ../tools/s21/cmp.py c6 u7 4 5 1 6 11 2 3 7 8 42 9 10 12 13 14 15 16 17 18 19`; missing runs: rebuild the branch's headless
@@ -30,7 +30,7 @@
   filling the hands the young sows went before replacing the breeding ones. Fixed: short hands eased from the kind whose spares take most of them.
 - Tests on bin_s3 (before the dry-way change): Livestock 16/16 (new `HandsThatAreShortCullWhatTakesThemNotTheLitter`; the short-pasture test now
   counts pasture and hands culls together), Stubble 3, Muck 3, HouseholdWork 4, Coarse 3, Determinism 6, SaveLoad 8 (`--filter SaveLoad`), Tilth 9,
-  Threshing 5, Garden 5, Footprints 8. **The dry-way binary's tests run in the queue (`1_zz_tests_s6`) - read `$Q/log/1_zz_tests_s6.log`.**
+  Threshing 5, Garden 5, Footprints 8 - **and the same eleven again on bin_s6 (the dry-way code, branch Core = d8bf37d): all pass** (22:10, `1_zz_tests_s6`).
 - Controls byte-identical: `--nostubble --onefieldspot --oldspare` = `_n1` on all ten seeds (`_c6`) and on bin_s6 (`_c8`); `--oldhands` = `_u2`;
   `--wetfieldspot` = `_u4`; the diagnostics change nothing (`_u3q` = `_u2`, `_c3q` = `_n1`); yearly reports change nothing.
 - **Ten seeds `_u4` (stubble + new culls) vs `_n1`**: people at par (x1.025 end, x1.020 years 200-299), births/deaths a person-year at par, hunger
@@ -45,7 +45,7 @@
   the hungry walking home across a bay (`wet --doy D` lists them by village; `results/wet_*.txt`).
 
 ### Next, in order
-1. Read the queue's results: `1_zz_tests_s6` (must pass), `cmp_c6_u7_20.txt` (20 seeds: people, pig/cattle/goat-years `*_years`, extinctions per arm,
+1. Read the queue's results: `cmp_c6_u7_20.txt` (20 seeds: people, pig/cattle/goat-years `*_years`, extinctions per arm,
    foundings, sickness), `cmp_c6_r4.txt`. Merge when convincing (people at par, pig-years within noise, extinctions like the control's); if pig-years
    fall significantly, look first at hard times on mast (kills the most grown - the breeding cores - down to a village's nucleus) and the hunger cull
    (keeps "a pair" of the eldest, eats the young sows).

@@ -29,13 +29,13 @@ picture?". No simulation theatre: presentation elaborates a real activity, never
 ## Session 21 (16 Oct 2026, 19:12-22:05 IST) - context handoff; the job queue is still running
 - **Running**: `tc2/out/tools/s21/runq.sh` (background task `ba1sj2iw2`), queue `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/
   4c5113ad-667d-4fde-9df2-13e8ffdf1a90/scratchpad/q` (`todo`, `done`, `log`, `runq.log`; `touch .../q/stop` ends it after the current job): at 22:00, 31
-  jobs (~60 min) - the dry-way binary's tests (`1_zz_tests_s6`), 19 seeds `_u7` (the branch's final rules), control seeds 9-19 `_c6`, the comparisons
+  jobs (~60 min) - 19 seeds `_u7` (the branch's final rules; the dry-way binary's eleven test fixtures passed at 22:10), control seeds 9-19 `_c6`, the comparisons
   `cmp_c6_r4`, `cmp_c6_u7_10`, `cmp_c6_u7_20` (in that scratchpad; runs in `tc2/out/civ`). One job at a time - start no other heavy job until it ends.
 - **Done on the branch, verified**: the pigs traced and fixed (the hands' cull by what loads the hands, `--oldhands`); a household's field cell walked
   to dry-shod (`--wetfieldspot`); the stubble drawn dun as eaten; muck heaps clear of croft, pen, woodpile, cart; shot tools (`--doy`, `muck` views);
   herd diagnostics, `wet --doy`, `crowds`. Controls byte-identical; ten seeds `_u4` at par in people (pigs x0.80 n.s., lost in 1 world of 9 that had
   them); Unity C# compiles; real shots judged (`27` §9).
-- **Next**: (1) read the queue's results (tests must pass; 20 seeds: people at par, pig-years within noise) and merge the branch (`--no-ff`), write
+- **Next**: (1) read the queue's results (20 seeds: people at par, pig-years within noise) and merge the branch (`--no-ff`), write
   D2-155; (2) the full suite and the Web build and test; (3) nobody walks through the water (woodlots, the well's spot, crofts, wild-food spots - the
   `wet` audit's 0.10-0.14 % in the control); (4) a governance slice (one lordship of two villages in a 30-village world at year 300) or holdings on
   the ground. Details: `docs/tc2/SESSION_HANDOFF.md` "Session 21".
