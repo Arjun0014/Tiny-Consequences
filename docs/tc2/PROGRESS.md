@@ -10,12 +10,17 @@
   (D2-070's spillover by beasts kept: 61 new sicknesses against 36, sickness deaths 10,338 against 4,505); a placebo (`_u4` against `_u7`, the same
   rules apart by the first lived day) shows end-of-run pig counts are chance (x0.46). Found on the way: a 300-year run lives its first day before it
   goes COARSE, so a rule of lived walks alone still sends the whole history another way. (2) **D2-156 nobody walks through the water** (branch
-  `wip/dry-ways`, worktree `C:/Game Dev/tc-dry`, 4a5ecdc + merge 2f02a7b; sim version 81): a lived walk bends once round a lake or a bay across its
-  way (`Core/Places/Afoot.cs`, `Person.BendX/BendY/TBend`), every lived spot out of the water, crofts' beds not laid into it, the woods by the way
-  their cutters walk; `--wetways` = `_u7` byte-identical (seed 4); AfootTests 5/5 (88 walks bent, none left in the water - the old rule 79 of 180
-  walking looks in it; 40 of 840 crofts had a bed in the water, now 0; woods across a bay at the 784 m way round, was 614 m straight) and 66
-  neighbour tests pass. Evaluation in the queue (seed 4 saves, `wet` before/after, ten seeds `_x1`). (3) Tools: `polity --load SAVE` (the ties a
-  polity could be made of: mothers and daughters, kin between villages, first households' kin, relief owed, harms) for the governance slice.
+  `wip/dry-ways` **merged f200b9c**, DECISIONS 40f4a18; sim version 81): a lived walk bends once round a lake or a bay across its way
+  (`Core/Places/Afoot.cs`, `Person.BendX/BendY/TBend`), every lived spot out of the water, crofts' beds not laid into it, the woods by the way their
+  cutters walk; `--wetways` = `_u7` byte-identical; AfootTests 6/6 and 66 neighbour tests; **the same year-300 save: 0.178 % -> 0.013 % of
+  person-hours under the drawn water**. Its first version stranded villages whose only woods lie across water (ten seeds `_x1`: 18 without woods
+  against 6, plank boats and sea relief collapsed) - fixed by the straight line's choice where no woods can be walked to (`_x2`: vital rates a
+  person-year at par; what is left is island woodcutters, 3 villages in ten worlds - boats across the water, C9.5). (3) Tools: `polity --load SAVE`
+  (the ties a polity could be made of) and `woodways --load SAVE` (what D2-156 changes in a world at a moment). (4) **C10.4 bread and dependence**
+  (branch `wip/c104-bread`, worktree `C:/Game Dev/tc-bread`; sim version 82; `10` §12f): measured first - kin does not mark mother and daughter
+  villages, relief does (38 % of neighbour pairs, 57 villages owe at year 300 over ten worlds); a village that cannot give back a month of the famine
+  grain a stronger neighbour within a day's walk gave it bows to that neighbour; the tribute gives it back, a lord feeds its own. BreadTests 5/5 and
+  six neighbour classes; ten seeds `_y2` in the queue.
 - **Session 21 (16 Oct 2026, 19:12-22:05 IST; Control Room run #51 session 1; one low-priority job queue, `tc2/out/tools/s21/runq.sh`)** - (1) **C3.7d's
   pigs traced** (branch `wip/c37d-stubble`, still NOT merged): tools-only herd diagnostics (`--places`: births and ends by village, kind and cause, by
   the village's day of the year, hard times told apart, herds by household; `--stocktally`); where pigs vanished the land was plentiful and the sows fed
