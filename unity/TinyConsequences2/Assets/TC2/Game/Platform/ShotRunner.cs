@@ -345,6 +345,7 @@ namespace TC2.Game
             var objs = FindAnyObjectByType<WorldObjectsView>();
             if (objs != null) Debug.Log("[TC2] people drawn " + objs.PeopleDrawn + " (at work or on the move " + objs.PeopleBusy + "), boats afloat " + objs.BoatsAfloat);
             Debug.Log("[TC2] trees on the drawn patches " + TerrainLod.ForestDrawn + ", stumps " + TerrainLod.StumpsOnPatches + " (drawn near the camera " + TerrainLod.StumpsDrawn + ")");
+            Debug.Log("[TC2] muck heaps drawn " + WorldObjectsView.MuckHeaps + " (the largest " + WorldObjectsView.MuckLargestKg.ToString("0", CultureInfo.InvariantCulture) + " kg)");
             var stock = FindAnyObjectByType<LivestockView>();
             if (stock != null) Debug.Log("[TC2] livestock drawn " + stock.Drawn + " |" + stock.Why);
         }

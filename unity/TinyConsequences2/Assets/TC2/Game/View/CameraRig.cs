@@ -166,6 +166,14 @@ namespace TC2.Game
                 LookAt(d, view.EndsWith(":low") ? 24 : 50);
                 return;
             }
+            if (view.StartsWith("muck") && WorldObjectsView.MuckLargestKg > 0)
+            {
+                // (C3.7c tools) the largest muck heap drawn at the last rebuild of the near objects: "muck" 18 m up, "mucklow" 9 m - shoot a near view of the
+                // village first, so its yards are drawn
+                Debug.Log("[TC2] the largest muck heap drawn: " + WorldObjectsView.MuckLargestKg.ToString("0") + " kg (" + WorldObjectsView.MuckHeaps + " heaps drawn)");
+                LookAt(WorldObjectsView.MuckLargestAt, view == "mucklow" ? 9 : 18);
+                return;
+            }
             if (view.StartsWith("floor") && sid != 0)
             {
                 // (C3.7b) the framed village's threshing floor and its stackyard: "floor" 45 m up, "floorlow" 22 m, "floorfar" 110 m; "floorbusy"

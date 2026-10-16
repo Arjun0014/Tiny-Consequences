@@ -23,6 +23,10 @@ namespace TC2.Game
         Instancer _graves, _gravesOld;   // (the burial grounds: D2-151)
         Instancer _standards;            // (the first household's standard in its polity's colour: D2-152)
         Instancer _muck;                 // (the yards' muck heaps: C3.7c)
+        /// <summary>Tools (the shot log and the "muck" views): heaps drawn at the last rebuild, the largest's muck (kg) and where it stands.</summary>
+        public static int MuckHeaps;
+        public static double MuckLargestKg;
+        public static TC2.Core.Foundation.Vec3d MuckLargestAt;
         readonly Dictionary<int, float> _muckShare = new Dictionary<int, float>();   // (each household's share of its village's muck, by the grass its beasts eat)
         Instancer _people, _granaries, _wells, _ricks, _flames, _huts, _tents, _ruins, _beached, _afloat, _walls, _woodpiles;
         Instancer _floors;   // (a threshing floor in use: the sheaves laid out while people thresh there - C3.7b)
@@ -488,6 +492,7 @@ namespace TC2.Game
             for (int i = 0; i < _works.Length; i++) _works[i]?.Clear();
             _ricks.Clear(); _graves.Clear(); _gravesOld.Clear(); _standards.Clear(); _muck.Clear(); _huts.Clear(); _tents.Clear(); _ruins.Clear(); _beached.Clear(); _beachedP.Clear(); _walls.Clear(); _woodpiles.Clear();
             _smoke.Clear(); _lights.Clear(); _watch.Clear();
+            MuckHeaps = 0; MuckLargestKg = 0;   // (tools: the heaps drawn, and where the largest stands - the "muck" shot views)
             for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
             {
                 ref var s = ref w.Settlements.Get(sid);
@@ -1119,6 +1124,8 @@ namespace TC2.Game
                     double Lm = hut ? 4.6 : PlanL[plan], Wm = hut ? 4.6 : PlanW[plan];
                     Local(b.X, b.Y, face, (-Lm / 2.0 + 1.3) * ex, (-Wm / 2.0 - 1.6) * ex, out double hx, out double hy);
                     _muck.Add(0, Color.white, PlaceFaced(P, s, hx, hy, face + 0.6, ex * hs));
+                    MuckHeaps++;
+                    if (mkg > MuckLargestKg) { MuckLargestKg = mkg; MuckLargestAt = s.LocalToSphere(hx, hy, P.Radius); }
                 }
             }
             // its share of the village's woodstore stacked by the wall (D2-081): none when the store is all but empty, a bigger pile the
