@@ -254,6 +254,104 @@ namespace TC2.Tests.Core
             Assert.Less(kinds[Livestock.Goat], 60);
         }
 
+        /// <summary>Kills by cause over twelve days of a world whose village with most people has more cattle than its pasture will keep (the premise:
+        /// six of its households given six grown cows each and a litter of young pigs): [kind * Causes + cause] (Livestock.CauseNames).</summary>
+        static long[] ShortPastureKills(bool oldSpare)
+        {
+            var w = TestWorlds.Make(408);
+            Coarse(w);
+            int sid = VillageWithMost(w);
+            var hhs = w.HouseholdsOf(sid);
+            for (int i = 0; i < hhs.Count && i < 6; i++)
+            {
+                for (int k = 0; k < 6; k++) w.Stock.Add(Livestock.Cattle, Sex.Female, w.Now - SimTime.Years(4 + k % 4), 0, hhs[i]);   // (beyond the core of three)
+                for (int k = 0; k < 6; k++) w.Stock.Add(Livestock.Pig, Sex.Female, w.Now - SimTime.Days(10 + k), 0, hhs[i]);      // (a litter growing)
+            }
+            Livestock.OldSpare = oldSpare;
+            Livestock.DiagEnds = new long[(Livestock.Kinds + 1) * Livestock.Causes];
+            try
+            {
+                w.AdvanceTo(w.Now + SimTime.Days(12));
+                return (long[])Livestock.DiagEnds.Clone();
+            }
+            finally { Livestock.OldSpare = false; Livestock.DiagEnds = null; }
+        }
+
+        [Test]
+        public void AShortPastureCullsWhatEatsItNotThePigs()
+        {
+            // session 20: a food that is short is relieved by culling the kind whose spares eat most of it - the kind with the most spares was taken
+            // before, and a sow's litter made the pigs the grass's cull (each relieving a third of a pig's food), until enough had died. (Session 21:
+            // the premise's households are short of hands too, and the hands' cull takes what loads them most since then - the cows it takes first are
+            // no longer there for the pasture's cull: the herders' ordinary culls are counted together, for the pasture and for their hands.)
+            var a = ShortPastureKills(false);
+            var b = ShortPastureKills(true);
+            const int hands = 7, pasture = 8;
+            long cattleA = a[Livestock.Cattle * Livestock.Causes + pasture] + a[Livestock.Cattle * Livestock.Causes + hands], pigsA = a[Livestock.Pig * Livestock.Causes + pasture] + a[Livestock.Pig * Livestock.Causes + hands];
+            long cattleB = b[Livestock.Cattle * Livestock.Causes + pasture] + b[Livestock.Cattle * Livestock.Causes + hands], pigsB = b[Livestock.Pig * Livestock.Causes + pasture] + b[Livestock.Pig * Livestock.Causes + hands];
+            Console.WriteLine("culled for the pasture and the hands in 12 short days: cattle " + cattleA + ", pigs " + pigsA + "; --oldspare: cattle " + cattleB + ", pigs " + pigsB +
+                              " (for the pasture alone: cattle " + a[Livestock.Cattle * Livestock.Causes + pasture] + ", pigs " + a[Livestock.Pig * Livestock.Causes + pasture] + "; --oldspare " +
+                              b[Livestock.Cattle * Livestock.Causes + pasture] + ", " + b[Livestock.Pig * Livestock.Causes + pasture] + ")");
+            Assert.Greater(cattleB + pigsB, 0, "(the premise: more than the pasture keeps)");
+            Assert.Less(pigsA, pigsB, "fewer pigs culled for the grass and the hands");
+            Assert.LessOrEqual(pigsA + cattleA, pigsB + cattleB, "and fewer beasts killed to relieve them");
+        }
+
+        /// <summary>What a household loses in a day of a world whose village with most people has it keeping more beasts than its hands can tend
+        /// (the premise: its own herd gone, two sows and a boar with a fresh litter of twelve, and cows enough - three of them its core - that the
+        /// herd eats some 50 kg a day more than its hands tend): [kind] lost; the herd's food a day after it and its hands' tending.</summary>
+        static int[] ShortHandsLosses(bool oldHands, out double eats, out double cap)
+        {
+            var w = TestWorlds.Make(408);
+            Coarse(w);
+            int sid = VillageWithMost(w);
+            int hid = 0; var hhs = w.HouseholdsOf(sid);
+            for (int i = 0; i < hhs.Count && hid == 0; i++) if (w.Households.Get(hhs[i]).Party == 0 && w.Stock.Hands(hhs[i]) >= 2.5) hid = hhs[i];
+            Assume.That(hid, Is.Not.EqualTo(0), "a household with grown hands");
+            var had = new List<int>(); var mine0 = w.BeastsOf(hid);
+            for (int i = 0; i < mine0.Count; i++) had.Add(mine0[i]);
+            foreach (int b in had) Remove(w, b);   // (its own herd gone: the premise's alone)
+            cap = w.Stock.Hands(hid) * Livestock.TendKg;
+            var added = new List<int>();
+            added.Add(w.Stock.Add(Livestock.Pig, Sex.Female, w.Now - SimTime.Years(3), 0, hid));
+            added.Add(w.Stock.Add(Livestock.Pig, Sex.Female, w.Now - SimTime.Years(2), 0, hid));
+            added.Add(w.Stock.Add(Livestock.Pig, Sex.Male, w.Now - SimTime.Years(2.5), 0, hid));
+            for (int k = 0; k < 12; k++) added.Add(w.Stock.Add(Livestock.Pig, k % 2 == 0 ? Sex.Female : Sex.Male, w.Now - SimTime.Days(10), 0, hid));   // (the litter)
+            double pigsEat = 0;
+            foreach (int b in added) { var be = w.Beasts.Get(b); pigsEat += Livestock.IntakeDay(be.Kind) * Livestock.GrownShare(in be, w.Now); }
+            int cows = Math.Max(5, (int)Math.Round((cap + 50.0 - pigsEat) / Livestock.IntakeDay(Livestock.Cattle)));
+            for (int k = 0; k < cows; k++) added.Add(w.Stock.Add(Livestock.Cattle, Sex.Female, w.Now - SimTime.Years(4 + k % 4), 0, hid));
+            Livestock.OldHands = oldHands;
+            try
+            {
+                w.AdvanceTo(w.Now + SimTime.Day + SimTime.Hour);
+                var lost = new int[Livestock.Kinds];
+                foreach (int b in added) { var be = w.Beasts.Get(b); if (!be.Alive) lost[be.Kind]++; }
+                eats = 0; var mine = w.BeastsOf(hid);
+                for (int i = 0; i < mine.Count; i++) { var b = w.Beasts.Get(mine[i]); eats += Livestock.IntakeDay(b.Kind) * Livestock.GrownShare(in b, w.Now); }
+                cap = w.Stock.Hands(hid) * Livestock.TendKg;
+                return lost;
+            }
+            finally { Livestock.OldHands = false; }
+        }
+
+        [Test]
+        public void HandsThatAreShortCullWhatTakesThemNotTheLitter()
+        {
+            // session 21: hands that are short are relieved by culling the kind whose spares take most of them (all they eat): the kind with the most
+            // spares was taken before, and a fresh litter made the young pigs the hands' cull - each easing them of a quarter of a pig's food, a spare
+            // cow of three pigs' - so the young sows were culled before they could replace the breeding ones
+            var a = ShortHandsLosses(false, out double eatsA, out double capA);
+            var b = ShortHandsLosses(true, out double eatsB, out double capB);
+            Console.WriteLine("lost in a day: cows " + a[Livestock.Cattle] + ", pigs " + a[Livestock.Pig] + " (herd " + eatsA.ToString("0") + " kg a day, its hands tend " + capA.ToString("0") + ")" +
+                              "; --oldhands: cows " + b[Livestock.Cattle] + ", pigs " + b[Livestock.Pig] + " (herd " + eatsB.ToString("0") + " of " + capB.ToString("0") + ")");
+            Assert.Greater(b[Livestock.Pig], 0, "(the premise: more than its hands can tend, the litter the kind with most to spare)");
+            Assert.Greater(a[Livestock.Cattle], 0, "the cows beyond its core take most of its hands: they are culled");
+            Assert.Less(a[Livestock.Pig], b[Livestock.Pig], "and fewer of the litter");
+            Assert.Less(a[Livestock.Cattle] + a[Livestock.Pig], b[Livestock.Cattle] + b[Livestock.Pig], "fewer beasts killed to ease the same hands");
+            Assert.LessOrEqual(eatsA, capA + 1.0, "the herd is kept to what its hands can tend (the young grow a little in the hour after)");
+        }
+
         [Test]
         public void SaveLoadWithHerdsContinuesIdentically()
         {

@@ -19,6 +19,14 @@ namespace TC2.Tests.Core
         [Test]
         public void TheNightsDungPilesInTheYardsAndIsCartedOutBeforeThePloughing()
         {
+            // (the muck alone: the herds kept off the fields, whose day dung would be spread there with no carting - C3.7d, StubbleTests)
+            Stubble.Off = true;
+            try { NightsDung(); }
+            finally { Stubble.Off = false; }
+        }
+
+        static void NightsDung()
+        {
             var w = TestWorlds.Make(4611);
             Coarse(w);
             int sid = w.Settlements.First();

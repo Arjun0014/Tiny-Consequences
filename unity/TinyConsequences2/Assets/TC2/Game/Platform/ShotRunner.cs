@@ -138,6 +138,14 @@ namespace TC2.Game
             }
             string wall = Arg("-tc2wall");
             if (wall != null && sid != 0) Wall(w, sid, Parse(wall, 1.0));
+            // (session 21) -tc2doy D: on to the framed village's own day D of its year (its calendar: the southern seasons half a year on) - the
+            // stubble, the muck, the sowing are days of the village's year, not of the world's
+            string doyArg = Arg("-tc2doy");
+            if (doyArg != null && sid != 0)
+            {
+                int want = (int)Parse(doyArg, 0) % SimTime.DaysPerYear, now0 = TC2.Core.Places.SettlementSystem.DayOfYear(in w.Settlements.Get(sid), w.Now);
+                days = (want - now0 + SimTime.DaysPerYear) % SimTime.DaysPerYear;
+            }
             long target = SimTime.StartOfDay(w.Now + local) - local + DMath.ToLong(days * SimTime.Day) + DMath.ToLong(hour * SimTime.Hour);
             while (target <= w.Now) target += SimTime.Day;
             // (session 17) a loaded world lives its days again only from its next midnight (SimHost.LoadWorld: a save of a DEEP or COARSE run);
@@ -165,6 +173,13 @@ namespace TC2.Game
                 }
             }
             Debug.Log("[TC2] shots at " + SimTime.Format(w.Now) + " seed " + seed);
+            if (sid != 0 && w.Settlements.Exists(sid))
+            {
+                var fs = w.Settlements.Get(sid);   // (the framed village's own season: what its fields and herds should show; a copy - this is a coroutine)
+                Debug.Log("[TC2] framed village " + sid + ": day " + TC2.Core.Places.SettlementSystem.DayOfYear(in fs, w.Now) + " of its year, crop " + fs.Crop +
+                          ", stubble " + (fs.Stubble / 1000.0).ToString("0.0", CultureInfo.InvariantCulture) + " t on " + fs.FieldHa.ToString("0", CultureInfo.InvariantCulture) + " ha, muck in the yards " +
+                          (fs.Muck / 1000.0).ToString("0.0", CultureInfo.InvariantCulture) + " t, spread " + (fs.Spread / 1000.0).ToString("0.0", CultureInfo.InvariantCulture) + " t");
+            }
             string storm = Arg("-tc2storm");
             if (storm != null && sid != 0)
             {
@@ -330,6 +345,7 @@ namespace TC2.Game
             var objs = FindAnyObjectByType<WorldObjectsView>();
             if (objs != null) Debug.Log("[TC2] people drawn " + objs.PeopleDrawn + " (at work or on the move " + objs.PeopleBusy + "), boats afloat " + objs.BoatsAfloat);
             Debug.Log("[TC2] trees on the drawn patches " + TerrainLod.ForestDrawn + ", stumps " + TerrainLod.StumpsOnPatches + " (drawn near the camera " + TerrainLod.StumpsDrawn + ")");
+            Debug.Log("[TC2] muck heaps drawn " + WorldObjectsView.MuckHeaps + " (the largest " + WorldObjectsView.MuckLargestKg.ToString("0", CultureInfo.InvariantCulture) + " kg)");
             var stock = FindAnyObjectByType<LivestockView>();
             if (stock != null) Debug.Log("[TC2] livestock drawn " + stock.Drawn + " |" + stock.Why);
         }

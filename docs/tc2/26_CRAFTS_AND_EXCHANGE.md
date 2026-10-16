@@ -424,6 +424,48 @@ muck spread gives back, all of it as the dung did before; uncarted muck leaches;
 **What should change**: the fields' fertility now depends on the hands and carts to cart the muck - villages with many beasts and few hands lose
 some of the dung's return; a few hours of the slack's idling become work; the picture shows heaps in the yards and carts in the fields in autumn.
 
+### 2k. C3.7d the herds on the stubble and the fallow - design (session 20)
+
+**What exists.** The herds graze only the waste: `Livestock.Grazes` refuses every cell under a village's fields, so the stubble after the harvest
+and the fallow the village rests (`Settlement.Rest`, D2-139) feed nothing and take no dung; the herds' day ground (`GroundOf`) is never a field.
+Since C3.7c the fields get back only the night's muck that is carted out of the yards; the day's dung stays on the waste.
+
+**The record.** After the harvest the open fields were thrown open to the village's beasts until the next sowing (the aftermath, the stubble:
+reaped high, straw, weeds and the spilt ears); the fallow field was grazed all its year and the herds and flocks were folded on it at night - the
+village's main way of putting dung where the corn would grow (Walter of Henley: fold near the sowing; lords required the villagers' sheep in
+the demesne fold). Modern measure of a cereal stubble: 50-190 sheep grazing-days a hectare (~70 kg of grain and ~150 kg of leaf and stem eaten,
+Western Australia; a stubble's residue 0.9-2.8 t DM a ha but little of it eaten); green weeds 0.6-1.2 t DM a ha are what the beasts choose.
+
+**Design.** (1) The offer (`Core/Places/Stubble.cs`, `Livestock.FieldOffer`): the village's own fields offer the herds their stubble from the
+harvest's end to the sowing (`Settlement.Stubble`, `Stubble.PerHa` 300 kg a hectare reaped, a quarter of what is left found in a day; ploughed in
+at the sowing; sim version 80) and their fallow all year (the rested share of the arable at the waste's grass a hectare, the field
+cells' own grass); the herders take the herds there first (near, and their own), the waste after. (2) The dung: what the herds eat on the
+village's fields drops its day dung there - straight into the soil's year (no carting), at the muck's calibration (D2-153: the day's share counts
+as the yards' night share does when carted). (3) The view: while a quarter of the stubble is left the herd's ground of the day is one of the village's own field cells beyond
+its houses (`Livestock.GroundOf`: the herders walk there, the beasts are drawn there - the herd on the stubble); the fallow's grazing is not yet
+drawn on the fallow strips (the strips are the shader's: the view would have to find them by the same hash). (4) Tools `--nostubble` (the control), `--stubbletally` (kg eaten on stubble and fallow, dung reaching the fields directly). (5) What should change: the herds'
+feed in the autumn (fewer failing beasts culled where the waste is short), the soil's return where the herds are many, the picture: herds on the
+stubble after the harvest. **Measured (seed 4 `_n0`, `--places`)**: the herds are fed (grass short in 17 of 472 village-reports, mean fed 0.985) because
+the herders keep them to the pasture (`Livestock.Destock`: want kept under `StockShare` of the day's offer) - cattle's commonest end over 300
+years is that cull, `pasture` 5,156 of 9,548 born (age 1,652, hands 972, old 964). So the pasture's lean days cap the herds: the stubble's
+offer, from the harvest into the autumn, eases exactly the autumn slaughter (as the record has it), the fallow's all year.
+
+**Session 20's ten seeds: pigs gone from three worlds of ten (`_u2`; seeds 5, 7, 11 - seed 1 has none in any arm) while cattle grew x1.84 - traced in
+session 21** (`--places`: births and ends by village, kind and cause since the last report, the herds by household, ends by the village's day of the
+year; seeds 5, 7, 11 against the control on the same binary, byte-identical to `_n1`). Not the grass, the mast or hard times: where the pigs went the
+land was plentiful (Stalhope at year 100: 1,180 kg of grass offered a day against 447 wanted, mast 185 against 2); the sows were fed (condition 1.00,
+mast and grass found 0.997-0.999 of what they wanted) and bred as often a pig-year as the control's (1.32 against 1.33 births); hard times took one
+pig. Seed 5's pigs were born x0.40 because the breeding stock dwindled: **the households keeping pigs fell from fifteen to eight in ten years** (twelve
+in the control) and to one a village by year 100. The one stubble-specific end: **the hands' cull's share of the pigs' ends doubled** (seed 5 6.1 % ->
+14.6 %, seed 7 7.8 -> 11.8 %, seed 11 6.5 -> 14.8 %) - D2-050's rule took the kind with the most spares when a household's hands were short, and after
+a farrowing that is always the pigs: with the stubble's cattle filling the households' hands, every litter was the hands' cull (a piglet eases them
+of a quarter of a pig's food, a spare cow of three grown pigs'), the young sows went before they could replace the breeding ones, and the households'
+pig lines broke. Fixed by the same rule session 20 gave the food culls: **short hands are eased from the kind whose spares take most of them** (all they
+eat, as `TendKg` measures the hands; `--oldhands` the control, byte-identical to `_u2`). The cores stay as D2-050 kept them. Not changed: hard times
+still take the village's most numerous kind beyond its nucleus (they took 1-4 pigs a world), and a hungry household still keeps "a pair" of the
+eldest of each kind - seed 5's last town pigs were the young eaten by a hungry household that kept its two old sows (59 pigs so eaten in the control,
+17 with the stubble: a lead for the herders' hard-times rules, not this slice's).
+
 ## 3. Later slices
 - ~~**C3.1b more looms for towns**~~ (done, D2-120): another shed where the households drain the store most of a year with fibre to weave and
   the people in wares would outwear the looms; eight more makers a shed, each at the shed nearest home; towns of 500+ carry 2-4.

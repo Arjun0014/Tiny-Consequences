@@ -1495,7 +1495,7 @@ namespace TC2.Game
             return Edge(0.25f, 0.75f, f);
         }
 
-        /// <summary>The colour of a village's crop by its stage (sRGB): earth, young green, gold, stubble.</summary>
+        /// <summary>The colour of a village's crop by its stage (sRGB): earth (darker with muck), young green, gold, stubble (duller as its herds eat it down).</summary>
         public static Color CropColour(in TC2.Core.Places.Settlement s)
         {
             Color earth = new Color(0.47f, 0.36f, 0.25f), young = new Color(0.52f, 0.60f, 0.27f), lush = new Color(0.42f, 0.58f, 0.24f);
@@ -1506,7 +1506,14 @@ namespace TC2.Game
                 case TC2.Core.Places.CropStage.Sown: c = Color.Lerp(earth, new Color(0.30f, 0.23f, 0.16f), (float)System.Math.Min(0.6, TC2.Core.Places.Muck.TonnesPerHa(in s) / 12.0)); break;   // (darker where muck is spread: C3.7c)
                 case TC2.Core.Places.CropStage.Growing: c = Color.Lerp(Color.Lerp(earth, young, 0.6f), lush, (float)s.CropGrowth); break;
                 case TC2.Core.Places.CropStage.Ripe: c = gold; break;
-                case TC2.Core.Places.CropStage.Harvested: c = stubble; break;
+                case TC2.Core.Places.CropStage.Harvested:
+                    {
+                        // the stubble as its herds leave it (C3.7d): straw-gold when reaped, eaten down and trodden to a dun brown as the beasts take it
+                        double full = s.FieldHa * TC2.Core.Places.Stubble.PerHa;
+                        float grazed = TC2.Core.Places.Stubble.Off || full <= 0 ? 0f : (float)(1.0 - System.Math.Min(1.0, s.Stubble / full));
+                        c = Color.Lerp(stubble, new Color(0.52f, 0.46f, 0.33f), grazed);
+                        break;
+                    }
                 default: c = new Color(0.55f, 0.58f, 0.36f); break;
             }
             if (s.CropBurnt > 0.2) c = Color.Lerp(c, new Color(0.14f, 0.12f, 0.10f), (float)s.CropBurnt);

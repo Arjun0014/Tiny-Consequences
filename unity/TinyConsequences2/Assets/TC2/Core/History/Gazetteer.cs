@@ -153,7 +153,9 @@ namespace TC2.Core.History
               .Append(s.Granaries).Append(s.Granaries == 1 ? " granary" : " granaries").Append(s.Barns > 0 ? " and " + s.Barns + (s.Barns == 1 ? " barn" : " barns") : "")
               .Append(" holding ").Append(F(Structures.StoreCapacity(in s), "0")).Append(s.Ration < 0.999 ? "; meals rationed to " + F(100 * s.Ration, "0") + " %" : "").Append(".\n");
             if (!Places.Muck.Off && (s.Muck > 500.0 || s.Spread > 500.0))   // (C3.7c: its yards' muck)
-                sb.Append("Its yards hold ").Append(F(s.Muck / 1000.0, "0.0")).Append(" t of muck").Append(s.Spread > 500.0 ? "; " + F(s.Spread / 1000.0, "0.0") + " t carted out onto its fields this year (" + F(Places.Muck.TonnesPerHa(in s), "0.0") + " t a hectare sown)" : "").Append(".\n");
+                sb.Append("Its yards hold ").Append(F(s.Muck / 1000.0, "0.0")).Append(" t of muck").Append(s.Spread > 500.0 ? "; " + F(s.Spread / 1000.0, "0.0") + " t spread on its fields since the harvest - carted out, and dropped by its herds on the stubble and the fallow (" + F(Places.Muck.TonnesPerHa(in s), "0.0") + " t a hectare sown)" : "").Append(".\n");
+            if (!Places.Stubble.Off && s.Crop == Places.CropStage.Harvested && s.Stubble > 100.0)   // (C3.7d: its herds on its stubble)
+                sb.Append("Its herds graze its reaped fields until the sowing: ").Append(F(s.Stubble / 1000.0, "0.0")).Append(" t of the stubble's forage left.\n");
             if (s.BurialCount > 0)   // (D2-151: its burial ground)
             {
                 Places.Burials.Read(in s, w.Now, out double marked, out double fresh);

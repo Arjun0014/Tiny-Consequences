@@ -87,9 +87,13 @@ regular fair; "fortified" if defences stand.
   stint of four or five hours; COARSE: the same herders by turns, youths and grown ones giving 4.5 of their hours). A herd that
   had its herders the day before is a third as exposed to wolves. Pigs keep to the yards. The view draws the village's herd
   on the day's ground with its herders.
-- Herders keep a mixed herd: what they kill to ease the pasture or their hands comes from the kind they have most to spare
-  of (a male before a female, the most grown first); in hard times (the land cannot feed even the breeding cores) they kill
+- Herders keep a mixed herd: what they kill to ease the pasture, the woods' mast or their hands comes from beyond each kind's
+  breeding core, from the kind whose spares take most of what is short (D2-155: the grass or the mast they eat, all they eat for
+  the hands; until session 20 the kind they had most to spare of - after a farrowing always the pigs, a litter the cull for every
+  shortage), a male before a female, the most grown first; in hard times (the land cannot feed even the breeding cores) they kill
   into the cores from the kind the village has most of, keeping a sire and two females of each kind in the village.
+- The village's own fields feed its herds too (C3.7d, D2-155): the stubble from the harvest to the sowing and the rested arable
+  all year, before the waste; their day dung falls on the fields; on a stubble day the herd's ground is one of the village's fields.
 - Measured (seed 42, 200 coarse years, D2-050): cattle 113 / 159 / 155 / 139, goats 789 / 252 / 165 / 355, pigs 108 / 78 / 81 /
   234 at years 50 / 100 / 150 / 200 for ~3,500 people; no animal starved; wolves took 4,570 in 200 years (17,402 before
   herding). Before the mixed-herd rule, cattle (the biggest eaters, grass only) were culled first and starved first as the

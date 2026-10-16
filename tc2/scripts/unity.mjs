@@ -123,10 +123,10 @@ switch (cmd) {
     break;
   }
   case 'shots': {
-    // the real game in Play Mode inside the batch editor: node tc2/scripts/unity.mjs shots --tag T [--seed N] [--hour H] [--days D] [--views a,b]
+    // the real game in Play Mode inside the batch editor: node tc2/scripts/unity.mjs shots --tag T [--seed N] [--hour H] [--days D | --doy D] [--views a,b]
     const dir = path.join(outDir, 'shots', opt('--tag', 'latest'));
     const extra = ['-executeMethod', 'TC2.EditorTools.BatchTools.PlayShots', '-tc2shots', dir];
-    for (const [f, a] of [['--seed', '-tc2seed'], ['--hour', '-tc2hour'], ['--days', '-tc2days'], ['--views', '-tc2views'], ['--size', '-tc2size'], ['--erupt', '-tc2erupt'], ['--quake', '-tc2quake'], ['--storm', '-tc2storm'], ['--abandon', '-tc2abandon'], ['--hungry', '-tc2hungry'], ['--wall', '-tc2wall'], ['--load', '-tc2load'], ['--radius', '-tc2radius'], ['--village', '-tc2village']]) if (opt(f)) extra.push(a, opt(f));
+    for (const [f, a] of [['--seed', '-tc2seed'], ['--hour', '-tc2hour'], ['--days', '-tc2days'], ['--views', '-tc2views'], ['--size', '-tc2size'], ['--erupt', '-tc2erupt'], ['--quake', '-tc2quake'], ['--storm', '-tc2storm'], ['--abandon', '-tc2abandon'], ['--hungry', '-tc2hungry'], ['--wall', '-tc2wall'], ['--load', '-tc2load'], ['--radius', '-tc2radius'], ['--village', '-tc2village'], ['--doy', '-tc2doy']]) if (opt(f)) extra.push(a, opt(f));   // (--doy D: the framed village's own day D of its year)
     if (args.includes('--ground')) extra.push('-tc2ground', '1');   // (C13.3: the simulation's ground under each home)
     status = run(extra, { quit: false });
     tail(log, /error CS|\[TC2\]|Exception/);
