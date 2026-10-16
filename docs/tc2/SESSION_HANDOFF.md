@@ -2,39 +2,38 @@
 
 ## Session 22 (16-17 Oct 2026, from 22:19 IST; Control Room run #51 session 2) - IN PROGRESS (keep current)
 
-### Exact state
-- **main** = 1891bfa: **C3.7d merged** (9d68eaa, sim version 80) + **D2-155** (a512839) + PROGRESS. Nothing of D2-156/C10.4 on main yet.
-- **Branch `wip/dry-ways`** (worktree `C:/Game Dev/tc-dry`, tip **28bfc69**, sim version 81): **D2-156 nobody walks through the water** (4a5ecdc), the
-  polity tool (7fb03d5), the woods fallback (28bfc69: the first version stranded villages whose only woods lie across water - see below). Draft
-  decision `tc2/out/tools/s22/d2156.md`.
-- **Branch `wip/c104-bread`** (worktree `C:/Game Dev/tc-bread`, tip **6a53968** = dry-ways + C10.4, sim version 82): **C10.4 bread and dependence**
-  (1f05c2b, f4bffc6: a village bows to the neighbour whose famine grain it cannot give back; `10` §12f). Draft decision `tc2/out/tools/s22/d2157.md`.
-- **RUNNING: session 21's job queue** (`tc2/out/tools/s21/runq.sh`, background task `ba1sj2iw2`; queue dir `Q` =
-  `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/4c5113ad-667d-4fde-9df2-13e8ffdf1a90/scratchpad/q`; outputs and binaries in
-  that scratchpad, `N`): at 00:10, `e_*` (D2-156 final: control `_x0b`, ten seeds `_x2` with year-300 saves, `cmp_u7_x2.txt`, `wet_x2_*`), `f_*`
-  (C10.4: build `bin_b3`, tests, control `--nobread` = `_x2`, ten seeds `_y2` with saves and `--breadtally`, `cmp_x2_y2.txt`, `polity_y2_s*`), `g_*`
-  (the full suite on `bin_b3`, `unity.mjs cc` on the bread tip - it detaches the main checkout: keep main clean then). Copies of every job:
-  `tc2/out/tools/s22/`. Held (stale): `$Q/hold`.
+### Exact state (01:40 IST)
+- **main** = 274f342: C3.7d merged (9d68eaa) + D2-155; **D2-156 merged** (f200b9c) + its decision (40f4a18); PROGRESS. Sim version 81 on main.
+- **Branch `wip/c104-bread`** (worktree `C:/Game Dev/tc-bread`, tip **08e16b2**, sim version 82, NOT merged): **C10.4 bread and dependence** (1f05c2b,
+  f4bffc6; `10` §12f), main merged in (b4dd299), shots `--village tributary|lord` (863d170, de22762), and **D2-158** (08e16b2: a COARSE day's muck
+  waits for the household's own roof - the full suite's only failure). Drafts: `tc2/out/tools/s22/d2157.md` (evidence filled but for the full suite
+  and cc), `d2158.md` (evidence to fill).
+- **RUNNING: session 21's job queue** (`tc2/out/tools/s21/runq.sh`, task `ba1sj2iw2`; `Q` =
+  `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/4c5113ad-667d-4fde-9df2-13e8ffdf1a90/scratchpad/q`, outputs in that
+  scratchpad `N`): `i_c` control (`--oldmuckorder` = `_y2`), `i_d` ten seeds `_y3` (C10.4 + D2-158, saves), `i_e` `cmp_y2_y3.txt`, `i_f` the full suite on
+  `bin_b4` (`fullsuite_b4.txt`), `i_g` `unity.mjs cc` on the bread tip (detaches the main checkout - keep main clean). Copies: `tc2/out/tools/s22/`.
 
-### Verified
-- D2-155: twenty seeds (see DECISIONS). D2-156 (first version, `_x1` against `_u7`): AfootTests, 66 neighbour tests, floatcheck; `--wetways` = `_u7`
-  byte-identical (seeds 4, 5); **`wet` on one year-300 save: 0.178 % -> 0.013 % and 0.195 % -> 0.021 % of person-hours under the drawn water**
-  (`tc2/out/tools/s22/results/`); 2.8 % of lived walks bent, 0.7 % with no dry way (a town on two shores, Gaby). **But ten seeds `_x1` showed people
-  x0.95 (t -2.6), pig-years x0.83, plank-boat fish x0.14: the woods rule left villages whose only woods lie across water with no woodlot (18 against
-  6)** - fixed (28bfc69: the straight line's choice where no woods can be walked to dry-shod; test `WoodsAcrossTheWaterWithNoWayRoundAreStillFetched`).
-- C10.4 (bin_b1/b2): BreadTests 5/5 (bows; not when it can repay, nor to a weaker giver, nor for less than a month; `--nobread`; a lord feeds its own;
-  the settlement page), Lordship 4, Trade 7, Leaders 8, Defence 8, Taking 18, Voyage 6, Determinism 6.
-- **Measured for the governance slice** (`polity --load SAVE`, ten worlds `_x1` at year 300): kin does not mark mother and daughter villages (first
-  households kin in 0 of 106 mother-daughter pairs; kin links alike); relief ties are common (38 % of neighbour pairs; 57 villages owe at year 300);
-  lords 0-3 a world.
+### Verified this session
+- **D2-155** merged (twenty seeds at par). **D2-156** merged: the same save 0.178 % -> 0.013 % of person-hours in the water; the woods' fallback
+  (the first version stranded island villages: 18 against 6 without woods); ten seeds `_x2` at par a person-year; residual: island woodcutters (3
+  villages in ten worlds) and a town on two shores - boats across water, C9.5.
+- **C10.4** (ten seeds `_y2` against `_x2`): vital rates untouched; tribute agreed 9 -> 35 (21 for bread), lords at year 300 8 -> 21, largest
+  lordship 1 -> 3 villages; the lord's call answered (28 bands, 471 men; none before), raids 79 -> 118, loot x3.6 - lordships fighting as lordships.
+  BreadTests 5/5 and neighbours; `--nobread` = `_x2`; Unity cc ok on de22762.
+- **The full suite** on bin_b3 (main + D2-156 + C10.4): **402 of 403** - `MigrationTests.AHomeIsRaisedOnlyByLabourAndWood` failing since C3.7c
+  (main's rules too): fixed by D2-158 (MigrationTests 9/9, Muck 3, HouseholdWork 4, Garden 5, Coarse 3, Bread 5, Determinism 6, Homes 5;
+  `--oldmuckorder` fails it again).
+- Governance measured (`polity`, ten worlds): kin does not mark mother and daughter villages; relief does.
 
 ### Next, in order
-1. Read `cmp_u7_x2.txt` (D2-156 final: people at par expected; if pig-years or boats still fall, look at the croft rule and the woods' way length) and
-   `wet_x2_*`; write D2-156 (fill the draft's TEN SEEDS); merge `wip/dry-ways` into main (`--no-ff`).
-2. Read `cmp_x2_y2.txt` (C10.4: lordships for bread, polity sizes, people, famines, hunger, relief, raids) and `polity_y2_s*`; tune only with
-   evidence; write D2-157; merge `wip/c104-bread`.
-3. The full suite result (`fullsuite_b3.txt`) and `cc_bread.txt`; then the Web build and test on the final main (`node tc2/scripts/unity.mjs build-web
-   --jobs 2`, `node tc2/scripts/webtest.mjs --tag s22web1 --export`; saves v82); real shots of a bread lordship (standards in the lord's colour).
+1. `cmp_y2_y3.txt` (D2-158's effect: small, expected at par), the control, the full suite (expect 403/403) and cc; fill D2-157 and D2-158; merge
+   `wip/c104-bread` into main (`--no-ff`), DECISIONS D2-157 and D2-158, PROGRESS, `25` (C10.4 done).
+2. The Web build and test on the final main (`tc2/out/tools/s22/h_a_web.sh` as a queue job: `unity.mjs build-web --jobs 2`, `webtest.mjs --tag
+   s22web1 --export`; saves v82).
+3. Real shots of a bread lordship: `node tc2/scripts/unity.mjs shots --tag s22a --load "tc2/out/civ/s2_y3/world_y300.tc2" --village tributary --views
+   standard,standardlow,village --hour 11` and `--village lord`; judge the standards in the lord's colour.
+4. Then: C9.5 boats across the water (island woodcutters, towns on two shores) or C10.5 (the lordships' next mechanism: protection sought, or a
+   lord's household marrying its tributaries' first households) - by evidence.
 
 ## Session 21 (16 Oct 2026, 19:12-22:05 IST; Control Room run #51 session 1) - context handoff; ONE job queue still running
 
