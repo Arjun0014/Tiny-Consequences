@@ -1,5 +1,71 @@
 # TC2 Session handoff
 
+## Session 21 (16 Oct 2026, 19:12-22:05 IST; Control Room run #51 session 1) - context handoff; ONE job queue still running
+
+### Exact state
+- **main c106378** + this handoff's docs commit (clean but for `.claude/launch.json`, `Assets/Resources.meta` - not ours). Nothing of session 21's
+  code is on main yet.
+- **Branch `wip/c37d-stubble`** (worktree `C:/Game Dev/tc-stubble`, tip **161fa63**, sim version 80, NOT merged; main c106378 merged into it as
+  9b81854). Session 21's commits on it: 5193bb0 **the hands' cull by what loads the hands** (`Livestock.Spare` mode 0 by the spares' food,
+  `--oldhands`; tools-only herd diagnostics), b837a30/c4f9347 the stubble drawn as its herds eat it (`TerrainLod.CropColour`), shots `--doy D`
+  and the season log, d8bf37d **a household's field cell is one its hands walk to dry-shod** (`FieldSpots.DryWay`, `--wetfieldspot`), tools
+  `wet --doy`, `crowds`, 905d3d6 Unity metas (FieldSpots/Stubble/StubbleTests), 0e93fb7-180ad85 shot views `muck`/`mucklow` and **the muck heap
+  placed clear of the croft's beds, the pen and the woodpile/cart** (`WorldObjectsView`), 161fa63 docs (`26` §2k session 21, `08` culls, `27` §9).
+- **RUNNING: the session-21 job queue** - `bash tc2/out/tools/s21/runq.sh` (background task `ba1sj2iw2`), queue dir `Q` =
+  `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/4c5113ad-667d-4fde-9df2-13e8ffdf1a90/scratchpad/q` (jobs in `todo`,
+  `done`, `log`, `runq.log`; `touch $Q/stop` ends it after the current job). At 22:00 31 jobs left (~60 min): `1_zz_tests_s6` (the focused and
+  neighbour tests on bin_s6 - **the dry-way code's tests, not yet run**), `6_u7_*` (19 seeds, the branch's final rules, `--stocktally`),
+  `7_zz_cmp_c6_r4`, `8_c6_*` (control seeds 9-19), `9_zz_cmp_c6_u7_10`, `9_zz_cmp_c6_u7_20`. Outputs: `tc2/out/civ/s*_{c6,u7,r4}.{txt,csv}`;
+  comparisons `$N/cmp_*.txt` (`N` = the queue's scratchpad). **If the scratchpad is gone**: every run is in `tc2/out/civ` - redo a comparison with
+  `cd tc2/out/civ && python ../tools/s21/cmp.py c6 u7 4 5 1 6 11 2 3 7 8 42 9 10 12 13 14 15 16 17 18 19`; missing runs: rebuild the branch's headless
+  (`tc2/out/tools/s21/q_done/0_x_build_s6.sh` - Core unchanged since d8bf37d) and rerun the jobs in `tc2/out/tools/s21/q_todo` (set `N`/`S` in `lib.sh`).
+  Copies of all jobs, logs and results: `tc2/out/tools/s21/{q_todo,q_done,q_log,results}`.
+- Saves: `tc2/out/civ/s4_u4/world_y300.tc2`, `s4_u7/world_y300.tc2` (branch rules), `s4_c7/world_y300.tc2` (the control on the branch binary, v80).
+
+### Verified
+- **The pigs (session 20's open question) traced**: not grass, mast or hard times - where pigs vanished the land was plentiful, sows fed (cond 1.00,
+  fed 0.997-0.999) and bred as often a pig-year as the control's (1.32 vs 1.33); **the households keeping pigs dwindled** (seed 5: 15 -> 8 in ten years,
+  control 12) and the one stubble-specific end was **the hands' cull's share of pig ends doubling** (6.1 -> 14.6 %, 7.8 -> 11.8 %, 6.5 -> 14.8 % in
+  seeds 5, 7, 11): D2-050's rule culled the kind with the most spares when hands were short - after a farrowing the pigs - so with the stubble's cattle
+  filling the hands the young sows went before replacing the breeding ones. Fixed: short hands eased from the kind whose spares take most of them.
+- Tests on bin_s3 (before the dry-way change): Livestock 16/16 (new `HandsThatAreShortCullWhatTakesThemNotTheLitter`; the short-pasture test now
+  counts pasture and hands culls together), Stubble 3, Muck 3, HouseholdWork 4, Coarse 3, Determinism 6, SaveLoad 8 (`--filter SaveLoad`), Tilth 9,
+  Threshing 5, Garden 5, Footprints 8. **The dry-way binary's tests run in the queue (`1_zz_tests_s6`) - read `$Q/log/1_zz_tests_s6.log`.**
+- Controls byte-identical: `--nostubble --onefieldspot --oldspare` = `_n1` on all ten seeds (`_c6`) and on bin_s6 (`_c8`); `--oldhands` = `_u2`;
+  `--wetfieldspot` = `_u4`; the diagnostics change nothing (`_u3q` = `_u2`, `_c3q` = `_n1`); yearly reports change nothing.
+- **Ten seeds `_u4` (stubble + new culls) vs `_n1`**: people at par (x1.025 end, x1.020 years 200-299), births/deaths a person-year at par, hunger
+  x1.10 (t 0.91), cattle x1.94 (t 5.7), goats x1.12, **pigs x0.80 (t -1.28) where kept; lost only in seed 5 (seed 1 has none in any arm)** (u2: lost in
+  1, 5, 7, 11); foundings not fewer but earlier (by century 32/46/38 against 21/62/42; the run's total x0.94, t -1.4). `_r4` (the new culls without the
+  stubble): pigs x0.83 (n.s.; seed 7 lost them), cattle x0.91, goats x1.18, people 200-299 x0.943 (t -1.95), sickness x2.6 (t 2.4) - noisy.
+- Unity C# compiles (`unity.mjs cc`, 180ad85, in the main checkout detached at the branch tip). Real shots `tc2/out/shots/s21a`-`s21t` judged
+  (`27` §9): herds on the stubble, household field work (busiest spot 2-13 within 60 m, was 126), a carter in the sea (fixed: field work in the water
+  2-4 person-hours, was 55-68), the hunters' crowd (real: a village outgrown its land; the control has it too), the woodlot framing works, muck heaps.
+- **Open, older than C3.7d**: 0.10-0.14 % of person-hours under the drawn water in the control world (0.22-0.28 % in the stubble world): woodcutters'
+  straight walks across water to their woodlot, the water-drawing spot (`WellX/WellY` +-2 m, no `Ashore`) under a lake's edge, crofts into the water,
+  the hungry walking home across a bay (`wet --doy D` lists them by village; `results/wet_*.txt`).
+
+### Next, in order
+1. Read the queue's results: `1_zz_tests_s6` (must pass), `cmp_c6_u7_20.txt` (20 seeds: people, pig/cattle/goat-years `*_years`, extinctions per arm,
+   foundings, sickness), `cmp_c6_r4.txt`. Merge when convincing (people at par, pig-years within noise, extinctions like the control's); if pig-years
+   fall significantly, look first at hard times on mast (kills the most grown - the breeding cores - down to a village's nucleus) and the hunger cull
+   (keeps "a pair" of the eldest, eats the young sows).
+2. Merge: `git merge --no-ff wip/c37d-stubble` on main (message `[tc2] Merge the stubble branch: C3.7d ...`); DECISIONS **D2-155** from
+   `tc2/out/tools/s21/d2155.md` (fill "Evidence"); PROGRESS; `25` (C3.7d done). Then the full suite (`node tc2/scripts/headless.mjs test`, ~17 min)
+   and the Web build and test (`node tc2/scripts/unity.mjs build-web --jobs 2`, then `node tc2/scripts/webtest.mjs --tag s21web1 --export`; saves v80).
+3. **Nobody walks through the water** (D2-123's rule for the ways, a new decision with its switch): woodlots reachable dry-shod (`Woods.Choose` with
+   `FieldSpots.DryWay` from the square), the water-drawing spot ashore (`AgentSystem.BeginWater` + `Ashore`), crofts on dry ground (`Gardens.Strips`),
+   wild-food spots reachable dry-shod; `wet --doy` before/after; ten seeds.
+4. The next civilisation slice by evidence: **governance** - seed 4 at year 300 has 30 villages, 10,254 people and ONE lordship of 2 villages (6 raids
+   in 300 years; lordship only by conquest, D2-075): measure polities over ten seeds, then lordship beyond conquest (daughter villages' kin allegiance,
+   protection, marriage between first households - `10` §4). Or **holdings on the ground** (strips a household holds; needs a Core-defined strip layout
+   the terrain shader follows - its strips are a GPU float hash now).
+
+### Rules that bit this session
+- A Unity coroutine holds no `ref` locals (CS8176 in `ShotRunner`) - caught only by `unity.mjs cc`, which runs in the **main checkout** (Unity's csproj
+  and Library): queue jobs detach the main checkout at the branch tip and return; they refuse to run with untracked files - commit the editor's
+  `.meta` files of new branch files to the branch.
+- The claude-mem plugin (v13 hooks calling a v12 CLI: "Unknown command: hook") was uninstalled with `--keep-data`; its hooks may fire until Claude Code restarts.
+
 ## Session 20 (13 Oct 2026, 17:25-~21:00 IST; Control Room run #55 session 2) - stopped by Arjun; nothing running
 
 ### Exact state

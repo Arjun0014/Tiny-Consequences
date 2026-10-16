@@ -4,6 +4,19 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 21 (16 Oct 2026, 19:12-22:05 IST; Control Room run #51 session 1; one low-priority job queue, `tc2/out/tools/s21/runq.sh`)** - (1) **C3.7d's
+  pigs traced** (branch `wip/c37d-stubble`, still NOT merged): tools-only herd diagnostics (`--places`: births and ends by village, kind and cause, by
+  the village's day of the year, hard times told apart, herds by household; `--stocktally`); where pigs vanished the land was plentiful and the sows fed
+  and bred as the control's - the households keeping pigs dwindled because **the hands' cull took the kind with the most spares** (after a farrowing
+  the pigs) when the stubble's cattle filled the households' hands; now **short hands are eased from the kind whose spares take most of them**
+  (`--oldhands`). Ten seeds `_u4`: people at par, cattle x1.94, pigs x0.80 (n.s.) and lost in one world (seed 5; four with the old rule). (2) Real
+  shots `s21a`-`s21t` (`27` §9): herds on the stubble, each household's field work (busiest spot 2-13 within 60 m, was 126), **a carter in the sea**
+  -> a household's field cell is one its hands walk to dry-shod (`FieldSpots.DryWay`, `--wetfieldspot`; field work in the water 2-4 person-hours from
+  55-68), the stubble drawn dun as eaten, muck heaps placed clear of the croft, pen, woodpile and cart (new shot views `muck`, `mucklow`), the
+  woodlot framing (107c100) works, a crowd of hunters is a village outgrown its land (real). Tools: `wet --doy`, `crowds`, `unity.mjs shots --doy`.
+  (3) Open at the handoff: the 20-seed comparison (`_c6` vs `_u7` with head-years) running in the queue; then merge, D2-155 (draft
+  `tc2/out/tools/s21/d2155.md`), the full suite, the Web build and test - SESSION_HANDOFF "Session 21". Also removed the claude-mem plugin (its v13
+  hooks called a v12 CLI: "Unknown command: hook" on every tool call).
 - **Session 20 (13 Oct 2026, from 17:25 IST; Control Room run #55 session 2; Arjun's rule D-1/D-2 kept by one job queue,
   `tc2/out/tools/s20/runq.sh`: one job at a time, gated, below-normal priority; builds jump the seed runs)** - (1) **q19 read**: threshing at par
   in ten seeds; fish x0.94 follows fewer fishing villages (fish a person-year x0.95, t -1.5); foundings with the floor were never more than without
