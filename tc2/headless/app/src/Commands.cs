@@ -223,6 +223,8 @@ namespace TC2.Headless
             if (a.Has("stocktally")) TC2.Core.Places.Livestock.StockYears = new double[TC2.Core.Places.Livestock.Kinds];   // (tools: head x years of each kind over the run)
             if (a.Has("oldhands")) TC2.Core.Places.Livestock.OldHands = true;   // (the hands' cull from the kind with the most spares, as session 20's branch)
             if (a.Has("stubbletally")) TC2.Core.Places.Stubble.Tally = new double[3];   // (C3.7d: kg eaten on the stubble and the fallow, day dung on the fields)
+            if (a.Has("nobread")) TC2.Core.Society.Conflict.BreadOff = true;   // (C10.4 off: lordship by conquest alone, as D2-075 built it)
+            if (a.Has("breadtally")) TC2.Core.Society.Conflict.BreadTally = new long[15];   // (C10.4: village-harvests by the relief still owed, bonds)
             if (a.Has("wetways")) TC2.Core.Places.Afoot.Off = true;   // (D2-156 off: lived walks straight across the water, the well's and the idle's spots and crofts in it, the woods by the straight line)
             if (a.Has("waytally")) TC2.Core.Places.Afoot.Tally = new long[128];   // (tools: the walks bent round the water and those no bend kept dry, by what was done at their end)
             if (a.Has("oldgardenorder")) TC2.Core.Agents.AgentSystem.CoarseGardenOld = true;   // (D2-146: a COARSE day's garden before all but the fields, as C3.7a built it)   // (C3.7a against D2-142 in one binary: no gardens)
@@ -953,8 +955,12 @@ namespace TC2.Headless
                         if (n > biggest) { biggest = n; biggestRoot = sid; }
                     }
                     for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid)) { int d = 0, r = sid; while (w.Conflict.LordOf(r) != 0 && d < 16) { r = w.Conflict.LordOf(r); d++; } if (d > deepest) deepest = d; }
-                    Console.WriteLine("lordships: tribute agreed " + m.Tributes + ", ended " + m.TributesEnded + ", paid " + F(m.TributeFu, "0") + " FU; lords now " + lords +
+                    Console.WriteLine("lordships: tribute agreed " + m.Tributes + (m.BreadBonds > 0 ? " (for bread " + m.BreadBonds + ")" : "") + ", ended " + m.TributesEnded + ", paid " + F(m.TributeFu, "0") + " FU; lords now " + lords +
                                       (biggest > 0 ? ", the greatest " + w.History.NameOf(EntityRef.Settlement(biggestRoot)) + " with " + biggest + " paying, depth " + deepest : ""));
+                    var bt = TC2.Core.Society.Conflict.BreadTally;
+                    if (bt != null)   // (C10.4: village-harvests with no lord by the relief they still owed their main giver beyond the harvest's spare, in days of their food)
+                        Console.WriteLine("bread: village-harvests owing none " + bt[0] + ", 0-5 d " + bt[1] + ", 5-10 d " + bt[2] + ", 10-20 d " + bt[3] + ", 20-30 d " + bt[4] + ", 30-60 d " + bt[5] + ", 60+ d " + bt[6] +
+                                          "; to a stronger giver within reach: 0-5 d " + bt[8] + ", 5-10 d " + bt[9] + ", 10-20 d " + bt[10] + ", 20-30 d " + bt[11] + ", 30-60 d " + bt[12] + ", 60+ d " + bt[13] + "; bonds " + bt[14]);
                     long firstLord = 0, firstEnd = 0;
                     for (int i = 0; i < w.History.Count && (firstLord == 0 || firstEnd == 0); i++)
                     {
