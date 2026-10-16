@@ -485,7 +485,7 @@ namespace TC2.Game
 
         Plot PlotOf(int bid) => _plots.TryGetValue(bid, out var p) ? p : null;
 
-        /// <summary>(The "muck" shot views) no other building of the village within 22 m south of a point and 7 m either side: the camera looks north from there.</summary>
+        /// <summary>(The "muck" shot views) no other building of the village within 12 m south of a point and 5 m either side: the camera looks north from there.</summary>
         static bool SouthClear(TC2.Core.Simulation.World w, int sid, int bid, double x, double y)
         {
             var bl = w.BuildingsOf(sid);
@@ -494,7 +494,7 @@ namespace TC2.Game
                 if (bl[i] == bid) continue;
                 ref var o = ref w.Buildings.Get(bl[i]);
                 double dx = o.X - x, dy = o.Y - y;
-                if (dy < 2.0 && dy > -22.0 && System.Math.Abs(dx) < 7.0) return false;
+                if (dy < 2.0 && dy > -12.0 && System.Math.Abs(dx) < 5.0) return false;
             }
             return true;
         }
