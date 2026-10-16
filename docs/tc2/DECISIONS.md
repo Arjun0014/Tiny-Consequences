@@ -4457,3 +4457,56 @@ byte-identical). Seed 4 with the ground kept (`_n0`, year 300): **13 grounds wit
 streets worn across the ground (ten seeds `_n1`: 2,159 of 22,200 slots covered - a street 2,126, the square's earth 12, a building 4). Real shots (`s20a20`, `s20g20`, `s20h20`): the village's
 graves in rows across, headstones up, the plough's furrows gone from under them; the largest town of the kept-ground world (Veidasford) with its
 ground open beside its market place, a worn path across it. Ten seeds with C3.7c (`_n1` against `_m1`): at par (D2-153).
+
+## D2-155 — 2026-10-16 — The herds on the stubble and the fallow; each household's hands on its own part of the fields; a cull eases what is short from the kind that loads it most (C3.7d)
+
+**Context.** `26` §2k, `27` §6 ("herds on the fallow - not simulated"): the herds grazed only the waste (`Livestock.Grazes` refused every cell under a
+village's fields), so the stubble after the harvest and the arable the village rests fed nothing and took no dung; since C3.7c the fields got back
+only the night's muck carted out of the yards. Measured first (seed 4 `_n0`, `--places`): the herds were fed (grass short in 17 of 472
+village-reports, mean fed 0.985) because the herders kept them to the pasture's lean days (`Livestock.Destock`) - cattle's commonest end in 300
+years was that cull, `pasture` 5,156 of 9,548 born. In the record the open fields were thrown open to the village's beasts from the harvest to the
+sowing and the fallow was grazed all its year - the village's main way of putting dung where the corn would grow, and the autumn's feed. And the
+real shots of C3.7c (`act:Muck`, D2-153) showed 126 carters within 60 m of one spot: every field hand and carter of a village went to its one field
+spot (`Settlement.FieldX/FieldY` +-60 m).
+**Decision.** (1) `Core/Places/Stubble.cs`, `Settlement.Stubble` (sim version 80): the harvest's end leaves `PerHa` 300 kg (dry) of forage a reaped
+hectare - the high stubble's weeds, green shoots and spilt ears (a modern wheat stubble is grazed of ~70 kg of grain and ~150 kg of leaf a hectare;
+medieval reaping cut high) - a quarter of what is left found in a day, ploughed in at the sowing. (2) `Livestock.FieldOffer`: the village's own fields
+offer the stubble's day share and the fallow's sward (its rested hectares at the field cells' own grass, as lean in the cold as the waste's; none on
+a day of hard frost); the herds eat the stubble, then the fallow, then the waste; the fallow's grass is grazed off its part of the field cells only
+(`GrazeFallow`); the cull keeps the herds to the waste's and the fields' offer together. (3) `Stubble.Dung`: what they eat on the fields drops its
+day's dung there - into `Settlement.Spread` with no carting, at the muck's calibration (the day's share counts as the yards' night share does when
+carted); the night's goes to the yards as everywhere. (4) While a quarter of the stubble is left the herd's ground of the day is one of the village's
+own field cells beyond its houses (`GroundOf`: the herders walk there, the herd is drawn there); the pages: the stubble left, the herder "on its
+stubble", the muck spread "carted out, and dropped by its herds on the stubble and the fallow". (5) `Core/Places/FieldSpots.cs`: a household's field
+hands and carters work its own part of the village's fields - one of its field cells beyond its houses, by the household, all the year - in place of
+the village's one field spot (`--onefieldspot`); **a cell its hands can walk to dry-shod from home** (session 21: a lived walk to a work spot is a
+straight line, and the real shots showed a carter in the sea - the `wet` audit found carters 96-224 m from dry ground on their way to cells across a
+bay; the next of the village's cells whose straight way stays out of the water, else the one field spot; `--wetfieldspot` session 20's rule). (6) **The culls ease what is short from the kind whose spares load it most** (`Livestock.Spare`): a
+short food from the kind whose spares eat most of it (session 20, `--oldspare`), and **short hands from the kind whose spares take most of them** - all
+they eat, as the hands are measured (`TendKg`; session 21, `--oldhands`). D2-050's rule took the kind with the most spares whatever was short: after
+a farrowing that is always the pigs - a piglet eases the hands of a quarter of a pig's food, a spare cow of three grown pigs' - so where the stubble's
+cattle filled the households' hands the young sows were culled before they could replace the breeding ones, the households keeping pigs dwindled
+and the pigs died out of three worlds of ten. The breeding cores stay as D2-050 kept them. (7) The view: the reaped fields drawn straw-gold and
+dun as their herds eat the stubble down (`TerrainLod.CropColour` reads `Settlement.Stubble`); the herd and its herders on the stubble field. (8)
+Tools: `--nostubble`, `--stubbletally`, `--onefieldspot`, `--oldspare`, `--oldhands`, `--stocktally` (head x years by kind); `--places` prints each
+village's births and ends by kind and cause since the last report and its herds by household, and the run's ends by the village's day of the year,
+the herds' reach and fill (hard times told apart from the herders' ordinary cull); shots `unity.mjs shots --doy D` (the framed village's own day).
+**Evidence.** Tests on the final binary (bin_s6): StubbleTests 3/3, LivestockTests 16/16 (new `HandsThatAreShortCullWhatTakesThemNotTheLitter`; the short-pasture
+test counts the pasture's and the hands' culls together), Muck 3, HouseholdWork 4, Coarse 3, Determinism 6, SaveLoad 8, Tilth 9, Threshing 5, Garden 5,
+Footprints 8. Controls byte-identical: `--nostubble --onefieldspot --oldspare` = `_n1` on ten seeds (`_c6`) and on the final binary (`_c8`);
+`--oldhands` = `_u2`; `--wetfieldspot` = `_u4`; the herd diagnostics and yearly reports change nothing. **The pigs** (session 20's ten seeds `_u2`:
+pigs gone from 3 worlds of 10), traced with `--places`: not grass, mast or hard times - where they vanished the land was plentiful, the sows fed
+(fed 0.997-0.999) and bred as often a pig-year as the control's (1.32 against 1.33); the households keeping pigs dwindled (seed 5: 15 -> 8 in ten
+years, the control 12) as the hands' cull's share of the pigs' ends doubled (6.1 -> 14.6 %, 7.8 -> 11.8 %, 6.5 -> 14.8 % in seeds 5, 7, 11): fixed by
+(6). **Twenty seeds** (`_u7`, the final rules, against `_c6`; `tc2/out/tools/s21/results/cmp_c6_u7_20.txt`): births and deaths a person-year at par
+(x1.002, t 0.3; x1.006, t 0.7), people over years 200-299 x1.042 (t 2.4: the herds' dung on the fields), hunger x1.00, famines x0.97, foundings over the
+run x0.97; cattle-years x1.64 (t 10.0), goats x1.32 (t 3.7), **pig-years x0.98 (t -0.2)**; pigs gone by year 300 in 2 of the 19 worlds that kept them
+(the control: 1). Pigs at the end x0.50 (t -2.4) is chance: two runs of the same rules (`_u4` and `_u7`, apart only by the first lived day's walks -
+a 300-year run lives its first day before it goes COARSE) differ by x0.46 (t -1.9; `cmp_u4_u7_placebo.txt`). **Sickness from animals rises with the
+herds**: new sicknesses come over 61 times against 36 in the twenty worlds, epidemics 634 against 317, sickness deaths 10,338 against 4,505 - D2-070's
+spillover, whose daily chance grows with the beasts a village keeps (to three times at 80); a real consequence of keeping more beasts, small in the
+vital rates (births and deaths a person-year at par). The new culls without the stubble (`_r4`, ten seeds against `_c6`): people over years 200-299
+x0.94 (t -1.95), pigs gone in 1 world - noisy. Real shots (`27` §9, `tc2/out/shots/s21a`-`s21t`): the herds and their herders on the stubble, field
+hands and carters spread over their households' parts of the fields (the busiest spot 2-13 within 60 m, was 126), a carter in the sea -> each
+household's field cell walked to dry-shod (field work in the water 2-4 person-hours from 55-68 in two lived days), the stubble drawn dun as eaten,
+muck heaps clear of the croft, the pen, the woodpile and the cart; the Unity C# compiles (`unity.mjs cc`, 180ad85). Merged 9d68eaa.

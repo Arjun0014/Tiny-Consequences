@@ -265,6 +265,14 @@ been built over) and graves are drawn as graves; stumps drawn on felled-bare gro
 branch `wip/c37d-stubble` (sim version 80) with each household's own field cell (`FieldSpots`) and a food's cull by what the spares eat - **not merged:
 pigs die out in 3 of 10 worlds** (people at par, fields x1.017, cattle x1.84). See SESSION_HANDOFF "Session 20", `SESSION_20_REPORT.md`.
 
+**Where we are (session 21, 16 Oct 2026)**: C3.7d's pigs traced on `wip/c37d-stubble` (tip 161fa63, still NOT merged): the households keeping pigs
+dwindled because **the hands' cull took the kind with the most spares** (after a farrowing, the pigs) once the stubble's cattle filled the households'
+hands - now short hands are eased from the kind whose spares take most of them (`--oldhands`); ten seeds `_u4` at par in people, pigs x0.80 (n.s.).
+Real shots (`27` §9) found **a carter in the sea** - a household's field cell is now one its hands walk to dry-shod (`FieldSpots.DryWay`) - and muck
+heaps through the croft's fence (placed clear of it). A 20-seed comparison with head-years was running in a job queue at the handoff; then merge,
+D2-155, the full suite and the Web build. Next after that: nobody walks through the water (woodlots, the well's spot, crofts), then a governance
+slice (a 30-village world at year 300 has one lordship of two villages). See SESSION_HANDOFF "Session 21".
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.
