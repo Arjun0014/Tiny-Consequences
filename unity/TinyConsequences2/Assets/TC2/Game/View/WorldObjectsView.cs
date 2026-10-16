@@ -430,7 +430,7 @@ namespace TC2.Game
         /// may be drawn before it meets a neighbour (`Footprints.Room`), and where its yard has free ground - a kitchen garden behind or beside, a
         /// pen behind, a woodpile at its end or its back - so no garden, pen or woodpile is drawn into another house, a street or the green.
         /// </summary>
-        sealed class Plot { public float Room; public bool Back, Pen, SideL, SideR, WoodEnd, WoodBack, CartEnd, OxEnd, MuckBack, MuckBack2; public System.Collections.Generic.List<(double cx, double cz, double hx, double hz)> Beds; }
+        sealed class Plot { public float Room; public bool Back, Pen, SideL, SideR, WoodEnd, WoodBack, CartEnd, OxEnd, MuckBack, MuckBack2, MuckEndL, MuckEndR; public System.Collections.Generic.List<(double cx, double cz, double hx, double hz)> Beds; }
         readonly Dictionary<int, Plot> _plots = new Dictionary<int, Plot>();
         readonly Dictionary<int, long> _plotSig = new Dictionary<int, long>();
         readonly Dictionary<int, float> _plotAt = new Dictionary<int, float>();
@@ -474,6 +474,8 @@ namespace TC2.Game
             pl.WoodBack = Footprints.YardFree(w, sid, bid, L / 2.0 - 1.2, -W / 2.0 - 1.4, 1.3, 1.0);
             pl.MuckBack = Footprints.YardFree(w, sid, bid, -L / 2.0 + 1.3, -W / 2.0 - 1.6, 1.4, 1.3);   // (the muck heap behind the other back corner: C3.7c)
             pl.MuckBack2 = Footprints.YardFree(w, sid, bid, L / 2.0 - 1.3, -W / 2.0 - 1.6, 1.4, 1.3);   // (or behind the woodpile's, where it stands at the end)
+            pl.MuckEndL = Footprints.YardFree(w, sid, bid, -(L / 2.0 + 0.9), -W / 2.0 + 0.6, 0.9, 1.0);   // (or against an end wall toward the back: the end yard)
+            pl.MuckEndR = Footprints.YardFree(w, sid, bid, L / 2.0 + 0.9, -W / 2.0 + 0.6, 0.9, 1.0);
             pl.CartEnd = Footprints.YardFree(w, sid, bid, -(L / 2.0 + 1.9), -0.3, 1.0, 1.7);   // (a handcart by the other end wall, its shafts along it: C4.2)
             pl.OxEnd = Footprints.YardFree(w, sid, bid, -(L / 2.0 + 2.1), -0.8, 1.2, 2.8);     // (an ox cart and its pole)
             if (pl.Beds == null) pl.Beds = new System.Collections.Generic.List<(double, double, double, double)>();
@@ -1135,13 +1137,17 @@ namespace TC2.Game
                     bool inPen = lived && plot.Pen && HasBeasts(w, b.Household);
                     float want = Mathf.Clamp(Mathf.Pow((float)(mkg / 1500.0), 1f / 3f), 0.45f, 1.3f);
                     double lx = 0, lz = 0; float hs = 0f;
-                    for (int cand = 0; cand < 3 && hs <= 0f; cand++)
+                    bool woodPiled = woodDays >= 2.0 && (plot.WoodEnd || plot.WoodBack), woodAtEnd = woodPiled && plot.WoodEnd;   // (where the woodpile stands, as drawn below)
+                    bool cartHome = false;
+                    if (w.Households.Exists(b.Household)) { ref var hm = ref w.Households.Get(b.Household); cartHome = hm.CartState == Carts.Made && !Carts.WornOut(in hm, w.Now) && !CartOut(w, b.Household); }
+                    for (int cand = 0; cand < 5 && hs <= 0f; cand++)
                     {
-                        double cx = cand == 0 ? -Lm / 2.0 + 1.3 : cand == 1 ? Lm / 2.0 - 1.3 : -acrossM * 2.1 / 2.0 + 1.35;
-                        double cz = cand == 2 ? -Wm / 2.0 - 3.2 - 1.35 : -Wm / 2.0 - 1.6;
-                        bool free = cand == 0 ? plot.MuckBack : cand == 1 ? plot.MuckBack2 && (plot.WoodEnd || !plot.WoodBack) : inPen;
+                        // behind the back corner; behind the other; against the end wall toward the back (the cart's end, the woodpile's); the pen's corner
+                        double cx = cand == 0 ? -Lm / 2.0 + 1.3 : cand == 1 ? Lm / 2.0 - 1.3 : cand == 2 ? -(Lm / 2.0 + 0.9) : cand == 3 ? Lm / 2.0 + 0.9 : -acrossM * 2.1 / 2.0 + 1.35;
+                        double cz = cand <= 1 ? -Wm / 2.0 - 1.6 : cand <= 3 ? -Wm / 2.0 + 0.6 : -Wm / 2.0 - 3.2 - 1.35;
+                        bool free = cand == 0 ? plot.MuckBack : cand == 1 ? plot.MuckBack2 && !(woodPiled && !woodAtEnd) : cand == 2 ? plot.MuckEndL && !cartHome : cand == 3 ? plot.MuckEndR && !woodAtEnd : inPen;
                         if (!free) continue;
-                        double room = cand == 2 ? 1.2 : 1.6;   // (the pen's corner inside its fences; the corner's free ground)
+                        double room = cand == 4 ? 1.2 : cand >= 2 ? 0.9 : 1.6;   // (the pen's corner inside its fences; the end yard; the corner's free ground)
                         if (plot.Beds != null) for (int k = 0; k < plot.Beds.Count; k++) room = System.Math.Min(room, RectGap(plot.Beds[k], cx, cz) - 0.3);   // (and the wattle)
                         float fit = (float)(room / 1.17);   // (the kit's heap spreads ~1.17 m from its middle)
                         if (fit < 0.45f) continue;
