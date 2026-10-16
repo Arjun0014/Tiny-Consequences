@@ -52,7 +52,8 @@ end after its current job (the full test suite); the jobs it had not started wer
 - The cause: a COARSE day gave the yards' muck its hours before the household's own roof, so a camp household had no house after sixty days. Fixed
   in the lived urges' order, as D2-146 did for the garden (`--oldmuckorder` is the control).
 - Ten seeds: vital rates at par; foundings x1.14 (new villages begin in camps and now roof themselves first).
-- **The full suite on the final code was running at the stop**: its result is in `fullsuite_b4.txt` in the queue's scratchpad.
+- **The full suite on the final code (the branch tip: main + C10.4 + D2-158): 403 passed, 0 failed** (finished 02:14, after the stop was called;
+  `tc2/out/tools/s22/results/fullsuite_b4.txt`).
 
 **5. Tools.**
 - `polity --load SAVE`: the ties a polity could be made of.
@@ -64,12 +65,12 @@ end after its current job (the full test suite); the jobs it had not started wer
 ## State at the stop
 - **main** (22369c1 + this report): C3.7d, D2-155, D2-156 and its decision; sim version 81.
 - **Branch `wip/c104-bread`** (tip 08e16b2): C10.4 + D2-158, sim version 82.
-  - Decision drafts: `tc2/out/tools/s22/d2157.md` and `d2158.md`. Their evidence is filled in except the final full suite.
+  - Decision drafts: `tc2/out/tools/s22/d2157.md` and `d2158.md`, with their evidence. The full suite passed (403/403), so the branch is ready to merge.
 - **Not done:** the Web build and test (`tc2/out/tools/s22/h_a_web.sh`); real shots of a bread lordship and of D2-156; the 900-year check on the
   final rules (`j_l9_s2.sh`, `j_l9_s4.sh`); the Unity compile check on the final tip (08e16b2; de22762 passed, and D2-158 touches Core only).
 
 ## Next session
-1. Read `fullsuite_b4.txt` (expect 403/403). If it passes:
+1. The full suite passed (403/403), so:
    - merge `wip/c104-bread` into main (`--no-ff`);
    - write D2-157 and D2-158 into DECISIONS from the drafts;
    - update PROGRESS and `25` (C10.4 done);

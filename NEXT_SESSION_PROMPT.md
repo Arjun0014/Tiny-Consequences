@@ -24,7 +24,7 @@ picture?". No simulation theatre: presentation elaborates a real activity, never
 6. `docs/tc2/PROGRESS.md` CURRENT STATE (the session 22 entry first).
 7. `git status`, `git log --oneline -10`, `git worktree list`.
 
-## Session 22 (16 Oct 22:19 - 17 Oct ~02:15 IST) - stopped by Arjun; nothing of ours left running but the full suite's last minutes
+## Session 22 (16 Oct 22:19 - 17 Oct ~02:15 IST) - stopped by Arjun; nothing running
 - **Merged on main**: **D2-155** C3.7d the herds on the stubble (twenty seeds at par; a placebo shows end-of-run pig counts and sickness are noise at
   ten seeds - a 300-year run lives its first day before going COARSE); **D2-156 nobody walks through the water** (sim version 81: walks bend round
   lakes and bays, every lived spot out of the water, crofts not in it, woods by the walk; the same save 0.178 % -> 0.013 % of person-hours in the
@@ -33,10 +33,9 @@ picture?". No simulation theatre: presentation elaborates a real activity, never
   of the famine grain a stronger neighbour within a day's walk gave it bows to that neighbour (ten seeds: vital rates untouched, lords 8 -> 21, the
   lord's call answered, raids up as lordships fight); **D2-158** - the full suite's one failure since C3.7c (a camp carted muck before raising its
   roof) fixed.
-- **First thing**: the full suite on the final code (`bin_b4`) was running at the stop - its result is `fullsuite_b4.txt` in
-  `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/4c5113ad-667d-4fde-9df2-13e8ffdf1a90/scratchpad` (expect 403/403; if the
-  file is gone, run `node tc2/scripts/headless.mjs test` in `C:/Game Dev/tc-bread`). Then merge the branch, D2-157/D2-158, `unity.mjs cc`, the Web
-  build and test, real shots of a bread lordship (`shots --village tributary|lord`), the 900-year check - SESSION_HANDOFF "Session 22".
+- **The full suite on the branch tip's code passed: 403/403** (`tc2/out/tools/s22/results/fullsuite_b4.txt`). **First thing**: merge the branch
+  (`--no-ff`), write D2-157/D2-158 from the drafts, `unity.mjs cc`, then the Web build and test, real shots of a bread lordship (`shots --village
+  tributary|lord`), the 900-year check - SESSION_HANDOFF "Session 22".
 - **Resource rule (Arjun D-1/D-2)**: one low-priority job at a time while RAM < 86 % and CPU < 85 % - use a job queue (copy `tc2/out/tools/s21/runq.sh`
   and `lib.sh`, set `Q`/`S`/`N` to the new scratchpad; jobs of session 22 in `tc2/out/tools/s22/`). No subagents.
 

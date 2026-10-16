@@ -9,9 +9,8 @@
   (`10` §12f; 1f05c2b, f4bffc6), main merged in (b4dd299), shots `--village tributary|lord` (863d170, de22762), **D2-158** (08e16b2: a COARSE day's
   muck waits for the household's own roof). Decision drafts with their evidence: `tc2/out/tools/s22/d2157.md` (fill "Full suite" and "Unity C#"),
   `d2158.md` (fill "Full suite").
-- **The queue was told to stop** after its last job, **the full suite on `bin_b4`** (C10.4 + D2-158; started 01:58): its result is
-  `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/4c5113ad-667d-4fde-9df2-13e8ffdf1a90/scratchpad/fullsuite_b4.txt`
-  (`grep -E "^TESTS|^  FAIL"`; ~15 min, expect 403/403 - bin_b3 was 402/403 with the one failure D2-158 fixes). Held, not run: `i_g_cc_bread3.sh`
+- **The queue stopped** (02:13:57) after its last job, **the full suite on `bin_b4`** (the branch tip's code: main + C10.4 + D2-158): **403 passed,
+  0 failed** (`tc2/out/tools/s22/results/fullsuite_b4.txt`; bin_b3 had 402/403 - the one failure D2-158 fixes). Nothing is running. Held, not run: `i_g_cc_bread3.sh`
   (`unity.mjs cc` on the bread tip), `j_l9_s2.sh`, `j_l9_s4.sh` (the 900-year check) - in `$Q/hold` and `tc2/out/tools/s22/`. To run jobs again,
   start a fresh runner (copy `tc2/out/tools/s21/runq.sh` and `lib.sh`, set `Q`/`S`/`N` to the new scratchpad, copy the binaries `bin_b4`... or
   rebuild).
@@ -30,8 +29,8 @@
   par, foundings x1.14.
 
 ### Next, in order
-1. Read `fullsuite_b4.txt`. If 403/403: `git merge --no-ff wip/c104-bread` on main; DECISIONS D2-157 and D2-158 from the drafts; PROGRESS; `25`
-   (C10.4 done); `node tc2/scripts/unity.mjs cc` on main. If anything fails, fix it on the branch first.
+1. The full suite passed (403/403): `git merge --no-ff wip/c104-bread` on main; DECISIONS D2-157 and D2-158 from the drafts (fill "Full suite:
+   403/403 on the branch tip's code"); PROGRESS; `25` (C10.4 done); `node tc2/scripts/unity.mjs cc` on main (de22762 compiled; 08e16b2 changes Core only).
 2. The Web build and test on the final main (`tc2/out/tools/s22/h_a_web.sh`: `unity.mjs build-web --jobs 2`, `webtest.mjs --tag s22web1
    --export`; saves v82).
 3. Real shots of a bread lordship (`node tc2/scripts/unity.mjs shots --tag s23a --load "tc2/out/civ/s2_y3/world_y300.tc2" --village tributary --views
