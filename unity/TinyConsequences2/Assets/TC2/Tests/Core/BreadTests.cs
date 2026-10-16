@@ -95,6 +95,10 @@ namespace TC2.Tests.Core
             double owed1 = w.DeedBook.Owed(r, g);
             Console.WriteLine("owed " + owed0.ToString("0") + " FU before its first tribute, " + owed1.ToString("0") + " after");
             Assert.Less(owed1, owed0, "the tribute gives the grain back");
+            string page = Gazetteer.Neighbours(w, r);   // (the settlement page tells why it pays, and what it owes)
+            Console.Write(page);
+            StringAssert.Contains("its grain kept it through its famines", page);
+            StringAssert.Contains("days' food for the grain it gave it in its famines", page);
         }
 
         [Test]

@@ -341,12 +341,21 @@ namespace TC2.Core.History
                 sb.Append(st >= 3 ? "A road" : "A path").Append(" to ").Append(Name(w, wy.A == sid ? wy.B : wy.A)).Append(".\n");
             }
             if (s.TradeIn >= 1f) sb.Append("Traders come ").Append(F(s.TradeIn, "0")).Append(" times a year").Append(s.Market != 0 ? " to its market" : "").Append(".\n");
-            if (s.Lord != 0) sb.Append("It pays tribute to ").Append(Name(w, s.Lord)).Append(" since ").Append(Year(s.LordSince)).Append(".\n");
+            if (s.Lord != 0)
+            {
+                // why: its raiders' bands (D2-075), or the grain of its famines it could not give back (C10.4)
+                bool bread = s.LordEvent != 0 && w.History.TryGet(s.LordEvent, out var le) && le.Kind == HistoryKind.TributeAgreed && le.ArgB == 1;
+                sb.Append("It pays tribute to ").Append(Name(w, s.Lord)).Append(" since ").Append(Year(s.LordSince))
+                  .Append(bread ? ": its grain kept it through its famines, and it could not give it back.\n" : ": it could neither stand against its bands nor go elsewhere.\n");
+            }
+            Places.Trade.DaysOfFood(w, in s, out double daily);
             for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
             {
                 if (o == sid) continue;
                 ref var t = ref w.Settlements.Get(o);
                 if (t.Lord == sid && t.Inhabited) sb.Append(Name(w, o)).Append(" pays it tribute.\n");
+                double owes = w.DeedBook.Owed(sid, o) / daily;   // (the grain given it in its famines, not yet given back: D2-113)
+                if (owes >= 1.0) sb.Append("It owes ").Append(Name(w, o)).Append(" ").Append(F(owes, "0")).Append(" days' food for the grain it gave it in its famines.\n");
                 double held = w.DeedBook.Grievance(sid, o), against = w.DeedBook.Grievance(o, sid);
                 if (held >= 1.0) sb.Append("It holds wrongs against ").Append(Name(w, o)).Append(" weighing ").Append(F(held, "0")).Append(" days' food.\n");
                 if (against >= 1.0) sb.Append(Name(w, o)).Append(" holds wrongs against it weighing ").Append(F(against, "0")).Append(" days' food.\n");
