@@ -169,6 +169,7 @@ namespace TC2.Core.Places
             }
             if (Footprints.BoxDisc(a.X, a.Y, af, mx, mz, hx, hz, s.SquareX, s.SquareY, Footprints.Green(in s), 0.0)) return false;
             if (Burials.Meets(in s, a.X, a.Y, af, mx, mz, hx, hz)) return false;   // (no beds dug over the graves: D2-154)
+            if (!Afoot.Off && Afoot.WetBox(w, in s, a.X, a.Y, af, mx, mz, hx, hz)) return false;   // (nor into a lake or the sea behind the house: D2-156)
             return !Footprints.InLine(in s, a.X, a.Y, af, mx, mz, hx, hz);
         }
 

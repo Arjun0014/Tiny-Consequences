@@ -54,18 +54,8 @@ namespace TC2.Core.Places
             return P.IsLand(c) && P.LakeDepth[c] <= 0.3f && Vec3d.ArcDistance(P.Grid.Center[c], s.Anchor, P.Radius) >= 140.0;
         }
 
-        /// <summary>Whether the straight way from (ax, ay) to (bx, by) in the village's frame stays out of the water (looked at every 15 m and at its end).</summary>
-        public static bool DryWay(World w, in Settlement s, double ax, double ay, double bx, double by)
-        {
-            var P = w.Planet;
-            double ex = bx - ax, ey = by - ay;
-            int steps = 1 + (int)(DMath.Sqrt(ex * ex + ey * ey) / 15.0);
-            for (int i = 1; i <= steps; i++)
-            {
-                double f = i / (double)steps;
-                if (Boats.Afloat(P, s.LocalToSphere(ax + ex * f, ay + ey * f, P.Radius))) return false;
-            }
-            return true;
-        }
+        /// <summary>Whether the straight way from (ax, ay) to (bx, by) in the village's frame stays out of the water (looked at every 15 m and at its end:
+        /// `Afoot.Dry`).</summary>
+        public static bool DryWay(World w, in Settlement s, double ax, double ay, double bx, double by) => Afoot.Dry(w, in s, ax, ay, bx, by);
     }
 }

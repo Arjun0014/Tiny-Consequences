@@ -61,6 +61,11 @@ namespace TC2.Core.Agents
                 moving = true;
                 pose = carrying ? Carry : p.Act == ActivityKind.Play || p.Act == ActivityKind.Flee ? Run : Walk;
                 double wx = (double)p.ToX - p.FromX, wy = (double)p.ToY - p.FromY;
+                if (p.TBend > p.T0 && p.TBend < p.TA)   // (round the water: along the leg they are on - D2-156)
+                {
+                    if (t < p.TBend) { wx = (double)p.BendX - p.FromX; wy = (double)p.BendY - p.FromY; }
+                    else { wx = (double)p.ToX - p.BendX; wy = (double)p.ToY - p.BendY; }
+                }
                 if (wx * wx + wy * wy > 1e-6) face = (s.East * wx + s.North * wy).Normalized;
                 return true;
             }

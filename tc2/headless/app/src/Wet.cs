@@ -86,9 +86,10 @@ namespace TC2.Headless
             var byVillage = new Dictionary<string, int>();
             long samples = 0, wet = 0;
             int shown = 0;
-            for (int h = 0; h < days * 24; h++)
+            int every = Math.Max(1, a.Int("minutes", 60));   // (`--minutes M`: a look every M minutes - a walk across a bay lasts minutes)
+            for (int h = 0; h < days * 24 * 60 / every; h++)
             {
-                w.AdvanceTo(w.Now + SimTime.Hour);
+                w.AdvanceTo(w.Now + every * SimTime.Minute);
                 for (int id = w.People.First(); id != 0; id = w.People.Next(id))
                 {
                     ref var p = ref w.People.Get(id);
@@ -120,7 +121,7 @@ namespace TC2.Headless
                     }
                 }
             }
-            Console.WriteLine("WET " + wet + " of " + samples + " person-hours under the drawn water (" + (100.0 * wet / Math.Max(1, samples)).ToString("0.000") + " %):");
+            Console.WriteLine("WET " + wet + " of " + samples + (every == 60 ? " person-hours" : " looks (every " + every + " min)") + " under the drawn water (" + (100.0 * wet / Math.Max(1, samples)).ToString("0.000") + " %):");
             var keys = new List<string>(byAct.Keys);
             keys.Sort((x, y) => byAct[y].CompareTo(byAct[x]));
             foreach (var k in keys) Console.WriteLine("  " + k + " " + byAct[k]);
@@ -128,6 +129,11 @@ namespace TC2.Headless
             vkeys.Sort((x, y) => byVillage[y].CompareTo(byVillage[x]));
             Console.WriteLine("by village and act:");
             for (int i = 0; i < Math.Min(20, vkeys.Count); i++) Console.WriteLine("  " + vkeys[i] + " " + byVillage[vkeys[i]]);
+            // (D2-156: the lived walks bent round the water, and those no bend kept dry - since the save was loaded)
+            Console.WriteLine("walks: " + w.Metrics.Activities + " lived steps, " + w.Metrics.BentWalks + " bent round the water, " + w.Metrics.WetWalks + " with no dry way found" + (Afoot.Off ? " (--wetways: none looked for)" : ""));
+            if (Afoot.Tally != null)
+                for (int k = 0; k < 64; k++)
+                    if (Afoot.Tally[k] + Afoot.Tally[64 + k] > 0) Console.WriteLine("  " + (ActivityKind)k + ": bent " + Afoot.Tally[k] + ", no dry way " + Afoot.Tally[64 + k]);
             return 0;
         }
 
