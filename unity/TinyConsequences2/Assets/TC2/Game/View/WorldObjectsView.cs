@@ -485,6 +485,20 @@ namespace TC2.Game
 
         Plot PlotOf(int bid) => _plots.TryGetValue(bid, out var p) ? p : null;
 
+        /// <summary>(The "muck" shot views) no other building of the village within 22 m south of a point and 7 m either side: the camera looks north from there.</summary>
+        static bool SouthClear(TC2.Core.Simulation.World w, int sid, int bid, double x, double y)
+        {
+            var bl = w.BuildingsOf(sid);
+            for (int i = 0; i < bl.Count; i++)
+            {
+                if (bl[i] == bid) continue;
+                ref var o = ref w.Buildings.Get(bl[i]);
+                double dx = o.X - x, dy = o.Y - y;
+                if (dy < 2.0 && dy > -22.0 && System.Math.Abs(dx) < 7.0) return false;
+            }
+            return true;
+        }
+
         /// <summary>How far a point lies from a croft bed's rectangle (0 inside it), in the house's frame.</summary>
         static double RectGap((double cx, double cz, double hx, double hz) r, double x, double z)
         {
@@ -1160,7 +1174,7 @@ namespace TC2.Game
                         MuckHeaps++;
                         // (the "muck" views: the framed village's largest heap on its house's south side - the camera looks north, the roof hides the rest)
                         int focus = CameraRig.FocusSid != 0 ? CameraRig.FocusSid : w.Settlements.First();
-                        if (s.Id == focus && hy < b.Y - 1.0 && mkg > MuckLargestKg) { MuckLargestKg = mkg; MuckLargestAt = s.LocalToSphere(hx, hy, P.Radius); }
+                        if (s.Id == focus && hy < b.Y - 1.0 && mkg > MuckLargestKg && SouthClear(w, s.Id, bid, hx, hy)) { MuckLargestKg = mkg; MuckLargestAt = s.LocalToSphere(hx, hy, P.Radius); }
                     }
                 }
             }
