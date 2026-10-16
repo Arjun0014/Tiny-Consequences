@@ -4510,3 +4510,53 @@ x0.94 (t -1.95), pigs gone in 1 world - noisy. Real shots (`27` §9, `tc2/out/sh
 hands and carters spread over their households' parts of the fields (the busiest spot 2-13 within 60 m, was 126), a carter in the sea -> each
 household's field cell walked to dry-shod (field work in the water 2-4 person-hours from 55-68 in two lived days), the stubble drawn dun as eaten,
 muck heaps clear of the croft, the pen, the woodpile and the cart; the Unity C# compiles (`unity.mjs cc`, 180ad85). Merged 9d68eaa.
+
+## D2-156 — 2026-10-16 — Nobody walks through the water: a lived walk bends round a lake or a bay across its way; every lived spot, croft and woodlot out of the water
+
+**Context.** D2-123 moved the lived work spots ashore and chose woods above the shore, and left open: "local walks are straight lines (across a
+lake between two dry spots)". Session 21's `wet` audit (seed 4 at year 300, two lived days) still found 0.10-0.14 % of all person-hours under the
+drawn water in the control world and 0.22-0.28 % with C3.7d: the well's spot (`WellX/WellY`, laid at the founding beside the square) under a lake's
+edge - 25-36 % of the wet hours; crofts dug into a lake behind houses on its shore (12-20 %); woodcutters walking straight across a bay to a woodlot
+chosen by the straight line and home over it again (a town's 325 person-hours in two days, with its walkers home to eat 166); hunters across a lake;
+people idling, threshing, burning charcoal and digging where a lake had come up to their spot. A lived walk is drawn where it is simulated
+(`Presence` reads `PositionAt`), so each of these is a person in the water in the picture.
+**Decision.** (1) **Walks bend round the water** (`Core/Places/Afoot.cs`): a lived walk (`AgentSystem.BeginLocal`) longer than 20 m whose straight way
+meets the drawn water (`Boats.Afloat`, looked at every 15 m) bends once on dry ground beside it - of 36 candidates (beside the wet stretch's first and
+last wet looks and its middle, 30-960 m out to either side) the shortest whose two legs both stay dry - and takes the time its length takes. The
+bend is part of the person's state (`Person.BendX/BendY/TBend`: saved, hashed; sim version 81); `LocalAt` walks it, the view faces along the leg
+they are on. A walk no single bend keeps dry goes straight as before and is counted (`Metrics.WetWalks`). A boat's crew (`Sail`) rows over the water.
+(2) **Every lived spot out of the water**: a walk's end under the drawn water is moved to the nearest dry ground (`Boats.OutOfTheWater`) - the well's
+spot under a lake's edge is drawn from its shore; idling, threshing, burning and digging beside a risen lake stay on its bank. (3) **The croft's beds
+are not laid into the water** (`Gardens.Free`: the bed's middle and corners on dry ground; `Afoot.WetBox`): a croft by a lake is smaller by its wet
+strips (its area at the year's turn, its gardener's spot, the beds drawn). (4) **The woods by the way their cutters walk** (`Woods.Choose`,
+`Afoot.BestWoods`): a woodlot is valued by the length of the way from the village's middle - the straight distance where that way stays dry (as
+before: where every way is dry the choice is the old one), else the way round the water; none where no way within the woods' reach keeps out of
+it; `WoodDist` that length (the hours a load costs). Where no woods within reach can be walked to dry-shod, the straight line's choice as
+before: the first version left such villages with no woodlot at all (ten seeds `_x1`: 18 villages without woods at year 300 against 6, and with the
+wood their houses and plank boats - fish from plank boats x0.14, relief by sea x0.16); test `WoodsAcrossTheWaterWithNoWayRoundAreStillFetched`. Tools: `--wetways` (all four off: D2-123's rules), `--waytally` (bent and wet walks by what was
+done at their end), `wet --minutes M` (a look every M minutes) and its `walks:` line.
+**Evidence.** AfootTests 5/5: a bend's two legs dry looked at every 5 m (616 m straight across the water, 784 m round it); a village's woodlot
+put across the water - 48 lived hours, 88 walks bent, no walker and no woodcutter in the water (the old rule: 79 of 180 looks at walkers and 35 of
+2,012 at woodcutters in it); over forty worlds' 840 homes 40 crofts had a bed in the water under the old rule, none now, no gardener's spot in it;
+the only woods within reach across a bay chosen at the 784 m way round (614 m straight under the old rule); a save taken while woodcutters walk
+round the water loads and lives on identically. Neighbours pass: Woods 6, Boat 19, Garden 5, Determinism 6, SaveLoad 8, Stubble 3, HouseholdWork 4,
+Coarse 3, Carts 6, Threshing 5, Muck 3, Footprints 8, Burials 4, Livestock 16; no float arithmetic (floatcheck). Control: `--wetways` seed 4 =
+`_u7` (annals byte-identical). **The `wet` audit** on one year-300 world (seed 4 `_x1`), two lived days, the new rules against the old on the same
+save: **0.178 % -> 0.013 %** of person-hours under the drawn water (day 0 of its year; 739 -> 55) and **0.195 % -> 0.021 %** (day 40; 808 -> 86) -
+woodcutters 162 -> 3, people walking home to eat 138 -> 8, idling by the house 110 -> 0, at the well 96 -> 12, sleeping (walking home for the night)
+46 -> 6, in the crofts 44 -> 0, at the green 43 -> 5, hunters 33 -> 1, at practice 13 -> 0 (the control world `_x0` under the old rules: 0.224 %,
+0.278 %). Of 185,000-197,000 lived walks, 5,300-5,400 bent round the water (2.8 %), 1,200-1,600 found no dry way (0.7 %): most of what is left is
+in one town (Gaby) whose homes, green and well lie on two shores of water - crossings a ferry or a bridge would make (C9.5) - and travellers on the
+ways between villages (4-24 m out). With the woods' fallback (`_x2`, seed 4): 0.165 % -> 0.115 % (day 0) and 0.181 % -> 0.105 % (day 40) on the same
+save - 380 of the 414 wet hours one island village's (Veidasford: its woodcutters and their walks home across the water to the only woods within
+reach; no woods walked to dry-shod within 4.5 km), without it 0.009 %; `woodways` finds 3 such villages in ten worlds at year 300 (two islands, one
+with thin woods 2.3 km round). **Ten seeds** (`_x2` against `_u7`; `tc2/out/tools/s22/results/cmp_u7_x2.txt`): births and deaths a person-year at par
+(x0.995, t -0.5; x0.989, t -0.8); people over years 200-299 x0.91 (t -1.5), hunger a person-year x0.49 (t -1.1), foundings x0.91 (t -1.7) - seed 4
+drives them: an epidemic about year 200 in both runs, after which `_u7` grew to its land's ceiling (10,254 people at year 300, 4,195 hunger deaths) and
+`_x2` was still growing (7,367, 4 hunger deaths); the same rules apart only by the first lived day (the placebo `_u4`/`_u7`) differ by as much. What
+the rules change at a moment (`woodways` on the ten `_x2` worlds at year 300): 22 of 164 villages fetch from other woods than the straight line would
+choose, 15 of them farther (13-366 m), the mean woodlot distance within +-35 m; 182 of 8,671 crofts smaller by their wet strips (area x0.99) - too
+little to move a world's people. Merged f200b9c.
+**Open.** Woodcutters of an island village cross the water to the only woods within reach (in the record by boat: boats that carry people and loads
+across water - C9.5 ferries); a town on two shores walks across its water (one bend cannot keep the way dry); the ways between villages are drawn past
+a shore's edge in places.
