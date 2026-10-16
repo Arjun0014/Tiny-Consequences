@@ -273,6 +273,17 @@ heaps through the croft's fence (placed clear of it). A 20-seed comparison with 
 D2-155, the full suite and the Web build. Next after that: nobody walks through the water (woodlots, the well's spot, crofts), then a governance
 slice (a 30-village world at year 300 has one lordship of two villages). See SESSION_HANDOFF "Session 21".
 
+**Where we are (session 22, 16-17 Oct 2026)**: **C3.7d merged** (D2-155: twenty seeds at par; the pigs' end counts are chance - a placebo of the same
+rules apart only by the first lived day, since a 300-year run lives its first day before it goes COARSE; sickness from animals rises with the herds).
+**D2-156 nobody walks through the water merged**: a lived walk bends once round a lake or a bay across its way (`Core/Places/Afoot.cs`, the bend in the
+person's state), every lived spot out of the water, crofts not dug into it, the woods by the way their cutters walk (the straight line's choice where
+none can be walked to - the first version stranded island villages); the same save 0.178 % -> 0.013 % of person-hours in the water; left: island
+woodcutters and towns on two shores (boats across water, C9.5). **C10.4 bread and dependence** (branch `wip/c104-bread`, D2-157): measured first with
+`polity --load SAVE` - kin does not mark mother and daughter villages, relief does - a village that cannot give back a month of the famine grain a
+stronger neighbour within a day's walk gave it bows to that neighbour; the tribute gives it back; a lord feeds its own: lords 8 -> 21 over ten worlds,
+the lord's call answered, vital rates untouched. **D2-158**: the full suite's one failure (since C3.7c) - a COARSE day's muck before a camp's own roof.
+See SESSION_HANDOFF "Session 22".
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.
