@@ -54,6 +54,8 @@ namespace TC2.Headless
                         return Commands.Crowds(args);
                     case "polity":
                         return Commands.Polity(args);
+                    case "woodways":
+                        return Commands.WoodWays(args);
                     case "planet":
                         return Commands.Planet(args);
                     case "climate":
