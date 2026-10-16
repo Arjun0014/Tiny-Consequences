@@ -1121,8 +1121,6 @@ namespace TC2.Game
                     }
                 }
             }
-            // its muck heap (C3.7c, D2-153): behind its other back corner, its share of the village's yards' muck by the grass its beasts eat - growing
-            // through the year, carted out to the fields after the harvest and through the sowing
             // its muck heap (C3.7c, D2-153): its share of the village's yards' muck by the grass its beasts eat - growing through the year, carted out to
             // the fields after the harvest and through the sowing; behind a back corner, else behind the other (where the woodpile is not), else in its
             // yard pen's front corner - each on free ground, clear of its croft's beds and their wattle, no bigger than the room it has there (session 21:
