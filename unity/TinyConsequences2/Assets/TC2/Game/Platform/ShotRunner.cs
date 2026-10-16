@@ -135,9 +135,9 @@ namespace TC2.Game
                         int score;
                         if (vArg == "lord")
                         {
-                            int size = w.Conflict.LordOf(s2) == 0 ? w.Conflict.PolitySize(s2) : 0;
-                            if (size == 0) continue;
-                            score = size * 100000 + w.Settlements.Get(s2).Population;
+                            int paying = w.Conflict.LordOf(s2) == 0 ? w.Conflict.PolitySize(s2) : 0;
+                            if (paying == 0) continue;
+                            score = paying * 100000 + w.Settlements.Get(s2).Population;
                         }
                         else
                         {
