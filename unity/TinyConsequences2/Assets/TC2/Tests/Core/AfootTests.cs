@@ -182,7 +182,7 @@ namespace TC2.Tests.Core
         public void TheWoodsAreChosenByTheWayTheirCuttersWalk()
         {
             // (D2-156) Premise: the only woods within reach stand across the water from the village: under the old rule fetched at the straight line's
-            // length; now at the length of the way round the water (or none, where that way is beyond the woods' reach)
+            // length; now at the length of the way round the water (or, where that way is beyond the woods' reach, across the water as before)
             var w = AcrossTheWater(out int sid, out double bx, out double by);
             Assume.That(w != null, "a village with dry ground across the water");
             var P = w.Planet;
@@ -211,7 +211,54 @@ namespace TC2.Tests.Core
                 Assert.AreEqual(c, lot, "the same woods");
                 Assert.AreEqual(way, s2.WoodDist, 0.5, "at the length of the way round the water");
             }
-            else Assert.AreEqual(-1, lot, "none: the way round is beyond the woods' reach");
+            else
+            {
+                Assert.AreEqual(c, lot, "no way round within the woods' reach: the woods across the water, as before (not left without wood)");
+                Assert.AreEqual(straight, s2.WoodDist, 0.5, "at the straight line's length");
+            }
+        }
+
+        [Test]
+        public void WoodsAcrossTheWaterWithNoWayRoundAreStillFetched()
+        {
+            // (D2-156's first version left a village whose only woods within reach lay across water with no way round - an island's, a lake-locked
+            // shore's - with no wood at all: 18 such villages against 6 over ten worlds, and with the wood their houses and plank boats.) Premise: the
+            // only woods within reach on a dry cell across the water that no single bend within the woods' reach walks round to
+            int tried = 0;
+            var near = new List<int>();
+            for (ulong seed = 701; seed < 821 && tried == 0; seed++)
+            {
+                var w = TestWorlds.Make(seed);
+                var P = w.Planet;
+                for (int sid = w.Settlements.First(); sid != 0 && tried == 0; sid = w.Settlements.Next(sid))
+                {
+                    ref var s = ref w.Settlements.Get(sid);
+                    if (!s.Inhabited || Boats.Afloat(P, s.LocalToSphere(0, 0, P.Radius))) continue;
+                    w.Hazards.CellsWithin(w, s.Cell, Woods.Reach, near);
+                    near.Sort();
+                    int island = -1; double straight = 0;
+                    foreach (int c in near)
+                    {
+                        double d = Vec3d.ArcDistance(s.Anchor, P.Grid.Center[c], P.Radius);
+                        if (d > Woods.Reach || !P.IsLand(c) || P.FieldOwner[c] != 0 || P.Ice[c] > 0.5f || !TC2.Core.Planet.Shore.Dry(P, P.Grid.Center[c])) continue;
+                        s.SphereToLocal(P.Grid.Center[c], P.Radius, out double cx, out double cy);
+                        double way = Afoot.Way(w, in s, 0, 0, cx, cy);
+                        if (way >= 0 && way <= Woods.Reach) continue;
+                        island = c; straight = d;
+                        break;
+                    }
+                    if (island < 0) continue;
+                    tried++;
+                    foreach (int k in near) P.Forest[k] = 0.0f;
+                    P.Forest[island] = 1.0f;
+                    int lot = Woods.Choose(w, sid);
+                    Console.WriteLine("seed " + seed + " village " + sid + ": the only woods " + island + " " + straight.ToString("0") + " m off across the water, no way round within reach -> woodlot " + lot +
+                                      " at " + w.Settlements.Get(sid).WoodDist.ToString("0") + " m");
+                    Assert.AreEqual(island, lot, "the woods across the water, as before");
+                    Assert.AreEqual(straight, w.Settlements.Get(sid).WoodDist, 0.5, "at the straight line's length");
+                }
+            }
+            Assume.That(tried > 0, "a village whose woods within reach include a dry cell with no way round");
         }
 
         [Test]

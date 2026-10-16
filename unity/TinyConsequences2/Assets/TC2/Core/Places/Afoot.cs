@@ -131,9 +131,9 @@ namespace TC2.Core.Places
         /// <summary>
         /// (`Woods.Choose`) Of woods within reach, given as (value by the straight distance, cell, straight distance) - the value (d + 200 m) / (forest +
         /// 0.2) - the one whose value is least by the way its cutters walk from the village's middle: the straight distance where that way stays dry (as
-        /// before), else the way round the water; none where no way within reach keeps out of it. The straight distance is the least a way can be, so
-        /// the woods are looked at by their straight value and the look stops where that already loses: where every way is dry the choice is the old
-        /// one. Returns the cell (-1 none) and its way's length.
+        /// before), else the way round the water within the woods' reach. The straight distance is the least a way can be, so the woods are looked at by
+        /// their straight value and the look stops where that already loses: where every way is dry the choice is the old one. Where no woods within reach
+        /// can be walked to dry-shod, the straight line's choice as before. Returns the cell (-1 none) and its way's length.
         /// </summary>
         public static int BestWoods(World w, in Settlement s, List<(double v, int c, double d)> woods, out double way)
         {
@@ -158,7 +158,12 @@ namespace TC2.Core.Places
                 }
                 if (v < bv) { bv = v; best = c; way = dw; }
             }
-            return best;
+            if (best >= 0 || woods.Count == 0) return best;
+            // no woods within reach can be walked to dry-shod (an island's, a lake-locked shore's): the straight line's choice, as before - its cutters
+            // cross the water to them (walks no bend keeps dry, counted); the first version left such villages with no wood at all (18 against 6 over ten
+            // worlds at year 300), and with the wood their houses and plank boats
+            way = woods[0].d;
+            return woods[0].c;
         }
 
         /// <summary>The list `Woods.Choose` fills for `BestWoods`.</summary>
