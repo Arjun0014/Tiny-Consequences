@@ -51,6 +51,7 @@ namespace TC2.Core.Agents
             if (state > way.Most)
             {
                 way.Most = state;
+                if (state >= 2 && TC2.Core.Health.Disease.VisitTally != null && w.Routes.Get(w, a, b) == null) TC2.Core.Health.Disease.VisitTally[6] += 1;   // (tools: C9.5c survey)
                 if (state >= 2)
                     w.Record(new HistoryEvent
                     {

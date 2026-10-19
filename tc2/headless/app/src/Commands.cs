@@ -233,6 +233,7 @@ namespace TC2.Headless
             if (a.Has("oldacross")) TC2.Core.Places.Trade.AcrossOff = true;   // (C9.5a off: grain within a day's walk across water at once, the tenth across water kept at home)
             if (a.Has("acrosstally")) TC2.Core.Places.Trade.AcrossTally = new double[TC2.Core.Places.Trade.AcrossTallyN];   // (C9.5 survey: grain and trade across water at once between villages within a day's walk)
             if (a.Has("oldcross")) TC2.Core.Places.Boats.CrossOff = true;   // (C9.5b off: dugouts carry no loads, no boat is made to cross the water)
+            if (a.Has("visittally")) TC2.Core.Health.Disease.VisitTally = new double[TC2.Core.Health.Disease.VisitTallyN];   // (C9.5c survey: a COARSE day's visits, news and ways across water)
             if (a.Has("crosstally")) TC2.Core.Places.Boats.CrossTally = new double[TC2.Core.Places.Boats.CrossTallyN];   // (C9.5b: boats made to cross, dugouts' crossings)
             if (a.Has("wetways")) TC2.Core.Places.Afoot.Off = true;   // (D2-156 off: lived walks straight across the water, the well's and the idle's spots and crofts in it, the woods by the straight line)
             if (a.Has("waytally")) TC2.Core.Places.Afoot.Tally = new long[128];   // (tools: the walks bent round the water and those no bend kept dry, by what was done at their end)
@@ -991,6 +992,10 @@ namespace TC2.Headless
                     if (mt != null)   // (C10.5: each weighing of the stronger - weighed, carried by the old count, carried by might, by both)
                         Console.WriteLine("might: bowing to raiders weighed " + mt[0] + " (the old count " + mt[1] + ", might " + mt[2] + ", both " + mt[3] + "); bowing for bread " + mt[4] + " (" + mt[5] + ", " + mt[6] + ", " + mt[7] +
                                           "); a lord no longer the stronger " + mt[8] + " (" + mt[9] + ", " + mt[10] + ", " + mt[11] + "); lords' calls counted " + mt[12] + " times, " + F(mt[13], "0") + " men");
+                    var vt = TC2.Core.Health.Disease.VisitTally;
+                    if (vt != null)   // (C9.5c survey: a COARSE day's visits between neighbours within a day's walk, along a way on foot and across water)
+                        Console.WriteLine("visits: COARSE visits along a way on foot " + F(vt[0], "0") + ", across water " + F(vt[1], "0") + "; caught on them " + vt[2] + " and " + vt[3] +
+                                          "; news met " + vt[4] + " and " + vt[5] + "; ways told worn to a path or a road with no way on foot " + vt[6]);
                     var ct = TC2.Core.Society.Conflict.CarryTally;
                     if (ct != null)   // (C10.6: the lord's tenth carried to its store)
                         Console.WriteLine("carried: set aside " + F(ct[3], "0") + " FU; loads " + ct[0] + " (lived " + ct[2] + "), " + F(ct[1], "0") + " FU (by cart " + F(ct[5], "0") + "), carriers' km " + F(ct[6], "0") +
