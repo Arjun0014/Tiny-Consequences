@@ -239,6 +239,24 @@ Built on C3.3 (D2-126: household grain, loans recorded as debts, gifts). `Core/S
 - **Tools**: `--oldmight` (D2-075's day count and a lord's own village, on the same binary), `--mighttally` (each weighing by the old count and by
   might), the `might:` report line; `lordships --load SAVE [--every N] [--bonds]` (session 23).
 
+## 12h. Tribute carried: the lord's tenth goes to its store on its tributaries' backs (C10.6, D2-161)
+- **Found** (session 23's real shots of seed 2's bread lordship, `s23a`/`s23b`): the bond read only at close range - the tributary flies its lord's
+  standard by its first household's door - and not at all from the village view or the region; and the tenth went into the lord's granary at the
+  harvest by no one's hands, a transfer between villages with no carrier, cost or road.
+- **The rule**: at the tributary's harvest the tenth is set aside in its store for the lord (`Settlement.TributeDue`); its people carry it there
+  (`Conflict.Carry`): as many loads a day as clear it in ten days, never more than one for every twenty of its fit grown people; a back's 25 kg or
+  the household's cart's on a worn way (C4.2). Lived, the village's day sets the loads wanted (`CarryToday`) and grown members take them in the
+  morning (`WhyCode.Tribute`), walk to the lord's village, stay a while, come home; a COARSE day carries the same loads at once. Each load wears the
+  way (C4.1), carries sickness and news, and is **brought** (`Conflict.Brought`): into the lord's first household's grain (C10.2), answering the lord's
+  wrongs (D2-075), giving back the lord's famine grain (C10.4). A bond that ends gives back what is still set aside; a load on the way goes home.
+- **What it changes in the world picture**: carriers with sacks (and carts) on the way to the lord after each tributary's harvest; the way between a
+  tributary and its lord walked two times a load - worn to a path or a road, so the ways of a lordship converge on its lord; the standards (real
+  state) enlarged with the camera's distance up to 4x so that the polity's colours read from the village view.
+- **The record**: food rents carried to the lord's hall - the *feorm* of the early English kings, a night's food for the king's household brought in
+  kind; manorial dues carted to the lord's barn after the harvest.
+- **Tools**: `--oldtribute` (the tenth into the lord's store at the harvest, carried by nobody), `--carrytally` (the `carried:` line), `lordships`
+  (the ways between the bound and their lords).
+
 ## 13. Civilisation depth (D2-089)
 
 Force, fortification, war and sieges are designed in `23_MILITARY_AND_WAR.md` (fighters as persistent people, arms as goods, training,
