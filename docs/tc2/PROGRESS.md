@@ -23,8 +23,14 @@
   do not stand out** - every pair of villages within a day's walk is worn to a path or a road by its traffic (bound 4 roads/19 paths, others
   89/500/10 tracks): the design's hope corrected in `10` §12h; the route probe on the landed world: equal hashes with and without the view's routes.
   (4) Tools: `lordships` prints the bonds with no way on foot and the ways of other neighbours; `--carrytally` [7]-[9]; shot view `why:<reason>`;
-  shots `--after tribute`. (5) Next: the Unity compile, real shots (`s23c` tributary, `s23d` lord, `s23e` carriers), the Web build and test, the
-  landed code's 900-year check and `_g2` are in the queue; then **C9.5's first slice: the tenth by sea** (a fifth of the tribute waits on it).
+  shots `--after tribute`. (5) **Validated on main**: Unity C# compiles (a coroutine `ref` local in the new shot option caught and fixed, 420ef71); **Web
+  build and test `s23web2` 6/6** - browser (WebGPU) = headless dotnet = editor Mono bit for bit; every view faster than `s23web1` (close 28 -> 37 fps,
+  region 44 -> 62) on the same busy machine (a quiet-machine measurement still owed); profiled, might and carrying cost nothing per village-day.
+  **Real shots**: the standards read up close and from the low view, not from the village view (8x tried and reverted; a polity at that scale wants a
+  map layer - D2-161 (4) corrected); no green nor teal in the polities' colours; **the carriers read on the road** (`s23k`: Paerdal's handcarts with
+  sacks on the path to Lounstead, the morning its village set the day's loads). (6) **Next slice built: C9.5a grain across water goes by boat** (branch
+  `wip/c95-across`, sim 86): within a day's walk grain moves at once only along a way on foot; relief, give-back and the tenth cross water in boats or
+  not at all; its survey (`_a1`) and evaluation (`_x1`) in the queue.
 - **Session 23 (19 Oct 2026, 18:54-~21:25 IST; Control Room run #63 session 1; one low-priority job queue `tc2/out/tools/s23/runq.sh`, gated RAM < 86 %,
   CPU < 85 %; context handoff with the queue still running - SESSION_HANDOFF "Session 23")** - (1) **C10.4 merged** (`wip/c104-bread` --no-ff, ca3b4c8;
   DECISIONS D2-157, D2-158; `25`; sim version 82); Unity C# compiles on main; **Web build and test `s23web1` 6/6** - the browser's probe (WebGPU, IL2CPP)
