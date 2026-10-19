@@ -24,6 +24,7 @@
   `4_b_g1_*` (ten seeds of the code to land, `_g1`), `4_c_cmp_probe_g1` (`results/cmp_z1_g1.txt`; each world's `carried:` line and its bonds with
   no way on foot, `results/lordships_s*_g1.txt`; the route probe on `s2_g1`), `4_d_profile_g1` (30 COARSE years of `s2_g1` profiled with the rules
   and with `--oldmight --oldtribute`: C10.5's ten seeds ran 18 % longer by the wall clock - to be measured).
+- **Results so far (22:29)**: C10.5's 900-year check on seed 4 too - no snowball (the largest lordship 2 villages), mean bond life 166 -> 201 years (seed 2: 114 -> 214), fewer bonds and less churn (filled into `d2159.md`). The amended code (`bin_p1`, c86649e): floatcheck clean; Might 4, RouteGround 3, Lordship 4, Trade 7, Carts 6, Determinism 6, SaveLoad 8, TributeCarried 9, Bread 5, Leaders 8, Defence 8 (3_e's two failures were premises: a made world's first tectonic tick at time 0 relaid the ground the test had sunk; Bread's pair and Leaders' pair needed a way on foot, as "within a day's walk" means - fixed e6c3b86, c86649e); **the control `--oldtribute --oldways` = `_z1` byte-identical; the full suite 419/419**. Running: `4_b_g1_*` (ten seeds), then `4_c`, `4_d`.
 - **To land when they pass**: commit `wip/c106b-carry`; in `tc-int` `git merge --ff-only wip/c106b-carry`; on main `git merge --no-ff wip/s23-int`;
   DECISIONS D2-159 (`d2159.md` + the 900-year checks), D2-160 (`d2160.md`), D2-161 (`d2161.md` + the amendment and `_g1`); `unity.mjs cc`; shots
   from `tc2/out/civ/s2_g1/world_y300.tc2` (the landed code's own world); the Web build and test.
