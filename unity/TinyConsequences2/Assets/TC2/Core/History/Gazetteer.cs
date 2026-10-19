@@ -347,6 +347,12 @@ namespace TC2.Core.History
                 bool bread = s.LordEvent != 0 && w.History.TryGet(s.LordEvent, out var le) && le.Kind == HistoryKind.TributeAgreed && le.ArgB == 1;
                 sb.Append("It pays tribute to ").Append(Name(w, s.Lord)).Append(" since ").Append(Year(s.LordSince))
                   .Append(bread ? ": its grain kept it through its famines, and it could not give it back.\n" : ": it could neither stand against its bands nor go elsewhere.\n");
+                if (s.TributeDue >= 1.0)   // (C10.6: set aside at its harvest, carried by its people)
+                {
+                    Places.Trade.DaysOfFood(w, in s, out double perDay);
+                    sb.Append(F(s.TributeDue / perDay, "0")).Append(" days' food of its tenth stands set aside for ").Append(Name(w, s.Lord))
+                      .Append(", its people carrying it there load by load").Append(s.CarryToday > 0 ? " (" + s.CarryToday + " loads today)" : "").Append(".\n");
+                }
                 // why it still pays (C10.5): the weighing at its last harvest, as history keeps it
                 var evs = w.History.EventsOf(EntityRef.Settlement(sid));
                 for (int i = evs == null ? -1 : evs.Count - 1; i >= 0; i--)
@@ -363,7 +369,12 @@ namespace TC2.Core.History
             {
                 if (o == sid) continue;
                 ref var t = ref w.Settlements.Get(o);
-                if (t.Lord == sid && t.Inhabited) sb.Append(Name(w, o)).Append(" pays it tribute.\n");
+                if (t.Lord == sid && t.Inhabited)
+                {
+                    sb.Append(Name(w, o)).Append(" pays it tribute");
+                    if (t.TributeDue >= 1.0) sb.Append(": its people are carrying in this year's tenth, ").Append(F(t.TributeDue / TC2.Core.Society.Conflict.LoadFu, "0")).Append(" loads still to come");   // (C10.6)
+                    sb.Append(".\n");
+                }
                 double owes = w.DeedBook.Owed(sid, o) / daily;   // (the grain given it in its famines, not yet given back: D2-113)
                 if (owes >= 1.0) sb.Append("It owes ").Append(Name(w, o)).Append(" ").Append(F(owes, "0")).Append(" days' food for the grain it gave it in its famines.\n");
                 double held = w.DeedBook.Grievance(sid, o), against = w.DeedBook.Grievance(o, sid);

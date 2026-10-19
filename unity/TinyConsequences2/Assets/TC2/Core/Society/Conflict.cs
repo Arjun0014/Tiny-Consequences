@@ -124,6 +124,18 @@ namespace TC2.Core.Society
         /// counted, [13] the men it added; null in the game.</summary>
         public static double[] MightTally;
 
+        // ---- tribute carried (C10.6, D2-161)
+        /// <summary>`--oldtribute`: the tenth goes into the lord's store at the tributary's harvest, carried by nobody (D2-075 to C10.5) - on the same
+        /// binary.</summary>
+        public static bool CarryOff;
+        /// <summary>Days in which a tributary's people mean to carry the lord's tenth to its store after the harvest (the loads a day follow from it).</summary>
+        public const double CarryDays = 10.0;
+        /// <summary>The most loads a village sends a day: one for every this many of its fit grown people.</summary>
+        public const int CarryPer = 20;
+        /// <summary>Tools (`--carrytally`): [0] loads carried, [1] FU carried, [2] of them by lived carriers, [3] FU set aside, [4] FU given back to a
+        /// tributary whose bond ended before its due was carried, [5] FU carried on carts, [6] carriers' km; null in the game.</summary>
+        public static double[] CarryTally;
+
         /// <summary>A person is hungry enough to go when the last day fed them less than this share of their need (both resolutions
         /// keep that share, the body's day: a lived meal-time flag would clear at the first bite).</summary>
         public const double HungryBelow = 0.5;
@@ -1451,11 +1463,28 @@ namespace TC2.Core.Society
                     w.DeedBook.Learn(sid, refusal, KnownHow.Own);
                 }
                 w.Metrics.TributesEnded++;
+                // what was set aside for the lord and not yet carried is the village's again (C10.6)
+                ref var se = ref w.Settlements.Get(sid);
+                if (se.TributeDue > 0) { if (CarryTally != null) CarryTally[4] += se.TributeDue; se.Granary += se.TributeDue; se.TributeDue = 0; }
+                se.CarryToday = 0;
                 return;
             }
             double pay = DMath.Min(TributeShare * yield, s.Granary);
             if (pay <= 0) return;
             s.Granary -= pay;
+            if (!CarryOff)
+            {
+                // (C10.6: the tenth is set aside in the store for the lord, and its people carry it there - `Carry`, `Brought`)
+                s.TributeDue += pay;
+                if (CarryTally != null) CarryTally[3] += pay;
+                w.Record(new HistoryEvent
+                {
+                    Kind = HistoryKind.TributePaid, Time = now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid), Object = EntityRef.Settlement(lord),
+                    Cause1 = s.LordEvent, Rel1 = CauseRel.PartOf, Magnitude = (float)pay, RootKind = RootKind.People,
+                    ArgA = MightOff ? 0 : (int)(lordMight + 0.5), ArgB = MightOff ? 0 : (int)(ownMight + 0.5),   // (C10.5: the weighing it paid by)
+                });
+                return;
+            }
             ref var l = ref w.Settlements.Get(lord);
             l.Granary += pay;
             if (!Leaders.Off && !Leaders.TributeOff && l.HeadHh != 0) w.Holdings.Put(l.HeadHh, lord, pay);   // (the lord's own: its first household's grain - C10.2)
@@ -1468,6 +1497,102 @@ namespace TC2.Core.Society
             w.DeedBook.SettleBy(lord, sid, pay);
             if (!BreadOff) w.Trade.Repaid(sid, lord, pay);   // (and gives back the grain its lord gave it in its famines: C10.4)
             w.Metrics.TributeFu += pay;
+        }
+
+        /// <summary>
+        /// Tribute brought (C10.6): a load of the tenth reaches the lord's store - its first household's grain (C10.2); it answers the lord's wrongs
+        /// against the tributary and gives back the grain the lord gave it in its famines (C10.4), as the tenth did at the harvest before.
+        /// </summary>
+        public void Brought(int sid, int lord, double fu)
+        {
+            var w = _w;
+            if (fu <= 0 || !w.Settlements.Exists(lord)) return;
+            ref var l = ref w.Settlements.Get(lord);
+            l.Granary += fu;
+            if (!Leaders.Off && !Leaders.TributeOff && l.HeadHh != 0) w.Holdings.Put(l.HeadHh, lord, fu);   // (the lord's own: C10.2)
+            w.DeedBook.SettleBy(lord, sid, fu);
+            if (!BreadOff) w.Trade.Repaid(sid, lord, fu);
+            w.Metrics.TributeFu += fu;
+        }
+
+        /// <summary>Grown and well enough to carry a load to the lord's store and back: as a trader goes.</summary>
+        public static bool CanCarry(in Person p, long now)
+        {
+            if (!p.Alive || p.Sick != 0 || p.Health <= 0.7 || p.Hurt >= RoadHurt || p.PregDue != 0) return false;
+            if (p.NursingUntil != 0 && p.NursingUntil - now > SimTime.Year / 2) return false;
+            double age = p.AgeYears(now);
+            return age >= 18 && age < 56;
+        }
+
+        /// <summary>
+        /// Tribute carried (C10.6, D2-161), a village's day: while its lord's tenth stands set aside, its people carry it to the lord's store along the
+        /// way between them - as many loads a day as clear it in `CarryDays`, never more than one for every `CarryPer` of its fit grown people; a back's
+        /// load, or the household's cart's on a worn way (C4.2). Lived, the loads wait for the first of its grown people to take them in the morning
+        /// (`CarryToday`); a COARSE day carries them at once at that rate. Each load wears the way (C4.1), carries its sickness and news (D2-066, D2-072)
+        /// and is brought (`Brought`). The record: food rents carried to the lord's hall - the feorm of the early English kings, the bishop's and the
+        /// lord's dues carted in after the harvest.
+        /// </summary>
+        void Carry(int sid, int days)
+        {
+            var w = _w;
+            ref var s = ref w.Settlements.Get(sid);
+            if (s.TributeDue < 1.0) { s.CarryToday = 0; return; }
+            int lord = s.Lord;
+            if (lord == 0 || !w.Settlements.Exists(lord) || !w.Settlements.Get(lord).Inhabited || w.Routes.Get(w, sid, lord) == null) { s.CarryToday = 0; return; }
+            long now = w.Now;
+            int most = System.Math.Max(1, FitAt(sid, now) / CarryPer);
+            int want = 1 + (int)DMath.Floor(s.TributeDue / (LoadFu * CarryDays));
+            int k = System.Math.Min(want, most);
+            if (w.Resolution != Resolution.Coarse) { s.CarryToday = (byte)System.Math.Min(255, k); return; }
+            s.CarryToday = 0;
+            var res = w.Residents(sid);
+            int n = k * days, done = 0;
+            double km = (w.Routes.Get(w, sid, lord)?.Length ?? 0.0) / 1000.0;
+            for (int a = 0; done < n && a < 4 * n && res.Count > 0; a++)
+            {
+                ref var s1 = ref w.Settlements.Get(sid);
+                if (s1.TributeDue < 1.0) break;
+                int pid = res[(int)KeyedRng.Below(KeyedRng.Hash(w.Seed, RngStream.Travel, (ulong)sid, (ulong)now, (ulong)(900 + a)), res.Count)];
+                ref var p = ref w.People.Get(pid);
+                if (!CanCarry(in p, now) || p.At != sid) continue;
+                double kg = Carts.LoadFor(w, p.Household, sid, lord);
+                double fu = DMath.Min(kg / Trade.KgOf(Trade.Grain), s1.TributeDue);
+                s1.TributeDue -= fu;
+                Brought(sid, lord, fu);
+                w.Ways.Walk(w, sid, lord, 2.0);   // (there and back: C4.1)
+                w.Disease.Arrive(ref p, lord, SimTime.Hours(Trade.VisitHoursCoarse));
+                w.DeedBook.Meet(sid, lord);
+                done++;
+                if (CarryTally != null) { CarryTally[0]++; CarryTally[1] += fu; if (kg > Trade.LoadKg + 1e-9) CarryTally[5] += fu; CarryTally[6] += 2.0 * km; }
+            }
+        }
+
+        /// <summary>Lived (C10.6): a carrier at the end of the way - the load into the lord's store if the village still pays it; else they carry it home.</summary>
+        public void CarrierArrived(ref Person p, int at)
+        {
+            var w = _w;
+            if (p.Cargo != Trade.Grain || p.CargoQty <= 0f || p.CargoTo != Trade.ToLord) return;
+            if (!w.Settlements.Exists(p.Home) || w.Settlements.Get(p.Home).Lord != at) return;   // (the bond ended on the way: home with it - `Trade.Unload`)
+            double fu = p.CargoQty;
+            p.Cargo = Trade.None; p.CargoQty = 0f; p.CargoTo = Trade.ToStore;
+            Brought(p.Home, at, fu);
+            if (CarryTally != null) { CarryTally[0]++; CarryTally[1] += fu; CarryTally[2]++; }
+        }
+
+        /// <summary>Lived (C10.6): a grown person of a village with loads to carry today takes one - a back's or their household's cart's - from what is
+        /// set aside for the lord. The load's FU, or 0 when none waits.</summary>
+        public double TakeLoad(ref Person p, int lord)
+        {
+            var w = _w;
+            ref var s = ref w.Settlements.Get(p.Home);
+            if (s.CarryToday == 0 || s.TributeDue < 1.0 || s.Lord != lord) return 0.0;
+            double kg = Carts.LoadFor(w, p.Household, p.Home, lord);
+            float q = (float)DMath.Min(kg / Trade.KgOf(Trade.Grain), s.TributeDue);   // (as the person carries it: the store loses what they hold)
+            s.TributeDue -= q;
+            s.CarryToday--;
+            p.Cargo = Trade.Grain; p.CargoQty = q; p.CargoTo = Trade.ToLord;
+            if (CarryTally != null && kg > Trade.LoadKg + 1e-9) CarryTally[5] += q;
+            return q;
         }
 
         /// <summary>
@@ -1554,6 +1679,7 @@ namespace TC2.Core.Society
             var prof = w.Profiler;   // (tools: the parts of the day; null in the game)
             prof?.Begin(10023); Wounds(sid); Defence(sid, days); Watch(sid); prof?.End(10023);
             prof?.Begin(10024); ReadFoe(sid); Claims(sid, days); Submit(sid); Disband(sid); prof?.End(10024);
+            if (!CarryOff) Carry(sid, days);   // (the lord's tenth carried to its store: C10.6)
             prof?.Begin(10025); Raids(sid, false, days); prof?.End(10025);
             if (w.Resolution != Resolution.Coarse) return;
             prof?.Begin(10026); News(sid, days); prof?.End(10026);

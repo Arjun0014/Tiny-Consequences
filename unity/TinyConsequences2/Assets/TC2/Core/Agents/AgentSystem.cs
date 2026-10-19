@@ -360,6 +360,7 @@ namespace TC2.Core.Agents
                     p.Visits++;
                     w.Disease.Arrive(ref p, arrived, p.Until - w.Now);   // what they may catch there and carry home (D2-066)
                     if (p.Why == WhyCode.Trade) w.Trade.Exchange(ref p, arrived);   // the load for what they want back (D2-067)
+                    if (p.Why == WhyCode.Tribute) w.Conflict.CarrierArrived(ref p, arrived);   // the lord's tenth into its store (C10.6)
                     w.DeedBook.Meet(p.Home, arrived);                        // the news each village tells (D2-072)
                     if (p.Why == WhyCode.Claim) { int deed = p.Errand; p.Errand = 0; w.Conflict.Answer(ref p, arrived, deed); }   // amends asked (D2-072)
                 }
@@ -1103,7 +1104,7 @@ namespace TC2.Core.Agents
             bool day = lsec >= 6 * SimTime.Hour && lsec < 19.5 * SimTime.Hour;
             double elder = age > 60 ? 0.5 : 1.0;
             double best = 0.08 + 0.05 * rs.NextUnit();
-            int choice = 0; // 0 idle, 1 fields, 2 wood, 3 water, 4 social, 5 trip, 6 the wild, 7 building, 8 scouting, 9 tending, 10 cooking, 11 making, 12 trading, 13 an errand (amends), 14 quarrying, 15 the smithy, 16 practice, 17 mining, 18 charcoal, 19 bog ore, 20 the household's boat, 21 a voyage, 22 the weaver's shed, 23 the kiln, 24 the household's cart
+            int choice = 0; // 0 idle, 1 fields, 2 wood, 3 water, 4 social, 5 trip, 6 the wild, 7 building, 8 scouting, 9 tending, 10 cooking, 11 making, 12 trading, 13 an errand (amends), 14 quarrying, 15 the smithy, 16 practice, 17 mining, 18 charcoal, 19 bog ore, 20 the household's boat, 21 a voyage, 22 the weaver's shed, 23 the kiln, 24 the household's cart, 28 a load of the lord's tenth (C10.6)
             int tripDest = 0;
             if (day && here.CropWorkNeed > here.CropWork)
             {
@@ -1301,6 +1302,13 @@ namespace TC2.Core.Agents
                 tradeTo = w.Trade.BestPartner(p.Home, out double gain);
                 if (tradeTo != 0) { double u = 0.9; if (u > best) { best = u; choice = 12; } }
             }
+            int lordTo = 0;
+            if (lsec >= 7 * SimTime.Hour && lsec < 11 * SimTime.Hour && atHome && here.CarryToday > 0 && here.TributeDue >= 1.0 && here.Lord != 0 &&
+                TC2.Core.Society.Conflict.CanCarry(in p, now))
+            {
+                // the village's tenth for its lord stands set aside: a grown member takes a load of it to the lord's store (C10.6)
+                double u = 0.93; if (u > best) { best = u; choice = 28; lordTo = here.Lord; }
+            }
             int voyage = -1;
             if (atHome && lsec >= 6 * SimTime.Hour && lsec < 12 * SimTime.Hour && (voyage = w.Trade.BookingOf(p.Household)) >= 0 && Trade.CanSail(in p, p.Home, now))
             {
@@ -1351,6 +1359,9 @@ namespace TC2.Core.Agents
                     return;
                 case 12:
                     if (StartTrade(ref p, tradeTo)) return;
+                    break;
+                case 28:
+                    if (StartCarry(ref p, lordTo)) return;
                     break;
                 case 21:
                     if (StartVoyage(ref p, voyage)) return;
@@ -2626,6 +2637,19 @@ namespace TC2.Core.Agents
             if (p.CargoQty <= 0f) return false;
             double from = p.At == r.A ? 0.0 : r.Length, dest = to == r.A ? 0.0 : r.Length;
             BeginTravel(ref p, ActivityKind.TripOut, WhyCode.Trade, r, from, dest, to);
+            return true;
+        }
+
+        /// <summary>A carrier sets out with a load of the lord's tenth for the lord's store (C10.6). False if none waits or there is no road.</summary>
+        bool StartCarry(ref Person p, int lord)
+        {
+            var w = _w;
+            if (lord == 0 || p.At != p.Home) return false;
+            var r = w.Routes.Get(w, p.At, lord);
+            if (r == null) return false;
+            if (w.Conflict.TakeLoad(ref p, lord) <= 0) return false;
+            double from = p.At == r.A ? 0.0 : r.Length, dest = lord == r.A ? 0.0 : r.Length;
+            BeginTravel(ref p, ActivityKind.TripOut, WhyCode.Tribute, r, from, dest, lord);
             return true;
         }
 

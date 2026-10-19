@@ -187,6 +187,8 @@ namespace TC2.Core.Places
         public double Muck;             // kg of muck in its yards' heaps: the herds' night dung and bedding, not yet carted out (C3.7c, D2-153)
         public double Spread;           // kg of muck carted out and spread on its fields since the last harvest (the soil reads it at the next)
         public double Stubble;          // kg (dry) of forage left on its reaped fields for its herds until the sowing ploughs it in (C3.7d)
+        public double TributeDue;       // FU of its lord's tenth set aside at its harvest, still to be carried to the lord's store by its people (C10.6, D2-161)
+        public byte CarryToday;         // loads of it the village's day wants carried today: lived, the first of its grown people to go take them (C10.6)
 
         public float SquareX, SquareY, FieldX, FieldY, WoodX, WoodY, WellX, WellY;
 
@@ -263,6 +265,7 @@ namespace TC2.Core.Places
             w.Int(BurialCount); w.Double(Graves); w.Double(GravesFresh); w.Long(GravesAt); w.Float(GraveX); w.Float(GraveY);   // (D2-151, sim version 78)
             w.Double(Muck); w.Double(Spread);   // (C3.7c, sim version 79)
             w.Double(Stubble);   // (C3.7d, sim version 80)
+            w.Double(TributeDue); w.Byte(CarryToday);   // (C10.6, sim version 85)
         }
 
         public static Settlement Read(BinReader r)
@@ -293,6 +296,7 @@ namespace TC2.Core.Places
             s.BurialCount = r.Int(); s.Graves = r.Double(); s.GravesFresh = r.Double(); s.GravesAt = r.Long(); s.GraveX = r.Float(); s.GraveY = r.Float();
             s.Muck = r.Double(); s.Spread = r.Double();
             s.Stubble = r.Double();
+            s.TributeDue = r.Double(); s.CarryToday = r.Byte();
             return s;
         }
 
@@ -323,6 +327,7 @@ namespace TC2.Core.Places
             h.Add(BurialCount); h.Add(Graves); h.Add(GravesFresh); h.Add(GravesAt); h.Add(GraveX); h.Add(GraveY);
             h.Add(Muck); h.Add(Spread);
             h.Add(Stubble);
+            h.Add(TributeDue); h.Add(CarryToday);
         }
 
         internal static void WriteV(BinWriter w, Vec3d v) { w.Double(v.X); w.Double(v.Y); w.Double(v.Z); }

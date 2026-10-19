@@ -176,6 +176,8 @@ namespace TC2.Tests.Core
             double lordStore = w.Settlements.Get(b).Granary;
             w.Settlements.Get(a).Granary += 1000;
             w.Conflict.Harvested(a, 1000);
+            Assert.AreEqual(100.0, w.Settlements.Get(a).TributeDue, 1e-6, "a tenth of the harvest set aside for its lord (C10.6)");
+            BreadTests.CarriedIn(w, a);   // (its people carry it to the lord's store)
             Assert.AreEqual(lordStore + 100, w.Settlements.Get(b).Granary, 1e-6, "a tenth of the harvest to its lord");
             // and the lord raises no band against its own tributary, though it holds a wrong against it
             int wrong = w.DeedBook.Record(DeedKind.Kill, Grown(w, a), a, 0, b, 0, 1.0, Conflict.KillWorth, 0);
