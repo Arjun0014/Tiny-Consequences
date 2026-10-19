@@ -259,6 +259,12 @@ namespace TC2.Core.Places
                 ref var hh = ref w.Households.Get(p.Household);
                 hh.Larder += p.CargoQty;
             }
+            else if (p.CargoTo == ToLord && p.Cargo == Grain && home == p.Home && w.Settlements.Get(home).Lord != 0)
+            {
+                // a load of the lord's tenth home again before it reached the lord (everyone home at once in COARSE) while the village still pays:
+                // set aside with the rest, to be carried again (C10.6); a bond ended on the way, it is the village's (the store, below)
+                w.Settlements.Get(home).TributeDue += p.CargoQty;
+            }
             else
             {
                 ref var s = ref w.Settlements.Get(home);

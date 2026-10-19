@@ -133,8 +133,12 @@ namespace TC2.Core.Society
         /// <summary>The most loads a village sends a day: one for every this many of its fit grown people.</summary>
         public const int CarryPer = 20;
         /// <summary>Tools (`--carrytally`): [0] loads carried, [1] FU carried, [2] of them by lived carriers, [3] FU set aside, [4] FU given back to a
-        /// tributary whose bond ended before its due was carried, [5] FU carried on carts, [6] carriers' km; null in the game.</summary>
+        /// tributary whose bond ended before its due was carried, [5] FU carried on carts, [6] carriers' km, [7] FU still set aside at the next harvest
+        /// (carried by nobody in a year) and given back, [8] harvests whose tenth was not set aside - no way on foot to the lord, [9] the FU of those
+        /// tenths; null in the game.</summary>
         public static double[] CarryTally;
+        /// <summary>The length of `CarryTally`.</summary>
+        public const int CarryTallyN = 10;
 
         /// <summary>A person is hungry enough to go when the last day fed them less than this share of their need (both resolutions
         /// keep that share, the body's day: a lived meal-time flag would clear at the first bite).</summary>
@@ -1469,6 +1473,21 @@ namespace TC2.Core.Society
                 se.CarryToday = 0;
                 return;
             }
+            if (!CarryOff)
+            {
+                // (C10.6) what still stands set aside of the last tenth, carried by nobody in a year - no hands fit to carry it, or the way cut since -
+                // is the village's again: a store keeps no pile for a lord its people cannot bring it to
+                // (below a basket's worth nothing is carried: `Carry` - a lived load's rounding stays with the next tenth)
+                if (s.TributeDue >= 1.0) { if (CarryTally != null) CarryTally[7] += s.TributeDue; s.Granary += s.TributeDue; s.TributeDue = 0; s.CarryToday = 0; }
+                // the tenth is set aside only where its people can carry it: along a way on foot to the lord's village. A bond for bread needs only a day's
+                // walk as the crow flies (C10.4) and relief within it moves at once, so a village across water can be bound to a lord no way on foot
+                // leads to - its tenth stays in its store (boats across the water: C9.5)
+                if (w.Routes.Get(w, sid, lord) == null)
+                {
+                    if (CarryTally != null) { CarryTally[8] += 1; CarryTally[9] += DMath.Min(TributeShare * yield, s.Granary); }
+                    return;
+                }
+            }
             double pay = DMath.Min(TributeShare * yield, s.Granary);
             if (pay <= 0) return;
             s.Granary -= pay;
@@ -1586,6 +1605,7 @@ namespace TC2.Core.Society
             var w = _w;
             ref var s = ref w.Settlements.Get(p.Home);
             if (s.CarryToday == 0 || s.TributeDue < 1.0 || s.Lord != lord) return 0.0;
+            if (p.CargoQty > 0f || p.CargoTo != Trade.ToStore) w.Trade.Unload(ref p, p.Home);   // (whatever they still hold is home first)
             double kg = Carts.LoadFor(w, p.Household, p.Home, lord);
             float q = (float)DMath.Min(kg / Trade.KgOf(Trade.Grain), s.TributeDue);   // (as the person carries it: the store loses what they hold)
             s.TributeDue -= q;

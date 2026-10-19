@@ -206,6 +206,32 @@ namespace TC2.Headless
             foreach (var b in bonds)
                 if (b.How == null && live(b.Payer, now) && live(b.Lord, now)) wayStates[w.Ways.State(now, b.Payer, b.Lord)]++;
             Console.WriteLine("  ways between the bound and their lords now: road " + wayStates[3] + ", path " + wayStates[2] + ", track " + wayStates[1] + ", none " + wayStates[0]);
+            // whether the tenth can reach the lord at all (C10.6: carried on foot along a route, or - where none - by sea): a bond for bread needs only a
+            // day's walk as the crow flies (C10.4), and relief within it moves at once, so a village across water can be bound to a lord its people
+            // cannot walk to - and what it sets aside for the lord then waits
+            {
+                int noFoot = 0, bySea = 0, waiting = 0; double due = 0, dueStuck = 0, mostDays = 0;
+                foreach (var b in bonds)
+                {
+                    if (b.How != null || !live(b.Payer, now) || !live(b.Lord, now) || !w.Settlements.Exists(b.Payer) || !w.Settlements.Exists(b.Lord)) continue;
+                    ref var ps = ref w.Settlements.Get(b.Payer);
+                    bool foot = w.Routes.Get(w, b.Payer, b.Lord) != null;
+                    bool sea = !foot && ps.LandAt != 0 && w.Settlements.Get(b.Lord).LandAt != 0 && w.SeaRoutes.Get(w, b.Payer, b.Lord) != null;
+                    if (!foot) noFoot++;
+                    if (sea) bySea++;
+                    if (ps.TributeDue >= 1.0)
+                    {
+                        waiting++; due += ps.TributeDue;
+                        if (!foot) dueStuck += ps.TributeDue;
+                        TC2.Core.Places.Trade.DaysOfFood(w, in ps, out double perDay);
+                        if (perDay > 0) mostDays = Math.Max(mostDays, ps.TributeDue / perDay);
+                    }
+                    if (listBonds && !foot)
+                        Console.WriteLine("    no way on foot: " + name(b.Payer) + " -> " + name(b.Lord) + (sea ? " (a sea way between their landings)" : " (no sea way)") + ", set aside " + ps.TributeDue.ToString("0") + " FU");
+                }
+                Console.WriteLine("  bonds whose tenth has no way on foot to the lord: " + noFoot + " (a sea way " + bySea + "); set aside and waiting: " + due.ToString("0") + " FU in " + waiting +
+                                  " villages (" + dueStuck.ToString("0") + " FU with no way on foot; the most " + mostDays.ToString("0") + " days' food)");
+            }
             if (listBonds)
                 foreach (var b in bonds)
                 {

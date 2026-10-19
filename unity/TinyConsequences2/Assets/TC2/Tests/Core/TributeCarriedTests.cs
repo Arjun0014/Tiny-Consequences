@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using TC2.Core.Agents;
 using TC2.Core.Foundation;
+using TC2.Core.History;
 using TC2.Core.Persistence;
 using TC2.Core.Places;
 using TC2.Core.Simulation;
@@ -59,7 +60,7 @@ namespace TC2.Tests.Core
             w.RequestResolution(Resolution.Coarse, SimTime.StartOfDay(w.Now) + SimTime.Day);
             w.AdvanceTo(SimTime.StartOfDay(w.Now) + SimTime.Day + 1);
             double lord0 = w.Settlements.Get(b).Granary, way0 = w.Ways.UseOf(w.Now, a, b);
-            Conflict.CarryTally = new double[7];
+            Conflict.CarryTally = new double[Conflict.CarryTallyN];
             try { Coarse(w, a, b, lord0, way0); }
             finally { Conflict.CarryTally = null; }
         }
@@ -89,7 +90,7 @@ namespace TC2.Tests.Core
             Assume.That(w != null, "a tributary and its lord a walk apart");
             w.AdvanceTo(ToLocal(w, a, 1.0));
             Harvest(w, a, 1000);
-            Conflict.CarryTally = new double[7];
+            Conflict.CarryTally = new double[Conflict.CarryTallyN];
             var seen = new HashSet<int>();
             int onTheWay = 0;
             long end = w.Now + SimTime.Days(Conflict.CarryDays + 4);
@@ -119,6 +120,45 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void ALoadSentHomeBeforeTheLordIsSetAsideAgainAndCarried()
+        {
+            var w = Bound(out int a, out int b);
+            Assume.That(w != null, "a tributary and its lord a walk apart");
+            w.AdvanceTo(ToLocal(w, a, 1.0));
+            Harvest(w, a, 1000);
+            Conflict.CarryTally = new double[Conflict.CarryTallyN];
+            try
+            {
+                // to the first carrier on the way
+                int carrier = 0; float load = 0f;
+                long end = w.Now + SimTime.Days(3);
+                while (w.Now < end && carrier == 0)
+                {
+                    w.AdvanceTo(w.Now + SimTime.Minutes(10));
+                    var res = w.Residents(a);
+                    for (int i = 0; i < res.Count && carrier == 0; i++)
+                    {
+                        var q = w.People.Get(res[i]);
+                        if (q.Alive && q.Why == WhyCode.Tribute && q.CargoTo == Trade.ToLord && q.CargoQty > 0f && q.At != b) { carrier = q.Id; load = q.CargoQty; }
+                    }
+                }
+                Assume.That(carrier != 0, "a carrier on the way");
+                double due = w.Settlements.Get(a).TributeDue, store = w.Settlements.Get(a).Granary;
+                // everyone home at once (COARSE) while the load is on the way: it is set aside again with the rest, not put in the common store
+                w.RequestResolution(Resolution.Coarse, w.Now + 1);
+                w.AdvanceTo(w.Now + 2);
+                Assert.AreEqual(0f, w.People.Get(carrier).CargoQty, "home with it");
+                Assert.AreEqual(due + load, w.Settlements.Get(a).TributeDue, 1e-3, "the load set aside again");
+                Assert.AreEqual(store, w.Settlements.Get(a).Granary, 1e-6, "not into the common store");
+                long t0 = w.Now;
+                while (w.Settlements.Get(a).TributeDue >= 1.0 && w.Now - t0 < SimTime.Days(30)) w.AdvanceTo(w.Now + SimTime.Day);
+                Assert.Less(w.Settlements.Get(a).TributeDue, 1.0, "carried at last");
+                Assert.Greater(Conflict.CarryTally[1], 99.0 - 1e-3, "the whole tenth brought to the lord");
+            }
+            finally { Conflict.CarryTally = null; }
+        }
+
+        [Test]
         public void ABondThatEndsGivesBackWhatIsStillDue()
         {
             var w = Bound(out int a, out int b);
@@ -139,6 +179,57 @@ namespace TC2.Tests.Core
             Assert.AreEqual(0, w.Settlements.Get(a).Lord, "it pays no more");
             Assert.AreEqual(0.0, w.Settlements.Get(a).TributeDue, 1e-9, "nothing set aside for it");
             Assert.AreEqual(store + due, w.Settlements.Get(a).Granary, 1e-6, "what was set aside is the village's again");
+        }
+
+        [Test]
+        public void NoWayOnFootToTheLordSetsNothingAside()
+        {
+            var w = Bound(out int a, out int b);
+            Assume.That(w != null, "a tributary and its lord a walk apart");
+            // water all round the tributary's ground (a bond for bread needs only a day's walk as the crow flies: C10.4)
+            var P = w.Planet;
+            int c = w.Settlements.Get(a).Cell, cb = w.Settlements.Get(b).Cell;
+            for (int q = 0; q < 8; q++) { int nb = P.Grid.Nbr8[c * 8 + q]; Assume.That(nb != cb, "the lord on another cell"); P.Elev[nb] = (float)(P.SeaLevel - 20.0); }
+            w.Routes.Invalidate();
+            Assume.That(w.Routes.Get(w, a, b) == null, "no way on foot between them");
+            double store = w.Settlements.Get(a).Granary, lord0 = w.Settlements.Get(b).Granary;
+            Conflict.CarryTally = new double[Conflict.CarryTallyN];
+            try
+            {
+                Harvest(w, a, 1000);
+                Assert.AreEqual(0.0, w.Settlements.Get(a).TributeDue, 1e-9, "nothing set aside: nobody could carry it there");
+                Assert.AreEqual(store + 1000.0, w.Settlements.Get(a).Granary, 1e-6, "the whole harvest stays in its store");
+                Assert.AreEqual(lord0, w.Settlements.Get(b).Granary, 1e-6, "nothing reaches the lord");
+                Assert.AreEqual(1.0, Conflict.CarryTally[8], "a tenth not set aside for want of a way");
+                Assert.AreEqual(100.0, Conflict.CarryTally[9], 1e-6, "of a tenth of the harvest");
+                w.AdvanceTo(w.Now + SimTime.Days(3));
+                Assert.AreEqual(0.0, w.Settlements.Get(a).TributeDue, 1e-9, "and none carried");
+                Assert.AreEqual(1, w.Settlements.Get(a).Lord == b ? 1 : 0, "still bound");
+                string page = Gazetteer.Neighbours(w, a);
+                Console.WriteLine(page);
+                StringAssert.Contains("No way on foot leads from it to", page, "the page tells why nothing goes");
+            }
+            finally { Conflict.CarryTally = null; }
+        }
+
+        [Test]
+        public void ATenthNobodyCarriedInAYearIsTheVillagesAgainAtTheNextHarvest()
+        {
+            var w = Bound(out int a, out int b);
+            Assume.That(w != null, "a tributary and its lord a walk apart");
+            Conflict.CarryTally = new double[Conflict.CarryTallyN];
+            try
+            {
+                Harvest(w, a, 1000);
+                Assume.That(w.Settlements.Get(a).TributeDue > 99.0, "a tenth set aside");
+                // the next harvest comes with the last tenth still set aside (nobody fit to carry it)
+                double store = w.Settlements.Get(a).Granary;
+                Harvest(w, a, 500);
+                Assert.AreEqual(50.0, w.Settlements.Get(a).TributeDue, 1e-6, "only the new tenth set aside");
+                Assert.AreEqual(store + 500.0 + 100.0 - 50.0, w.Settlements.Get(a).Granary, 1e-6, "the old tenth back in its store");
+                Assert.AreEqual(100.0, Conflict.CarryTally[7], 1e-6, "told: a year uncarried");
+            }
+            finally { Conflict.CarryTally = null; }
         }
 
         [Test]
