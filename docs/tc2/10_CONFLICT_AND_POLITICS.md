@@ -274,6 +274,49 @@ Built on C3.3 (D2-126: household grain, loans recorded as debts, gifts). `Core/S
   lived, by cart, carriers' km, given back at a bond's end or after a year uncarried, tenths not set aside for want of a way), `lordships` (the ways
   between the bound and their lords; the bonds with no way on foot and what stands set aside).
 
+## 12i. A lordship's might by lasting strength: arms and training count, not heads alone (C10.7a, D2-164)
+- **Found** (session 23, reading `Conflict.Might` against `Conflict.Strength`): C10.5 weighs a village's people of fighting age by heads, but a fight
+  weighs each body by its years, its village's tools, arms and iron and its own fighting skill. A village that forged spears and axes and trained its
+  people at a ground won its fights and was weighed in its bonds as if it had done neither. Measured first (`lordships --might`, the ten C9.5b worlds
+  at year 300): by their lasting strength the median village's people count x1.00 to x2.03 a head; three worlds arm nearly everywhere (x1.85-2.03),
+  seven little (x1.00-1.15); the 26 bonds still paid hold by either weighing.
+- **The rule** (`Conflict.Lasting`, `LastingOf`, `Kit`, `Years`): might counts each person of fighting age as a fight would weigh them over the seasons
+  ahead - their years (0.8 under 18 and from 45), their village's kit a head (x (1 + 0.3 tools) (1 + 0.3 arms) (1 + 0.15 iron), the share of its people
+  its arms would arm) and their fighting skill (x (1 + 0.6 skill)) - without what passes, the day's health and wounds (C10.5's reason for not counting
+  the day). An untrained grown person in their prime with no arms counts one; a trained one with a spear or an axe of iron a little more than two. The
+  men a lord's call brings are weighed so too. Used wherever might is (bowing to raiders, bowing for bread, a bond's end at the harvest).
+- **The record**: early medieval armies were small and their strength lay in the quality of their arms and men (Halsall 2003; Abels 1988) - a
+  neighbour judged what its enemy could field.
+- **Tells**: the page and history tell the weighing as a strength ("could bring a strength of N against it - its own people and those its call
+  brings, each by their years, arms and fighting skill (an untrained grown person in their prime with no arms counts one); its own came to M").
+- **What it changes in the world picture**: nothing drawn changes - the bonds the weighing makes or ends do (the standards in the lord's colour); the
+  page line is the truthful tell. The tribute that waits in a lord's first household's bin (D2-161: up to 30 years of its need) has a use in C10.7b:
+  sworn men fed from it practise daily, and their skill now counts in the lord's might.
+- **Tools**: `--oldmightarms` (C10.5's heads, on the same binary), `--armstally` (the `arms:` line: each weighing by heads and by lasting strength),
+  `lordships --might` (each village's people by heads and by lasting strength; the bonds still paid by both).
+## 12j. Sworn men: a first household's grain keeps young men who train and fight for it (C10.7b, D2-165)
+- **Found** (session 23: the 900-year checks of C10.5 and C10.6): the tribute carried to a lord's store goes into its first household's bin (C10.2) and
+  waits - lords' first households held 0.3-24 years of their own need at year 300 (median ~8), 30 at year 900 - opened only to the village's hungry in
+  hard times: a dead end in the causal chain. Since C10.7a a village's might weighs its people's fighting skill: men who train now count in its bonds.
+- **The rule** (`Society/Retinue.cs`, `Person.Sworn`): at each harvest of its village, a first household weighs how many men its grain beyond its own
+  next year and three more would feed for those years (`Keepable`: a man's year 48 FU) and keeps that many sworn: the willing men of its village (18-40,
+  fit, bold as those who choose to practise, of its households, not the one first among its people) - the landless and land-short first (C3.6: least
+  land a hand), then the boldest; it releases those it can no longer keep (the most landed and least bold first), those of a household no longer
+  first, past forty or living elsewhere; and gives each a year's food from its bin into his household's (one store). They keep their homes, land and
+  work; they practise at the village's ground every day (a session; lived in the afternoon, COARSE a session a day of the step), a ground laid out for
+  them if none stands; they go with every band their village raises, beyond its own twelve, up to the call's 36; trained, they weigh in its might by
+  their lasting strength (C10.7a). No lordship flag: a lord keeps men by its tribute, any first household by its grain.
+- **The record**: the hearth-troop and the gesiths of Ine's laws (c. 694: seven to thirty-five a band), the king's *geneat*; the ring-giver feeding his
+  companions; younger sons with no land to wait for serving for their keep. Kept small and grounded in grain.
+- **Tells**: history (each oath with its cause - the harvest, the tribute last paid - and each release with its reason); the settlement page ("N men are
+  sworn to the Ys, fed from their grain - the tribute of the villages that pay it: they practise arms at its ground every day and go with its bands");
+  the person page ("Known for: sworn to the Ys, first among the people of L, who feed him"); seen practising ("practising arms at L's training ground:
+  sworn to the Ys, first among its people, who feed them for it").
+- **What it changes in the world picture**: men at a lord's training ground every afternoon - a ground laid out where none stood (the lord's village need
+  not fear its neighbours) - and larger bands on the roads.
+- **Tools**: `--oldsworn` (nobody sworn, on the same binary), `--sworntally` (the `sworn:` line: men sworn and released by reason, food given, their
+  practice, bands with sworn men, the most sworn to one household, sworn now and in how many villages).
+
 ## 13. Civilisation depth (D2-089)
 
 Force, fortification, war and sieges are designed in `23_MILITARY_AND_WAR.md` (fighters as persistent people, arms as goods, training,

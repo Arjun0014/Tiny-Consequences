@@ -157,6 +157,7 @@ namespace TC2.Core.Agents
         public float SkSmith;                // a smith's practised hand at the smithy or the open hearth, 0..1: grown by hours there (C1.4b, D2-125); their role is read from it
         public float BendX, BendY;           // a local walk's bend round the water: From -> Bend over [T0, TBend], Bend -> To over [TBend, TA] (D2-156)
         public long TBend;                   // when they reach the bend (none unless T0 < TBend < TA)
+        public int Sworn;                    // the household they are sworn to - their village's first, which feeds them (0 none; C10.7b, `Society.Retinue`)
 
         // derived from the world's seed and the person's id - never saved or hashed: filled when a person is made or loaded (Derive);
         // readers fall back to computing them where it is 0 (the same values: an exact speedup, F8)
@@ -195,6 +196,7 @@ namespace TC2.Core.Agents
             w.Int(Imm2); w.Int(Imm3); w.Int(Imm4); w.Int(Imm5); w.Long(ImmUntil2); w.Long(ImmUntil3); w.Long(ImmUntil4); w.Long(ImmUntil5);
             w.Float(Hurt); w.Int(HurtDeed); w.Int(Errand); w.Int(Band); w.Float(SkFight); w.Byte(Fights); w.Int(Voyage); w.Float(SkCraft); w.Float(SkPot); w.Float(SkSmith);
             w.Float(BendX); w.Float(BendY); w.Long(TBend);
+            w.Int(Sworn);
         }
 
         public static Person Read(BinReader r)
@@ -212,6 +214,7 @@ namespace TC2.Core.Agents
             p.Imm2 = r.Int(); p.Imm3 = r.Int(); p.Imm4 = r.Int(); p.Imm5 = r.Int(); p.ImmUntil2 = r.Long(); p.ImmUntil3 = r.Long(); p.ImmUntil4 = r.Long(); p.ImmUntil5 = r.Long();
             p.Hurt = r.Float(); p.HurtDeed = r.Int(); p.Errand = r.Int(); p.Band = r.Int(); p.SkFight = r.Float(); p.Fights = r.Byte(); p.Voyage = r.Int(); p.SkCraft = r.Float(); p.SkPot = r.Float(); p.SkSmith = r.Float();
             p.BendX = r.Float(); p.BendY = r.Float(); p.TBend = r.Long();
+            p.Sworn = r.Int();
             return p;
         }
 
@@ -229,6 +232,7 @@ namespace TC2.Core.Agents
             h.Add(Imm2); h.Add(Imm3); h.Add(Imm4); h.Add(Imm5); h.Add(ImmUntil2); h.Add(ImmUntil3); h.Add(ImmUntil4); h.Add(ImmUntil5);
             h.Add(Hurt); h.Add(HurtDeed); h.Add(Errand); h.Add(Band); h.Add(SkFight); h.Add(Fights); h.Add(Voyage); h.Add(SkCraft); h.Add(SkPot); h.Add(SkSmith);
             h.Add(BendX); h.Add(BendY); h.Add(TBend);
+            if (Sworn != 0) h.Add(Sworn);   // (C10.7b: a world with nobody sworn hashes as before - `--oldsworn` against C10.7a)
         }
     }
 }

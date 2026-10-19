@@ -145,6 +145,12 @@ namespace TC2.Core.History
                 case HistoryKind.HeadmanRose:
                     return Cap(subj) + " became first among the people of " + place + (e.ArgB == 1 && !e.Other.IsNone ? ", after " + other + " of the same household" : e.ArgB == 2 && !e.Other.IsNone ? " in the place of " + other : "") +
                            ": " + e.ArgA + (e.ArgA == 1 ? " household follows" : " households follow") + " the " + Plural(obj) + " - kin, those who owe them grain, those they fed or lent to lately.";
+                case HistoryKind.Sworn:
+                    return Cap(subj) + " swore to the " + Plural(obj) + ", first among the people of " + place + ": their grain feeds him, a year's food at each harvest, and he practises arms at its ground every day and goes with its bands" +
+                           (e.ArgA > 1 ? " (" + e.ArgA + " men are sworn to them now)" : "") + ".";
+                case HistoryKind.SwornReleased:
+                    return Cap(subj) + " was released from the service of the " + Plural(obj) + " of " + place +
+                           (e.ArgA == 1 ? ": their grain could keep no more men" : e.ArgA == 2 ? ": they are no longer first among its people" : e.ArgA == 3 ? ": he is past forty" : e.ArgA == 4 ? ": he lives in another village now" : "") + ".";
                 case HistoryKind.CartMade:
                     return "The " + Plural(subj) + " of " + place + " made " + (e.ArgA == TC2.Core.Places.Carts.Ox ? "an ox cart" : "a handcart") + (e.Other.IsNone ? "" : ", " + other + " shaping its wheels") +
                            ": what they carried - their traders' loads along a worn way, wood and stone from far off - had been more than their backs could take.";
@@ -194,7 +200,9 @@ namespace TC2.Core.History
                 case HistoryKind.TributeEnded:
                     if (e.ArgA == 1) return subj + " pays tribute no more: " + obj + " is gone.";
                     return subj + " would pay " + obj + " tribute no more: " + obj + " is no longer the stronger" +
-                           (e.Magnitude > 0f ? " - it could bring " + F(e.Magnitude, "0") + " against them (its own people and those its call brings), and they have " + e.ArgB + " of fighting age." : ".");   // (C10.5)
+                           (e.Magnitude <= 0f ? "." : TC2.Core.Society.Conflict.MightArmsOff
+                               ? " - it could bring " + F(e.Magnitude, "0") + " against them (its own people and those its call brings), and they have " + e.ArgB + " of fighting age."   // (C10.5)
+                               : " - it could bring a strength of " + F(e.Magnitude, "0") + " against them (its own people and those its call brings, each by their years, arms and fighting skill), and theirs came to " + e.ArgB + ".");   // (lasting strength, C10.7a)
                 case HistoryKind.PathogenAppeared: return "A new sickness, " + subj + ", appeared in " + place + (e.ArgA == 1 ? ", caught from its animals" : "") + ".";
                 case HistoryKind.EpidemicArrived:
                     return e.ArgA == 1 ? Cap(obj) + " broke out in " + place + (e.Other.IsNone ? "" : ", " + other + " the first to fall ill") + "."
@@ -323,7 +331,10 @@ namespace TC2.Core.History
                     if (w.Settlements.Exists(p.Home) && (w.Settlements.Get(p.Home).Wall == 1 || (w.Settlements.Get(p.Home).Wall == 2 && TC2.Core.Places.Construction.NextWork(w.Settlements.Get(p.Home)) == TC2.Core.Places.Construction.Mend)))
                         return "setting posts in " + home + "'s palisade: other villages' people have cost it dear";
                     return "building for " + home + ": the village needs a well or a granary";
-                case ActivityKind.Train: return "practising with spear and shield at " + home + "'s training ground: " + home + " fears its neighbours";
+                case ActivityKind.Train:
+                    if (TC2.Core.Society.Retinue.SwornHere(w, in p))   // (C10.7b)
+                        return "practising arms at " + home + "'s training ground: sworn to the " + Plural(w.History.NameOf(EntityRef.Household(p.Sworn))) + ", first among its people, who feed them for it";
+                    return "practising with spear and shield at " + home + "'s training ground: " + home + " fears its neighbours";
                 case ActivityKind.Smith:
                     return "at " + home + "'s smithy, " + (w.Settlements.Exists(p.Home) && w.Settlements.Get(p.Home).Arms < TC2.Core.Places.Forge.ArmsWant(w.Settlements.Get(p.Home)) ? "forging arms: " + home + " fears its neighbours" : "smelting and working metal for the village's tools");
                 case ActivityKind.Burn: return "burning charcoal at " + home + "'s hearth by the woodlot: its smiths want charcoal to smelt";

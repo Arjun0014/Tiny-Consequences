@@ -27,7 +27,7 @@ namespace TC2.Tests.Core
                     {
                         if (a == b || !w.Settlements.Get(a).Inhabited || !w.Settlements.Get(b).Inhabited) continue;
                         if (Vec3d.ArcDistance(w.Settlements.Get(a).Anchor, w.Settlements.Get(b).Anchor, w.Planet.Radius) > 6000 || w.Routes.Get(w, a, b) == null) continue;
-                        if (w.Conflict.Hands(b) < w.Conflict.Hands(a) || w.Conflict.FitAt(a, w.Now) < 4) continue;
+                        if (w.Conflict.Might(b, a) < w.Conflict.Might(a, b) || w.Conflict.FitAt(a, w.Now) < 4) continue;   // (the lord no weaker: C10.5, C10.7a)
                         ref var s = ref w.Settlements.Get(a);
                         s.Lord = b; s.LordSince = w.Now;
                         trib = a; lord = b;

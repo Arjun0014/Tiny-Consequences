@@ -99,7 +99,7 @@ namespace TC2.Core.Society
         public const double WallSeen = 0.6;
 
         // ---- tribute and lordship (D2-075)
-        /// <summary>A tributary pays its lord this share of each harvest; it bows only to raiders this much stronger (fit grown people).</summary>
+        /// <summary>A tributary pays its lord this share of each harvest; it bows only to a neighbour this much stronger (by might: C10.5, C10.7a).</summary>
         public const double TributeShare = 0.1, TributeOdds = 1.2;
 
         // ---- bread and dependence (C10.4, D2-157)
@@ -119,10 +119,16 @@ namespace TC2.Core.Society
         /// <summary>`--oldmight`: villages weigh each other as D2-075 did - by their fit grown people at home that day, a lord by its own village
         /// alone - on the same binary.</summary>
         public static bool MightOff;
+        /// <summary>`--oldmightarms` (C10.7a off, D2-164): might counts people of fighting age by heads, as C10.5 weighed them, not by their lasting
+        /// strength (years, tools and arms, fighting skill) - on the same binary.</summary>
+        public static bool MightArmsOff;
         /// <summary>Tools (`--mighttally`): for each weighing - [0..3] a beaten village's bowing, [4..7] bowing for bread, [8..11] a bond's end at the
         /// harvest - the weighings, those the old count (D2-075) would carry, those might carries, and both; [12] lords' weighings in which their call
         /// counted, [13] the men it added; null in the game.</summary>
         public static double[] MightTally;
+        /// <summary>Tools (`--armstally`, C10.7a): for each weighing - [0..3] a beaten village's bowing, [4..7] bowing for bread, [8..11] a bond's end at
+        /// the harvest - the weighings, those heads would carry (C10.5), those lasting strength carries (C10.7a), and both; null in the game.</summary>
+        public static double[] ArmsTally;
 
         // ---- tribute carried (C10.6, D2-161)
         /// <summary>`--oldtribute`: the tenth goes into the lord's store at the tributary's harvest, carried by nobody (D2-075 to C10.5) - on the same
@@ -424,12 +430,15 @@ namespace TC2.Core.Society
             return age >= 16 && age < 60;
         }
 
+        /// <summary>What a body's years give it in a struggle: the young and the ageing less than those in their prime.</summary>
+        public static double Years(double age) => age < 18 ? 0.8 : age < 45 ? 1.0 : age < 60 ? 0.8 : 0.6;
+
         /// <summary>A body's strength in a struggle: its health and years, its hurt, and the metal its village holds (knives, axes).</summary>
         public double Strength(in Person q)
         {
             var w = _w;
             double age = q.AgeYears(w.Now);
-            double years = age < 18 ? 0.8 : age < 45 ? 1.0 : age < 60 ? 0.8 : 0.6;
+            double years = Years(age);
             double armed = 0.0, arms = 0.0, iron = 0.0;
             if (w.Settlements.Exists(q.Home))
             {
@@ -835,17 +844,28 @@ namespace TC2.Core.Society
             if (!t.Inhabited || Vec3d.ArcDistance(s.Anchor, t.Anchor, w.Planet.Radius) > 6000 || w.Routes.Get(w, sid, target) == null) return;
             int leader = Boldest(sid, now, target);
             if (leader == 0) return;
-            // who goes with them: each decides
+            // who goes with them: each decides - and the men sworn to its first household go, beyond the band's own count (C10.7b)
             _band.Clear();
             _band.Add(leader);
             ref var L = ref w.People.Get(leader);
-            for (int i = 0; i < res.Count && _band.Count < BandAtMost; i++)
+            int swornIn = Retinue.SwornHere(w, in L) ? 1 : 0;   // (the leader one of them)
+            if (!Retinue.Off)
+                for (int i = 0; i < res.Count && _band.Count < CallAtMost; i++)
+                {
+                    int pid = res[i];
+                    if (pid == leader) continue;
+                    ref var q = ref w.People.Get(pid);
+                    if (!Retinue.SwornHere(w, in q) || !Fit(in q, now) || q.Band != 0 || KinIn(in q, target)) continue;
+                    _band.Add(pid); swornIn++;
+                }
+            for (int i = 0; i < res.Count && _band.Count - swornIn < BandAtMost; i++)
             {
                 int pid = res[i];
                 if (pid == leader) continue;
                 ref var q = ref w.People.Get(pid);
                 if (!Fit(in q, now) || q.AgeYears(now) >= 50 || q.PregDue != 0 || (q.NursingUntil != 0 && q.NursingUntil - now > SimTime.Year / 2) || q.Band != 0) continue;
                 if (KinIn(in q, target)) continue;   // (not against their own kin)
+                if (Retinue.SwornHere(w, in q)) continue;   // (gone already, or kept from it)
                 bool kin = q.Mother == leader || q.Father == leader || L.Mother == pid || L.Father == pid || q.Partner == leader || (q.Mother != 0 && q.Mother == L.Mother);
                 double join = (0.15 + 0.7 * q.Bold / 255.0) * (kin ? 1.5 : 1.0) * (motive != 0 ? 1.0 : (q.Nutrition < HungryBelow ? 1.0 : 0.3));
                 if (KeyedRng.Unit(w.Seed, RngStream.Society, (ulong)pid, (ulong)now, 51) < join) _band.Add(pid);
@@ -889,6 +909,7 @@ namespace TC2.Core.Society
                 Other = forT != 0 ? EntityRef.Settlement(forT) : default, Cause1 = cause, Rel1 = CauseRel.InResponseTo, ArgA = _band.Count, ArgB = motive, RootKind = RootKind.People,
             });
             w.Bands.Add(id, new Band { Id = id, Origin = sid, Target = target, Leader = leader, Size = (byte)_band.Count, Motive = motive, Formed = now, Arrive = arrive, Event = ev, Called = (byte)(_callers.Count / 2), For = forT });
+            if (swornIn > 0 && Retinue.Tally != null) { Retinue.Tally[8] += 1; Retinue.Tally[9] += swornIn; }   // (tools: C10.7b)
             for (int i = 0; i < _band.Count; i++) w.People.Get(_band[i]).Band = id;
             w.Metrics.Bands++;
             if (motive == 2) w.Metrics.LordsAnswered++;
@@ -1093,20 +1114,58 @@ namespace TC2.Core.Society
             return n;
         }
 
+        /// <summary>A village's fighting kit a head (C10.7a): its tools, its arms and their iron, as a fight weighs them (`Strength`: C1.4, C5.2b).</summary>
+        public double Kit(int sid)
+        {
+            ref var hs = ref _w.Settlements.Get(sid);
+            double armed = Knowledge.Tech.ToolShare(in hs);
+            double arms = hs.Population > 0 ? DMath.Clamp01(hs.Arms / (Places.Forge.ArmsPerHead * hs.Population)) : 0.0;
+            double iron = hs.Population > 0 ? DMath.Clamp01(hs.IronArms / (Places.Forge.ArmsPerHead * hs.Population)) : 0.0;
+            return (1.0 + 0.3 * armed) * (1.0 + 0.3 * arms) * (1.0 + 0.15 * iron);
+        }
+
+        /// <summary>A person of fighting age as a fight weighs them over the seasons ahead (C10.7a): `Strength` with what lasts - their years, their
+        /// village's kit, their fighting skill (C1.5) - and without what passes, the day's health and wounds (C10.5's reason for counting heads).</summary>
+        static double LastingOf(in Person q, double age, double kit) => kit * Years(age) * (1.0 + 0.6 * (double)q.SkFight);
+
         /// <summary>
-        /// The might a village weighs another by (C10.5, D2-159) - in bowing to raiders (D2-075), in bowing for bread (C10.4) and in paying no more
-        /// (a bond's end): its people of fighting age (`Hands`) and, for a lord, the men its call would bring against that village - of each of its
-        /// tributaries within a day's walk of it, a quarter of the meek and more of the bold, never those with close kin there (C10.1's own call).
-        /// The village weighed is never its own caller. D2-075 weighed a lord by its own village's fit people at home that day: a lord of several
-        /// villages was no stronger than its seat, and a bond agreed the day after a raid (the beaten village's wounded abed) ended at the next
-        /// harvest, when they had mended.
+        /// A village's people of fighting age by their lasting strength (C10.7a, D2-164): each counted as a fight would weigh them over the seasons
+        /// ahead (`LastingOf`) - an untrained grown person in their prime with no tools or arms counts one; a trained one with a spear and an axe of
+        /// iron more than two. `Hands` counts them by heads (`--oldmightarms`).
         /// </summary>
-        public double Might(int sid, int against)
+        public double Lasting(int sid)
         {
             var w = _w;
             long now = w.Now;
-            if (MightOff) return FitAt(sid, now);
-            double m = Hands(sid);
+            double kit = Kit(sid), m = 0;
+            var res = w.Residents(sid);
+            for (int i = 0; i < res.Count; i++)
+            {
+                ref var q = ref w.People.Get(res[i]);
+                if (!q.Alive) continue;
+                double age = q.AgeYears(now);
+                if (age >= 16 && age < 60) m += LastingOf(in q, age, kit);
+            }
+            return m;
+        }
+
+        /// <summary>
+        /// The might a village weighs another by (C10.5, D2-159) - in bowing to raiders (D2-075), in bowing for bread (C10.4) and in paying no more
+        /// (a bond's end): its people of fighting age and, for a lord, the men its call would bring against that village - of each of its
+        /// tributaries within a day's walk of it, a quarter of the meek and more of the bold, never those with close kin there (C10.1's own call).
+        /// Each is weighed by their lasting strength (C10.7a, D2-164: their years, their village's tools and arms, their fighting skill - `Lasting`);
+        /// `--oldmightarms` counts heads (`Hands`), as C10.5 did. The village weighed is never its own caller. D2-075 weighed a lord by its own
+        /// village's fit people at home that day: a lord of several villages was no stronger than its seat, and a bond agreed the day after a raid
+        /// (the beaten village's wounded abed) ended at the next harvest, when they had mended.
+        /// </summary>
+        public double Might(int sid, int against) => MightOff ? FitAt(sid, _w.Now) : Weigh(sid, against, MightArmsOff);
+
+        /// <summary>`Might` by heads (C10.5) or by lasting strength (C10.7a).</summary>
+        double Weigh(int sid, int against, bool heads)
+        {
+            var w = _w;
+            long now = w.Now;
+            double m = heads ? Hands(sid) : Lasting(sid);   // (C10.7a: by their lasting strength)
             if (against == 0 || !w.Settlements.Exists(against)) return m;
             var anchor = w.Settlements.Get(against).Anchor;
             double called = 0;
@@ -1119,16 +1178,18 @@ namespace TC2.Core.Society
                 if (Vec3d.ArcDistance(tr.Anchor, anchor, w.Planet.Radius) > 6000 || w.Routes.Get(w, o, against) == null) continue;
                 if (!indexed) { KinIndex(against); indexed = true; }
                 var tres = w.Residents(o);
+                double kit = heads ? 1.0 : Kit(o);
                 for (int i = 0; i < tres.Count; i++)
                 {
                     ref var q = ref w.People.Get(tres[i]);
                     if (!q.Alive) continue;
                     double age = q.AgeYears(now);
                     if (age < 16 || age >= 50 || KinInIndexed(in q, against)) continue;   // (whom the call takes: grown and under fifty, as a band's own)
-                    called += CallOwed + CallBold * q.Bold / 255.0;
+                    double owed = CallOwed + CallBold * q.Bold / 255.0;
+                    called += heads ? owed : owed * LastingOf(in q, age, kit);   // (C10.7a: as they would fight)
                 }
             }
-            if (MightTally != null && called > 0) { MightTally[12] += 1; MightTally[13] += called; }
+            if (MightTally != null && called > 0 && heads == MightArmsOff) { MightTally[12] += 1; MightTally[13] += called; }   // (the weighing the world goes by)
             return m + called;
         }
 
@@ -1168,6 +1229,17 @@ namespace TC2.Core.Society
             if (old) MightTally[kind * 4 + 1] += 1;
             if (now) MightTally[kind * 4 + 2] += 1;
             if (old && now) MightTally[kind * 4 + 3] += 1;
+        }
+
+        /// <summary>Tools (C10.7a): one weighing of the stronger, by heads and by lasting strength ([0..3] bowing to raiders, [4..7] for bread, [8..11] a
+        /// bond's end).</summary>
+        void TallyArms(int kind, bool heads, bool lasting)
+        {
+            if (ArmsTally == null) return;
+            ArmsTally[kind * 4] += 1;
+            if (heads) ArmsTally[kind * 4 + 1] += 1;
+            if (lasting) ArmsTally[kind * 4 + 2] += 1;
+            if (heads && lasting) ArmsTally[kind * 4 + 3] += 1;
         }
 
         double SideStrength(System.Collections.Generic.List<int> side)
@@ -1432,6 +1504,7 @@ namespace TC2.Core.Society
             // (C10.5: its people and theirs with the men their call brings - not the day after the raid's count, its wounded abed)
             bool weaker = Might(lord, sid) >= TributeOdds * Might(sid, lord);
             if (MightTally != null) TallyMight(0, FitAt(lord, now) >= TributeOdds * FitAt(sid, now), weaker);
+            if (ArmsTally != null) TallyArms(0, Weigh(lord, sid, true) >= TributeOdds * Weigh(sid, lord, true), Weigh(lord, sid, false) >= TributeOdds * Weigh(sid, lord, false));
             if (!weaker) return;
             ref var s2 = ref w.Settlements.Get(sid);
             s2.Lord = lord; s2.LordSince = now;
@@ -1480,6 +1553,7 @@ namespace TC2.Core.Society
             double lordMight = gone ? 0.0 : Might(lord, sid), ownMight = gone ? 0.0 : Might(sid, lord);
             bool weak = !gone && lordMight < ownMight;
             if (MightTally != null && !gone) TallyMight(2, FitAt(lord, now) < FitAt(sid, now), weak);
+            if (ArmsTally != null && !gone) TallyArms(2, Weigh(lord, sid, true) < Weigh(sid, lord, true), Weigh(lord, sid, false) < Weigh(sid, lord, false));
             if (gone || weak)
             {
                 long agreed = s.LordEvent;
@@ -1488,7 +1562,7 @@ namespace TC2.Core.Society
                 {
                     Kind = HistoryKind.TributeEnded, Time = now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid), Object = EntityRef.Settlement(lord),
                     Cause1 = agreed, Rel1 = CauseRel.PartOf, ArgA = gone ? 1 : 0, RootKind = RootKind.People,
-                    // (C10.5: the weighing - what the lord could bring against it, and its own people of fighting age)
+                    // (C10.5: the weighing - what the lord could bring against it, and its own people of fighting age; by their lasting strength, C10.7a)
                     Magnitude = MightOff || gone ? 0f : (float)lordMight, ArgB = MightOff || gone ? 0 : (int)(ownMight + 0.5),
                 });
                 if (!gone)
@@ -1750,6 +1824,8 @@ namespace TC2.Core.Society
             bool stronger = near && (BreadTally != null || MightTally != null || days >= BowDays) && Might(giver, sid) >= TributeOdds * Might(sid, giver);
             bool loop = near && Root(giver) == sid;   // (not to a village that pays it, directly or through its lords)
             if (MightTally != null && near && days >= BowDays && !loop) TallyMight(1, FitAt(giver, now) >= TributeOdds * FitAt(sid, now), stronger);
+            if (ArmsTally != null && near && days >= BowDays && !loop)
+                TallyArms(1, Weigh(giver, sid, true) >= TributeOdds * Weigh(sid, giver, true), Weigh(giver, sid, false) >= TributeOdds * Weigh(sid, giver, false));
             if (BreadTally != null)
             {
                 int b = giver == 0 || days <= 0 ? 0 : days < 5 ? 1 : days < 10 ? 2 : days < 20 ? 3 : days < 30 ? 4 : days < 60 ? 5 : 6;
