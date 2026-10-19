@@ -1,53 +1,48 @@
 # TC2 Session handoff
 
-## Session 23, second context (19 Oct 2026, from 21:26 IST; Control Room run #63 session 2) - C10.5, D2-160 and C10.6 (amended) landed; the queue validates main
+## Session 23, second context (19 Oct 21:26 - 20 Oct ~00:10 IST; Control Room run #63 session 2) - C10.5, D2-160, C10.6 landed and validated; C9.5a built, in evaluation; context handoff with the queue running
 
-### State (keep current)
-- **main** = a19c077 (`--no-ff` merge of `wip/s23-int`: C10.5 + D2-160 + C10.6 as amended on `wip/c106b-carry`) + 464e72c (DECISIONS D2-159, D2-160,
-  D2-161) + PROGRESS and this handoff. Sim version 85. `.claude/launch.json` (modified) and `Assets/Resources.meta` (untracked) are not ours.
-- **The amendment** (found reviewing the integration; D2-161 (6)-(8), `10` §12h): the tenth is set aside only where a route on foot reaches the lord
-  (a bond for bread needs only 6 km as the crow flies) - **444 harvests in five of ten worlds, 100,504 FU, a fifth of all the tribute, have no way on
-  foot** and stay home (as first built they would have been set aside for ever); what a year left uncarried returns at the next harvest; a load sent
-  home by a switch to COARSE is set aside again; one cart goes one way at a time (`Carts.Out`). Tools: `lordships` (bonds with no way on foot, other
-  neighbours' ways), `--carrytally` [7]-[9], shot view `why:<reason>`, shots `--after tribute`.
-- **Evidence**: C10.5's 900-year checks (seeds 2, 4): no snowball, bonds hold longer (mean life 114 -> 214, 166 -> 201 years). The landed code: floatcheck
-  clean, full suite 419/419, control (`--oldtribute --oldways`) = `_z1` byte-identical, ten seeds `_g1` vs `_z1` at par in the vital rates, tribute
-  agreed x0.74 (t -2.2; D2-160 alone leaned the same way), the route probe on `s2_g1` equal hashes; the ways of a lordship do not stand out (every
-  neighbour pair is a path or road by year 300).
-- **The queue** (runner task bc2qpqxfq; `Q` = the session-23 scratchpad's `q`, below): `4_d_profile_g1` (running at 23:00: might and carrying's cost by
-  the profiler), then `5_a_build_m2` (main's headless build + hashtest -> `bin_m2`), `5_b_cc_main` (the Unity C#), `5_c_shots` (`s23c` the tributary,
-  `s23d` the lord, `s23e` the carriers `--after tribute`, seed 2 `_g1`), `5_d_web` (TAG `s23web2`), `5_e_l9g1_s2` (the landed code's 900-year check),
-  `6_a_g2_*` + `6_b_cmp_g2` (ten seeds with D2-160 alone, `--oldtribute`: attributes the bonds lean). `$Q/hold`: the pre-amendment jobs - do not run.
-- Worktrees all merged (may be removed): `tc-int`, `tc-carry`, `tc-might`, `tc-routes`, `tc-tribute`, `tc-s23`, `tc-bread`, `tc-dry`, `tc-stubble`.
-
-- **After landing (23:00-23:35)**: `unity.mjs cc` on main caught a coroutine `ref` local in the new shot option (fixed 420ef71); real shots `s23c`/`s23d`
-  (tributary Paerdal, lord Lounstead): the standards read up close and from the low view, **not from the village view** (an 8x curve tried and reverted,
-  `s23g`/`s23h`) - D2-161's claim (4) corrected; the palette has no green nor teal (12dc99c). Lived carriers carry (seed 2's world lived 20 days: 19
-  loads); the carrier shots missed them (they set out at 7 and are visitors at the lord's by 9) - `--after tribute` now steps to the first carrier on
-  the way (4e736cb); the re-shot `s23k` is queued (`5_c65`). The profile: might and carrying cost nothing per village-day (D2-159). DECISIONS has a
-  FILL in D2-161 (the carriers' shot) - uncommitted edits in DECISIONS and `10` §12h wait for it.
-- **C9.5a grain across water goes by boat** (branch `wip/c95-across`, worktree `C:/Game Dev/tc-across`, c02b012 + the survey aea29b6; sim 86): within a
-  day's walk grain moves at once only where a way on foot joins two villages; relief and give-back across water go by sea (the giver's boats) or
-  not at all; the lord's tenth across water is set aside where a way by sea joins the landings and rowed over in the tributary's plank boats (lived:
-  `ForTribute` bookings delivered at the lord's landing; COARSE: at once); `--oldacross`; AcrossTests 3. Queued: `5_e1_a1_*` (the survey on the
-  landed code: how much grain crossed water at once), `5_e2_*` (build, tests, control `--oldacross` = `_g1`, ten seeds `_x1`, `cmp_g1_x1`).
-
-- **The survey `_a1` (00:00)**: within a day's walk with no way on foot, 1,679 relief gifts (~604,000 FU) and 1,150 gifts back (~58,000 FU) crossed water
-  at once over ten worlds; 4 bows across water; of 444 no-way tenths 366 had a sea way, **the tributary never had a plank boat (0), the lord at 76** -
-  C9.5a's tenth by sea needs **the lord's boats to come and fetch it** (next: a `ForTributeFetch` booking like give-back's `ForFetch`; the dues
-  settled at pickup, the grain into the lord's store at its landing; COARSE the lord's free boats at once; set aside where either side has a boat).
-  The C9.5a build failed on a test premise (CS0177, fixed 39b7ce4); `5_e2_0`/`5_e2_1` requeued; its ten seeds `5_e2_2_*`, `5_e2_3` held in `$Q/hold`
-  until the fetch is in (then requeue them after a rebuild).
+### Exact state at the handoff (20 Oct 00:05)
+- **main** = 94c0700 (clean but `.claude/launch.json` modified and `Assets/Resources.meta` untracked - not ours, leave them). Landed: a19c077 (`--no-ff`
+  merge of `wip/s23-int` = C10.5 + D2-160 + C10.6 as amended on `wip/c106b-carry`), DECISIONS D2-159, D2-160, D2-161 (464e72c; their evidence lines updated
+  after: profile 7d5ea8b, shots 8b02684), view and tool fixes (420ef71, 12dc99c, 4e736cb), PROGRESS, this handoff, both NEXT_SESSION_PROMPTs. Sim version 85.
+- **Verified on main** (rechecked at the handoff against the raw outputs): full suite 419/419 (`results/fullsuite_p1.txt`), control `--oldtribute --oldways` =
+  C10.5's `_z1` byte-identical, ten seeds `_g1` vs `_z1` at par in the vital rates (`results/cmp_z1_g1.txt`), the route probe on the landed world equal hashes
+  over 3/6 lived days and 3 COARSE years, `unity.mjs cc` clean (07c21b5), **Web `s23web2` 6/6** (browser = headless dotnet = editor Mono bit for bit; every
+  view faster than `s23web1`; the machine was busy - a quiet-machine fps measurement is still owed), real shots `s23c`-`s23k` (carriers with handcarts on
+  the road to the lord `s23k`; standards read up close, not from the village view - a map layer is wanted), C10.5's 900-year checks (no snowball, bonds
+  hold longer), the profile (might and carrying cost nothing per village-day).
+- **Open on main's record**: tribute agreed x0.74 (t -2.2) in `_g1` vs `_z1` - D2-160 alone leaned the same way; `6_a_g2_*` (ten seeds, D2-160 alone on
+  `bin_m2`: `--oldtribute`) + `6_b_cmp_g2` attribute it -> `results/cmp_z1_g2.txt`, `cmp_g2_g1.txt` -> PROGRESS and a line in D2-161.
+- **C9.5a grain across water goes by boat** - branch `wip/c95-across`, worktree `C:/Game Dev/tc-across`, tip 39b7ce4 (clean), sim 86, draft decision
+  `tc2/out/tools/s23/d2162.md`, design note in `24` §5 on the branch. Within a day's walk grain moves at once only along a way on foot; relief and
+  give-back across water go by sea (the giver's boats; give-back also the giver's come to fetch) or not at all; the tenth across water is set aside where
+  a way by sea joins the landings and the tributary has a plank boat, rowed over by it (lived `ForTribute` bookings delivered at the lord's landing;
+  COARSE at once). `--oldacross` restores the landed code; AcrossTests 3. **Survey on the landed code** (`_a1`, annals byte-identical to `_g1`): 1,679
+  relief gifts (~604,000 FU) and 1,150 gifts back (~58,000 FU) crossed water at once in ten worlds; 4 bows across water; of 444 no-way tenths 366 had a
+  sea way - **the tributary never had a plank boat (0), the lord at 76**: as built, C9.5a carries no tenth by sea. **Its first build failed** on a test
+  premise (CS0177, fixed 39b7ce4) - NOT YET BUILT OR TESTED since; `5_e2_0` (build, floatcheck, ten test classes -> `x1_ok`) and `5_e2_1` (control
+  `--oldacross` = `_g1`) are requeued; its ten seeds `5_e2_2_*` and `5_e2_3_cmp_x1` are held in `$Q/hold` for the lord's fetch.
+- **RUNNING at the handoff: the session-23 job queue** - `bash tc2/out/tools/s23/runq.sh` (background task bc2qpqxfq; a monitor bh5wj1q6y on its log
+  expires by itself). `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/db1b5af7-2c1c-4e6f-a5ff-c8b25b1a81c2/scratchpad/q`
+  (`runq.log`, `log/<job>.log`, `todo`, `done`, `hold`; `touch $Q/stop` ends it after the current job; copies of the jobs in `tc2/out/tools/s23/`).
+  Running: `5_e_l9g1_s2` (from 23:59: the landed code's 900-year check, seed 2 -> `results/lordships_s2_l9g1_y600.txt`, `tc2/out/civ/s2_l9g1.txt`; compare
+  with C10.5's `lordships_s2_l9z1_y600.txt`: lordships with the carried tenth over centuries, the ways, the bonds with no way on foot). Then, in order:
+  `5_e2_0`, `5_e2_1`, `6_a_g2_01..10`, `6_b_cmp_g2` (about an hour in all). Binaries in that scratchpad: `bin_m2` (main), `bin_p1` (main's code before
+  the docs), `bin_a1` (main + the survey tallies), `bin_x1` (C9.5a, rebuilt by `5_e2_0`).
+- Worktrees merged and removable: `tc-int`, `tc-carry`, `tc-might`, `tc-routes`, `tc-tribute`, `tc-s23`, `tc-bread`, `tc-dry`, `tc-stubble`; live: `tc-across`.
 
 ### Next, in order
-1. Read the queue: Unity C# (errors -> fix on main), the shots (standards from the village view? carriers on the road?), Web 6/6 with the probe =
-   headless = Mono, the 900-year check, `_g2` (is the bonds lean D2-160's?), the profile -> PROGRESS and D2-161's shots line.
-2. **Next slice: the tenth by sea (C9.5's first slice)** - a fifth of the tribute has no way on foot. A tributary with no way on foot but a sea way
-   between its landing and its lord's carries its tenth in its plank boats in a calm sea, or the lord's come for it - as relief and give-back go by sea
-   (C9.3: `Trade.Book` a new `ForTribute`, `LoadAboard`, `Deliver` -> `Conflict.Brought`; COARSE at once at the boats' rate). Measure first (a tally:
-   of the no-way harvests, how many had a sea way, and plank boats). Then the lived legs by boat (island woodcutters, a town on two shores).
-3. Or C10.7 the lord's household men: the evidence is mixed - seed 2's lords' first households hold 3-10 years of their own need (Lounstead takes in
-   25 people's food a year), seed 4's spends its tribute (0.3 years).
+1. Read the queue: `5_e2_0` (C9.5a builds and its tests pass? fix and requeue if not), `5_e2_1` (control byte-identical?), the 900-year check of the landed
+   code, `_g2` (is the tribute lean D2-160's?) -> PROGRESS; a line in D2-161 for the attribution and the 900-year check.
+2. **C9.5a: the lord's boats fetch the tenth** (on `wip/c95-across`): a fetch booking from the lord's landing (like give-back's `ForFetch`; nothing aboard
+   going out), the tenth taken aboard at the tributary's landing from what is set aside, the dues settled at pickup (`Brought`'s `SettleBy` and `Repaid`
+   parts) and the grain into the lord's store and first household at its own landing (`Unload`); COARSE: the lord's free boats at once; set aside where a
+   way by sea joins the landings and either side has a plank boat; the pages ("the lord's boats come for it"); a test (COARSE and lived). Then rebuild
+   (`5_e2_0`), control, and requeue the held `5_e2_2_*`, `5_e2_3_cmp_x1` -> judge against `_g1` (vital rates; relief by sea vs at once - island
+   worlds will change: seed 5 had 178,927 FU of relief across water at once) -> D2-162 from the draft, merge, `unity.mjs cc`, full suite, Web.
+3. Then by evidence: C9.5b people across water in boats (island woodcutters, a town on two shores: lived legs by boat), C10.7 the lord's household men
+   (seed 2's lords hold 3-10 years of their need, seed 4's spends it), a polity map layer (the UI pass).
 
 ## Session 23 (19 Oct 2026, 18:54 - ~21:25 IST; Control Room run #63 session 1) - context handoff; ONE job queue still running
 

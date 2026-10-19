@@ -30,7 +30,10 @@
   map layer - D2-161 (4) corrected); no green nor teal in the polities' colours; **the carriers read on the road** (`s23k`: Paerdal's handcarts with
   sacks on the path to Lounstead, the morning its village set the day's loads). (6) **Next slice built: C9.5a grain across water goes by boat** (branch
   `wip/c95-across`, sim 86): within a day's walk grain moves at once only along a way on foot; relief, give-back and the tenth cross water in boats or
-  not at all; its survey (`_a1`) and evaluation (`_x1`) in the queue.
+  not at all. **The survey on the landed code** (`_a1`, annals byte-identical to `_g1`): 1,679 relief gifts (~604,000 FU) and 1,150 gifts back (~58,000
+  FU) crossed water at once in ten worlds (seed 5, 1,500 people: 178,927 FU); of 444 no-way tenths 366 had a way by sea, but the tributary never had a
+  plank boat (the lord at 76) - the lord's boats must fetch the tenth (next). C9.5a's first build failed on a test premise (fixed 39b7ce4); at the context
+  handoff (20 Oct 00:05) its rebuild and control are queued and its ten seeds held - SESSION_HANDOFF "Session 23, second context".
 - **Session 23 (19 Oct 2026, 18:54-~21:25 IST; Control Room run #63 session 1; one low-priority job queue `tc2/out/tools/s23/runq.sh`, gated RAM < 86 %,
   CPU < 85 %; context handoff with the queue still running - SESSION_HANDOFF "Session 23")** - (1) **C10.4 merged** (`wip/c104-bread` --no-ff, ca3b4c8;
   DECISIONS D2-157, D2-158; `25`; sim version 82); Unity C# compiles on main; **Web build and test `s23web1` 6/6** - the browser's probe (WebGPU, IL2CPP)
