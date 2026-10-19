@@ -72,9 +72,9 @@ namespace TC2.Core.History
                 sb.Append(".\n");
                 // its sworn men (C10.7b): fed from the first household's grain - a lord's from its tribute
                 int sworn = Society.Retinue.Count(w, sid);
-                if (sworn > 0)
-                    sb.Append(sworn).Append(sworn == 1 ? " man is" : " men are").Append(" sworn to the ").Append(HistoryText.Plural(w.History.NameOf(EntityRef.Household(s.HeadHh))))
-                      .Append(", fed from their grain").Append(w.Conflict.PolitySize(sid) > 0 ? " - the tribute of the villages that pay it" : "")
+                if (sworn > 0 && s.Head != 0)
+                    sb.Append(sworn).Append(sworn == 1 ? " man is" : " men are").Append(" sworn to ").Append(w.History.NameOf(EntityRef.Person(s.Head))).Append(", fed from the ")
+                      .Append(HistoryText.Plural(w.History.NameOf(EntityRef.Household(s.HeadHh)))).Append("' grain").Append(w.Conflict.PolitySize(sid) > 0 ? " - the tribute of the villages that pay it" : "")
                       .Append(": they practise arms at its ground every day and go with its bands.\n");
             }
             {

@@ -157,7 +157,7 @@ namespace TC2.Core.Agents
         public float SkSmith;                // a smith's practised hand at the smithy or the open hearth, 0..1: grown by hours there (C1.4b, D2-125); their role is read from it
         public float BendX, BendY;           // a local walk's bend round the water: From -> Bend over [T0, TBend], Bend -> To over [TBend, TA] (D2-156)
         public long TBend;                   // when they reach the bend (none unless T0 < TBend < TA)
-        public int Sworn;                    // the household they are sworn to - their village's first, which feeds them (0 none; C10.7b, `Society.Retinue`)
+        public int Sworn;                    // the one they are sworn to - first among their village's people, whose household feeds them (0 none; C10.7b, `Society.Retinue`)
 
         // derived from the world's seed and the person's id - never saved or hashed: filled when a person is made or loaded (Derive);
         // readers fall back to computing them where it is 0 (the same values: an exact speedup, F8)

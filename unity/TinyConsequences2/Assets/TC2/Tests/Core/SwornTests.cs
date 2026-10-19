@@ -12,9 +12,10 @@ using TC2.Core.Society;
 namespace TC2.Tests.Core
 {
     /// <summary>
-    /// Sworn men (C10.7b, D2-165): a village's first household whose grain runs years beyond its needs keeps young men of its village sworn to it - the
-    /// landless and land-short first, then the boldest - a year's food each at its harvest, from its bin into theirs; they practise arms every day at the
-    /// village's ground and go with every band it raises; released when its grain is short, when it is no longer first, when they pass forty or leave.
+    /// Sworn men (C10.7b, D2-165): the one first among a village's people, whose household's grain runs years beyond its needs, keeps young men of the
+    /// village sworn to them - the landless and land-short first, then the boldest - a year's food each at its harvest, from the household's bin into
+    /// theirs; they practise arms every day at the village's ground and go with every band it raises; released when the grain is short, when another is
+    /// first among the people, when their lord dies, when they pass forty or leave.
     /// Mechanisms, not outcomes.
     /// </summary>
     [TestFixture]
@@ -72,11 +73,12 @@ namespace TC2.Tests.Core
             hh.Grain = want;
         }
 
-        static List<int> SwornTo(World w, int sid, int first)
+        /// <summary>The men of a village sworn to `lord` (a person).</summary>
+        static List<int> SwornTo(World w, int sid, int lord)
         {
             var l = new List<int>();
             var res = w.Residents(sid);
-            for (int i = 0; i < res.Count; i++) { var q = w.People.Get(res[i]); if (q.Alive && q.Sworn == first) l.Add(res[i]); }
+            for (int i = 0; i < res.Count; i++) { var q = w.People.Get(res[i]); if (q.Alive && lord != 0 && q.Sworn == lord) l.Add(res[i]); }
             l.Sort();
             return l;
         }
@@ -101,7 +103,7 @@ namespace TC2.Tests.Core
             double firstBefore = w.Households.Get(first).Grain, store = w.Settlements.Get(sid).Granary;
             long mark = w.History.LastId;
             Retinue.Harvest(w, sid, 0);
-            var sworn = SwornTo(w, sid, first);
+            var sworn = SwornTo(w, sid, w.Settlements.Get(sid).Head);
             CollectionAssert.AreEqual(expect, sworn, "the landless and land-short first, then the boldest");
             // a year's food each, from the first household's bin into his household's - the same store
             double year = Retinue.ManYear(w), given = 0;
@@ -122,7 +124,7 @@ namespace TC2.Tests.Core
             // told: each man's swearing, the page, his own page
             var told = Since(w, mark, HistoryKind.Sworn);
             Assert.AreEqual(3, told.Count);
-            foreach (var e in told) { Assert.AreEqual(first, e.Object.Id); Assert.IsTrue(sworn.Contains(e.Subject.Id)); }
+            foreach (var e in told) { Assert.AreEqual(w.Settlements.Get(sid).Head, e.Object.Id, "sworn to the one first among the people"); Assert.AreEqual(first, e.Other.Id, "fed by their household"); Assert.IsTrue(sworn.Contains(e.Subject.Id)); }
             Console.WriteLine(HistoryText.Line(w, told[2]));
             StringAssert.Contains("swore to the", HistoryText.Line(w, told[0]));
             string page = Gazetteer.All(w, sid);
@@ -135,7 +137,7 @@ namespace TC2.Tests.Core
             Retinue.Off = true;
             try { Retinue.Harvest(w2, sid2, 0); }
             finally { Retinue.Off = false; }
-            Assert.AreEqual(0, SwornTo(w2, sid2, first2).Count, "--oldsworn: none");
+            Assert.AreEqual(0, SwornTo(w2, sid2, w2.Settlements.Get(sid2).Head).Count, "--oldsworn: none");
         }
 
         [Test]
@@ -144,35 +146,42 @@ namespace TC2.Tests.Core
             var w = Village(out int sid, out int first, 3);
             Assume.That(w != null, "a village with a first household and willing men");
             Retinue.Harvest(w, sid, 0);
-            var three = SwornTo(w, sid, first);
+            var three = SwornTo(w, sid, w.Settlements.Get(sid).Head);
             Assert.AreEqual(3, three.Count);
             var ranked = Candidates(w, sid);   // (the sworn are no longer candidates: rank the three as the household does)
             // a lean year: its grain keeps one - the most landed and least bold go home first
             Feed(w, sid, first, 1);
             long mark = w.History.LastId;
             Retinue.Harvest(w, sid, 0);
-            var one = SwornTo(w, sid, first);
+            var one = SwornTo(w, sid, w.Settlements.Get(sid).Head);
             Assert.AreEqual(1, one.Count, "its grain keeps one");
             var released = Since(w, mark, HistoryKind.SwornReleased);
             Assert.AreEqual(2, released.Count);
             foreach (var e in released) { Assert.AreEqual(1, e.ArgA, "the grain short"); Assert.IsTrue(three.Contains(e.Subject.Id)); Assert.IsFalse(one.Contains(e.Subject.Id)); }
             Console.WriteLine(HistoryText.Line(w, released[0]));
             StringAssert.Contains("could keep no more men", HistoryText.Line(w, released[0]));
-            // another household rises to be first, with no grain to spare: the old first's man goes home
-            int other = 0;
+            // another household's eldest rises to be first, with no grain to spare: the old lord's man goes home - the oath was to the person
+            int oldLord = w.Settlements.Get(sid).Head, other = 0, newLord = 0;
             var hl = w.HouseholdsOf(sid);
-            for (int i = 0; i < hl.Count && other == 0; i++) if (hl[i] != first && w.Households.Get(hl[i]).Party == 0 && w.People.Get(one[0]).Household != hl[i]) other = hl[i];
-            Assume.That(other != 0, "another household");
-            { ref var s = ref w.Settlements.Get(sid); s.HeadHh = other; }
+            for (int i = 0; i < hl.Count && other == 0; i++)
+            {
+                if (hl[i] == first || w.Households.Get(hl[i]).Party != 0 || w.People.Get(one[0]).Household == hl[i]) continue;
+                int e0 = Leaders.Eldest(w, sid, hl[i]);
+                if (e0 != 0) { other = hl[i]; newLord = e0; }
+            }
+            Assume.That(other != 0, "another household with a grown member");
+            { ref var s = ref w.Settlements.Get(sid); s.HeadHh = other; s.Head = newLord; }
             { ref var oh = ref w.Households.Get(other); w.Settlements.Get(sid).Granary -= oh.Grain; oh.Grain = 0; }
+            Assert.IsFalse(Retinue.SwornHere(w, in w.People.Get(one[0])), "no longer sworn to the one first among the people");
             mark = w.History.LastId;
             Retinue.Harvest(w, sid, 0);
-            Assert.AreEqual(0, SwornTo(w, sid, first).Count, "no longer first: its men released");
-            Assert.AreEqual(0, SwornTo(w, sid, other).Count, "the new first keeps none: no grain to spare");
+            Assert.AreEqual(0, SwornTo(w, sid, oldLord).Count, "another first: the old lord's men released");
+            Assert.AreEqual(0, SwornTo(w, sid, newLord).Count, "the new first keeps none: no grain to spare");
             var gone = Since(w, mark, HistoryKind.SwornReleased);
             Assert.AreEqual(1, gone.Count);
-            Assert.AreEqual(2, gone[0].ArgA, "no longer first");
-            StringAssert.Contains("no longer first", HistoryText.Line(w, gone[0]));
+            Assert.AreEqual(2, gone[0].ArgA, "another first among the people");
+            Console.WriteLine(HistoryText.Line(w, gone[0]));
+            StringAssert.Contains("another is first among the people", HistoryText.Line(w, gone[0]));
         }
 
         [Test]
@@ -184,7 +193,7 @@ namespace TC2.Tests.Core
                 Assume.That(w != null, "a village with a first household and willing men");
                 if (coarse) w.RequestResolution(Resolution.Coarse, SimTime.StartOfDay(w.Now) + SimTime.Day);
                 Retinue.Harvest(w, sid, 0);
-                var sworn = SwornTo(w, sid, first);
+                var sworn = SwornTo(w, sid, w.Settlements.Get(sid).Head);
                 Assert.AreEqual(3, sworn.Count);
                 Structures.Place(w, sid, Structures.Ground, out float gx, out float gy);
                 Assert.AreNotEqual(0, Structures.Standing(w, sid, Structures.Ground, gx, gy));
@@ -206,7 +215,7 @@ namespace TC2.Tests.Core
                     {
                         { ref var sk = ref w.Settlements.Get(sid); sk.CropWork = Math.Max(sk.CropWork, sk.CropWorkNeed); if (sk.Granary < 20 * sk.Population) sk.Granary = 20 * sk.Population; }
                         w.AdvanceTo(w.Now + SimTime.Hour);
-                        foreach (int pid in SwornTo(w, sid, first)) ever.Add(pid);
+                        foreach (int pid in SwornTo(w, sid, w.Settlements.Get(sid).Head)) ever.Add(pid);
                         if (coarse) continue;
                         foreach (int pid in sworn)
                         {
@@ -218,7 +227,7 @@ namespace TC2.Tests.Core
                     }
                     double hours = Retinue.Tally[7];
                     Console.WriteLine((coarse ? "COARSE" : "lived") + ": the sworn practised " + hours.ToString("0.0") + " h in six days; others " + (w.Metrics.TrainHours - hours).ToString("0.0") + " h" + (doing != null ? "; " + doing : ""));
-                    var still = SwornTo(w, sid, first);
+                    var still = SwornTo(w, sid, w.Settlements.Get(sid).Head);
                     Console.WriteLine("sworn at the start " + sworn.Count + ", at any hour " + ever.Count + ", at the end " + still.Count);
                     foreach (int pid in sworn) Assert.Greater(w.People.Get(pid).SkFight, 0f, "each sworn man grows skilled");
                     foreach (int pid in others) if (!ever.Contains(pid)) Assert.LessOrEqual(w.People.Get(pid).SkFight, skill0[pid], "the village does not fear its neighbours: the others do not practise");
@@ -246,7 +255,7 @@ namespace TC2.Tests.Core
                 var w = Village(out int sid, out int first, 3, from);
                 if (w == null) continue;
                 Retinue.Harvest(w, sid, 0);
-                var sworn = SwornTo(w, sid, first);
+                var sworn = SwornTo(w, sid, w.Settlements.Get(sid).Head);
                 if (sworn.Count != 3) continue;
                 // a neighbour within a day's walk that wronged it heavily, none of the sworn with close kin there
                 int foe = 0;
@@ -281,12 +290,12 @@ namespace TC2.Tests.Core
             var w = Village(out int sid, out int first, 3);
             Assume.That(w != null, "a village with a first household and willing men");
             Retinue.Harvest(w, sid, 0);
-            Assert.AreEqual(3, SwornTo(w, sid, first).Count);
+            Assert.AreEqual(3, SwornTo(w, sid, w.Settlements.Get(sid).Head).Count);
             Structures.Place(w, sid, Structures.Ground, out float gx, out float gy);
             Structures.Standing(w, sid, Structures.Ground, gx, gy);
             w.AdvanceTo(w.Now + SimTime.Days(1) + SimTime.Hours(15));   // (the afternoon: the sworn at the ground)
             var copy = SaveFile.Load(SaveFile.Save(w, 0, OfflineMode.Paused, 0, 0, ""), out _);
-            CollectionAssert.AreEqual(SwornTo(w, sid, first), SwornTo(copy, sid, first), "saved and loaded");
+            CollectionAssert.AreEqual(SwornTo(w, sid, w.Settlements.Get(sid).Head), SwornTo(copy, sid, copy.Settlements.Get(sid).Head), "saved and loaded");
             long t = w.Now + SimTime.Days(3);
             w.AdvanceTo(t); copy.AdvanceTo(t);
             Assert.AreEqual(w.StateHash(), copy.StateHash(), "the loaded world lives on as the running one");

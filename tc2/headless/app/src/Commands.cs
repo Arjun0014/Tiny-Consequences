@@ -1011,9 +1011,9 @@ namespace TC2.Headless
                         int swornNow = 0, keeping = 0;
                         for (int ps = w.People.First(); ps != 0; ps = w.People.Next(ps)) { ref var pq = ref w.People.Get(ps); if (pq.Alive && TC2.Core.Society.Retinue.SwornHere(w, in pq)) swornNow++; }
                         for (int ks = w.Settlements.First(); ks != 0; ks = w.Settlements.Next(ks)) if (w.Settlements.Get(ks).Inhabited && TC2.Core.Society.Retinue.Count(w, ks) > 0) keeping++;
-                        Console.WriteLine("sworn: men sworn " + swt[0] + "; released - the grain short " + swt[1] + ", their household no longer first " + swt[2] + ", past forty " + swt[3] + ", gone to another village " + swt[4] +
+                        Console.WriteLine("sworn: men sworn " + swt[0] + "; released - the grain short " + swt[1] + ", another first among the people " + swt[2] + ", past forty " + swt[3] + ", lord and man of two villages " + swt[4] + ", the lord dead " + swt[12] +
                                           "; fed " + F(swt[5], "0") + " FU (" + F(swt[6], "0") + " man-years); their practice " + F(swt[7], "0") + " h; bands with sworn men " + swt[8] + " (sworn men in them " + swt[9] +
-                                          "); village-harvests keeping men " + swt[10] + ", the most sworn to one household " + swt[11] + "; sworn now " + swornNow + " in " + keeping + " villages");
+                                          "); village-harvests keeping men " + swt[10] + ", the most sworn to one lord " + swt[11] + "; sworn now " + swornNow + " in " + keeping + " villages");
                     }
                     var ct = TC2.Core.Society.Conflict.CarryTally;
                     if (ct != null)   // (C10.6: the lord's tenth carried to its store)

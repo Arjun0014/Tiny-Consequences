@@ -86,8 +86,8 @@ namespace TC2.Core.History
         OreGaveOut = 82,
         OreTaken = 83,
         BoatBuilt = 85,         // a household made a boat (Subject the household, Object the boat, Other who led the making; C9.1)
-        Sworn = 98,             // a man swore to his village's first household, which feeds him from its grain (Subject the man, Object the household; Magnitude a year's food FU; ArgA the men sworn to it now; Cause1 the harvest, Cause2 the last tribute it was paid; C10.7b)
-        SwornReleased = 99,     // a sworn man was released (Subject the man, Object the household; ArgA 1 its grain could keep no more, 2 no longer the village's first, 3 past forty, 4 he lives in another village; C10.7b)
+        Sworn = 98,             // a man swore to the one first among his village's people, whose household feeds him from its grain (Subject the man, Object the lord, Other the household; Magnitude a year's food FU; ArgA the men sworn to the lord now; Cause1 the harvest, Cause2 the last tribute paid there; C10.7b)
+        SwornReleased = 99,     // a sworn man was released (Subject the man, Object the lord; ArgA 1 the grain could keep no more, 2 another first among the people, 3 past forty, 4 he and the lord no longer of one village, 5 the lord died; C10.7b)
         BoatToCross = 97,       // a household laid down a boat to reach a village across the water no way on foot leads to (Subject the household, Object the village across, Other the boat; ArgA its kind, ArgB why - 1 a trade, 2 grain owed there, 3 its lord's tenth; Magnitude the deal's gain or the FU owed; C9.5b)
         FieldsRested = 96,      // a village began to rest a share of its arable each year: its crops a hectare had fallen (Magnitude the share resting; ArgA what a sown hectare bears, % of a fresh field's crop; ArgB its arable ha; C3.6f)
         PartyJoined = 95,       // a party that set out to found a village found one standing at its place and made its home there (Subject the village it left, Object the village it joined, Other its first household; ArgA households, ArgB people; Cause1 its setting out; D2-137)
