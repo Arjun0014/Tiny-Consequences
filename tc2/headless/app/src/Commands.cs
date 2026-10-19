@@ -231,7 +231,7 @@ namespace TC2.Headless
             if (a.Has("oldtribute")) TC2.Core.Society.Conflict.CarryOff = true;   // (C10.6 off: the tenth into the lord's store at the harvest, carried by nobody)
             if (a.Has("carrytally")) TC2.Core.Society.Conflict.CarryTally = new double[TC2.Core.Society.Conflict.CarryTallyN];   // (C10.6: loads carried, FU, lived, set aside, given back, by cart, km, a year uncarried, no way on foot; by sea)
             if (a.Has("oldacross")) TC2.Core.Places.Trade.AcrossOff = true;   // (C9.5a off: grain within a day's walk across water at once, the tenth across water kept at home)
-            if (a.Has("acrosstally")) TC2.Core.Places.Trade.AcrossTally = new double[5];   // (C9.5 survey: grain across water at once between villages within a day's walk)
+            if (a.Has("acrosstally")) TC2.Core.Places.Trade.AcrossTally = new double[TC2.Core.Places.Trade.AcrossTallyN];   // (C9.5 survey: grain and trade across water at once between villages within a day's walk)
             if (a.Has("wetways")) TC2.Core.Places.Afoot.Off = true;   // (D2-156 off: lived walks straight across the water, the well's and the idle's spots and crofts in it, the woods by the straight line)
             if (a.Has("waytally")) TC2.Core.Places.Afoot.Tally = new long[128];   // (tools: the walks bent round the water and those no bend kept dry, by what was done at their end)
             if (a.Has("oldmuckorder")) TC2.Core.Agents.AgentSystem.CoarseMuckOld = true;   // (D2-158: a COARSE day's muck before the household's own roof, as C3.7c built it)

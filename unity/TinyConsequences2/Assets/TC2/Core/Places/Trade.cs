@@ -38,8 +38,11 @@ namespace TC2.Core.Places
         /// <summary>Tools (C9.4 survey): FU of relief givers would have sent by sea beyond their free boats' room, the gifts so bound, and all gifts by sea; null in the game.</summary>
         public static double[] SeaShort;
         /// <summary>Tools (C9.5 survey, `--acrosstally`): grain moved between villages within a day's walk that no way on foot joins (across water) - [0] relief gifts,
-        /// [1] their FU, [2] gifts given back, [3] their FU; [4] bows for bread to a giver no way on foot leads to (`Conflict.Indebted`); null in the game.</summary>
+        /// [1] their FU, [2] gifts given back, [3] their FU; [4] bows for bread to a giver no way on foot leads to (`Conflict.Indebted`); [5] a COARSE day's
+        /// trading trips to a partner no way on foot leads to (dealt at once), [6] lived traders who chose such a partner and found no road; null in the game.</summary>
         public static double[] AcrossTally;
+        /// <summary>The length of `AcrossTally`.</summary>
+        public const int AcrossTallyN = 7;
 
         public const byte None = 0, Grain = 1, Metal = 2, Fibre = 3, Hides = 4, Iron = 5, Wares = 6, Pots = 7;   // (Metal is copper; iron since C5.3b; wares since C3.1; pots and jars, kg of fired ware, since C3.2)
         public const int Goods = 8;
@@ -165,7 +168,9 @@ namespace TC2.Core.Places
                 bool market = t.Market != 0 && w.Buildings.Exists(t.Market) && Structures.Working(in w.Buildings.Get(t.Market), w.Now);
                 if (Vec3d.ArcDistance(s.Anchor, t.Anchor, w.Planet.Radius) > (market ? MarketReach : 6000)) continue;
                 double g = Plan(sid, o, out _, out _, out _) * (market ? MarketGain : 1.0);
-                if (g > gain) { gain = g; bestTo = o; }
+                // a trader walks there: only along a way on foot - across water a load goes by sea (`BestSeaPartner`) or not at all (C9.5a; before, a
+                // COARSE day's traders dealt across a strait at once, while a lived trader chose the same neighbour and found no road)
+                if (g > gain && (AcrossOff || w.Routes.Get(w, sid, o) != null)) { gain = g; bestTo = o; }
             }
             return bestTo;
         }
@@ -305,6 +310,7 @@ namespace TC2.Core.Places
             if (w.Resolution != Resolution.Coarse) return;
             int to = BestPartner(sid, out double gain);
             if (to == 0) return;
+            bool across = AcrossTally != null && w.Routes.Get(w, sid, to) == null;   // (tools: a trader dealing across water at once - the old rule)
             int adults = 0;
             var res = w.Residents(sid);
             for (int i = 0; i < res.Count; i++) { ref var p = ref w.People.Get(res[i]); double age = p.AgeYears(now); if (p.Alive && p.Sick == 0 && age >= 18 && age < 56 && p.Health > 0.7) adults++; }
@@ -319,6 +325,7 @@ namespace TC2.Core.Places
                 if (!p.Alive || p.Sick != 0 || age < 18 || age >= 56 || p.Health <= 0.7) continue;
                 Load(ref p, sid, to);
                 Exchange(ref p, to);
+                if (across) AcrossTally[5] += 1;
                 w.Ways.Walk(w, sid, to, 2.0);   // (the trader walked there and back: C4.1)
                 w.Disease.Arrive(ref p, to, SimTime.Hours(VisitHoursCoarse));   // (what they may catch there and carry home)
                 w.DeedBook.Meet(sid, to);                                        // (and the news: D2-072)

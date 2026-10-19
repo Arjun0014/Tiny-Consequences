@@ -43,6 +43,11 @@ namespace TC2.Tests.Core
                         P.CoastVersion++;   // (the ways by sea are found again)
                         w.Routes.Invalidate();
                         if (w.Routes.Get(w, s1, s2) != null || w.SeaRoutes.Get(w, s1, s2) == null) { a = b = 0; return null; }
+                        // the world as a save of it holds it: ground sunk by hand, outside the plates' turn and its `LandChanged`, leaves the running
+                        // world's waters drained for the old ground, and a save of it - its waters drained anew at load - would not continue it (the planet
+                        // alone diverged within hours); loaded once, its waters are the sunk ground's in every copy of it
+                        w = SaveFile.Load(SaveFile.Save(w, 0, OfflineMode.Paused, 0, 0, ""), out _);
+                        if (w.Routes.Get(w, s1, s2) != null || w.SeaRoutes.Get(w, s1, s2) == null) { a = b = 0; return null; }
                         a = s1; b = s2;
                         return w;
                     }
@@ -112,6 +117,27 @@ namespace TC2.Tests.Core
             double atOnce = w.Settlements.Get(b).Granary;
             Console.WriteLine("across the water: by boat " + sent.ToString("0") + " FU; at once " + atOnce.ToString("0") + " FU (the old rule)");
             Assert.Greater(atOnce, 0.0, "--oldacross: at once, as before");
+        }
+
+        [Test]
+        public void ATraderGoesAcrossWaterBySeaNotOnFoot()
+        {
+            var w = Across(out int a, out int b);
+            Assume.That(w != null, "two villages within a day's walk, water between them, a way by sea");
+            // premise: a deal to be had between them - a's store full of grain and no hides, b's store bare with hides to spare
+            ref var sa = ref w.Settlements.Get(a); sa.Granary = 100000; sa.Hides = 0;
+            ref var sb = ref w.Settlements.Get(b); sb.Granary = 0; sb.Sheaves = 0; sb.Hides = 5000;
+            Assume.That(w.Trade.Plan(a, b, out _, out _, out _) > 0, "a deal between them");
+            int old;
+            Trade.AcrossOff = true;
+            try { old = w.Trade.BestPartner(a, out _); }
+            finally { Trade.AcrossOff = false; }
+            Assume.That(old == b, "the old rule: its traders' best deal across the water");
+            int now = w.Trade.BestPartner(a, out _);
+            Console.WriteLine("a trader's partner: " + now + " (across the water " + b + "); by sea " + w.Trade.BestSeaPartner(a, out _, out _));
+            Assert.AreNotEqual(b, now, "no trader walks across the water");
+            if (now != 0) Assert.IsNotNull(w.Routes.Get(w, a, now), "a partner a way on foot reaches");
+            Assert.AreNotEqual(0, w.Trade.BestSeaPartner(a, out _, out _), "by sea a boat's load can go");
         }
 
         /// <summary>Premise on `Across`: the weaker of the two pays the stronger a tribute (the lord must be the stronger at each harvest: C10.5).</summary>
