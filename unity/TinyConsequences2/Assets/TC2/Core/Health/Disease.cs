@@ -67,8 +67,10 @@ namespace TC2.Core.Health
         public static bool OldVisits;
 
         /// <summary>
-        /// A neighbour a COARSE day's visitors go to (C9.5c, D2-166): within a day's walk and joined by a way on foot, as a lived visitor walks one. Across
-        /// water villages meet only as their boats' crews do - on voyages, with relief, grain given back or the tenth, at both resolutions.
+        /// A neighbour a COARSE day's visitors reach (C9.5c, D2-166): within a day's walk and joined by a way on foot, as a lived visitor walks one. A lived
+        /// visitor picks a neighbour among all within a day's walk by nearness and does not go where no way on foot leads (`World.PickNeighbour`): so a
+        /// COARSE day keeps those odds and its visits to the others are not made - never spread over the rest. Across water villages meet only as their
+        /// boats' crews do - on voyages, with relief, grain given back or the tenth, at both resolutions.
         /// </summary>
         public static bool Visited(World w, int sid, int o, double d) => d <= 6000 && (OldVisits || w.Routes.Get(w, sid, o) != null);
         public const double ForLife = 99.0;
@@ -314,7 +316,7 @@ namespace TC2.Core.Health
                 ref var t = ref w.Settlements.Get(o);
                 if (!t.Inhabited) continue;
                 double d = Vec3d.ArcDistance(s.Anchor, t.Anchor, w.Planet.Radius);
-                if (Visited(w, sid, o, d)) total += 1.0 / (300.0 + d);   // (along a way on foot: C9.5c)
+                if (d <= 6000) total += 1.0 / (300.0 + d);   // (a lived visitor picks among them all: where no way on foot leads, the visit is not made - C9.5c)
             }
             if (total <= 0) return;
             double visits = adults * VisitsPerAdultDay * days;   // (DEEP: the step's visits)

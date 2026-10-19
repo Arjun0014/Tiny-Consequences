@@ -53,6 +53,9 @@ namespace TC2.Tests.Core
                 Console.WriteLine("--oldvisits: visits along a way " + t2[0].ToString("0.0") + ", across water " + t2[1].ToString("0.0") + "; news met " + t2[4] + " and " + t2[5]);
                 Assert.Greater(t2[1], 0.0, "--oldvisits: visits across the water");
                 Assert.Greater(w2.Ways.UseOf(w2.Now, a2, b2), 0.0, "--oldvisits: a way worn across it");
+                // the visits along a way keep their odds: a lived visitor picks among all neighbours and does not go where no way leads - those visits
+                // are lost, never spread over the rest (a first version gave 17.5 along a way against the old rule's 9.6)
+                Assert.That(t[0], Is.InRange(0.7 * t2[0], 1.3 * t2[0]), "visits along a way as before");
             }
             finally { Disease.OldVisits = false; }
         }
