@@ -819,6 +819,7 @@ namespace TC2.Core.Places
             for (int i = 0; i < _booked.Count; i++)
                 if ((_booked[i].From == sid && _booked[i].Kind == ForTribute) || (_booked[i].To == sid && _booked[i].Kind == ForTenth)) return 0.0;
             var w = _w;
+            if (w.Settlements.Exists(lord) && GoingForTenth(lord, sid)) return 0.0;
             var bl = w.BuildingsOf(sid);
             double left = due;
             for (int i = 0; i < bl.Count && left >= 1.0; i++)
@@ -828,7 +829,7 @@ namespace TC2.Core.Places
                 Book(bl[i], w.Buildings.Get(bl[i]).Household, sid, lord, ForTribute, q);
                 left -= q;
             }
-            if (left < due || !w.Settlements.Exists(lord) || GoingForTenth(lord, sid)) return due - left;
+            if (left < due || !w.Settlements.Exists(lord)) return due - left;
             var ll = w.BuildingsOf(lord);
             for (int i = 0; i < ll.Count && left >= 1.0; i++)
             {
