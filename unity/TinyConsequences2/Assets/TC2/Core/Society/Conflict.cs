@@ -135,10 +135,20 @@ namespace TC2.Core.Society
         /// <summary>Tools (`--carrytally`): [0] loads carried, [1] FU carried, [2] of them by lived carriers, [3] FU set aside, [4] FU given back to a
         /// tributary whose bond ended before its due was carried, [5] FU carried on carts, [6] carriers' km, [7] FU still set aside at the next harvest
         /// (carried by nobody in a year) and given back, [8] harvests whose tenth was not set aside - no way on foot to the lord, [9] the FU of those
-        /// tenths; null in the game.</summary>
+        /// tenths, [10] of those harvests a way by sea between their landings, [11] the tributary with plank boats, [12] the lord with plank boats, [13] the FU
+        /// of [10]'s tenths (C9.5 survey); null in the game.</summary>
         public static double[] CarryTally;
         /// <summary>The length of `CarryTally`.</summary>
-        public const int CarryTallyN = 10;
+        public const int CarryTallyN = 14;
+
+        /// <summary>Tools: a village's sound plank boats (C9.2b).</summary>
+        int PlankBoats(int sid)
+        {
+            var bl = _w.BuildingsOf(sid);
+            int n = 0;
+            for (int i = 0; i < bl.Count; i++) { ref var b = ref _w.Buildings.Get(bl[i]); if (Boats.IsPlank(b.Kind) && Boats.Sound(in b, _w.Now)) n++; }
+            return n;
+        }
 
         /// <summary>A person is hungry enough to go when the last day fed them less than this share of their need (both resolutions
         /// keep that share, the body's day: a lived meal-time flag would clear at the first bite).</summary>
@@ -1487,7 +1497,18 @@ namespace TC2.Core.Society
                 // leads to - its tenth stays in its store (boats across the water: C9.5)
                 if (w.Routes.Get(w, sid, lord) == null)
                 {
-                    if (CarryTally != null) { CarryTally[8] += 1; CarryTally[9] += DMath.Min(TributeShare * yield, s.Granary); }
+                    if (CarryTally != null)
+                    {
+                        double tenth = DMath.Min(TributeShare * yield, s.Granary);
+                        CarryTally[8] += 1; CarryTally[9] += tenth;
+                        // (tools, C9.5 survey) a way by sea between their landings, and plank boats on either side to carry it
+                        if (s.LandAt != 0 && w.Settlements.Get(lord).LandAt != 0 && w.SeaRoutes.Get(w, sid, lord) != null)
+                        {
+                            CarryTally[10] += 1; CarryTally[13] += tenth;
+                            if (PlankBoats(sid) > 0) CarryTally[11] += 1;
+                            if (PlankBoats(lord) > 0) CarryTally[12] += 1;
+                        }
+                    }
                     return;
                 }
             }
@@ -1667,6 +1688,7 @@ namespace TC2.Core.Society
                 Cause1 = gift, Rel1 = CauseRel.InResponseTo, Magnitude = (float)TributeShare, ArgA = PolitySize(Root(giver)), ArgB = 1, RootKind = RootKind.People,
             });
             w.Metrics.Tributes++; w.Metrics.BreadBonds++;
+            if (Places.Trade.AcrossTally != null && w.Routes.Get(w, sid, giver) == null) Places.Trade.AcrossTally[4] += 1;   // (tools: a bow across water)
             if (BreadTally != null) BreadTally[14]++;
             Diagnostics.ScaleTally.Pair(w, Diagnostics.ScaleTally.Tribute, sid, giver);
         }

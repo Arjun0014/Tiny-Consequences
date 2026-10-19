@@ -34,6 +34,9 @@ namespace TC2.Core.Places
         public static double[] LoadTally;
         /// <summary>Tools (C9.4 survey): FU of relief givers would have sent by sea beyond their free boats' room, the gifts so bound, and all gifts by sea; null in the game.</summary>
         public static double[] SeaShort;
+        /// <summary>Tools (C9.5 survey, `--acrosstally`): grain moved between villages within a day's walk that no way on foot joins (across water) - [0] relief gifts,
+        /// [1] their FU, [2] gifts given back, [3] their FU; [4] bows for bread to a giver no way on foot leads to (`Conflict.Indebted`); null in the game.</summary>
+        public static double[] AcrossTally;
 
         public const byte None = 0, Grain = 1, Metal = 2, Fibre = 3, Hides = 4, Iron = 5, Wares = 6, Pots = 7;   // (Metal is copper; iron since C5.3b; wares since C3.1; pots and jars, kg of fired ware, since C3.2)
         public const int Goods = 8;
@@ -496,6 +499,7 @@ namespace TC2.Core.Places
                 s2.Granary -= gift; spare -= gift;
                 if (bySea) { w.Metrics.Voyages++; w.Metrics.SeaCargoKg += gift * Kg(Grain); }
                 Given(sid, o, gift, bySea);
+                if (AcrossTally != null && !bySea && w.Routes.Get(w, sid, o) == null) { AcrossTally[0] += 1; AcrossTally[1] += gift; }   // (tools: across water at once)
             }
         }
 
@@ -608,6 +612,7 @@ namespace TC2.Core.Places
                 g2.Granary += back;
                 if (bySea) { w.Metrics.Voyages++; w.Metrics.SeaCargoKg += back * Kg(Grain); }
                 Returned(sid, giver, back, bySea);
+                if (AcrossTally != null && !bySea && w.Routes.Get(w, sid, giver) == null) { AcrossTally[2] += 1; AcrossTally[3] += back; }   // (tools: across water at once)
             }
         }
 

@@ -229,7 +229,8 @@ namespace TC2.Headless
             if (a.Has("mighttally")) TC2.Core.Society.Conflict.MightTally = new double[14];   // (C10.5: each weighing by the old count and by might)
             if (a.Has("oldways")) TC2.Core.Agents.RouteCache.LiveForest = true;   // (D2-160 off: routes from the woods as they are when built)
             if (a.Has("oldtribute")) TC2.Core.Society.Conflict.CarryOff = true;   // (C10.6 off: the tenth into the lord's store at the harvest, carried by nobody)
-            if (a.Has("carrytally")) TC2.Core.Society.Conflict.CarryTally = new double[TC2.Core.Society.Conflict.CarryTallyN];   // (C10.6: loads carried, FU, lived, set aside, given back, by cart, km, a year uncarried, no way on foot)
+            if (a.Has("carrytally")) TC2.Core.Society.Conflict.CarryTally = new double[TC2.Core.Society.Conflict.CarryTallyN];   // (C10.6: loads carried, FU, lived, set aside, given back, by cart, km, a year uncarried, no way on foot; by sea)
+            if (a.Has("acrosstally")) TC2.Core.Places.Trade.AcrossTally = new double[5];   // (C9.5 survey: grain across water at once between villages within a day's walk)
             if (a.Has("wetways")) TC2.Core.Places.Afoot.Off = true;   // (D2-156 off: lived walks straight across the water, the well's and the idle's spots and crofts in it, the woods by the straight line)
             if (a.Has("waytally")) TC2.Core.Places.Afoot.Tally = new long[128];   // (tools: the walks bent round the water and those no bend kept dry, by what was done at their end)
             if (a.Has("oldmuckorder")) TC2.Core.Agents.AgentSystem.CoarseMuckOld = true;   // (D2-158: a COARSE day's muck before the household's own roof, as C3.7c built it)
@@ -990,7 +991,12 @@ namespace TC2.Headless
                     var ct = TC2.Core.Society.Conflict.CarryTally;
                     if (ct != null)   // (C10.6: the lord's tenth carried to its store)
                         Console.WriteLine("carried: set aside " + F(ct[3], "0") + " FU; loads " + ct[0] + " (lived " + ct[2] + "), " + F(ct[1], "0") + " FU (by cart " + F(ct[5], "0") + "), carriers' km " + F(ct[6], "0") +
-                                          "; given back at a bond's end " + F(ct[4], "0") + " FU, a year uncarried " + F(ct[7], "0") + " FU; tenths not set aside (no way on foot to the lord) " + ct[8] + ", " + F(ct[9], "0") + " FU");
+                                          "; given back at a bond's end " + F(ct[4], "0") + " FU, a year uncarried " + F(ct[7], "0") + " FU; tenths not set aside (no way on foot to the lord) " + ct[8] + ", " + F(ct[9], "0") + " FU" +
+                                          " (a way by sea between their landings " + ct[10] + ", " + F(ct[13], "0") + " FU; the tributary with plank boats " + ct[11] + ", the lord " + ct[12] + ")");
+                    var at = TC2.Core.Places.Trade.AcrossTally;
+                    if (at != null)   // (C9.5 survey)
+                        Console.WriteLine("across: between villages within a day's walk no way on foot joins - relief " + at[0] + " gifts, " + F(at[1], "0") + " FU; given back " + at[2] + ", " +
+                                          F(at[3], "0") + " FU; bows for bread " + at[4]);
                     long firstLord = 0, firstEnd = 0;
                     for (int i = 0; i < w.History.Count && (firstLord == 0 || firstEnd == 0); i++)
                     {
