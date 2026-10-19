@@ -298,6 +298,16 @@ namespace TC2.Headless
             {
                 w = SaveFile.Load(File.ReadAllBytes(a.Get("load")), out var hdr);
                 Console.WriteLine("loaded " + a.Get("load") + " at " + SimTime.Format(w.Now) + " (saved " + hdr.SavedRealUtcMs + ")");
+                if (a.Has("warmroutes"))
+                {
+                    // (session 23, a determinism probe: the routes the view builds at its first frame for the ways it draws - TerrainLod, WaterView,
+                    // WorldObjectsView - built here at load; if history then differs from a run without, watching changes history)
+                    var ways = new List<TC2.Core.Agents.Way>();
+                    w.Ways.Collect(w.Now, ways);
+                    int built = 0;
+                    foreach (var wy in ways) if (w.Routes.Get(w, wy.A, wy.B) != null) built++;
+                    Console.WriteLine("warmroutes: " + built + " routes of " + ways.Count + " ways built at load");
+                }
             }
             else w = WorldGenerator.Create(ConfigFrom(a));
             long genMs = sw.ElapsedMilliseconds;
