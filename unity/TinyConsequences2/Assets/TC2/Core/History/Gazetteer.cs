@@ -369,8 +369,8 @@ namespace TC2.Core.History
                 {
                     if (!w.History.TryGet(evs[i], out var pe) || pe.Kind != HistoryKind.TributePaid || pe.Subject.Id != sid) continue;
                     if (pe.Object.Id == s.Lord && pe.ArgA > 0)
-                        sb.Append("At its last harvest ").Append(Name(w, s.Lord)).Append(" could bring ").Append(pe.ArgA).Append(" against it (its own people and those its call brings); it had ")
-                          .Append(pe.ArgB).Append(" of fighting age.\n");
+                        sb.Append("At its last harvest ").Append(Name(w, s.Lord)).Append(" could bring the strength of ").Append(pe.ArgA).Append(" against it (its own people and those its call brings, by their arms and skill); its own came to ")
+                          .Append(pe.ArgB).Append(".\n");   // (C10.7a: lasting strength, not heads)
                     break;
                 }
             }

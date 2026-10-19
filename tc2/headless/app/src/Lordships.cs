@@ -306,12 +306,15 @@ namespace TC2.Headless
                 ref var s = ref w.Settlements.Get(sid);
                 if (!s.Inhabited || s.Lord == 0 || !w.Settlements.Exists(s.Lord) || !w.Settlements.Get(s.Lord).Inhabited) continue;
                 bonds++;
+                // (both weighings on this binary: C10.5's heads with `--oldmightarms`, C10.7a's lasting strength without)
+                bool was = TC2.Core.Society.Conflict.MightArmsOff;
+                TC2.Core.Society.Conflict.MightArmsOff = true;
                 if (w.Conflict.Might(s.Lord, sid) >= w.Conflict.Might(sid, s.Lord)) byHeads++;
-                double fl = 0, ft = 0;
-                for (int i = 0; i < rows.Count; i++) { if (rows[i].sid == s.Lord) fl = rows[i].factor; if (rows[i].sid == sid) ft = rows[i].factor; }
-                if (w.Conflict.Might(s.Lord, sid) * fl >= w.Conflict.Might(sid, s.Lord) * ft) byLasting++;
+                TC2.Core.Society.Conflict.MightArmsOff = false;
+                if (w.Conflict.Might(s.Lord, sid) >= w.Conflict.Might(sid, s.Lord)) byLasting++;
+                TC2.Core.Society.Conflict.MightArmsOff = was;
             }
-            Console.WriteLine("  bonds still paid " + bonds + ": the lord the stronger by heads " + byHeads + ", by lasting strength (its call weighed at its own village's) " + byLasting);
+            Console.WriteLine("  bonds still paid " + bonds + ": the lord the stronger by heads " + byHeads + ", by lasting strength " + byLasting);
         }
 
         sealed class Bond { public int Payer, Lord, SizeAfter; public long Start, End; public bool Bread; public string How, Cause; }

@@ -119,6 +119,8 @@ namespace TC2.Core.Society
         /// <summary>`--oldmight`: villages weigh each other as D2-075 did - by their fit grown people at home that day, a lord by its own village
         /// alone - on the same binary.</summary>
         public static bool MightOff;
+        /// <summary>`--oldmightarms` (C10.7a off): might counts people of fighting age by heads, as C10.5 weighed them - on the same binary.</summary>
+        public static bool MightArmsOff;
         /// <summary>Tools (`--mighttally`): for each weighing - [0..3] a beaten village's bowing, [4..7] bowing for bread, [8..11] a bond's end at the
         /// harvest - the weighings, those the old count (D2-075) would carry, those might carries, and both; [12] lords' weighings in which their call
         /// counted, [13] the men it added; null in the game.</summary>
@@ -1089,6 +1091,36 @@ namespace TC2.Core.Society
             return n;
         }
 
+        /// <summary>A village's fighting kit a head (C10.7a): its tools, its arms and their iron, as a fight weighs them (`Strength`: C1.4, C5.2b).</summary>
+        public double Kit(int sid)
+        {
+            ref var hs = ref _w.Settlements.Get(sid);
+            double armed = Knowledge.Tech.ToolShare(in hs);
+            double arms = hs.Population > 0 ? DMath.Clamp01(hs.Arms / (Places.Forge.ArmsPerHead * hs.Population)) : 0.0;
+            double iron = hs.Population > 0 ? DMath.Clamp01(hs.IronArms / (Places.Forge.ArmsPerHead * hs.Population)) : 0.0;
+            return (1.0 + 0.3 * armed) * (1.0 + 0.3 * arms) * (1.0 + 0.15 * iron);
+        }
+
+        /// <summary>
+        /// A village's people of fighting age by their lasting strength (C10.7a): each as a fight weighs them (`Strength`) with what lasts - the
+        /// village's kit and their own fighting skill (C1.5) - and without what passes, the day's health and wounds (C10.5's reason for counting heads).
+        /// </summary>
+        public double Lasting(int sid)
+        {
+            var w = _w;
+            long now = w.Now;
+            double kit = Kit(sid), m = 0;
+            var res = w.Residents(sid);
+            for (int i = 0; i < res.Count; i++)
+            {
+                ref var q = ref w.People.Get(res[i]);
+                if (!q.Alive) continue;
+                double age = q.AgeYears(now);
+                if (age >= 16 && age < 60) m += kit * (1.0 + 0.6 * (double)q.SkFight);
+            }
+            return m;
+        }
+
         /// <summary>
         /// The might a village weighs another by (C10.5, D2-159) - in bowing to raiders (D2-075), in bowing for bread (C10.4) and in paying no more
         /// (a bond's end): its people of fighting age (`Hands`) and, for a lord, the men its call would bring against that village - of each of its
@@ -1102,7 +1134,7 @@ namespace TC2.Core.Society
             var w = _w;
             long now = w.Now;
             if (MightOff) return FitAt(sid, now);
-            double m = Hands(sid);
+            double m = MightArmsOff ? Hands(sid) : Lasting(sid);   // (C10.7a: by their lasting strength)
             if (against == 0 || !w.Settlements.Exists(against)) return m;
             var anchor = w.Settlements.Get(against).Anchor;
             double called = 0;
@@ -1115,13 +1147,15 @@ namespace TC2.Core.Society
                 if (Vec3d.ArcDistance(tr.Anchor, anchor, w.Planet.Radius) > 6000 || w.Routes.Get(w, o, against) == null) continue;
                 if (!indexed) { KinIndex(against); indexed = true; }
                 var tres = w.Residents(o);
+                double kit = MightArmsOff ? 1.0 : Kit(o);
                 for (int i = 0; i < tres.Count; i++)
                 {
                     ref var q = ref w.People.Get(tres[i]);
                     if (!q.Alive) continue;
                     double age = q.AgeYears(now);
                     if (age < 16 || age >= 50 || KinInIndexed(in q, against)) continue;   // (whom the call takes: grown and under fifty, as a band's own)
-                    called += CallOwed + CallBold * q.Bold / 255.0;
+                    double owed = CallOwed + CallBold * q.Bold / 255.0;
+                    called += MightArmsOff ? owed : owed * kit * (1.0 + 0.6 * (double)q.SkFight);   // (C10.7a: as they fight)
                 }
             }
             if (MightTally != null && called > 0) { MightTally[12] += 1; MightTally[13] += called; }

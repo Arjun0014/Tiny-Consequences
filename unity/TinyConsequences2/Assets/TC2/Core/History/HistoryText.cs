@@ -194,7 +194,7 @@ namespace TC2.Core.History
                 case HistoryKind.TributeEnded:
                     if (e.ArgA == 1) return subj + " pays tribute no more: " + obj + " is gone.";
                     return subj + " would pay " + obj + " tribute no more: " + obj + " is no longer the stronger" +
-                           (e.Magnitude > 0f ? " - it could bring " + F(e.Magnitude, "0") + " against them (its own people and those its call brings), and they have " + e.ArgB + " of fighting age." : ".");   // (C10.5)
+                           (e.Magnitude > 0f ? " - it could bring the strength of " + F(e.Magnitude, "0") + " against them (its own people and those its call brings, by their arms and skill), and theirs came to " + e.ArgB + "." : ".");   // (C10.5; lasting strength, C10.7a)
                 case HistoryKind.PathogenAppeared: return "A new sickness, " + subj + ", appeared in " + place + (e.ArgA == 1 ? ", caught from its animals" : "") + ".";
                 case HistoryKind.EpidemicArrived:
                     return e.ArgA == 1 ? Cap(obj) + " broke out in " + place + (e.Other.IsNone ? "" : ", " + other + " the first to fall ill") + "."
