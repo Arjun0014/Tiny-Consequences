@@ -151,6 +151,19 @@ namespace TC2.Core.Society
             return n;
         }
 
+        /// <summary>A village's sound boats that could carry a load to a village this far away (m): its plank boats, and its dugouts across a short
+        /// water (C9.5b; `Boats.Carries`) - what could carry its tenth over the water.</summary>
+        public int CrossBoats(int sid, double far)
+        {
+            var bl = _w.BuildingsOf(sid);
+            int n = 0;
+            for (int i = 0; i < bl.Count; i++) { ref var b = ref _w.Buildings.Get(bl[i]); if (Boats.Carries(b.Kind, far) && Boats.Sound(in b, _w.Now)) n++; }
+            return n;
+        }
+
+        /// <summary>m between two villages as the crow flies.</summary>
+        double Far(int a, int b) => Vec3d.ArcDistance(_w.Settlements.Get(a).Anchor, _w.Settlements.Get(b).Anchor, _w.Planet.Radius);
+
         /// <summary>A person is hungry enough to go when the last day fed them less than this share of their need (both resolutions
         /// keep that share, the body's day: a lived meal-time flag would clear at the first bite).</summary>
         public const double HungryBelow = 0.5;
@@ -1497,7 +1510,7 @@ namespace TC2.Core.Society
                 // walk as the crow flies (C10.4) and relief within it moves at once, so a village across water can be bound to a lord no way on foot
                 // leads to - its tenth stays in its store, unless a way by sea joins their landings and it has a boat of planks to row it over or its lord
                 // one to come for it (C9.5a)
-                if (w.Routes.Get(w, sid, lord) == null && !(BySea(sid, lord) && (PlankBoats(sid) > 0 || PlankBoats(lord) > 0)))
+                if (w.Routes.Get(w, sid, lord) == null && !(BySea(sid, lord) && (CrossBoats(sid, Far(sid, lord)) > 0 || CrossBoats(lord, Far(sid, lord)) > 0)))   // (a dugout across a short water too: C9.5b)
                 {
                     if (CarryTally != null)
                     {
@@ -1660,11 +1673,12 @@ namespace TC2.Core.Society
             if (way == null || Boats.WindAt(w, way.PointAt(0.5 * way.Length)) > Boats.Calm) return;   // (they wait for a calm sea)
             ref var s = ref w.Settlements.Get(sid);
             if (w.Resolution != Resolution.Coarse) { w.Trade.BookTribute(sid, lord, s.TributeDue); return; }
-            int boats = w.Trade.FreeBoats(sid), theirs = w.Trade.FreeBoats(lord);   // (its own first; the lord's come for the rest)
-            if (boats + theirs == 0) return;
-            double fu = DMath.Min((boats + theirs) * Trade.BoatLoadKg / Trade.KgOf(Trade.Grain) * days, s.TributeDue);
+            // its own boats' loads first, the lord's for the rest (dugouts across a short water: C9.5b)
+            double far = Far(sid, lord), mine = w.Trade.FreeLoadKg(sid, far), theirs = w.Trade.FreeLoadKg(lord, far);
+            if (mine + theirs <= 0) return;
+            double fu = DMath.Min((mine + theirs) / Trade.KgOf(Trade.Grain) * days, s.TributeDue);
             if (fu < 1.0) return;
-            double fetched = fu - DMath.Min(fu, boats * Trade.BoatLoadKg / Trade.KgOf(Trade.Grain) * days);
+            double fetched = fu - DMath.Min(fu, mine / Trade.KgOf(Trade.Grain) * days);
             s.TributeDue -= fu;
             Brought(sid, lord, fu);
             w.Metrics.Voyages++; w.Metrics.SeaCargoKg += fu * Trade.KgOf(Trade.Grain);

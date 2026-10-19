@@ -132,6 +132,17 @@ yet: people crossing water in boats - island woodcutters, a town on two shores (
 day's visits still cross water at once - the news they carry (`Conflict.News`) and the sickness they catch and the ways they wear (`Disease`) count
 every village within a day's walk as the crow flies, while a lived visitor goes only along a way (`World` visit targets): C9.5b's to settle.
 
+**C9.5b a boat to cross (D2-163)**: C9.5a's survey found boats made only for the sea's fish (`Boats.WantsKind`: a fisher's household, the
+catch worth it), so an archipelago never made one to reach its neighbours - seed 5's five island villages had no boat at year 300, and C9.5a cost
+them their trade and relief across the water (trades 3,889 -> 174, hunger deaths x1.7). Now **a village with no boat of its own whose neighbour
+within a day's walk lies across the water** - no way on foot, a way by sea between their landings - **and is worth reaching** makes one for that
+(`Boats.Cross`, `Across`): its lord's tenth is owed there, it owes grain there to give back, or a dugout's load of trade there is worth two walks
+(`Trade.WorthACrossing`); the first household housed, staying, with two who can paddle and the woods' trunks within reach lays down a dugout (a
+plank boat where the village builds them). History tells why (`BoatToCross`, the cause of its `BoatBuilt`: "...: now they can cross the water to
+Y"). **A dugout carries a load across a short water** - 150 kg, six walkers' loads, to a village within a day's walk (`Boats.Carries`,
+`Trade.FreeLoadKg`): relief, grain given back, the lord's tenth and trade (a second voyage pass for dugouts, `VoyagesIn`). The record: logboats
+carried goods and stock on lakes, rivers and short crossings into the middle ages. `--oldcross`, `--crosstally`.
+
 ## 6. Ports (C9)
 
 landing (a beach: nothing built) -> fishing jetty and boat shed -> dock (timber quay) -> harbour (stone quay, warehouses) -> shipyard.

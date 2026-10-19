@@ -114,9 +114,20 @@ namespace TC2.Core.History
                 case HistoryKind.Scouted: return "Someone of " + subj + " saw good land near " + place + (e.ArgA == TC2.Core.Places.Mining.Iron ? ", by bog ore their smiths want." : e.ArgA == TC2.Core.Places.Mining.Copper ? ", by copper their smiths want." : ".");
                 case HistoryKind.HouseholdMoved: return "The " + Plural(subj) + " left " + place + " for " + obj + ".";
                 case HistoryKind.BoatBuilt:
-                    return e.ArgA == TC2.Core.Places.Structures.PlankBoat
-                        ? "The " + Plural(subj) + " of " + place + " built a boat of planks in the boat shed" + (e.Other.IsNone ? "" : ", " + other + " leading the work") + ": four can row it out to the open sea's shoals."
-                        : "The " + Plural(subj) + " of " + place + " hollowed a dugout from a trunk of the woods" + (e.Other.IsNone ? "" : ", " + other + " leading the work") + ": the open sea holds more fish than the shore.";
+                    {
+                        // (C9.5b) made to cross the water: its laying down tells to whom
+                        string across = e.Rel1 == CauseRel.CausedBy && w.History.TryGet(e.Cause1, out var ce) && ce.Kind == HistoryKind.BoatToCross ? H.NameOf(ce.Object) : null;
+                        if (across != null)
+                            return "The " + Plural(subj) + " of " + place + (e.ArgA == TC2.Core.Places.Structures.PlankBoat ? " built a boat of planks in the boat shed" : " hollowed a dugout from a trunk of the woods") +
+                                   (e.Other.IsNone ? "" : ", " + other + " leading the work") + ": now they can cross the water to " + across + ".";
+                        return e.ArgA == TC2.Core.Places.Structures.PlankBoat
+                            ? "The " + Plural(subj) + " of " + place + " built a boat of planks in the boat shed" + (e.Other.IsNone ? "" : ", " + other + " leading the work") + ": four can row it out to the open sea's shoals."
+                            : "The " + Plural(subj) + " of " + place + " hollowed a dugout from a trunk of the woods" + (e.Other.IsNone ? "" : ", " + other + " leading the work") + ": the open sea holds more fish than the shore.";
+                    }
+                case HistoryKind.BoatToCross:
+                    return "The " + Plural(subj) + " of " + place + " laid down " + (e.ArgA == TC2.Core.Places.Structures.PlankBoat ? "a boat of planks" : "a dugout") + " to reach " + obj +
+                           " across the water, where no way on foot leads" + (e.ArgB == TC2.Core.Places.Boats.ForTenth ? ": " + place + "'s tenth is owed there" :
+                           e.ArgB == TC2.Core.Places.Boats.ForOwed ? ": " + place + " owes it the grain it was given in its famines" : ": what each spares the other wants") + ".";
                 case HistoryKind.VillageSplit:
                     return Cap(subj) + " and the " + Plural(obj) + " would not follow " + (e.Other.IsNone ? "the new first among them" : other) + ": " + e.ArgA + " households, " + e.ArgB + " people of " + place +
                            ", bound to them by kin, by grain owed or given, went with them to make a village of their own.";
@@ -252,7 +263,11 @@ namespace TC2.Core.History
                     if (p.Why == WhyCode.Take) return p.CargoQty > 0f ? "hurrying home to " + home + " in the dark with " + Load(p.Cargo, p.CargoQty) + " taken from a neighbour's store" : "running home to " + home + " in the dark: seen at the store, they left the grain";
                     return "walking home to " + home + (p.CargoQty > 0f ? " with " + Load(p.Cargo, p.CargoQty) : "");
                 case ActivityKind.Visit:
-                    if (p.Voyage != 0) return "at " + at + ", come over the sea in the household's boat: they row home when the boat's business is done";
+                    if (p.Voyage != 0)
+                    {
+                        bool dug = w.Buildings.Exists(p.Voyage) && !TC2.Core.Places.Boats.IsPlank(w.Buildings.Get(p.Voyage).Kind);   // (a dugout is paddled: C9.5b)
+                        return "at " + at + ", come over the water in the household's " + (dug ? "dugout: they paddle" : "boat: they row") + " home when the boat's business is done";
+                    }
                     return "visiting " + at;
                 case ActivityKind.Flee: return "keeping to shelter: a fire is near";
                 case ActivityKind.Wait: return "waiting on the road for the fire ahead to burn out";
@@ -266,8 +281,10 @@ namespace TC2.Core.History
                     }
                 case ActivityKind.Voyage:
                     {
-                        // (C9.3) down at the landing, rowing over, or rowing home
+                        // (C9.3) down at the landing, rowing over, or rowing home - a dugout paddled across a short water (C9.5b)
                         string other = dest.Length > 0 ? dest : "another landing";
+                        bool dugout = w.Buildings.Exists(p.Voyage) && !TC2.Core.Places.Boats.IsPlank(w.Buildings.Get(p.Voyage).Kind);
+                        string boatOf = dugout ? "the household's dugout" : "the household's boat", goes = dugout ? "paddling" : "rowing";
                         string what = p.CargoTo == TC2.Core.Places.Trade.AsGift ? " with grain for its famine" :
                                       p.CargoTo == TC2.Core.Places.Trade.AsReturn ? " with grain given back for what " + other + " gave in famine" :
                                       p.CargoTo == TC2.Core.Places.Trade.ToFetch ? " to fetch the grain " + other + " owes " + home :
@@ -275,10 +292,10 @@ namespace TC2.Core.History
                                       p.CargoTo == TC2.Core.Places.Trade.ToTenth ? " to fetch the tenth " + other + " has set aside for " + home :
                                       p.CargoQty > 0f ? " with " + Load(p.Cargo, p.CargoQty) + " to trade: " + home + " spares it and they want it" : "";
                         if (p.Step == StepKind.Travel && p.Dest == p.Home)
-                            return "rowing home to " + home + " over the sea in the household's boat" + (p.CargoQty > 0f ? " with " + Load(p.Cargo, p.CargoQty) : "") +
+                            return goes + " home to " + home + " over the water in " + boatOf + (p.CargoQty > 0f ? " with " + Load(p.Cargo, p.CargoQty) : "") +
                                    (p.CargoTo == TC2.Core.Places.Trade.TenthAboard && p.CargoQty > 0f ? ", the tenth a tributary paid " + home : "");
-                        if (p.Step == StepKind.Travel) return "rowing over the sea to " + other + " in the household's boat" + what;
-                        return "down at " + home + "'s landing with the household's boat: it puts out for " + other + what;
+                        if (p.Step == StepKind.Travel) return goes + " over the water to " + other + " in " + boatOf + what;
+                        return "down at " + home + "'s landing with " + boatOf + ": it puts out for " + other + what;
                     }
                 case ActivityKind.Sail:
                     return "out in the household's " + (w.Buildings.Exists(p.WhyArg) ? TC2.Core.Places.Boats.NameOf(w.Buildings.Get(p.WhyArg).Kind) : "boat") + ", fishing the open sea" + (p.Why == WhyCode.NoFood ? ": nothing is left to eat at home" : p.Why == WhyCode.FoodShort ? ": rations are short in " + home : ": the shoals beyond the shore");
@@ -286,7 +303,17 @@ namespace TC2.Core.History
                 case ActivityKind.Build:
                     if (p.Why == WhyCode.NoRoof) return "raising a roof for the household: they live in a camp or a hut";
                     if (p.Why == WhyCode.Rebuild && w.Households.Exists(p.Household)) return "rebuilding the household's house as a " + Places.Architecture.PlanName(w.Households.Get(p.Household).Rebuild - 1) + ": they have the means, and the old one is old or poor beside what they would build now";
-                    if (p.Why == WhyCode.Boat) return "hollowing a trunk into a dugout for the household: the open sea holds more fish than the shore";
+                    if (p.Why == WhyCode.Boat)
+                    {
+                        // the household's boat being made: a dugout or a plank boat, for the sea's fish - or to cross the water to a neighbour (C9.5b)
+                        int mk = TC2.Core.Places.Boats.Making(w, p.Household);
+                        bool plank = mk != 0 && TC2.Core.Places.Boats.IsPlank(w.Buildings.Get(mk).Kind);
+                        string making = plank ? "building the household's boat of planks in the boat shed" : "hollowing a trunk into a dugout for the household";
+                        long bc = mk != 0 ? w.Buildings.Get(mk).Cause : 0;
+                        if (bc != 0 && w.History.TryGet(bc, out var be) && be.Kind == HistoryKind.BoatToCross)
+                            return making + ": no way on foot leads to " + w.History.NameOf(be.Object) + " across the water";
+                        return making + ": the open sea holds more fish than the shore";
+                    }
                     if (p.Why == WhyCode.Cart) return "shaping wheels and an axle for the household's " + (w.Households.Exists(p.Household) ? TC2.Core.Places.Carts.NameOf(w.Households.Get(p.Household).CartKind) : "cart") + " in the yard: what they carry - their traders' loads, wood and stone from far off - is more than their backs can take";
                     if (w.Settlements.Exists(p.Home) && TC2.Core.Places.Construction.NextWork(w.Settlements.Get(p.Home)) == TC2.Core.Places.Construction.Structure && w.Buildings.Exists(w.Settlements.Get(p.Home).Project))
                     {

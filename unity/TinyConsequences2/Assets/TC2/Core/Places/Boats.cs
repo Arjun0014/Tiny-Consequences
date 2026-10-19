@@ -60,6 +60,25 @@ namespace TC2.Core.Places
         /// <summary>The least a builder's knowledge of the craft counts for (a learner works at a fifth of a master's pace).</summary>
         public const double Learner = 0.2;
 
+        /// <summary>kg a dugout carries across a short water besides its two at the paddles (C9.5b): six walkers' loads, ~200 FU of grain - logboats
+        /// carried goods, stock and people on lakes, rivers and short crossings from the Neolithic into the middle ages (the Hasholme boat's cargo
+        /// of timber and meat; the logboats that served lake islands and crannogs).</summary>
+        public const double DugoutLoadKg = 150.0;
+        /// <summary>kg a boat of the kind carries on a voyage (C9.3; a dugout across a short water, C9.5b).</summary>
+        public static double LoadKgOf(byte kind) => IsPlank(kind) ? Trade.BoatLoadKg : DugoutLoadKg;
+        /// <summary>m as the crow flies a dugout carries a load: to a village within a day's walk - across a strait, a bay or a lake (C9.5b).</summary>
+        public const double CrossReach = 6000.0;
+        /// <summary>`--oldcross` (C9.5b off): dugouts carry no loads and no boat is made to cross the water - C9.5a's rules, on the same binary.</summary>
+        public static bool CrossOff;
+        /// <summary>Whether a boat of the kind carries a load to a village this far away (m): a plank boat as far as its way by sea reaches (C9.3);
+        /// a dugout across a short water only, to a village within a day's walk (C9.5b).</summary>
+        public static bool Carries(byte kind, double far) => IsPlank(kind) || (!CrossOff && kind == Structures.Boat && far <= CrossReach);
+        /// <summary>Tools (`--crosstally`, C9.5b): [0] boats laid down to cross (dugouts), [1] of planks, [2] made, [3] voyages in dugouts, [4] their
+        /// cargo kg, [5] grain of relief, given back and the tenth they carried (FU); null in the game.</summary>
+        public static double[] CrossTally;
+        /// <summary>The length of `CrossTally`.</summary>
+        public const int CrossTallyN = 6;
+
         public static bool IsPlank(byte kind) => kind == Structures.PlankBoat;
         public static double YearsOf(byte kind) => IsPlank(kind) ? PlankYears : Years;
         public static int SeatsOf(byte kind) => IsPlank(kind) ? PlankSeats : Seats;
@@ -271,7 +290,7 @@ namespace TC2.Core.Places
         public static void Plan(World w, int sid, int days = 1)
         {
             ref var s = ref w.Settlements.Get(sid);
-            if (!s.Inhabited || s.Sea.A < 0) return;
+            if (!s.Inhabited || (s.Sea.A < 0 && (CrossOff || s.Fish.A < 0))) return;   // (no sea grounds: a boat only to cross from a shore it fishes - C9.5b)
             if (!EnsureLanding(w, sid)) return;   // (no beach to launch from: no boats - C9.2)
             var hl = w.HouseholdsOf(sid);
             // a sea risen over the beach: the boats lying in it are drawn up again at the landing (C9.2; a coast that changed cells: ShoreMoved)
@@ -306,6 +325,89 @@ namespace TC2.Core.Places
                 Begin(w, sid, hid, kind);
                 begun++;
             }
+            if (begun == 0 && !CrossOff) Cross(w, sid);   // (a boat to reach its neighbours across the water: C9.5b)
+        }
+
+        /// <summary>
+        /// A boat to cross the water (C9.5b, D2-163): a village with no boat of its own - none sound, none being made - and a neighbour within a
+        /// day's walk that no way on foot joins but a way by sea does, worth reaching (`Across`). The first of its households that is housed and
+        /// staying, has two who can paddle and the woods' trunks within reach lays down a dugout when the trunk is in store - a plank boat where the
+        /// village builds them, its shed's stocks free and the logs in store. Boats were made for the sea's fish alone before (C9.1): an island
+        /// village whose neighbours all lay across the water never made one to reach them. History tells why (`BoatToCross`).
+        /// </summary>
+        static void Cross(World w, int sid)
+        {
+            ref var s = ref w.Settlements.Get(sid);
+            if (s.LandAt == 0) return;
+            var bl = w.BuildingsOf(sid);
+            for (int i = 0; i < bl.Count; i++) { ref var b = ref w.Buildings.Get(bl[i]); if (IsBoat(b.Kind) && b.Household != 0 && b.Left == 0 && (b.Done == 0 || Sound(in b, w.Now))) return; }
+            int to = Across(w, sid, out byte why, out double worth);
+            if (to == 0) return;
+            var hl = w.HouseholdsOf(sid);
+            for (int i = 0; i < hl.Count; i++)
+            {
+                int hid = hl[i];
+                ref var s1 = ref w.Settlements.Get(sid);
+                if (!ReadyToCross(w, in s1, hid)) continue;
+                byte kind = (s1.TechKnown & Bit) != 0 && ShedStands(w, in s1) && OnTheStocks(w, sid) == 0 && s1.Woodstore >= PlankWood ? Structures.PlankBoat
+                          : s1.Woodstore >= Wood ? Structures.Boat : (byte)0;
+                if (kind == 0) return;   // (the trunk not yet in store: they wait for it)
+                int bid = Begin(w, sid, hid, kind);
+                long ev = w.Record(new HistoryEvent
+                {
+                    Kind = HistoryKind.BoatToCross, Time = w.Now, Cell = s1.Cell, Settlement = sid, Subject = EntityRef.Household(hid), Object = EntityRef.Settlement(to),
+                    Other = new EntityRef(EntityKind.Building, bid), ArgA = kind, ArgB = why, Magnitude = (float)worth, RootKind = RootKind.People,
+                });
+                w.Buildings.Get(bid).Cause = ev;
+                if (CrossTally != null) CrossTally[IsPlank(kind) ? 1 : 0]++;
+                return;
+            }
+        }
+
+        /// <summary>Why a crossing boat was made (`BoatToCross` ArgB): a dugout's load of trade worth the crossing, grain it owes there to give back,
+        /// its lord's tenth.</summary>
+        public const byte ForTrade = 1, ForOwed = 2, ForTenth = 3;
+
+        /// <summary>
+        /// The neighbour across the water a village would make a boat to reach (C9.5b), or 0: within a day's walk, no way on foot between them, a
+        /// way by sea between their landings - its lord there (the tenth to carry), grain it owes there to give back (a fifth of a dugout's load at
+        /// least, and grain to spare), or a dugout's load of trade there worth the crossing (`Trade.WorthACrossing`), the best deal first. Reads only.
+        /// </summary>
+        public static int Across(World w, int sid, out byte why, out double worth)
+        {
+            why = 0; worth = 0;
+            ref var s = ref w.Settlements.Get(sid);
+            if (!s.Inhabited || s.LandAt == 0) return 0;
+            int best = 0; byte bw = 0; double bv = 0;
+            for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
+            {
+                if (o == sid) continue;
+                ref var t = ref w.Settlements.Get(o);
+                if (!t.Inhabited || t.LandAt == 0 || Vec3d.ArcDistance(s.Anchor, t.Anchor, w.Planet.Radius) > CrossReach) continue;
+                if (w.Routes.Get(w, sid, o) != null || w.SeaRoutes.Get(w, sid, o) == null) continue;
+                // (the tenth first, then grain owed, then the best deal: a lord's due and a debt are not weighed against a trade)
+                byte k; double v;
+                if (w.Settlements.Get(sid).Lord == o) { k = ForTenth; v = 0; }
+                else if (w.DeedBook.Owed(sid, o) >= 0.2 * DugoutLoadKg / Trade.KgOf(Trade.Grain) && w.Trade.Spare(sid, Trade.Grain) > 0) { k = ForOwed; v = w.DeedBook.Owed(sid, o); }
+                else { v = w.Trade.Plan(sid, o, out _, out _, out _, DugoutLoadKg); if (v < Trade.WorthACrossing) continue; k = ForTrade; }
+                if (k > bw || (k == bw && v > bv)) { bw = k; bv = v; best = o; }
+            }
+            why = bw; worth = bv;
+            return best;
+        }
+
+        /// <summary>A household that could make a boat to cross now (C9.5b): housed and staying, none of its own sound or being made, two of it who
+        /// can paddle, the village not out after food, the woods' trunks within reach.</summary>
+        static bool ReadyToCross(World w, in Settlement s, int hid)
+        {
+            if (!w.Households.Exists(hid)) return false;
+            ref var hh = ref w.Households.Get(hid);
+            if (hh.Settlement != s.Id || hh.Party != 0 || hh.Shelter == Construction.Camp) return false;
+            if (hh.Boat != 0 && (Making(w, hid) != 0 || Of(w, hid) != 0)) return false;
+            if (!w.Trade.Crewed(hid, s.Id)) return false;
+            if (Agents.AgentSystem.WildNeed(in s, w.Now) > 0) return false;
+            int lot = Woods.Lot(in s);
+            return lot >= 0 && w.Planet.Forest[lot] >= BigTrees;
         }
 
         /// <summary>Lays down a household's boat (not yet made): a row of the table - a dugout at a free spot on the landing's beach, a plank boat
@@ -353,13 +455,17 @@ namespace TC2.Core.Places
             if (b.Hours >= need - Construction.Done)
             {
                 b.Done = 1; b.Built = w.Now;   // (a boat's life is counted from the day it is made)
+                long tech = IsPlank(kind) ? s.BoatEvent : 0;
+                bool cross = b.Cause != 0;   // (made to cross the water: its laying down the cause, the craft what made a plank boat possible - C9.5b)
                 b.Event = w.Record(new HistoryEvent
                 {
                     Kind = HistoryKind.BoatBuilt, Time = w.Now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Household(hid),
                     Object = new EntityRef(EntityKind.Building, bid), Other = b.Leader != 0 ? EntityRef.Person(b.Leader) : default, RootKind = RootKind.People,
-                    ArgA = kind, Cause1 = IsPlank(kind) ? s.BoatEvent : 0, Rel1 = IsPlank(kind) && s.BoatEvent != 0 ? CauseRel.EnabledBy : CauseRel.None,
+                    ArgA = kind, Cause1 = cross ? b.Cause : tech, Rel1 = cross ? CauseRel.CausedBy : tech != 0 ? CauseRel.EnabledBy : CauseRel.None,
+                    Cause2 = cross ? tech : 0, Rel2 = cross && tech != 0 ? CauseRel.EnabledBy : CauseRel.None,
                 });
                 w.Metrics.BoatsBuilt++;
+                if (cross && CrossTally != null) CrossTally[2]++;
                 if (IsPlank(kind))
                 {
                     // off the stocks and down to the landing
