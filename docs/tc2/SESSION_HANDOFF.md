@@ -21,8 +21,9 @@
   D2-160 (a5583f4, version line 84 over 83) and C10.6 (dd81998, version 85 over 84) + a tools commit. Builds (`bin_i1` = dd81998), floatcheck clean.
   Main has since gained docs commits only (2619bb0): to land, `git merge --no-ff wip/s23-int` on main (or merge main into it and fast-forward).
   NOTE: the C10.6 branch alone also says sim version 85 (without D2-160's `WayForest`): read `_t1` saves only with `bin_t7`, `_f1` with `bin_i*`.
-- **Queue order at the context handoff (19 Oct ~21:12)**: `3_cr_3_cmp_probe` (D2-160: `cmp_y3_r2.txt`, the probe on `s2_r2` - expect equal hashes
-  with and without `--warmroutes`), `3_cs_0_c3` (C10.5's indexed kin test: `_z2` = `_z1` byte-identical and the speed), `3_d_l9z1_s2/s4` (C10.5's own
+- **D2-160 VERIFIED (21:15)**: the probe on its own year-300 world - 3 and 6 lived days and 3 COARSE years give identical hashes with and without the
+  view's 125 routes built at load (before: different after 3 lived days); ten seeds `_r2` vs `_y3` at par (`results/cmp_y3_r2.txt`); draft filled.
+- **Queue order at the context handoff (19 Oct ~21:15)**: `3_cs_0_c3` (C10.5's indexed kin test: `_z2` = `_z1` byte-identical and the speed), `3_d_l9z1_s2/s4` (C10.5's own
   900-year check -> `results/lordships_s*_l9z1_y600.txt`: do lordships now grow, hold, or snowball?), `3_t_*` (C10.6: build `bin_t7` and tests, the
   `--oldtribute` control = `_z1`, ten seeds `_t1`, `cmp_z1_t1.txt`, the ways between the bound and their lords), `4_a_fullsuite_i1` (the full suite on
   the integration), `4_b_f1_*` (ten seeds `_f1` of the integration), `4_c_cmp_probe_f1` (`cmp_t1_f1.txt`, the probe on `s2_f1`). Verified so far:
