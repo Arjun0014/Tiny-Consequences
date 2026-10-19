@@ -1,5 +1,28 @@
 # TC2 Session handoff
 
+## Session 23, second context (19 Oct 2026, from 21:26 IST; Control Room run #63 session 2) - the same job queue, re-pointed
+
+### State (keep current)
+- **Reviewing the integration before landing found a C10.6 fault**: a bond for bread needs only a day's walk as the crow flies (C10.4) and relief
+  within it moves at once, but the tenth is carried only along a way on foot - so a tributary across water would set its tenth aside every harvest
+  and nobody would ever carry it (grain gone from its store, "its people carrying it there" on its page, for as long as the bond held). Also: a load
+  sent home by a switch to COARSE went into the common store (the lord lost it). **Fixed on `wip/c106b-carry`** (worktree `C:/Game Dev/tc-carry`, on
+  `wip/s23-int` c5258d2; uncommitted until its tests pass): the tenth is set aside only where `Routes.Get(tributary, lord)` exists (else it stays in
+  the store, the pages say "No way on foot leads from it to X"); what still stands set aside at the next harvest (>= 1 FU: a year uncarried) is the
+  village's again; a `ToLord` load unloaded at home while the village still pays is set aside again (`Trade.Unload`); `TakeLoad` unloads what a
+  carrier still holds first; `CarryTally` [7]-[9] (`CarryTallyN` 10), the `carried:` line; `lordships` prints the bonds with no way on foot and what
+  stands set aside; three new TributeCarriedTests (8 in all); `10` §12h. Sim version stays 85 (no format change; C10.6 has not landed).
+- **C10.5's 900-year check, seed 2** (`results/lordships_s2_l9z1_y600.txt`, against C10.4's `lordships_s2_l9y3_y600.txt`): no snowball - bonds 32
+  (49), median life of a bread bond 113 years (73) and of a peace bond 242 (55), pairs bound again 6 (10), the largest lordship 3 villages, depth 1
+  (3-4); `might:` - of 6,686 weighings at tributaries' harvests the old count would end 42 bonds, might 25 (all 25 among the 42). Seed 4: in the queue.
+- **The queue** (same runner, task bc2qpqxfq; `Q` as below): the pre-amendment integration jobs (`4_a_fullsuite_i1`, `4_b_f1_*`, `4_c_cmp_probe_f1`)
+  moved to `$Q/hold`; queued instead `3_e_build_p1` (builds `tc-carry` to `bin_p1`, floatcheck, eleven test classes, `p1_ok`), `4_a_fullsuite_p1`,
+  `4_b_g1_*` (ten seeds of the code to land, `_g1`), `4_c_cmp_probe_g1` (`results/cmp_t1_g1.txt`, each world's `carried:` line and its bonds with no
+  way on foot - `results/lordships_s*_g1.txt` - and the route probe on `s2_g1`). Still in order before them: `3_d_l9z1_s4`, `3_t_*` (C10.6 alone).
+- **To land when they pass**: commit `wip/c106b-carry`; in `tc-int` `git merge --ff-only wip/c106b-carry`; on main `git merge --no-ff wip/s23-int`;
+  DECISIONS D2-159 (`d2159.md` + the 900-year checks), D2-160 (`d2160.md`), D2-161 (`d2161.md` + the amendment and `_g1`); `unity.mjs cc`; shots
+  from `tc2/out/civ/s2_g1/world_y300.tc2` (the landed code's own world); the Web build and test.
+
 ## Session 23 (19 Oct 2026, 18:54 - ~21:25 IST; Control Room run #63 session 1) - context handoff; ONE job queue still running
 
 ### Exact state at the handoff (21:25)
