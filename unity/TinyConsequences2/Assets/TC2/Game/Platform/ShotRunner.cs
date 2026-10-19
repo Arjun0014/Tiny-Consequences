@@ -334,7 +334,7 @@ namespace TC2.Game
                 {
                     // (C9.3) the world lives on until it shows what the view frames: a boat halfway along a way over the sea ("voyage",
                     // "voyagefar"), or a crew ashore at the other landing ("voyagestay") - waiting for it, never staging it (12 days at most)
-                    // (C9.5a) "voyagetenth...", "voyagerelief...": only a boat carrying a lord's tenth or famine grain
+                    // (C9.5a) "voyagetenth...", "voyagerelief...": only a boat carrying a lord's tenth or famine grain; (C9.5b) "voyagedugout...": only a dugout
                     int cargo = CameraRig.VoyageCargoFilter(view);
                     string vb = CameraRig.VoyageBase(view);
                     int mode = vb == "voyagestay" ? 2 : vb == "voyagenear" ? 1 : 0;

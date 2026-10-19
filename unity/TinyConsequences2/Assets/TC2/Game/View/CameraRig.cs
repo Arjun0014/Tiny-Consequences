@@ -75,11 +75,12 @@ namespace TC2.Game
             Distance = R + alt;
         }
 
-        /// <summary>A voyage view's cargo (C9.5a shots): 1 "voyagetenth..." a lord's tenth, 2 "voyagerelief..." famine grain; 0 any boat.</summary>
-        public static int VoyageCargoFilter(string view) => view.Contains("tenth") ? 1 : view.Contains("relief") ? 2 : 0;
+        /// <summary>A voyage view's cargo (C9.5a shots): 1 "voyagetenth..." a lord's tenth, 2 "voyagerelief..." famine grain; 3 "voyagedugout..." any
+        /// load in a dugout (C9.5b: a boat made to cross a short water); 0 any boat.</summary>
+        public static int VoyageCargoFilter(string view) => view.Contains("tenth") ? 1 : view.Contains("relief") ? 2 : view.Contains("dugout") ? 3 : 0;
 
         /// <summary>A voyage view's framing without its cargo filter: "voyage", "voyagefar", "voyagenear" or "voyagestay".</summary>
-        public static string VoyageBase(string view) => view.Replace("tenth", "").Replace("relief", "");
+        public static string VoyageBase(string view) => view.Replace("tenth", "").Replace("relief", "").Replace("dugout", "");
 
         /// <summary>Whether a person's boat on a voyage carries that cargo (C9.5a shots): its skipper - the one of its crew holding the load - is
         /// out with it.</summary>
@@ -89,6 +90,20 @@ namespace TC2.Game
         public static int CrewSkipper(TC2.Core.Simulation.World w, in TC2.Core.Agents.Person p, int cargo)
         {
             var mem = w.Members(p.Household);
+            if (cargo == 3)
+            {
+                // (C9.5b shots) a dugout out on the water: the one of its crew holding its load, or any of them (going to fetch, nothing aboard)
+                if (p.Voyage == 0 || !w.Buildings.Exists(p.Voyage) || TC2.Core.Places.Boats.IsPlank(w.Buildings.Get(p.Voyage).Kind)) return 0;
+                int any = 0;
+                for (int i = 0; i < mem.Count; i++)
+                {
+                    ref var q = ref w.People.Get(mem[i]);
+                    if (!q.Alive || q.Voyage != p.Voyage) continue;
+                    if (any == 0) any = mem[i];
+                    if (q.CargoQty > 0f) return mem[i];
+                }
+                return any;
+            }
             for (int i = 0; i < mem.Count; i++)
             {
                 ref var q = ref w.People.Get(mem[i]);
