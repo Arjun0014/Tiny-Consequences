@@ -993,10 +993,10 @@ namespace TC2.Headless
                     if (mt != null)   // (C10.5: each weighing of the stronger - weighed, carried by the old count, carried by might, by both)
                         Console.WriteLine("might: bowing to raiders weighed " + mt[0] + " (the old count " + mt[1] + ", might " + mt[2] + ", both " + mt[3] + "); bowing for bread " + mt[4] + " (" + mt[5] + ", " + mt[6] + ", " + mt[7] +
                                           "); a lord no longer the stronger " + mt[8] + " (" + mt[9] + ", " + mt[10] + ", " + mt[11] + "); lords' calls counted " + mt[12] + " times, " + F(mt[13], "0") + " men");
-                    var at = TC2.Core.Society.Conflict.ArmsTally;
-                    if (at != null)   // (C10.7a: each weighing of the stronger - weighed, carried by heads, carried by lasting strength, by both)
-                        Console.WriteLine("arms: bowing to raiders weighed " + at[0] + " (by heads " + at[1] + ", by lasting strength " + at[2] + ", both " + at[3] + "); bowing for bread " + at[4] + " (" + at[5] + ", " + at[6] + ", " + at[7] +
-                                          "); a lord no longer the stronger " + at[8] + " (" + at[9] + ", " + at[10] + ", " + at[11] + ")");
+                    var armt = TC2.Core.Society.Conflict.ArmsTally;
+                    if (armt != null)   // (C10.7a: each weighing of the stronger - weighed, carried by heads, carried by lasting strength, by both)
+                        Console.WriteLine("arms: bowing to raiders weighed " + armt[0] + " (by heads " + armt[1] + ", by lasting strength " + armt[2] + ", both " + armt[3] + "); bowing for bread " + armt[4] + " (" + armt[5] + ", " + armt[6] + ", " + armt[7] +
+                                          "); a lord no longer the stronger " + armt[8] + " (" + armt[9] + ", " + armt[10] + ", " + armt[11] + ")");
                     var ct = TC2.Core.Society.Conflict.CarryTally;
                     if (ct != null)   // (C10.6: the lord's tenth carried to its store)
                         Console.WriteLine("carried: set aside " + F(ct[3], "0") + " FU; loads " + ct[0] + " (lived " + ct[2] + "), " + F(ct[1], "0") + " FU (by cart " + F(ct[5], "0") + "), carriers' km " + F(ct[6], "0") +
