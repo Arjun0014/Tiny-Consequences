@@ -14,8 +14,8 @@ namespace TC2.Tests.Core
     [TestFixture]
     public class BreadTests
     {
-        /// <summary>Premise: two inhabited villages within a day's walk - the giver and the receiver; the receiver's fit grown people laid up until the
-        /// giver is the stronger by `TributeOdds` (or, `weaker`, the giver's until it is not).</summary>
+        /// <summary>Premise: two inhabited villages within a day's walk - the giver and the receiver, the giver the stronger by `TributeOdds` in its
+        /// people of fighting age (or, `weaker`, not). (Before C10.5 the receiver's people were laid up with wounds: a day's wounds no longer count.)</summary>
         static World Pair(out int giver, out int receiver, bool weaker = false, ulong from = 701)
         {
             for (ulong seed = from; seed < from + 40; seed++)
@@ -26,28 +26,15 @@ namespace TC2.Tests.Core
                     {
                         if (a == b || !w.Settlements.Get(a).Inhabited || !w.Settlements.Get(b).Inhabited) continue;
                         if (Vec3d.ArcDistance(w.Settlements.Get(a).Anchor, w.Settlements.Get(b).Anchor, w.Planet.Radius) > Conflict.BreadReach) continue;
+                        if (w.Routes.Get(w, a, b) == null) continue;   // (a way on foot between them: the tenth is carried along it, C10.6)
+                        bool stronger = w.Conflict.Might(a, b) >= Conflict.TributeOdds * w.Conflict.Might(b, a);
+                        if (stronger == weaker) continue;
                         giver = a; receiver = b;
-                        LayUp(w, weaker ? a : b, weaker ? b : a, weaker);
                         return w;
                     }
             }
             giver = receiver = 0;
             return null;
-        }
-
-        /// <summary>Lays up `who`'s fit grown people one by one (hurt to the road's limit) until the other is the stronger by `TributeOdds` - or, `weaker`,
-        /// until `who` is no longer the stronger.</summary>
-        static void LayUp(World w, int who, int other, bool weaker)
-        {
-            var res = w.Residents(who);
-            for (int i = 0; i < res.Count; i++)
-            {
-                int mine = w.Conflict.FitAt(who, w.Now), theirs = w.Conflict.FitAt(other, w.Now);
-                if (!weaker && theirs >= Conflict.TributeOdds * mine) return;
-                if (weaker && mine < Conflict.TributeOdds * theirs) return;
-                ref var q = ref w.People.Get(res[i]);
-                if (Conflict.Fit(in q, w.Now)) q.Hurt = (float)Conflict.RoadHurt;
-            }
         }
 
         /// <summary>The giver's relief to the receiver in a famine: `days` of the receiver's people's food, known as relief deeds are (`Trade.Given`).</summary>
@@ -92,6 +79,8 @@ namespace TC2.Tests.Core
             Assert.AreEqual(1, e.ArgB, "for bread");
             Assert.AreEqual(told, e.Cause1, "its cause the gift");
             Console.WriteLine(HistoryText.Describe(w, in e));
+            Assert.Greater(w.Settlements.Get(r).TributeDue, 0.0, "its tenth set aside for its lord (C10.6)");
+            CarriedIn(w, r);   // (its people carry it to the lord's store: C10.6)
             double owed1 = w.DeedBook.Owed(r, g);
             Console.WriteLine("owed " + owed0.ToString("0") + " FU before its first tribute, " + owed1.ToString("0") + " after");
             Assert.Less(owed1, owed0, "the tribute gives the grain back");
@@ -176,6 +165,16 @@ namespace TC2.Tests.Core
                 Assert.AreEqual(0.0, w2.Settlements.Get(r2).Granary - b2, 1e-9, "--nobread: what it owes closes the giver's hand (D2-113)");
             }
             finally { Conflict.BreadOff = false; }
+        }
+
+        /// <summary>Premise (C10.6): the tributary's people have carried its lord's tenth, set aside at the harvest, into the lord's store.</summary>
+        internal static void CarriedIn(World w, int sid)
+        {
+            ref var s = ref w.Settlements.Get(sid);
+            if (s.Lord == 0 || s.TributeDue <= 0) return;
+            double due = s.TributeDue;
+            s.TributeDue = 0;
+            w.Conflict.Brought(sid, s.Lord, due);
         }
 
         /// <summary>A famine at the village now, its store a few days' food.</summary>

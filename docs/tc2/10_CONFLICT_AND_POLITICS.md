@@ -210,6 +210,67 @@ Built on C3.3 (D2-126: household grain, loans recorded as debts, gifts). `Core/S
   `--breadtally` (village-harvests by the days still owed to the main giver; those whose giver was the stronger and near), `--nobread` (D2-075
   alone on the same binary); `polity` marks each lord for bread or for peace.
 
+## 12g. A lordship's might: a lord is as strong as the men it can bring (C10.5, D2-159)
+- **Measured first** (session 23, the 900-year check of C10.4; `lordships --load SAVE`, a new tool that reads every bond of tribute from the
+  history). Seed 2, years 0-900: 49 bonds (31 for bread, 18 for peace); 39 ended, **every one because the lord was "no longer the stronger"** -
+  none because it was gone; 4-9 lords at a time among 27-31 villages, the largest lordship never more than 4 villages (depth 1-2), no growth over
+  600 years. Two faults in how "the stronger" was weighed (D2-075: the fit grown people at home in each village on the day of the tributary's
+  harvest; a lord by its own village alone):
+  - **a day's count**: in year 464 a mild epidemic reached 12 villages and killed 6 people - and five lordships ended that year, their lords'
+    people abed on their tributaries' harvest days; bonds agreed the day after a raid (the beaten village's wounded abed) ended at its next
+    harvest when they had mended - the same pair bound and freed again within 2-5 years (Naekthorpe and Krounpelthorpe three times in seed 11's
+    first 300 years; 10 rebindings of a pair in seed 2's 900);
+  - **a lord's own village only**: a lord with tributaries near a village is weighed as if they did not exist, though its call (C10.1) brings
+    their men to its bands - against a refuser too (a refusal is a wrong the lord holds). D2-075's own evidence said it: "lordships stay small and
+    short ... while a lord's strength is only its own village's".
+- **The rule** (`Conflict.Hands`, `Conflict.Might`): a village is weighed by its **people of fighting age** - its grown people of 16 to 60 who live
+  there, wherever they are that day: a day's wounds, sickness and hunger pass and do not count against it; the dead, the old and those who left do.
+  A lord is weighed with **the men its call would bring** against the village weighed: of each of its tributaries within a day's walk of it, a
+  quarter of the meek and more of the bold (C10.1's own odds, grown and under fifty), never those with close kin there; the village weighed is
+  never its own caller. Used wherever two villages weigh who is the stronger for a bond: a beaten village bowing to its raiders (D2-075), a
+  village bowing for bread (C10.4), a tributary that would pay no more at its harvest. The tactical counts of a night's raid (who wakes, who comes
+  running) stay the day's: those abed cannot come.
+- **The record**: a paramount's power lay in the fighters its subordinate villages owed it, not in its own village alone (Earle 1997 on the
+  chief's military power; Carneiro 1981 on chiefdoms grown by conquest, the conquered owing men as well as tribute), and dependants broke away
+  from a lord weakened in fact - a lost war, a dead lord, a plague that killed - not from its sickbeds.
+- **Tells**: the weighing is recorded with each tribute (`TributePaid` ArgA/ArgB) and with its end (`TributeEnded` Magnitude/ArgB): the settlement
+  page says "At its last harvest X could bring N against it (its own people and those its call brings); it had M of fighting age"; history says
+  why a tributary paid no more ("...is no longer the stronger - it could bring N against them ..., and they have M of fighting age").
+- **Tools**: `--oldmight` (D2-075's day count and a lord's own village, on the same binary), `--mighttally` (each weighing by the old count and by
+  might), the `might:` report line; `lordships --load SAVE [--every N] [--bonds]` (session 23).
+
+## 12h. Tribute carried: the lord's tenth goes to its store on its tributaries' backs (C10.6, D2-161)
+- **Found** (session 23's real shots of seed 2's bread lordship, `s23a`/`s23b`): the bond read only at close range - the tributary flies its lord's
+  standard by its first household's door - and not at all from the village view or the region; and the tenth went into the lord's granary at the
+  harvest by no one's hands, a transfer between villages with no carrier, cost or road.
+- **The rule**: at the tributary's harvest the tenth is set aside in its store for the lord (`Settlement.TributeDue`); its people carry it there
+  (`Conflict.Carry`): as many loads a day as clear it in ten days, never more than one for every twenty of its fit grown people; a back's 25 kg or
+  the household's cart's on a worn way (C4.2). Lived, the village's day sets the loads wanted (`CarryToday`) and grown members take them in the
+  morning (`WhyCode.Tribute`), walk to the lord's village, stay a while, come home; a COARSE day carries the same loads at once. Each load wears the
+  way (C4.1), carries sickness and news, and is **brought** (`Conflict.Brought`): into the lord's first household's grain (C10.2), answering the lord's
+  wrongs (D2-075), giving back the lord's famine grain (C10.4). A bond that ends gives back what is still set aside; a load on the way goes home
+  into the store - but a load sent home while the bond holds (everyone home at once when the world goes COARSE) is set aside again and carried.
+  One cart goes one way at a time: a carrier whose household's cart is out with another of them (on the road, at the woods, the quarry or the
+  muck) takes a back's load; a COARSE day sends each household's cart once a day.
+- **Only what can be carried is set aside** (found reading the code before landing): a bond for bread needs only a day's walk as the crow flies
+  (C10.4), and relief within it moves at once, so a village across water can owe - and bow to - a neighbour no way on foot leads to. Its tenth is
+  then not set aside: it stays in its store, and the pages say why ("No way on foot leads from it to X: its people cannot carry the tenth there");
+  carrying it by boat waits for boats across the water (C9.5). And what still stands set aside at the next harvest - carried by nobody in a year:
+  no hands fit to carry it, or the way cut since - is the village's again before the new tenth is set aside, so no store keeps a pile for a lord
+  its people cannot bring it to.
+- **What it changes in the world picture**: carriers with sacks (and carts) on the way to the lord after each tributary's harvest; the standards (real
+  state) enlarged with the camera's distance up to 4x so that the polity's colours read from the village view. The way between a tributary and its
+  lord is walked two times a load - but measured (ten worlds at year 300): every pair of villages within a day's walk is already worn to a path or a
+  road by its own traffic (the bound pairs 4 roads and 19 paths, the 599 others 89 roads, 500 paths, 10 tracks), so the ways of a lordship do not
+  stand out from the others' - the hope that they would converge visibly on the lord was not borne out.
+- **Measured** (D2-161): over ten worlds' 300 years 419,420 FU set aside and carried in 7,909 loads (half on carts); no way on foot to the lord at 444
+  harvests in five worlds - a fifth of all the tribute, kept at home: the case for carrying it by boat (C9.5).
+- **The record**: food rents carried to the lord's hall - the *feorm* of the early English kings, a night's food for the king's household brought in
+  kind; manorial dues carted to the lord's barn after the harvest.
+- **Tools**: `--oldtribute` (the tenth into the lord's store at the harvest, carried by nobody), `--carrytally` (the `carried:` line: loads, FU,
+  lived, by cart, carriers' km, given back at a bond's end or after a year uncarried, tenths not set aside for want of a way), `lordships` (the ways
+  between the bound and their lords; the bonds with no way on foot and what stands set aside).
+
 ## 13. Civilisation depth (D2-089)
 
 Force, fortification, war and sieges are designed in `23_MILITARY_AND_WAR.md` (fighters as persistent people, arms as goods, training,

@@ -137,8 +137,8 @@ namespace TC2.Tests.Core
         }
 
         // ------------------------------------------------------------------ tribute and lordship (D2-075)
-        /// <summary>Premise: b's band held the field at a this month and b's people once killed a man of a; half a's grown people are
-        /// unfit for a fight; a knows no good land to go to.</summary>
+        /// <summary>Premise: b's band held the field at a this month and b's people once killed a man of a; half a's grown people died of the
+        /// feud (C10.5: a village is weighed by its people of fighting age - a day's unfitness no longer counts); a knows no good land to go to.</summary>
         static long Beaten(World w, int a, int b)
         {
             long ev = w.Record(new HistoryEvent { Kind = HistoryKind.Raid, Time = w.Now, Settlement = a, Subject = EntityRef.Settlement(b), Object = EntityRef.Settlement(a) });
@@ -147,9 +147,11 @@ namespace TC2.Tests.Core
             w.DeedBook.Learn(a, kill, KnownHow.Saw);
             int raid = w.DeedBook.Record(DeedKind.Raid, Grown(w, b), b, 0, a, Trade.Grain, 120, 150, ev);
             w.DeedBook.Learn(a, raid, KnownHow.Saw);
-            var res = w.Residents(a);
+            var res = new List<int>();
+            var ra = w.Residents(a);
+            for (int i = 0; i < ra.Count; i++) res.Add(ra[i]);
             int k = 0;
-            for (int i = 0; i < res.Count; i++) { ref var q = ref w.People.Get(res[i]); if (q.Alive && q.AgeYears(w.Now) >= 16 && (k++ % 2) == 0) q.Health = 0.5f; }
+            for (int i = 0; i < res.Count; i++) { ref var q = ref w.People.Get(res[i]); if (q.Alive && q.AgeYears(w.Now) >= 16 && q.AgeYears(w.Now) < 60 && (k++ % 2) == 0) w.Agents.Kill(ref q, ev, 11); }
             ref var sa = ref w.Settlements.Get(a);
             sa.Lore = KnownSites.Empty;
             if (sa.ExpectedHarvest < 500) sa.ExpectedHarvest = 500;
@@ -174,6 +176,8 @@ namespace TC2.Tests.Core
             double lordStore = w.Settlements.Get(b).Granary;
             w.Settlements.Get(a).Granary += 1000;
             w.Conflict.Harvested(a, 1000);
+            Assert.AreEqual(100.0, w.Settlements.Get(a).TributeDue, 1e-6, "a tenth of the harvest set aside for its lord (C10.6)");
+            BreadTests.CarriedIn(w, a);   // (its people carry it to the lord's store)
             Assert.AreEqual(lordStore + 100, w.Settlements.Get(b).Granary, 1e-6, "a tenth of the harvest to its lord");
             // and the lord raises no band against its own tributary, though it holds a wrong against it
             int wrong = w.DeedBook.Record(DeedKind.Kill, Grown(w, a), a, 0, b, 0, 1.0, Conflict.KillWorth, 0);
@@ -194,11 +198,16 @@ namespace TC2.Tests.Core
             Beaten(w, a, b);
             w.AdvanceTo(w.Now + SimTime.Day);
             Assume.That(w.Settlements.Get(a).Lord == b, "a pays b");
-            // premise: the lord's people fall sick and weak; the tributary has mended
-            var rb = w.Residents(b);
-            for (int i = 0; i < rb.Count; i++) w.People.Get(rb[i]).Health = 0.5f;
-            var ra = w.Residents(a);
-            for (int i = 0; i < ra.Count; i++) w.People.Get(ra[i]).Health = 1f;
+            // premise: a sickness kills the lord's grown people until the tributary is the stronger (C10.5: a season's sick and wounded mend; the
+            // dead do not)
+            var rb = new List<int>();
+            var lb = w.Residents(b);
+            for (int i = 0; i < lb.Count; i++) rb.Add(lb[i]);
+            for (int i = 0; i < rb.Count && w.Conflict.Might(b, a) >= w.Conflict.Might(a, b); i++)
+            {
+                ref var q = ref w.People.Get(rb[i]);
+                if (q.Alive && q.AgeYears(w.Now) >= 16 && q.AgeYears(w.Now) < 60) w.Agents.Kill(ref q, 0, 10);
+            }
             long mark = w.History.LastId;
             w.Conflict.Harvested(a, 1000);
             for (int i = w.History.FirstIndexAfter(mark); i < w.History.Count; i++) { var e = w.History.At(i); if (e.Kind == HistoryKind.TributeEnded) Console.WriteLine(HistoryText.Line(w, e)); }

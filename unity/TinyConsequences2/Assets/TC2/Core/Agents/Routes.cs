@@ -41,9 +41,15 @@ namespace TC2.Core.Agents
         }
     }
 
-    /// <summary>Finds and caches routes (A* over land cells, 8-connected, slope and forest costs).</summary>
+    /// <summary>Finds and caches routes (A* over land cells, 8-connected, slope and forest costs). Every input of a route stays as it is until the
+    /// cache is cleared - the relief, the land and the settlements change only with a clearing, and the woods are read as they stood at the last
+    /// turn of the plates (`PlanetState.WayForest`, D2-160) - so a route built late, after a load or first for the view is the route built early.</summary>
     public sealed class RouteCache
     {
+        /// <summary>`--oldways`: routes read the woods as they are when the route is built (before D2-160) - a route built after a load, or first
+        /// for the view, could differ from the one the running world had cached. On the same binary.</summary>
+        public static bool LiveForest;
+
         readonly Dictionary<long, Route> _cache = new Dictionary<long, Route>();
         readonly HashSet<long> _unreachable = new HashSet<long>();
         readonly Dictionary<long, Route> _toCell = new Dictionary<long, Route>();   // a settlement to a place (D2-045)
@@ -119,7 +125,7 @@ namespace TC2.Core.Agents
                     if (nb == c || !P.IsLand(nb)) continue;
                     double d = Vec3d.ArcDistance(grid.Center[c], grid.Center[nb], P.Radius);
                     double climb = DMath.Abs((double)P.Elev[nb] - P.Elev[c]) / Math.Max(1.0, d / P.GeoScale);   // (the ground's own steepness at any size, D2-085)
-                    double cost = d * (1.0 + 4.0 * climb + 0.35 * P.Forest[nb]);
+                    double cost = d * (1.0 + 4.0 * climb + 0.35 * (LiveForest ? P.Forest[nb] : P.WayForest[nb]));   // (the woods as they stood at the last turn of the plates, when the routes were last cleared: D2-160)
                     double ng = gc + cost;
                     if (_stamp[nb] != _stampNow || ng < _g[nb] - 1e-9)
                     {

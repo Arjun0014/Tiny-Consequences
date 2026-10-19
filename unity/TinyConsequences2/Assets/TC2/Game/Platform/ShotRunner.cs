@@ -182,6 +182,27 @@ namespace TC2.Game
             }
             var b = Budget.Unlimited;
             w.AdvanceTo(target, ref b);
+            // (C10.6 shots) -tc2after tribute: on, an hour at a time, until the framed village's tenth - or a tributary's of it - stands set aside for its
+            // lord (at the harvest), then to the next morning's hour: its carriers on the way (at most a year on)
+            if (Arg("-tc2after") == "tribute" && sid != 0)
+            {
+                long until = w.Now + SimTime.Year;
+                bool due = false;
+                while (w.Now < until && !due)
+                {
+                    w.AdvanceTo(w.Now + SimTime.Hour, ref b);
+                    for (int o = w.Settlements.First(); o != 0 && !due; o = w.Settlements.Next(o))
+                    {
+                        ref var so = ref w.Settlements.Get(o);
+                        if (so.Lord != 0 && (o == sid || so.Lord == sid) && so.TributeDue >= 1.0) due = true;
+                    }
+                }
+                long loc3 = w.LocalOffsetOf(sid);
+                long at3 = SimTime.FloorMod(w.Now + loc3, SimTime.Day);
+                long ahead3 = SimTime.Day - at3 + DMath.ToLong(hour * SimTime.Hour);   // (the next morning: the village's day sets the day's loads)
+                w.AdvanceTo(w.Now + ahead3, ref b);
+                Debug.Log("[TC2] after tribute: " + (due ? "a tenth set aside, the next morning" : "no tenth set aside within a year") + " - " + SimTime.Format(w.Now));
+            }
             // seals live on a shore anywhere on the planet: when only they are shot, the world goes on to the same hour at the
             // shore they haul out on now (a daylight shot)
             if (Arg("-tc2ground") != null) WorldObjectsView.ShowGround = true;   // (C13.3 tools: the simulation's ground under each home)

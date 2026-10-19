@@ -575,7 +575,7 @@ namespace TC2.Game
                 if (s.BurialCount > 0) DrawGraves(w, P, in s, sid, ex);
                 // the first household's standard (D2-152): a pole by the door of the house of the household most of the village follows (C10.2), its
                 // cloth in its polity's colour - the head of its lordship's (C10.1: a tributary flies its lord's), taller for a lord over more villages
-                if (s.Inhabited && s.HeadHh != 0) DrawStandard(w, P, in s, sid, ex);
+                if (s.Inhabited && s.HeadHh != 0) DrawStandard(w, P, in s, sid, Exaggeration(center, StandardFar));   // (enlarged further with distance: a polity read from the village view, C10.6)
                 // its palisade (D2-074): standing (an abandoned village's too, as it rots), or as far as its people have set it
                 if (s.Wall == 1 || s.Wall == 2 || s.OldR > 0f) DrawWall(w, P, in s, sid, ex);
                 if (!s.Inhabited) continue;   // (an abandoned village's well and granary decay as structures: C1.1)
@@ -638,6 +638,10 @@ namespace TC2.Game
             return Heraldry[(int)(KeyedRng.Mix((ulong)root * 0x9E3779B97F4A7C15UL ^ 0xBA22E7) % (ulong)Heraldry.Length)];
         }
 
+        /// <summary>The most a standard is enlarged with the camera's distance (life-size within 900 m, the village's own objects at most 1.6x): the
+        /// polity's colours read from the village view over the villages that fly them - real state exaggerated, never invented (D2-084; C10.6).</summary>
+        const float StandardFar = 4f;
+
         /// <summary>The first household's standard (D2-152): by its house's door, toward the house's front; taller for a lord's village by the villages
         /// it holds.</summary>
         void DrawStandard(TC2.Core.Simulation.World w, PlanetState P, in Settlement s, int sid, float ex)
@@ -654,7 +658,7 @@ namespace TC2.Game
             }
             int held = s.Lord == 0 ? w.Conflict.PolitySize(sid) : 0;
             float tall = 1f + 0.18f * Mathf.Min(6, held);
-            _standards.Add(0, PolityColour(w, sid), PlaceFaced(P, s, x, y, face, Mathf.Min(ex, 1.6f) * tall));
+            _standards.Add(0, PolityColour(w, sid), PlaceFaced(P, s, x, y, face, Mathf.Min(ex, StandardFar) * tall));
         }
 
         // the burial grounds' slots a later building covers, by village (counted again when its buildings change)

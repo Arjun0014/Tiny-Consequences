@@ -166,6 +166,33 @@ namespace TC2.Game
                 LookAt(d, view.EndsWith(":low") ? 24 : 50);
                 return;
             }
+            if (view.StartsWith("why:"))
+            {
+                // (C10.6 tools: "why:Tribute", "why:Trade:low") as "act:" for the reason a person is out - the busiest spot of the tribute's carriers on
+                // their way to the lord, never a guess of where they might be
+                string[] wp = view.Split(':');
+                if (System.Enum.TryParse(wp[1], out TC2.Core.Agents.WhyCode wk))
+                {
+                    var at = new System.Collections.Generic.List<Vec3d>();
+                    double tnow = Host.RenderTime;
+                    for (int id = w.People.First(); id != 0; id = w.People.Next(id))
+                    {
+                        ref var pp = ref w.People.Get(id);
+                        if (!pp.Alive || pp.Why != wk) continue;
+                        if (TC2.Core.Agents.Presence.Of(w, in pp, tnow, out Vec3d pd, out _, out _, out _)) at.Add(pd);
+                    }
+                    int bestN = 0;
+                    for (int i = 0; i < at.Count; i++)
+                    {
+                        int n = 0;
+                        for (int j = 0; j < at.Count; j++) if (Vec3d.ArcDistance(at[i], at[j], w.Planet.Radius) < 60.0) n++;
+                        if (n > bestN) { bestN = n; d = at[i]; }
+                    }
+                    Debug.Log("[TC2] " + wp[1] + " now: " + at.Count + " drawn, the busiest spot " + bestN + " within 60 m");
+                }
+                LookAt(d, view.EndsWith(":low") ? 24 : 50);
+                return;
+            }
             if (view.StartsWith("muck") && WorldObjectsView.MuckLargestKg > 0)
             {
                 // (C3.7c tools) the largest muck heap drawn at the last rebuild of the near objects: "muck" 18 m up, "mucklow" 9 m - shoot a near view of the

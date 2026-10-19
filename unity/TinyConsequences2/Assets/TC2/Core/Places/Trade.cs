@@ -48,6 +48,8 @@ namespace TC2.Core.Places
         public const double WorthAWalk = 4.0;
         /// <summary>Where a load goes at home: the village's store, or the household's larder (what was taken: D2-069).</summary>
         public const byte ToStore = 0, ToLarder = 1;
+        /// <summary>A load of the lord's tenth on its way to the lord's store (C10.6; brought back to the village's store if the bond ends on the way).</summary>
+        public const byte ToLord = 5;
         /// <summary>The known harm (FU, by its weight now) past which a village neither trades with nor feeds another (D2-069).</summary>
         public const double Grudge = 10.0;
 
@@ -256,6 +258,12 @@ namespace TC2.Core.Places
             {
                 ref var hh = ref w.Households.Get(p.Household);
                 hh.Larder += p.CargoQty;
+            }
+            else if (p.CargoTo == ToLord && p.Cargo == Grain && home == p.Home && w.Settlements.Get(home).Lord != 0)
+            {
+                // a load of the lord's tenth home again before it reached the lord (everyone home at once in COARSE) while the village still pays:
+                // set aside with the rest, to be carried again (C10.6); a bond ended on the way, it is the village's (the store, below)
+                w.Settlements.Get(home).TributeDue += p.CargoQty;
             }
             else
             {
