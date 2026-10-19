@@ -78,6 +78,8 @@ namespace TC2.Tests.Core
             Assert.AreEqual(1, e.ArgB, "for bread");
             Assert.AreEqual(told, e.Cause1, "its cause the gift");
             Console.WriteLine(HistoryText.Describe(w, in e));
+            Assert.Greater(w.Settlements.Get(r).TributeDue, 0.0, "its tenth set aside for its lord (C10.6)");
+            CarriedIn(w, r);   // (its people carry it to the lord's store: C10.6)
             double owed1 = w.DeedBook.Owed(r, g);
             Console.WriteLine("owed " + owed0.ToString("0") + " FU before its first tribute, " + owed1.ToString("0") + " after");
             Assert.Less(owed1, owed0, "the tribute gives the grain back");
@@ -162,6 +164,16 @@ namespace TC2.Tests.Core
                 Assert.AreEqual(0.0, w2.Settlements.Get(r2).Granary - b2, 1e-9, "--nobread: what it owes closes the giver's hand (D2-113)");
             }
             finally { Conflict.BreadOff = false; }
+        }
+
+        /// <summary>Premise (C10.6): the tributary's people have carried its lord's tenth, set aside at the harvest, into the lord's store.</summary>
+        internal static void CarriedIn(World w, int sid)
+        {
+            ref var s = ref w.Settlements.Get(sid);
+            if (s.Lord == 0 || s.TributeDue <= 0) return;
+            double due = s.TributeDue;
+            s.TributeDue = 0;
+            w.Conflict.Brought(sid, s.Lord, due);
         }
 
         /// <summary>A famine at the village now, its store a few days' food.</summary>

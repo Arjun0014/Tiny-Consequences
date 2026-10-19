@@ -150,6 +150,7 @@ namespace TC2.Tests.Core
                     Assume.That(w.Conflict.Hands(b) >= w.Conflict.Hands(a), "the lord the stronger");
                     double g0 = w.Households.Get(first).Grain, c0 = w.Settlements.Get(b).Common, s0 = w.Settlements.Get(b).Granary;
                     w.Conflict.Harvested(a, 1000);
+                    BreadTests.CarriedIn(w, a);   // (carried to the lord's store: C10.6)
                     double paid = w.Settlements.Get(b).Granary - s0;
                     Assert.AreEqual(Conflict.TributeShare * 1000, paid, 1e-6, "the tribute paid");
                     if (!off) Assert.AreEqual(g0 + paid, w.Households.Get(first).Grain, 1e-6, "the lord's own: its first household's grain");

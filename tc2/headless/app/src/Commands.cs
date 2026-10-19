@@ -227,6 +227,8 @@ namespace TC2.Headless
             if (a.Has("breadtally")) TC2.Core.Society.Conflict.BreadTally = new long[15];   // (C10.4: village-harvests by the relief still owed, bonds)
             if (a.Has("oldmight")) TC2.Core.Society.Conflict.MightOff = true;   // (C10.5 off: the day's fit grown people at home, a lord by its own village - D2-075's weighing)
             if (a.Has("mighttally")) TC2.Core.Society.Conflict.MightTally = new double[14];   // (C10.5: each weighing by the old count and by might)
+            if (a.Has("oldtribute")) TC2.Core.Society.Conflict.CarryOff = true;   // (C10.6 off: the tenth into the lord's store at the harvest, carried by nobody)
+            if (a.Has("carrytally")) TC2.Core.Society.Conflict.CarryTally = new double[7];   // (C10.6: loads carried, FU, lived, set aside, given back, by cart, km)
             if (a.Has("wetways")) TC2.Core.Places.Afoot.Off = true;   // (D2-156 off: lived walks straight across the water, the well's and the idle's spots and crofts in it, the woods by the straight line)
             if (a.Has("waytally")) TC2.Core.Places.Afoot.Tally = new long[128];   // (tools: the walks bent round the water and those no bend kept dry, by what was done at their end)
             if (a.Has("oldmuckorder")) TC2.Core.Agents.AgentSystem.CoarseMuckOld = true;   // (D2-158: a COARSE day's muck before the household's own roof, as C3.7c built it)
@@ -974,6 +976,10 @@ namespace TC2.Headless
                     if (mt != null)   // (C10.5: each weighing of the stronger - weighed, carried by the old count, carried by might, by both)
                         Console.WriteLine("might: bowing to raiders weighed " + mt[0] + " (the old count " + mt[1] + ", might " + mt[2] + ", both " + mt[3] + "); bowing for bread " + mt[4] + " (" + mt[5] + ", " + mt[6] + ", " + mt[7] +
                                           "); a lord no longer the stronger " + mt[8] + " (" + mt[9] + ", " + mt[10] + ", " + mt[11] + "); lords' calls counted " + mt[12] + " times, " + F(mt[13], "0") + " men");
+                    var ct = TC2.Core.Society.Conflict.CarryTally;
+                    if (ct != null)   // (C10.6: the lord's tenth carried to its store)
+                        Console.WriteLine("carried: set aside " + F(ct[3], "0") + " FU; loads " + ct[0] + " (lived " + ct[2] + "), " + F(ct[1], "0") + " FU (by cart " + F(ct[5], "0") + "), carriers' km " + F(ct[6], "0") +
+                                          "; given back at a bond's end " + F(ct[4], "0") + " FU");
                     long firstLord = 0, firstEnd = 0;
                     for (int i = 0; i < w.History.Count && (firstLord == 0 || firstEnd == 0); i++)
                     {

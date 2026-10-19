@@ -48,6 +48,8 @@ namespace TC2.Core.Places
         public const double WorthAWalk = 4.0;
         /// <summary>Where a load goes at home: the village's store, or the household's larder (what was taken: D2-069).</summary>
         public const byte ToStore = 0, ToLarder = 1;
+        /// <summary>A load of the lord's tenth on its way to the lord's store (C10.6; brought back to the village's store if the bond ends on the way).</summary>
+        public const byte ToLord = 5;
         /// <summary>The known harm (FU, by its weight now) past which a village neither trades with nor feeds another (D2-069).</summary>
         public const double Grudge = 10.0;
 

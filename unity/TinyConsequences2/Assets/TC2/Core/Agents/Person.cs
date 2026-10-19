@@ -76,6 +76,7 @@ namespace TC2.Core.Agents
         Garden = 48,      // the household's garden wants its season's work: dug and planted, weeded, gathered (C3.7a)
         Thresh = 49,      // the store's threshed grain runs short of its people's need and its days ahead; its sheaves wait (C3.7b)
         Muck = 50,        // the yards' muck waits to go out on the fields before the ploughing (C3.7c)
+        Tribute = 51,     // carrying a load of the lord's tenth to its store (C10.6)
     }
 
     public static class Sex { public const byte Female = 0, Male = 1; }
