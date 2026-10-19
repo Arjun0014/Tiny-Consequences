@@ -140,7 +140,8 @@ namespace TC2.Tests.Core
                 {
                     var w = Village(945, out int a);
                     int b = w.Settlements.Next(a);
-                    Assume.That(b != 0, "two villages");
+                    while (b != 0 && (!w.Settlements.Get(b).Inhabited || w.Routes.Get(w, a, b) == null)) b = w.Settlements.Next(b);   // (a way on foot between them: C10.6 carries the tenth)
+                    Assume.That(b != 0, "two villages a way on foot apart");
                     if (w.Conflict.Hands(b) < w.Conflict.Hands(a)) { int t = a; a = b; b = t; }   // (the stronger is the lord: its people of fighting age, C10.5)
                     Leaders.Weigh(w, b);
                     int first = w.Settlements.Get(b).HeadHh;

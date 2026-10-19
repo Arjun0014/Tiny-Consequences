@@ -26,6 +26,7 @@ namespace TC2.Tests.Core
                     {
                         if (a == b || !w.Settlements.Get(a).Inhabited || !w.Settlements.Get(b).Inhabited) continue;
                         if (Vec3d.ArcDistance(w.Settlements.Get(a).Anchor, w.Settlements.Get(b).Anchor, w.Planet.Radius) > Conflict.BreadReach) continue;
+                        if (w.Routes.Get(w, a, b) == null) continue;   // (a way on foot between them: the tenth is carried along it, C10.6)
                         bool stronger = w.Conflict.Might(a, b) >= Conflict.TributeOdds * w.Conflict.Might(b, a);
                         if (stronger == weaker) continue;
                         giver = a; receiver = b;
