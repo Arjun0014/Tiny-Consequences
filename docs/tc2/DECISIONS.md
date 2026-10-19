@@ -4779,4 +4779,8 @@ loads it and logs each voyage (`voyages --load SAVE --days N`; shot views `dugou
 days seed 2's world made 19 voyages, every one in a dugout (Lesgristholm fetching the grain Nemskundby owed it, 17 times; pots carried to Diththorpe
 and Kaestead), while seeds 3, 4, 5 and 11 made 20, 18, 0 and 64 voyages, all in plank boats - seed 3 never booked a dugout in those 96 days, though its
 COARSE history crossed by dugout about four times a year - and the same saves lived on two years at COARSE cross by dugout as rarely (seeds 3 and 11
-none, seed 2 nine trades against five lived): lived and COARSE agree; those worlds' crossings belong to earlier centuries.
+none, seed 2 nine trades against five lived): lived and COARSE agree; those worlds' crossings belong to earlier centuries. **Aimed real shots** (seed 2, `s23n1`, `s23n2`: `--village V --days D --hour H` at the probe's crossings, views `voyagedugout...` waiting for a dugout
+only): found at the minute the probe gave - "a crew of Tholdkeistmere: paddling over the water to Diththorpe in the household's dugout with 23 kg of
+pots and jars to trade" (mid-spring, 8.5 h), and Lesgristholm's crossing to Grosstead with iron (midsummer dawn); **at 45 m (`voyageclose`) a dugout
+crossing reads** - the hollowed hull, two paddlers, a paddle in the water, the shore behind; at 90 m it is a speck by the far shore, and from the far
+landing (110 m) the boat drawn up does not stand out from the landing's frames.

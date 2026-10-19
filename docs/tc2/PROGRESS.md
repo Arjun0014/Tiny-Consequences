@@ -19,7 +19,10 @@
   all in dugouts** (Lesgristholm fetching the grain Nemskundby owes it 17 times; pots to Diththorpe and Kaestead); **seeds 3, 4, 5, 11 made 20, 18, 0, 64,
   all plank boats** - seed 3 booked no dugout at all, though its COARSE history crossed by dugout ~4 times a year. **Compared with COARSE at the same
   moment** (the same saves two years on at COARSE, `--crosstally`): seeds 3 and 11 cross by dugout 0 times either way, seed 2 9 trade crossings COARSE
-  against 5 lived (with 14 fetches) - lived and COARSE agree; those worlds' crossings belong to earlier centuries. (4) **Web `s23web4` on main with C9.5b: 6/6**, browser = headless dotnet = editor Mono, every part bit for bit (D2-163). (5) **C10.7a
+  against 5 lived (with 14 fetches) - lived and COARSE agree; those worlds' crossings belong to earlier centuries. **Aimed real shots** (`s23n1`, `s23n2`, seed 2): the
+  views found the probe's crossings at the predicted minute - Tholdkeistmere's dugout paddled to Diththorpe with pots, Lesgristholm's to Grosstead with
+  iron; **at 45 m a dugout crossing reads** (hull, two paddlers, a paddle, the shore behind); at 90 m a speck; ashore at the far landing it does not stand
+  out. C9.5b's checks are complete. (4) **Web `s23web4` on main with C9.5b: 6/6**, browser = headless dotnet = editor Mono, every part bit for bit (D2-163). (5) **C10.7a
   built** (`wip/c107a-arms`; sim 88): all nine neighbouring test classes pass, 0 skipped; control, ten seeds and 900 years queued (D2-164 draft).
   (6) **C10.7b sworn men built** (`wip/c107b-sworn`, sim 89; D2-165 draft): first build and tests queued. (7) **C9.5c measured first**: a COARSE day's
   visits reach every village within 6 km, across water too - wearing "ways" history tells as paths where no way on foot exists, carrying sickness and
