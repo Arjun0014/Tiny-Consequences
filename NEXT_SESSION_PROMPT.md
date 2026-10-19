@@ -12,9 +12,10 @@ answers "what changes in the world picture?" and is judged in real game shots.
 ## Read first (this order), then work autonomously
 1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the standing prompt (architecture, rules, every direction; "Where we are (session 23)").
 2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 23"**: exact state, the running job queue, "Verified", "Next, in order".
-3. `docs/tc2/DECISIONS.md` newest (D2-157, D2-158) and the drafts `tc2/out/tools/s23/d2159.md` (C10.5), `d2160.md` (D2-160), `d2161.md` (C10.6).
-4. On the integration branch (`C:/Game Dev/tc-int`, `wip/s23-int`): `docs/tc2/10_CONFLICT_AND_POLITICS.md` §12g (a lordship's might), §12h (tribute
-   carried); `docs/tc2/03_ARCHITECTURE.md` §4 (derived caches); `docs/tc2/25_CIVILISATION_ROADMAP.md` "C10 governance, by slices".
+3. `docs/tc2/DECISIONS.md` newest (D2-159 a lordship's might, D2-160 the ways' woods, D2-161 tribute carried - all landed) and the draft
+   `tc2/out/tools/s23/d2162.md` (C9.5a grain across water goes by boat, in evaluation).
+4. On main: `docs/tc2/10_CONFLICT_AND_POLITICS.md` §12g, §12h; `docs/tc2/03_ARCHITECTURE.md` §4 (derived caches); `docs/tc2/25_CIVILISATION_ROADMAP.md`
+   "C10 governance, by slices". On `wip/c95-across` (worktree `C:/Game Dev/tc-across`): `docs/tc2/24_TRANSPORT_AND_MARITIME.md` §5 "C9.5a".
 5. `docs/tc2/PROGRESS.md` CURRENT STATE (the session 23 entry first).
 6. `git status`, `git log --oneline -10`, `git worktree list`, and the queue: `cat $Q/runq.log` (path below).
 
