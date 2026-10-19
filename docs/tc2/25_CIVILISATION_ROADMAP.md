@@ -69,11 +69,11 @@ and the crew (D2-111). C9.2b boats of planks (D2-112). C9.3 voyages, relief owed
 ### C9 maritime, by slices (D2-110): C9.1 the dugout - made from the woods, owned, rowed out to the open sea's shoals, lost in rising wind
 (closed in session 8: 9a2ceb7, 23ac1c9); **C9.2a the landing and the crew** (D2-111: one landing a village, boats in a row on it, a boat goes out with its crew, nobody stands in the sea); **C9.2b plank boats and boatbuilding** (D2-112: a technique found by
 woodworkers at a dugout; a boat shed at the landing; plank boats built there); **C9.3 voyages** (D2-113, closed: ways over the sea, a boat's load in trade, grain by sea to famines, relief owed back - social storage -, voyages lived by their crews); C9.4 the dock (by catches landed
-and loads moved) and cargo boats, coastal trade at the sea's cost ratio; C9.5 ferries; then the coastal proof (`§5`).
+and loads moved) and cargo boats, coastal trade at the sea's cost ratio; **C9.5a grain across water goes by boat** (D2-162: within a day's walk grain moves at once and traders walk only along a way on foot; across water relief, grain given back and the lord's tenth - in the tributary's boats or the lord's, come for it - go by sea or not at all); C9.5b people across water in boats (island woodcutters, a town on two shores, a COARSE day's visits that still carry news and sickness across water at once); ferries; then the coastal proof (`§5`).
 
 ### C10 governance, by slices: ~~C10.1 the lord's call~~ (D2-107; the lord's answer D2-108); ~~C10.2 standing and the village's first household~~
 (D2-127); ~~C10.3 a contested succession splits a village~~ (D2-128); ~~C10.4 bread and dependence~~ (D2-157); ~~C10.5 a lordship's might~~ (D2-159);
-~~C10.6 tribute carried to the lord's store~~ (D2-161: its labour on the ways after each harvest; a fifth of the tribute has no way on foot to its lord - by boat next, C9.5); next by evidence: the
+~~C10.6 tribute carried to the lord's store~~ (D2-161: its labour on the ways after each harvest; a fifth of the tribute has no way on foot to its lord - by boat since C9.5a, D2-162); next by evidence: the
 lord's household men fed from the tribute (retainers, `23` §3), a lord's death and its tributaries (succession in a lordship), rebellion by those who
 rise together.
 
