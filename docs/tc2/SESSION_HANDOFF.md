@@ -1,5 +1,27 @@
 # TC2 Session handoff
 
+## Session 23, third context (20 Oct 2026, from 00:04 IST; Control Room run #63 session 3) - C9.5a landed; C9.5b built, in evaluation
+
+### Exact state (keep current)
+- **main** = C9.5a landed: c8f6f5d (`--no-ff` merge of `wip/c95-across`), shot runner `--after tribute` across water (cbc99ab), DECISIONS D2-162 and
+  D2-161's 900-year line, `10` §12h, PROGRESS (6482ab0). Sim version 86. Not ours: `.claude/launch.json`, `Assets/Resources.meta`. Verified on main:
+  builds (`bin_m3`), floatcheck clean, `unity.mjs cc` ok; the full suite, the Web build/test (`s23web3`) and the real shots are in the queue.
+- **C9.5b a boat to cross** - branch `wip/c95b-cross`, worktree `C:/Game Dev/tc-cross` (from main 6482ab0), sim 87, draft decision
+  `tc2/out/tools/s23/d2163.md`, design note in `24` §5 on the branch, design draft `c95b_design.md`. Queued: `6_3_c5_build_y1` (bin_y1 + CrossTests and
+  ten neighbour classes -> `y1_ok`), `6_4_ctl_y1_s4` (`--oldcross` = `_x2`, annals and state hash), `6_5_y1_*` (ten seeds), `6_6_cmp_y1`
+  (`results/cmp_x2_y1.txt`).
+- **The queue** (task bc2qpqxfq, `Q` as below): after C9.5b's jobs, `6_a_g2_04..10` + `6_b_cmp_g2` (the tribute lean's attribution for D2-161).
+  Results of this context: `results/cmp_g1_x2.txt` (C9.5a's ten seeds), `lordships_s2_l9g1_y600.txt` (the 900-year check).
+- Branches merged and removable: `wip/c95-across` (`tc-across`), `wip/c95-fetch` (`tc-fetch`), and the older ones listed below.
+
+### Next, in order
+1. Read the queue: main's full suite (`results/fullsuite_m3.txt`), `6_3_d_lords_x2` (bonds with no way on foot at year 300 - shot targets),
+   Web `s23web3` (6/6?), C9.5b's tests, control and ten seeds (`cmp_x2_y1.txt`: does the archipelago, seed 5, regain trade and relief through boats
+   made to cross?). Then D2-163 from the draft, merge `wip/c95b-cross`, `unity.mjs cc`, full suite.
+2. Real shots of boats crossing (`voyagerelief...`, `voyagetenth...` views; `--after tribute` across water): the world picture of C9.5.
+3. Then by evidence: C10.7 the lord's household men (`tc2/out/tools/s23/c107_design.md`: lords' first households hold 0.3-30 years of their need;
+   their tribute would feed 0-50 people a year), C9.5c people across water (COARSE visits still carry news and sickness across water at once).
+
 ## Session 23, second context (19 Oct 21:26 - 20 Oct ~00:10 IST; Control Room run #63 session 2) - C10.5, D2-160, C10.6 landed and validated; C9.5a built, in evaluation; context handoff with the queue running
 
 ### Exact state at the handoff (20 Oct 00:05)
