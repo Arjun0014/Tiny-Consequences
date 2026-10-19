@@ -11,6 +11,12 @@
     sim version 83, `10` §12g, `25` C10 by slices). Binary `bin_c2` (scratchpad), its tests pass.
   - `wip/route-ground` (`C:/Game Dev/tc-routes`, 2e4914c; contains the tools): **D2-160 the ways' woods** (draft `tc2/out/tools/s23/d2160.md`, sim
     version 84, `03` §4) - a determinism fix: watching changed history (see below).
+  - `wip/c106-tribute` (`C:/Game Dev/tc-tribute`, cbb502c; on C10.5 incl. its indexed kin test 5983f04): **C10.6 tribute carried** (draft
+    `tc2/out/tools/s23/d2161.md`, sim version 85): the tenth set aside at the harvest and carried to the lord's store by the tributary's people
+    (lived walkers and carts; COARSE the same loads), each load wearing the way; standards enlarged with distance up to 4x (view). Tests 5/5 + neighbours.
+- **Merge plan**: C10.5 (sim 83, D2-159) -> D2-160 (84; resolve the version line) -> C10.6 (85); then on main: full suite, `unity.mjs cc`, a v85
+  seed-2 world for real shots (tributary, lord, the roads between them), the probe `--warmroutes` on it (equal hashes), the Web build and test, and a
+  ten-seed run of the final main against `_t1`.
 - **The queue**: `bash tc2/out/tools/s23/runq.sh` (background), queue dir `Q` = this session's scratchpad `q` (`todo`, `done`, `log`, `runq.log`;
   `touch $Q/stop` ends it after the current job). Jobs (copies in `tc2/out/tools/s23/`): `2_a_shots_bread` (real shots s23a tributary, s23b lord on
   `s2_y3`), `3_a_ctl_z0_s4` (`--oldmight` = `_y3`?), `3_b_z1_*` (ten seeds C10.5), `3_c_cmp_y3_z1`, `3_cr_*` (D2-160: build `bin_r2` and tests,
