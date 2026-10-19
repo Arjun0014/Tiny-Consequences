@@ -202,6 +202,20 @@ namespace TC2.Game
                 long at3 = SimTime.FloorMod(w.Now + loc3, SimTime.Day);
                 long ahead3 = SimTime.FloorMod(DMath.ToLong(hour * SimTime.Hour) - at3, SimTime.Day);   // (the next such hour: the carriers set out from 7)
                 w.AdvanceTo(w.Now + ahead3, ref b);
+                // then on, ten minutes at a time, to the first carrier out on the way (an hour's walk or two: at the lord's village they are visitors)
+                long until4 = w.Now + 5 * SimTime.Hour;
+                bool onWay = false;
+                while (due && w.Now < until4 && !onWay)
+                {
+                    for (int id = w.People.First(); id != 0 && !onWay; id = w.People.Next(id))
+                    {
+                        var pp = w.People.Get(id);   // (a copy: no ref locals in a coroutine)
+                        if (pp.Alive && pp.Why == TC2.Core.Agents.WhyCode.Tribute && pp.Act == TC2.Core.Agents.ActivityKind.TripOut) onWay = true;
+                    }
+                    if (!onWay) w.AdvanceTo(w.Now + 10 * SimTime.Minute, ref b);
+                }
+                if (onWay) w.AdvanceTo(w.Now + 20 * SimTime.Minute, ref b);   // (out on the way)
+                Debug.Log("[TC2] after tribute: " + (onWay ? "a carrier on the way" : "no carrier on the way by " + SimTime.Format(w.Now)));
                 Debug.Log("[TC2] after tribute: " + (due ? "a tenth set aside, the next morning" : "no tenth set aside within a year") + " - " + SimTime.Format(w.Now));
             }
             // seals live on a shore anywhere on the planet: when only they are shot, the world goes on to the same hour at the
