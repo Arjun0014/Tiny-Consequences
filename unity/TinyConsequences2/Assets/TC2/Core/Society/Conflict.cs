@@ -126,6 +126,9 @@ namespace TC2.Core.Society
         /// harvest - the weighings, those the old count (D2-075) would carry, those might carries, and both; [12] lords' weighings in which their call
         /// counted, [13] the men it added; null in the game.</summary>
         public static double[] MightTally;
+        /// <summary>Tools (`--armstally`, C10.7a): for each weighing - [0..3] a beaten village's bowing, [4..7] bowing for bread, [8..11] a bond's end at
+        /// the harvest - the weighings, those heads would carry (C10.5), those lasting strength carries (C10.7a), and both; null in the game.</summary>
+        public static double[] ArmsTally;
 
         // ---- tribute carried (C10.6, D2-161)
         /// <summary>`--oldtribute`: the tenth goes into the lord's store at the tributary's harvest, carried by nobody (D2-075 to C10.5) - on the same
@@ -1139,12 +1142,14 @@ namespace TC2.Core.Society
         /// village's fit people at home that day: a lord of several villages was no stronger than its seat, and a bond agreed the day after a raid
         /// (the beaten village's wounded abed) ended at the next harvest, when they had mended.
         /// </summary>
-        public double Might(int sid, int against)
+        public double Might(int sid, int against) => MightOff ? FitAt(sid, _w.Now) : Weigh(sid, against, MightArmsOff);
+
+        /// <summary>`Might` by heads (C10.5) or by lasting strength (C10.7a).</summary>
+        double Weigh(int sid, int against, bool heads)
         {
             var w = _w;
             long now = w.Now;
-            if (MightOff) return FitAt(sid, now);
-            double m = MightArmsOff ? Hands(sid) : Lasting(sid);   // (C10.7a: by their lasting strength)
+            double m = heads ? Hands(sid) : Lasting(sid);   // (C10.7a: by their lasting strength)
             if (against == 0 || !w.Settlements.Exists(against)) return m;
             var anchor = w.Settlements.Get(against).Anchor;
             double called = 0;
@@ -1157,7 +1162,7 @@ namespace TC2.Core.Society
                 if (Vec3d.ArcDistance(tr.Anchor, anchor, w.Planet.Radius) > 6000 || w.Routes.Get(w, o, against) == null) continue;
                 if (!indexed) { KinIndex(against); indexed = true; }
                 var tres = w.Residents(o);
-                double kit = MightArmsOff ? 1.0 : Kit(o);
+                double kit = heads ? 1.0 : Kit(o);
                 for (int i = 0; i < tres.Count; i++)
                 {
                     ref var q = ref w.People.Get(tres[i]);
@@ -1165,10 +1170,10 @@ namespace TC2.Core.Society
                     double age = q.AgeYears(now);
                     if (age < 16 || age >= 50 || KinInIndexed(in q, against)) continue;   // (whom the call takes: grown and under fifty, as a band's own)
                     double owed = CallOwed + CallBold * q.Bold / 255.0;
-                    called += MightArmsOff ? owed : owed * LastingOf(in q, age, kit);   // (C10.7a: as they would fight)
+                    called += heads ? owed : owed * LastingOf(in q, age, kit);   // (C10.7a: as they would fight)
                 }
             }
-            if (MightTally != null && called > 0) { MightTally[12] += 1; MightTally[13] += called; }
+            if (MightTally != null && called > 0 && heads == MightArmsOff) { MightTally[12] += 1; MightTally[13] += called; }   // (the weighing the world goes by)
             return m + called;
         }
 
@@ -1208,6 +1213,17 @@ namespace TC2.Core.Society
             if (old) MightTally[kind * 4 + 1] += 1;
             if (now) MightTally[kind * 4 + 2] += 1;
             if (old && now) MightTally[kind * 4 + 3] += 1;
+        }
+
+        /// <summary>Tools (C10.7a): one weighing of the stronger, by heads and by lasting strength ([0..3] bowing to raiders, [4..7] for bread, [8..11] a
+        /// bond's end).</summary>
+        void TallyArms(int kind, bool heads, bool lasting)
+        {
+            if (ArmsTally == null) return;
+            ArmsTally[kind * 4] += 1;
+            if (heads) ArmsTally[kind * 4 + 1] += 1;
+            if (lasting) ArmsTally[kind * 4 + 2] += 1;
+            if (heads && lasting) ArmsTally[kind * 4 + 3] += 1;
         }
 
         double SideStrength(System.Collections.Generic.List<int> side)
@@ -1472,6 +1488,7 @@ namespace TC2.Core.Society
             // (C10.5: its people and theirs with the men their call brings - not the day after the raid's count, its wounded abed)
             bool weaker = Might(lord, sid) >= TributeOdds * Might(sid, lord);
             if (MightTally != null) TallyMight(0, FitAt(lord, now) >= TributeOdds * FitAt(sid, now), weaker);
+            if (ArmsTally != null) TallyArms(0, Weigh(lord, sid, true) >= TributeOdds * Weigh(sid, lord, true), Weigh(lord, sid, false) >= TributeOdds * Weigh(sid, lord, false));
             if (!weaker) return;
             ref var s2 = ref w.Settlements.Get(sid);
             s2.Lord = lord; s2.LordSince = now;
@@ -1520,6 +1537,7 @@ namespace TC2.Core.Society
             double lordMight = gone ? 0.0 : Might(lord, sid), ownMight = gone ? 0.0 : Might(sid, lord);
             bool weak = !gone && lordMight < ownMight;
             if (MightTally != null && !gone) TallyMight(2, FitAt(lord, now) < FitAt(sid, now), weak);
+            if (ArmsTally != null && !gone) TallyArms(2, Weigh(lord, sid, true) < Weigh(sid, lord, true), Weigh(lord, sid, false) < Weigh(sid, lord, false));
             if (gone || weak)
             {
                 long agreed = s.LordEvent;
@@ -1790,6 +1808,8 @@ namespace TC2.Core.Society
             bool stronger = near && (BreadTally != null || MightTally != null || days >= BowDays) && Might(giver, sid) >= TributeOdds * Might(sid, giver);
             bool loop = near && Root(giver) == sid;   // (not to a village that pays it, directly or through its lords)
             if (MightTally != null && near && days >= BowDays && !loop) TallyMight(1, FitAt(giver, now) >= TributeOdds * FitAt(sid, now), stronger);
+            if (ArmsTally != null && near && days >= BowDays && !loop)
+                TallyArms(1, Weigh(giver, sid, true) >= TributeOdds * Weigh(sid, giver, true), Weigh(giver, sid, false) >= TributeOdds * Weigh(sid, giver, false));
             if (BreadTally != null)
             {
                 int b = giver == 0 || days <= 0 ? 0 : days < 5 ? 1 : days < 10 ? 2 : days < 20 ? 3 : days < 30 ? 4 : days < 60 ? 5 : 6;

@@ -228,6 +228,7 @@ namespace TC2.Headless
             if (a.Has("oldmight")) TC2.Core.Society.Conflict.MightOff = true;   // (C10.5 off: the day's fit grown people at home, a lord by its own village - D2-075's weighing)
             if (a.Has("mighttally")) TC2.Core.Society.Conflict.MightTally = new double[14];   // (C10.5: each weighing by the old count and by might)
             if (a.Has("oldmightarms")) TC2.Core.Society.Conflict.MightArmsOff = true;   // (C10.7a off: might counts people of fighting age by heads, as C10.5 weighed them)
+            if (a.Has("armstally")) TC2.Core.Society.Conflict.ArmsTally = new double[12];   // (C10.7a: each weighing by heads and by lasting strength)
             if (a.Has("oldways")) TC2.Core.Agents.RouteCache.LiveForest = true;   // (D2-160 off: routes from the woods as they are when built)
             if (a.Has("oldtribute")) TC2.Core.Society.Conflict.CarryOff = true;   // (C10.6 off: the tenth into the lord's store at the harvest, carried by nobody)
             if (a.Has("carrytally")) TC2.Core.Society.Conflict.CarryTally = new double[TC2.Core.Society.Conflict.CarryTallyN];   // (C10.6: loads carried, FU, lived, set aside, given back, by cart, km, a year uncarried, no way on foot; by sea)
@@ -992,6 +993,10 @@ namespace TC2.Headless
                     if (mt != null)   // (C10.5: each weighing of the stronger - weighed, carried by the old count, carried by might, by both)
                         Console.WriteLine("might: bowing to raiders weighed " + mt[0] + " (the old count " + mt[1] + ", might " + mt[2] + ", both " + mt[3] + "); bowing for bread " + mt[4] + " (" + mt[5] + ", " + mt[6] + ", " + mt[7] +
                                           "); a lord no longer the stronger " + mt[8] + " (" + mt[9] + ", " + mt[10] + ", " + mt[11] + "); lords' calls counted " + mt[12] + " times, " + F(mt[13], "0") + " men");
+                    var at = TC2.Core.Society.Conflict.ArmsTally;
+                    if (at != null)   // (C10.7a: each weighing of the stronger - weighed, carried by heads, carried by lasting strength, by both)
+                        Console.WriteLine("arms: bowing to raiders weighed " + at[0] + " (by heads " + at[1] + ", by lasting strength " + at[2] + ", both " + at[3] + "); bowing for bread " + at[4] + " (" + at[5] + ", " + at[6] + ", " + at[7] +
+                                          "); a lord no longer the stronger " + at[8] + " (" + at[9] + ", " + at[10] + ", " + at[11] + ")");
                     var ct = TC2.Core.Society.Conflict.CarryTally;
                     if (ct != null)   // (C10.6: the lord's tenth carried to its store)
                         Console.WriteLine("carried: set aside " + F(ct[3], "0") + " FU; loads " + ct[0] + " (lived " + ct[2] + "), " + F(ct[1], "0") + " FU (by cart " + F(ct[5], "0") + "), carriers' km " + F(ct[6], "0") +
