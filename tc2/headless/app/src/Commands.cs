@@ -237,7 +237,8 @@ namespace TC2.Headless
             if (a.Has("oldacross")) TC2.Core.Places.Trade.AcrossOff = true;   // (C9.5a off: grain within a day's walk across water at once, the tenth across water kept at home)
             if (a.Has("acrosstally")) TC2.Core.Places.Trade.AcrossTally = new double[TC2.Core.Places.Trade.AcrossTallyN];   // (C9.5 survey: grain and trade across water at once between villages within a day's walk)
             if (a.Has("oldcross")) TC2.Core.Places.Boats.CrossOff = true;   // (C9.5b off: dugouts carry no loads, no boat is made to cross the water)
-            if (a.Has("visittally")) TC2.Core.Health.Disease.VisitTally = new double[TC2.Core.Health.Disease.VisitTallyN];   // (C9.5c survey: a COARSE day's visits, news and ways across water)
+            if (a.Has("visittally")) TC2.Core.Health.Disease.VisitTally = new double[TC2.Core.Health.Disease.VisitTallyN];
+            if (a.Has("oldvisits")) TC2.Core.Health.Disease.OldVisits = true;   // (C9.5c off: a COARSE day's visits to every village within a day's walk, across water too)   // (C9.5c survey: a COARSE day's visits, news and ways across water)
             if (a.Has("crosstally")) TC2.Core.Places.Boats.CrossTally = new double[TC2.Core.Places.Boats.CrossTallyN];   // (C9.5b: boats made to cross, dugouts' crossings)
             if (a.Has("wetways")) TC2.Core.Places.Afoot.Off = true;   // (D2-156 off: lived walks straight across the water, the well's and the idle's spots and crofts in it, the woods by the straight line)
             if (a.Has("waytally")) TC2.Core.Places.Afoot.Tally = new long[128];   // (tools: the walks bent round the water and those no bend kept dry, by what was done at their end)
