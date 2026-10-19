@@ -63,6 +63,26 @@ namespace TC2.Core.Places
             return hh.CartKind;
         }
 
+        /// <summary>
+        /// Whether another member of the household (not `except`) has its cart out now - on the road with more than a back's load, or at the woods,
+        /// the quarry or the muck with it (as the view draws it): one cart goes one way at a time (C10.6's carriers; lived).
+        /// </summary>
+        public static bool Out(World w, int hid, int except)
+        {
+            if (hid == 0 || !w.Households.Exists(hid)) return false;
+            var mem = w.Members(hid);
+            for (int i = 0; i < mem.Count; i++)
+            {
+                if (mem[i] == except) continue;
+                ref var q = ref w.People.Get(mem[i]);
+                if (!q.Alive) continue;
+                bool trip = (q.Act == ActivityKind.TripOut || q.Act == ActivityKind.TripHome) && q.Cargo != Trade.None && Trade.KgOf(q.Cargo) * q.CargoQty > Trade.LoadKg + 1e-6;
+                bool haul = q.Act == ActivityKind.Wood || q.Act == ActivityKind.Quarry || q.Act == ActivityKind.Muck;
+                if (trip || haul) return true;
+            }
+            return false;
+        }
+
         /// <summary>A made cart past its years.</summary>
         public static bool WornOut(in Household hh, long now) => hh.CartState == Made && now - hh.CartAt >= (long)(YearsOf(hh.CartKind) * SimTime.Year);
 

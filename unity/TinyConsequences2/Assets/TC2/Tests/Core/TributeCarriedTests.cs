@@ -159,6 +159,42 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void OneCartGoesOneWayAtATime()
+        {
+            var w = Bound(out int a, out int b);
+            Assume.That(w != null, "a tributary and its lord a walk apart");
+            // a household of the tributary with two who can carry, given a handcart; the way to the lord worn to a path
+            int hid = 0, p1 = 0, p2 = 0;
+            var hl = w.HouseholdsOf(a);
+            for (int i = 0; i < hl.Count && hid == 0; i++)
+            {
+                var mem = w.Members(hl[i]);
+                int x = 0, y = 0;
+                for (int j = 0; j < mem.Count; j++)
+                {
+                    if (!Conflict.CanCarry(in w.People.Get(mem[j]), w.Now) || w.People.Get(mem[j]).At != a) continue;
+                    if (x == 0) x = mem[j]; else if (y == 0) y = mem[j];
+                }
+                if (y != 0) { hid = hl[i]; p1 = x; p2 = y; }
+            }
+            Assume.That(hid != 0, "a household with two who can carry");
+            ref var hh = ref w.Households.Get(hid);
+            hh.CartKind = Carts.Hand; hh.CartState = Carts.Made; hh.CartAt = w.Now;
+            for (int i = 0; i < 2000 && w.Ways.State(w.Now, a, b) < 2; i++) w.Ways.Walk(w, a, b, 2.0);
+            Assume.That(Carts.LoadFor(w, hid, a, b) > Trade.LoadKg + 1.0, "a cart's load on a worn way");
+            Harvest(w, a, 10000);
+            w.Settlements.Get(a).CarryToday = 2;
+            ref var q1 = ref w.People.Get(p1);
+            double l1 = w.Conflict.TakeLoad(ref q1, b);
+            q1.Act = ActivityKind.TripOut;   // (on the road with it)
+            ref var q2 = ref w.People.Get(p2);
+            double l2 = w.Conflict.TakeLoad(ref q2, b);
+            Console.WriteLine("the first " + l1.ToString("0.0") + " FU, the second " + l2.ToString("0.0") + " FU");
+            Assert.Greater(l1 * Trade.KgOf(Trade.Grain), Trade.LoadKg + 1.0, "the first takes the cart's load");
+            Assert.AreEqual(Trade.LoadKg / Trade.KgOf(Trade.Grain), l2, 1e-3, "the second a back's: the cart is out with the first");
+        }
+
+        [Test]
         public void ABondThatEndsGivesBackWhatIsStillDue()
         {
             var w = Bound(out int a, out int b);

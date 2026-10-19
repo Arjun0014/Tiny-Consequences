@@ -1104,6 +1104,9 @@ namespace TC2.Core.Society
             return m + called;
         }
 
+        // (Carry's scratch, C10.6: the households whose cart carried a load of the tenth in a COARSE call)
+        readonly System.Collections.Generic.List<int> _carted = new System.Collections.Generic.List<int>();
+
         // (Might's kin test, `KinIn` with the village's parents gathered once: its living residents' mothers and fathers)
         readonly System.Collections.Generic.HashSet<int> _kinMothers = new System.Collections.Generic.HashSet<int>(), _kinFathers = new System.Collections.Generic.HashSet<int>();
 
@@ -1567,6 +1570,7 @@ namespace TC2.Core.Society
             var res = w.Residents(sid);
             int n = k * days, done = 0;
             double km = (w.Routes.Get(w, sid, lord)?.Length ?? 0.0) / 1000.0;
+            _carted.Clear();   // (the households whose cart carried a load in these days: one cart, one load a day)
             for (int a = 0; done < n && a < 4 * n && res.Count > 0; a++)
             {
                 ref var s1 = ref w.Settlements.Get(sid);
@@ -1575,6 +1579,12 @@ namespace TC2.Core.Society
                 ref var p = ref w.People.Get(pid);
                 if (!CanCarry(in p, now) || p.At != sid) continue;
                 double kg = Carts.LoadFor(w, p.Household, sid, lord);
+                if (kg > Trade.LoadKg + 1e-9)
+                {
+                    int used = 0;
+                    for (int i = 0; i < _carted.Count; i++) if (_carted[i] == p.Household) used++;
+                    if (used >= days) kg = Trade.LoadKg; else _carted.Add(p.Household);   // (its cart has gone each day already: a back's load)
+                }
                 double fu = DMath.Min(kg / Trade.KgOf(Trade.Grain), s1.TributeDue);
                 s1.TributeDue -= fu;
                 Brought(sid, lord, fu);
@@ -1607,6 +1617,7 @@ namespace TC2.Core.Society
             if (s.CarryToday == 0 || s.TributeDue < 1.0 || s.Lord != lord) return 0.0;
             if (p.CargoQty > 0f || p.CargoTo != Trade.ToStore) w.Trade.Unload(ref p, p.Home);   // (whatever they still hold is home first)
             double kg = Carts.LoadFor(w, p.Household, p.Home, lord);
+            if (kg > Trade.LoadKg + 1e-9 && Carts.Out(w, p.Household, p.Id)) kg = Trade.LoadKg;   // (its cart is out with another of them: a back's load)
             float q = (float)DMath.Min(kg / Trade.KgOf(Trade.Grain), s.TributeDue);   // (as the person carries it: the store loses what they hold)
             s.TributeDue -= q;
             s.CarryToday--;

@@ -250,6 +250,8 @@ Built on C3.3 (D2-126: household grain, loans recorded as debts, gifts). `Core/S
   way (C4.1), carries sickness and news, and is **brought** (`Conflict.Brought`): into the lord's first household's grain (C10.2), answering the lord's
   wrongs (D2-075), giving back the lord's famine grain (C10.4). A bond that ends gives back what is still set aside; a load on the way goes home
   into the store - but a load sent home while the bond holds (everyone home at once when the world goes COARSE) is set aside again and carried.
+  One cart goes one way at a time: a carrier whose household's cart is out with another of them (on the road, at the woods, the quarry or the
+  muck) takes a back's load; a COARSE day sends each household's cart once a day.
 - **Only what can be carried is set aside** (found reading the code before landing): a bond for bread needs only a day's walk as the crow flies
   (C10.4), and relief within it moves at once, so a village across water can owe - and bow to - a neighbour no way on foot leads to. Its tenth is
   then not set aside: it stays in its store, and the pages say why ("No way on foot leads from it to X: its people cannot carry the tenth there");
