@@ -15,10 +15,15 @@
 - **C10.5's 900-year check, seed 2** (`results/lordships_s2_l9z1_y600.txt`, against C10.4's `lordships_s2_l9y3_y600.txt`): no snowball - bonds 32
   (49), median life of a bread bond 113 years (73) and of a peace bond 242 (55), pairs bound again 6 (10), the largest lordship 3 villages, depth 1
   (3-4); `might:` - of 6,686 weighings at tributaries' harvests the old count would end 42 bonds, might 25 (all 25 among the 42). Seed 4: in the queue.
-- **The queue** (same runner, task bc2qpqxfq; `Q` as below): the pre-amendment integration jobs (`4_a_fullsuite_i1`, `4_b_f1_*`, `4_c_cmp_probe_f1`)
-  moved to `$Q/hold`; queued instead `3_e_build_p1` (builds `tc-carry` to `bin_p1`, floatcheck, eleven test classes, `p1_ok`), `4_a_fullsuite_p1`,
-  `4_b_g1_*` (ten seeds of the code to land, `_g1`), `4_c_cmp_probe_g1` (`results/cmp_t1_g1.txt`, each world's `carried:` line and its bonds with no
-  way on foot - `results/lordships_s*_g1.txt` - and the route probe on `s2_g1`). Still in order before them: `3_d_l9z1_s4`, `3_t_*` (C10.6 alone).
+- **Also amended (32dba4c): one cart goes one way at a time** - two members of a household could each take its cart's load at once (lived: the one
+  cart and its ox drawn twice on the road; COARSE: the cart's load twice a day); now `Carts.Out` (another member on the road with more than a back's
+  load, or at the woods, the quarry or the muck) gives a back's load, and a COARSE day sends each household's cart once a day. TributeCarriedTests 9.
+- **The queue** (same runner, task bc2qpqxfq; `Q` as below): the pre-amendment jobs - `4_a_fullsuite_i1`, `4_b_f1_*`, `4_c_cmp_probe_f1` and C10.6
+  as first built (`3_t_*`, `_t1`: no longer what lands) - moved to `$Q/hold`; queued instead `3_e_build_p1` (builds `tc-carry` to `bin_p1`,
+  floatcheck, eleven test classes, `p1_ok`), `3_f_ctl_g0_s4` (the control: `bin_p1 --oldtribute --oldways` must equal `_z1`), `4_a_fullsuite_p1`,
+  `4_b_g1_*` (ten seeds of the code to land, `_g1`), `4_c_cmp_probe_g1` (`results/cmp_z1_g1.txt`; each world's `carried:` line and its bonds with
+  no way on foot, `results/lordships_s*_g1.txt`; the route probe on `s2_g1`), `4_d_profile_g1` (30 COARSE years of `s2_g1` profiled with the rules
+  and with `--oldmight --oldtribute`: C10.5's ten seeds ran 18 % longer by the wall clock - to be measured).
 - **To land when they pass**: commit `wip/c106b-carry`; in `tc-int` `git merge --ff-only wip/c106b-carry`; on main `git merge --no-ff wip/s23-int`;
   DECISIONS D2-159 (`d2159.md` + the 900-year checks), D2-160 (`d2160.md`), D2-161 (`d2161.md` + the amendment and `_g1`); `unity.mjs cc`; shots
   from `tc2/out/civ/s2_g1/world_y300.tc2` (the landed code's own world); the Web build and test.
