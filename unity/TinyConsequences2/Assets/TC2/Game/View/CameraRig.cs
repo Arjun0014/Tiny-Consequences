@@ -79,7 +79,7 @@ namespace TC2.Game
         /// load in a dugout (C9.5b: a boat made to cross a short water); 0 any boat.</summary>
         public static int VoyageCargoFilter(string view) => view.Contains("tenth") ? 1 : view.Contains("relief") ? 2 : view.Contains("dugout") ? 3 : 0;
 
-        /// <summary>A voyage view's framing without its cargo filter: "voyage", "voyagefar", "voyagenear" or "voyagestay".</summary>
+        /// <summary>A voyage view's framing without its cargo filter: "voyage", "voyageclose", "voyagefar", "voyagenear" or "voyagestay".</summary>
         public static string VoyageBase(string view) => view.Replace("tenth", "").Replace("relief", "").Replace("dugout", "");
 
         /// <summary>Whether a person's boat on a voyage carries that cargo (C9.5a shots): its skipper - the one of its crew holding the load - is
@@ -372,7 +372,7 @@ namespace TC2.Game
                     }
                     if (vp.Act == TC2.Core.Agents.ActivityKind.Voyage && vp.Step == TC2.Core.Agents.StepKind.Travel) { d = w.Agents.PositionAt(vp, Host.RenderTime); break; }
                 }
-                LookAt(d, view == "voyagefar" ? 320 : view == "voyagestay" ? 110 : view == "voyagenear" ? 160 : 90);
+                LookAt(d, view == "voyagefar" ? 320 : view == "voyagestay" ? 110 : view == "voyagenear" ? 160 : view == "voyageclose" ? 45 : 90);   // ("voyageclose": a dugout's crew at 45 m, C9.5b)
                 return;
             }
             if (view.StartsWith("cart"))
