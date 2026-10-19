@@ -120,6 +120,14 @@ at the other landing, a stay of three hours, home together (`AgentSystem.StartVo
 par (tests). Drawn: the hull at its crew on the way, drawn up at the other landing during the stay. Not yet: crews beyond the household, docks
 and cargo boats, coastal trade at the sea's cost ratio (C9.4), ferries (C9.5).
 
+**C9.5a grain across water goes by boat (D2-162)**: within a day's walk grain had moved between villages at once even across a strait or a bay (relief
+D2-067, grain given back D2-113) - and so a village across water could owe, and bow to, a neighbour no way on foot led to, its tenth then never carried
+(a fifth of all the tribute in ten worlds, D2-161). Now within a day's walk grain moves at once only along a way on foot (`RouteCache`); across water
+relief and grain given back go by sea as they do beyond a day's walk (the giver's boats, or the giver's come to fetch it), and the lord's tenth is
+set aside only where a way by sea joins the two landings and is rowed over in the tributary's own plank boats in a calm sea (`Trade.BookTribute`,
+`ForTribute`; `Conflict.CarrySea`). `--oldacross`. Not yet: people crossing water in boats - island woodcutters, a town on two shores (lived legs by
+boat, C9.5b).
+
 ## 6. Ports (C9)
 
 landing (a beach: nothing built) -> fishing jetty and boat shed -> dock (timber quay) -> harbour (stone quay, warehouses) -> shipyard.
