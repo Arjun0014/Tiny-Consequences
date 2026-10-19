@@ -222,6 +222,8 @@ namespace TC2.Tests.Core
         {
             var w = Bound(out int a, out int b);
             Assume.That(w != null, "a tributary and its lord a walk apart");
+            // the world's first ticks (a made world has not lived them yet): the plates' first step lays the ground anew
+            w.AdvanceTo(w.Now + SimTime.Hour);
             // water all round the tributary's ground (a bond for bread needs only a day's walk as the crow flies: C10.4)
             var P = w.Planet;
             int c = w.Settlements.Get(a).Cell, cb = w.Settlements.Get(b).Cell;
@@ -238,12 +240,14 @@ namespace TC2.Tests.Core
                 Assert.AreEqual(lord0, w.Settlements.Get(b).Granary, 1e-6, "nothing reaches the lord");
                 Assert.AreEqual(1.0, Conflict.CarryTally[8], "a tenth not set aside for want of a way");
                 Assert.AreEqual(100.0, Conflict.CarryTally[9], 1e-6, "of a tenth of the harvest");
-                w.AdvanceTo(w.Now + SimTime.Days(3));
-                Assert.AreEqual(0.0, w.Settlements.Get(a).TributeDue, 1e-9, "and none carried");
-                Assert.AreEqual(1, w.Settlements.Get(a).Lord == b ? 1 : 0, "still bound");
                 string page = Gazetteer.Neighbours(w, a);
                 Console.WriteLine(page);
                 StringAssert.Contains("No way on foot leads from it to", page, "the page tells why nothing goes");
+                w.AdvanceTo(w.Now + SimTime.Days(3));
+                Assume.That(w.Routes.Get(w, a, b) == null, "still no way on foot");
+                Assert.AreEqual(0.0, w.Settlements.Get(a).TributeDue, 1e-9, "and none carried");
+                Assert.AreEqual(1, w.Settlements.Get(a).Lord == b ? 1 : 0, "still bound");
+                StringAssert.Contains("No way on foot leads from it to", Gazetteer.Neighbours(w, a), "and says so still");
             }
             finally { Conflict.CarryTally = null; }
         }
