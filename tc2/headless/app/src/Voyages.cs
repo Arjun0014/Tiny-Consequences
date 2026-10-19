@@ -12,6 +12,11 @@ namespace TC2.Headless
 {
     public static partial class Commands
     {
+        sealed class DugoutBooking
+        {
+            public int Boat, Hh, From, To; public byte Kind; public long At, Last; public string State = "";
+        }
+
         sealed class VoyageSeen
         {
             public int Boat, From, To, Crew, Skipper;
@@ -38,6 +43,11 @@ namespace TC2.Headless
             var open = new Dictionary<int, VoyageSeen>();
             var done = new List<VoyageSeen>();
             var aboard = new HashSet<int>();
+            // (each booking of a dugout followed to its fate: sailed - its boat out on a voyage when the booking is gone - or not, and what its
+            // household was doing the last time it was seen booked)
+            var dbs = new Dictionary<long, DugoutBooking>();
+            var dbDone = new List<DugoutBooking>();
+            var dbSeen = new HashSet<long>();
             int all = 0, dug = 0;
             for (long t = next0 + step; t <= end; t += step)
             {
@@ -64,6 +74,32 @@ namespace TC2.Headless
                         else if (v.MidFrom != 0 && v.MidTo == 0 && f >= 0.67) v.MidTo = t;
                     }
                 }
+                dbSeen.Clear();
+                for (int i = 0; i < w.Trade.Bookings; i++)
+                {
+                    var bk = w.Trade.BookingAt(i);
+                    if (!w.Buildings.Exists(bk.Boat) || Boats.IsPlank(w.Buildings.Get(bk.Boat).Kind)) continue;
+                    long key = bk.At * 1000003L + bk.Boat;
+                    dbSeen.Add(key);
+                    if (!dbs.TryGetValue(key, out var db)) { db = new DugoutBooking { Boat = bk.Boat, Hh = bk.Hh, From = bk.From, To = bk.To, Kind = bk.Kind, At = bk.At }; dbs[key] = db; }
+                    db.Last = t;
+                    var acts = new SortedDictionary<string, int>();
+                    var mem = w.Members(bk.Hh);
+                    for (int m = 0; m < mem.Count; m++)
+                    {
+                        ref var q = ref w.People.Get(mem[m]);
+                        if (!q.Alive) continue;
+                        string k = q.Act.ToString() + (Trade.CanSail(in q, bk.From, t) ? "+" : "") + (q.AgeYears(t) < 16 ? "(child)" : "");
+                        acts.TryGetValue(k, out int c); acts[k] = c + 1;
+                    }
+                    var parts = new List<string>(); foreach (var kv in acts) parts.Add(kv.Key + " x" + kv.Value);
+                    long localSec = SimTime.FloorMod(t + w.LocalOffsetOf(bk.From), SimTime.Day);
+                    db.State = (localSec / (double)SimTime.Hour).ToString("0.0") + " h: " + string.Join(", ", parts);
+                }
+                var gone = new List<long>();
+                foreach (var kv in dbs) if (!dbSeen.Contains(kv.Key)) gone.Add(kv.Key);
+                gone.Sort();
+                foreach (long key in gone) { var db = dbs[key]; if (aboard.Contains(db.Boat)) db.State = "SAILED"; dbDone.Add(db); dbs.Remove(key); }
                 foreach (var kv in open) kv.Value.Crew = 0;
                 for (int id = w.People.First(); id != 0; id = w.People.Next(id)) { ref var p = ref w.People.Get(id); if (p.Alive && p.Voyage != 0 && open.TryGetValue(p.Voyage, out var v)) v.Crew++; }
                 var ended = new List<int>();
@@ -86,6 +122,23 @@ namespace TC2.Headless
                                   " = its village's day " + ((dayAt - day0) / SimTime.Day) + " from the save's, " + hour.ToString("0.00") + " h");
             }
             Console.WriteLine("voyages lived: " + all + " (in dugouts " + dug + ")");
+            foreach (var kv in dbs) dbDone.Add(kv.Value);
+            int sailed = 0;
+            var why = new SortedDictionary<string, int>();
+            foreach (var db in dbDone)
+            {
+                if (db.State == "SAILED") { sailed++; continue; }
+                string k = db.State.Contains(": ") ? db.State.Substring(db.State.IndexOf(": ") + 2) : db.State;
+                why.TryGetValue(k, out int c); why[k] = c + 1;
+            }
+            Console.WriteLine("dugout bookings: " + dbDone.Count + ", sailed " + sailed + "; not sailed, by what the household was doing when last seen booked (+ could sail):");
+            foreach (var kv in why) Console.WriteLine("  " + kv.Value + "  " + kv.Key);
+            int shown = 0;
+            foreach (var db in dbDone)
+            {
+                if (db.State == "SAILED" || shown++ >= 12) continue;
+                Console.WriteLine("  e.g. dugout " + db.Boat + " of household " + db.Hh + " at " + Name(w, db.From) + " to " + Name(w, db.To) + " (kind " + db.Kind + "): booked " + SimTime.Format(db.At) + ", last seen " + SimTime.Format(db.Last) + " - " + db.State);
+            }
             return 0;
         }
 
