@@ -4,6 +4,21 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 23 (19 Oct 2026, from 18:54 IST; Control Room; one low-priority job queue `tc2/out/tools/s23/runq.sh`, gated RAM < 86 %, CPU < 85 %; IN
+  PROGRESS - SESSION_HANDOFF "Session 23")** - (1) **C10.4 merged** (`wip/c104-bread` --no-ff, ca3b4c8; DECISIONS D2-157 and D2-158, 3712056; `25` C10.4
+  done; sim version 82); Unity C# compiles on main; **Web build and test `s23web1` 6/6** - the browser's probe (WebGPU, IL2CPP) = headless dotnet =
+  the editor's Mono, bit for bit; the test's frame rates were half session 18's because the user's Chrome ran heavily throughout (headless run times
+  unchanged since session 18) - to re-measure on a quiet machine. (2) Tools: `lordships --load SAVE [--every N] [--bonds]` (every bond of tribute
+  from the history and the lordships every N years), `run --load SAVE --warmroutes` (a determinism probe). (3) **The 900-year check of C10.4**
+  (`_y3` seeds 2 and 4 lived to year 900): no snowball and no growth - 4-9 lords among 27-35 villages, the largest lordship never above 3-4
+  villages, bonds lasting decades to centuries and every one of 63 ended because "the lord was no longer the stronger" - weighed by the fit people
+  at home on one day, a lord by its own village: in seed 2's year 464 a mild epidemic (12 villages, 6 dead) ended five lordships; bonds made the day
+  after a raid ended when the beaten village's wounded mended. -> **C10.5 a lordship's might** (D2-159, branch `wip/c105-might`, sim version 83,
+  `10` §12g): villages weigh each other by their people of fighting age and a lord by the men its call brings; tests pass; ten seeds and its own
+  900-year check in the queue. (4) **Watching changed history** (found reading the code): a route's forest cost read the woods of the moment it was
+  first built, and a load or the view builds routes at other moments - seed 2's year-300 save, three lived days: state hash b5329437ba119770 alone,
+  8101ffe7abef7b57 with the view's 109 routes built at load. -> **D2-160 the ways' woods** (branch `wip/route-ground`, sim version 84, `03` §4):
+  routes read the woods as they stood at the last turn of the plates (saved); RouteGroundTests 3/3; evaluation in the queue.
 - **Session 22 (16 Oct 22:19 - 17 Oct ~02:15 IST; Control Room run #51 session 2; stopped by Arjun; `SESSION_22_REPORT.md`)** - (1) **C3.7d
   merged** (9d68eaa, sim version 80) and **D2-155** written (a512839): twenty seeds `_u7` against `_c6` - births and deaths a person-year at par,
   pig-years x0.98 (t -0.2), cattle-years x1.64, pigs gone by year 300 in 2 of 19 worlds (the control 1); sickness from animals x1.7 with the herds
