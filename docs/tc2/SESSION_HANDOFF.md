@@ -1,63 +1,60 @@
 # TC2 Session handoff
 
-## Session 23 (19 Oct 2026, from 18:54 IST; Control Room) - IN PROGRESS; one job queue running
+## Session 23 (19 Oct 2026, 18:54 - ~21:25 IST; Control Room run #63 session 1) - context handoff; ONE job queue still running
 
-### Exact state (keep current)
-- **main 3712056**: C10.4 merged (ca3b4c8, `--no-ff`) + DECISIONS D2-157, D2-158 + `25` (C10.4 done). Sim version 82. `.claude/launch.json` (modified)
-  and `Assets/Resources.meta` (untracked) are not ours - leave them.
-- **Branches (worktrees)**, none merged yet:
-  - `wip/s23-tools` (`C:/Game Dev/tc-s23`, 8e06c4a): tools only - `lordships --load SAVE [--every N] [--bonds]`, `run --load SAVE --warmroutes`.
-  - `wip/c105-might` (`C:/Game Dev/tc-might`, 7d426d3; contains the tools): **C10.5 a lordship's might** (D2-159 draft `tc2/out/tools/s23/d2159.md`,
-    sim version 83, `10` §12g, `25` C10 by slices). Binary `bin_c2` (scratchpad), its tests pass.
-  - `wip/route-ground` (`C:/Game Dev/tc-routes`, 2e4914c; contains the tools): **D2-160 the ways' woods** (draft `tc2/out/tools/s23/d2160.md`, sim
-    version 84, `03` §4) - a determinism fix: watching changed history (see below).
-  - `wip/c106-tribute` (`C:/Game Dev/tc-tribute`, cbb502c; on C10.5 incl. its indexed kin test 5983f04): **C10.6 tribute carried** (draft
-    `tc2/out/tools/s23/d2161.md`, sim version 85): the tenth set aside at the harvest and carried to the lord's store by the tributary's people
-    (lived walkers and carts; COARSE the same loads), each load wearing the way; standards enlarged with distance up to 4x (view). Tests 5/5 + neighbours.
-- **Merge plan**: C10.5 (sim 83, D2-159) -> D2-160 (84; resolve the version line) -> C10.6 (85); then on main: full suite, `unity.mjs cc`, a v85
-  seed-2 world for real shots (tributary, lord, the roads between them), the probe `--warmroutes` on it (equal hashes), the Web build and test, and a
-  ten-seed run of the final main against `_t1`.
-- **DONE: the integration branch `wip/s23-int`** (worktree `C:/Game Dev/tc-int`, tip c5258d2): main 0402dba + `--no-ff` merges of C10.5 (5a0c4f1),
-  D2-160 (a5583f4, version line 84 over 83) and C10.6 (dd81998, version 85 over 84) + a tools commit. Builds (`bin_i1` = dd81998), floatcheck clean.
-  Main has since gained docs commits only (2619bb0): to land, `git merge --no-ff wip/s23-int` on main (or merge main into it and fast-forward).
-  NOTE: the C10.6 branch alone also says sim version 85 (without D2-160's `WayForest`): read `_t1` saves only with `bin_t7`, `_f1` with `bin_i*`.
-- **D2-160 VERIFIED (21:15)**: the probe on its own year-300 world - 3 and 6 lived days and 3 COARSE years give identical hashes with and without the
-  view's 125 routes built at load (before: different after 3 lived days); ten seeds `_r2` vs `_y3` at par (`results/cmp_y3_r2.txt`); draft filled.
-- **Queue order at the context handoff (19 Oct ~21:15)**: `3_cs_0_c3` (C10.5's indexed kin test: `_z2` = `_z1` byte-identical and the speed), `3_d_l9z1_s2/s4` (C10.5's own
-  900-year check -> `results/lordships_s*_l9z1_y600.txt`: do lordships now grow, hold, or snowball?), `3_t_*` (C10.6: build `bin_t7` and tests, the
-  `--oldtribute` control = `_z1`, ten seeds `_t1`, `cmp_z1_t1.txt`, the ways between the bound and their lords), `4_a_fullsuite_i1` (the full suite on
-  the integration), `4_b_f1_*` (ten seeds `_f1` of the integration), `4_c_cmp_probe_f1` (`cmp_t1_f1.txt`, the probe on `s2_f1`). Verified so far:
-  C10.5 control `--oldmight` = `_y3` byte-identical; C10.5 ten seeds `_z1` vs `_y3` at par (people x1.006, births x1.003, deaths x1.002; raids x0.89
-  n.s.; lords x1.04) - in the first 300 years the old and new weighings mostly agree (seed 11: bowing to raiders the old count 15 times, might 4);
-  its runs took 18 % longer (the kin scan; fixed by `KinIndex`, 5983f04, check pending); D2-160 tests pass, control `--oldways` = `_y3` byte-identical.
-- **Next after the queue**: write D2-159, D2-160, D2-161 from the drafts with the evidence; land `wip/s23-int` on main; `unity.mjs cc`; a v85 seed-2
-  300-year world (`--snap 300`) for real shots (`--village tributary|lord`, views standard, village, region: do the standards and the converging
-  roads read?); the Web build and test; PROGRESS, `25`. Then the next slice by evidence: the lord's household men (C10.7, `23` §3: `lordships` now
-  prints each lord's first household's grain against its needs and the tribute in - the measure), or C9.5 boats across the water (needs a lived
-  "legs by boat" model: a boat outing is one out-and-stay activity today and the walk home starts from the water point).
-- **The queue**: `bash tc2/out/tools/s23/runq.sh` (background), queue dir `Q` = this session's scratchpad `q` (`todo`, `done`, `log`, `runq.log`;
-  `touch $Q/stop` ends it after the current job). Jobs (copies in `tc2/out/tools/s23/`): `2_a_shots_bread` (real shots s23a tributary, s23b lord on
-  `s2_y3`), `3_a_ctl_z0_s4` (`--oldmight` = `_y3`?), `3_b_z1_*` (ten seeds C10.5), `3_c_cmp_y3_z1`, `3_cr_*` (D2-160: build `bin_r2` and tests,
-  `--oldways` control, ten seeds `_r2`, comparison and the probe on a D2-160 world), `3_d_l9z1_s2/s4` (C10.5's own 900-year check). Results:
-  `tc2/out/tools/s23/results/`. If the scratchpad is gone: rebuild a binary from its worktree (`2_3_build_c2.sh`, `3_cr_0_build_r2.sh`) and rerun.
+### Exact state at the handoff (21:25)
+- **main** (docs only since 3712056): C10.4 merged (ca3b4c8, `--no-ff`), DECISIONS D2-157 and D2-158 (3712056), `25` C10.4 done, PROGRESS, this
+  handoff, `docs/tc2/NEXT_SESSION_PROMPT.md`, the root `NEXT_SESSION_PROMPT.md`. Sim version 82. `.claude/launch.json` (modified) and
+  `Assets/Resources.meta` (untracked) are not ours - leave them.
+- **`wip/s23-int` (worktree `C:/Game Dev/tc-int`, tip c5258d2) = everything to land**: main 0402dba + `--no-ff` merges of **C10.5** (5a0c4f1, sim 83),
+  **D2-160** (a5583f4, 84) and **C10.6** (dd81998, 85) + a tools commit. Builds clean (`bin_i1` = dd81998), floatcheck clean; on `bin_i1`
+  RouteGroundTests 3/3, TributeCarriedTests 5/5, MightTests 4/4 (21:18). To land: on main `git merge --no-ff wip/s23-int` (main has docs commits only
+  since 0402dba). Component branches (worktrees): `wip/s23-tools` (`tc-s23`), `wip/c105-might` (`tc-might`), `wip/route-ground` (`tc-routes`),
+  `wip/c106-tribute` (`tc-tribute`); older merged worktrees (`tc-bread`, `tc-dry`, `tc-stubble`) may be removed.
+- **Decision drafts with their evidence** (write them into DECISIONS when landing): `tc2/out/tools/s23/d2159.md` (C10.5 - FILL the 900-year check),
+  `d2160.md` (D2-160 - complete), `d2161.md` (C10.6 - FILL the control, ten seeds, the ways, the shots).
+- **RUNNING: the session-23 job queue** - `bash tc2/out/tools/s23/runq.sh` (background task bc2qpqxfq; a monitor bf5ldakdg on its log expires by itself).
+  Queue dir `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/db1b5af7-2c1c-4e6f-a5ff-c8b25b1a81c2/scratchpad/q` (`todo`,
+  `done`, `log/<job>.log`, `runq.log`; `touch $Q/stop` ends it after the current job; copies of every job in `tc2/out/tools/s23/`). Binaries in that
+  scratchpad: `bin_m1` (main), `bin_t2` (tools), `bin_c2`/`bin_c3` (C10.5; c3 with the indexed kin test), `bin_r2` (D2-160), `bin_i1` (integration).
+  Remaining at 21:25, in order (about two hours): `3_d_l9z1_s2/s4` (C10.5's 900-year check -> `tc2/out/tools/s23/results/lordships_s*_l9z1_y600.txt`:
+  do lordships now grow, hold or snowball?), `3_t_0..3` (C10.6: build `bin_t7` + tests, `--oldtribute` = `_z1`?, ten seeds `_t1`, `results/cmp_z1_t1.txt`,
+  the ways between the bound and their lords and each lord's surplus), `4_a_fullsuite_i1` (`results/fullsuite_i1.txt`), `4_b_f1_*` (ten seeds of the
+  integration), `4_c_cmp_probe_f1` (`results/cmp_t1_f1.txt`; the probe on `s2_f1` - equal hashes expected). Run outputs: `tc2/out/civ/s<seed>_<tag>.{txt,csv}`
+  and `s<seed>_<tag>/`. **If the scratchpad is gone**: rebuild a binary from its worktree (`2_3_build_c2.sh`, `3_cr_0_build_r2.sh`, `3_t_0_build_t7.sh`;
+  the integration: `dotnet build -c Release` in `C:/Game Dev/tc-int/tc2/headless/app`) and rerun the jobs not done (set `S`/`N` in `lib.sh`).
+- Version caution: C10.6's branch alone also says sim version 85 (without D2-160's `WayForest`) - read `_t1` saves only with `bin_t7`, `_f1` with `bin_i1`.
+- **Timing on this machine is not evidence**: the user's Chrome and this session's builds ran alongside the queue; `_z2` (the indexed kin test, byte-identical
+  results) ran slower than `_z1`. Measure speed only on a quiet machine or by the profiler's counts (`run --profile`).
 
 ### Verified this session
-- Unity C# compiles on main (`unity.mjs cc`); **Web build and test `s23web1` 6/6**; cross-runtime determinism: browser (WebGPU, IL2CPP) = headless
-  dotnet = editor Mono, bit for bit. Frame rates were half session 18's because the user's Chrome ran heavily during the test - re-measure quietly.
-- **The 900-year check of C10.4** (`_y3` seeds 2 and 4, years 300-900; `lordships`): seed 2 - 49 bonds, 39 ended, every one "the lord no longer the
-  stronger"; 4-9 lords among 27-31 villages; the largest lordship never above 4 villages; in year 464 a mild epidemic (12 villages, 6 dead) ended
-  five lordships; flickers (bound and freed within 2-5 years, 10 rebindings). Seed 4 - 30 bonds, 24 ended, all "no longer the stronger"; the largest
-  never above 3. **Verdict: no snowball and no growth - petty lordships capped by a seat-only, day's-count weighing** -> C10.5.
-- **The route probe** (`run --load s2_y3/world_y300.tc2 --warmroutes`): three lived days b5329437ba119770 without, 8101ffe7abef7b57 with the view's
-  109 routes built at load -> D2-160 (fix built, RouteGroundTests 3/3, SaveLoad/Afoot/Determinism/Trade/Voyage pass).
+- C10.4 on main: Unity C# compiles (`unity.mjs cc`); **Web build and test `s23web1` 6/6**; browser (WebGPU, IL2CPP) = headless dotnet = editor Mono, bit
+  for bit. Its frame rates were half session 18's because the user's Chrome ran heavily throughout - re-measure on a quiet machine before claiming 60 fps.
+- **The 900-year check of C10.4** (`_y3` seeds 2 and 4 to year 900; `lordships`): no snowball, no growth - 4-9 lords among 27-35 villages, the largest
+  lordship never above 3-4 villages; all 63 ended bonds ended "the lord no longer the stronger" (a one-day headcount; a lord by its own village): seed 2's
+  year 464, a mild epidemic (12 villages, 6 dead), ended five lordships; bonds made the day after a raid ended when the beaten village's wounded mended.
+- **Real shots** `tc2/out/shots/s23a` (tributary Stevoumstead), `s23b` (lord Trimrornby), seed 2 `_y3`: the standard in the lord's purple reads up close
+  (edge-on a thin strip); at the village and region views nothing shows the bond.
+- **C10.5**: MightTests 4/4 (+ Bread, Defence, Leaders, Lordship, Determinism); `--oldmight` seed 4 = `_y3` byte-identical; ten seeds `_z1` vs `_y3` at par
+  (people x1.006, births x1.003, deaths x1.002; raids x0.89 n.s.; lords x1.04); in the first 300 years old and new weighings mostly agree (seed 11: bowing
+  to raiders the old count 15, might 4). `KinIndex` (5983f04): `_z2` = `_z1` byte-identical on seeds 8 and 2.
+- **D2-160**: the probe on `s2_y3`: three lived days b5329437ba119770 alone, 8101ffe7abef7b57 with the view's 109 routes built at load. Fixed:
+  RouteGroundTests 3/3, SaveLoad 8, Afoot 6, Determinism 6, Migration 9; `--oldways` = `_y3` byte-identical; **the probe on its own world: equal hashes
+  over 3 and 6 lived days and 3 COARSE years**; ten seeds `_r2` vs `_y3` at par (`results/cmp_y3_r2.txt`).
+- **C10.6**: TributeCarriedTests 5/5 (COARSE: 100 FU in three loads in three days, the way worn; lived carriers bring the loads; a bond's end gives back what
+  is due; `--oldtribute` instant; a save mid-carry continues identically); Bread, Defence, Leaders premises carry the tenth in; neighbours pass.
 
 ### Next, in order
-1. Read the queue: shots s23a/s23b (judge: does the lordship read in the picture?), `cmp_y3_z1.txt` and `lordships_s*_z1.txt` (C10.5), the D2-160
-   control, `cmp_y3_r2.txt` and the probe on the D2-160 world (equal hashes expected), C10.5's 900-year check.
-2. Merge C10.5 (`--no-ff`, D2-159), then D2-160 (sim version 84 on top), the tools branch with them; then the full suite, Unity cc, a v84 world for
-   shots, the Web build and test.
-3. Then by evidence: tribute carried to the lord's seat (C10.6: makes the polity visible and its reach a cost), C9.5 boats across the water, the
-   lord's household men.
+1. Read the queue's results. C10.5: if its 900-year check shows lordships snowballing, a limit grounded in the record (reach by travel time, a lord's
+   death) comes before landing; if they hold or grow plausibly, land. C10.6: control byte-identical, vital rates at par, the ways between the bound and their
+   lords. The integration: full suite 100 %, `_f1` at par with `_t1`, the probe's hashes equal.
+2. Land: DECISIONS D2-159, D2-160, D2-161 from the drafts; `git merge --no-ff wip/s23-int` on main; `node tc2/scripts/unity.mjs cc` on main; PROGRESS.
+3. A v85 seed-2 world (`run --seed 2 --years 300 ... --snap 300` with main's binary) for **real shots** (`unity.mjs shots --load ... --village tributary`
+   and `--village lord`, views `standard,standardlow,village,region`; carriers on the way after the tributary's harvest via `--doy`): do the standards and
+   the converging roads now read? Then the **Web build and test** (`tc2/out/tools/s23/1_a_web.sh` with a new TAG) on a quiet machine.
+4. The next slice by evidence: the lord's household men (C10.7, `23` §3: `lordships` prints each lord's first household's grain against its needs and the
+   tribute it took in) or C9.5 boats across the water (island woodcutters; Gaby on two shores - needs a lived "legs by boat" model: a boat outing is one
+   out-and-stay activity and the walk home starts from the water point).
 
 ## Session 22 (16 Oct 22:19 - 17 Oct ~02:15 IST; Control Room run #51 session 2) - stopped by Arjun; report `SESSION_22_REPORT.md`
 

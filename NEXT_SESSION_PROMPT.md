@@ -5,147 +5,61 @@ You are continuing **Tiny Consequences 2.0 (TC2)**: a Unity 6.6 Web game in `uni
 road, mine, boat, market, army and polity arises from simulated need, labour, material, knowledge and history; nothing scripted;
 presentation never invents state. The legacy Defold game (TC1: `game/`, `sim/`, `docs/` outside `docs/tc2/`) is research material
 only - never modify or stage it. **Do not stop at a milestone**: after each slice choose the next highest-value dependency from the
-evidence and keep going; context handoffs are a continuation mechanism (Control Room writes this file), not a stop condition. Stop only
-for a real external blocker (credentials, payment, UAC, an irreversible product decision).
-
-**Arjun's direction of 10 Oct 2026 (session 17) - presentation and simulation advance together**: he opened the game and saw people
-standing still, houses on roads, a world that does not show its simulation, forests still alike. Order: the soil and the niche (done) ->
-long/Web/visual checks -> a real-game visual truth audit (people, houses and roads, every system in the picture) -> W-FOREST pass 2
-(climates must not be interchangeable in shots) -> continue the civilisation roadmap. For every new system ask "what changes in the world
-picture?". No simulation theatre: presentation elaborates a real activity, never invents one.
+evidence and keep going; context handoffs are a continuation mechanism, not a stop condition. Stop only for a real external blocker
+(credentials, payment, UAC, an irreversible product decision). **No subagents.** Simulation and presentation advance together: every slice
+answers "what changes in the world picture?" and is judged in real game shots.
 
 ## Read first (this order), then work autonomously
-1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the standing prompt (architecture, rules, every direction; "Where we are (session 22)").
-2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 22"**: exact state, the full suite's result to read first, "Next, in order".
-3. `docs/tc2/SESSION_22_REPORT.md` - what session 22 did and found.
-4. `docs/tc2/DECISIONS.md` newest: **D2-156**, **D2-155**; the drafts **D2-157** (C10.4 bread and dependence) and **D2-158** (a COARSE day's muck after
-   the household's own roof) are `tc2/out/tools/s22/d2157.md` and `d2158.md` - write them in when the branch merges.
-5. On the branch (`C:/Game Dev/tc-bread`, `wip/c104-bread`): `docs/tc2/10_CONFLICT_AND_POLITICS.md` §12f (bread and dependence).
-6. `docs/tc2/PROGRESS.md` CURRENT STATE (the session 22 entry first).
-7. `git status`, `git log --oneline -10`, `git worktree list`.
+1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the standing prompt (architecture, rules, every direction; "Where we are (session 23)").
+2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 23"**: exact state, the running job queue, "Verified", "Next, in order".
+3. `docs/tc2/DECISIONS.md` newest (D2-157, D2-158) and the drafts `tc2/out/tools/s23/d2159.md` (C10.5), `d2160.md` (D2-160), `d2161.md` (C10.6).
+4. On the integration branch (`C:/Game Dev/tc-int`, `wip/s23-int`): `docs/tc2/10_CONFLICT_AND_POLITICS.md` §12g (a lordship's might), §12h (tribute
+   carried); `docs/tc2/03_ARCHITECTURE.md` §4 (derived caches); `docs/tc2/25_CIVILISATION_ROADMAP.md` "C10 governance, by slices".
+5. `docs/tc2/PROGRESS.md` CURRENT STATE (the session 23 entry first).
+6. `git status`, `git log --oneline -10`, `git worktree list`, and the queue: `cat $Q/runq.log` (path below).
 
-## Session 22 (16 Oct 22:19 - 17 Oct ~02:15 IST) - stopped by Arjun; nothing running
-- **Merged on main**: **D2-155** C3.7d the herds on the stubble (twenty seeds at par; a placebo shows end-of-run pig counts and sickness are noise at
-  ten seeds - a 300-year run lives its first day before going COARSE); **D2-156 nobody walks through the water** (sim version 81: walks bend round
-  lakes and bays, every lived spot out of the water, crofts not in it, woods by the walk; the same save 0.178 % -> 0.013 % of person-hours in the
-  water; open: island woodcutters and a town on two shores - boats across water, C9.5).
-- **On branch `wip/c104-bread` (tip 08e16b2, sim version 82), NOT merged**: **C10.4 bread and dependence** - a village that cannot give back a month
-  of the famine grain a stronger neighbour within a day's walk gave it bows to that neighbour (ten seeds: vital rates untouched, lords 8 -> 21, the
-  lord's call answered, raids up as lordships fight); **D2-158** - the full suite's one failure since C3.7c (a camp carted muck before raising its
-  roof) fixed.
-- **The full suite on the branch tip's code passed: 403/403** (`tc2/out/tools/s22/results/fullsuite_b4.txt`). **First thing**: merge the branch
-  (`--no-ff`), write D2-157/D2-158 from the drafts, `unity.mjs cc`, then the Web build and test, real shots of a bread lordship (`shots --village
-  tributary|lord`), the 900-year check - SESSION_HANDOFF "Session 22".
-- **Resource rule (Arjun D-1/D-2)**: one low-priority job at a time while RAM < 86 % and CPU < 85 % - use a job queue (copy `tc2/out/tools/s21/runq.sh`
-  and `lib.sh`, set `Q`/`S`/`N` to the new scratchpad; jobs of session 22 in `tc2/out/tools/s22/`). No subagents.
-
-## Session 21 (16 Oct 2026, 19:12-22:05 IST) - context handoff; the job queue is still running
-- **Running**: `tc2/out/tools/s21/runq.sh` (background task `ba1sj2iw2`), queue `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/
-  4c5113ad-667d-4fde-9df2-13e8ffdf1a90/scratchpad/q` (`todo`, `done`, `log`, `runq.log`; `touch .../q/stop` ends it after the current job): at 22:00, 31
-  jobs (~60 min) - 19 seeds `_u7` (the branch's final rules; the dry-way binary's eleven test fixtures passed at 22:10), control seeds 9-19 `_c6`, the comparisons
-  `cmp_c6_r4`, `cmp_c6_u7_10`, `cmp_c6_u7_20` (in that scratchpad; runs in `tc2/out/civ`). One job at a time - start no other heavy job until it ends.
-- **Done on the branch, verified**: the pigs traced and fixed (the hands' cull by what loads the hands, `--oldhands`); a household's field cell walked
-  to dry-shod (`--wetfieldspot`); the stubble drawn dun as eaten; muck heaps clear of croft, pen, woodpile, cart; shot tools (`--doy`, `muck` views);
-  herd diagnostics, `wet --doy`, `crowds`. Controls byte-identical; ten seeds `_u4` at par in people (pigs x0.80 n.s., lost in 1 world of 9 that had
-  them); Unity C# compiles; real shots judged (`27` §9).
-- **Next**: (1) read the queue's results (20 seeds: people at par, pig-years within noise) and merge the branch (`--no-ff`), write
-  D2-155; (2) the full suite and the Web build and test; (3) nobody walks through the water (woodlots, the well's spot, crofts, wild-food spots - the
-  `wet` audit's 0.10-0.14 % in the control); (4) a governance slice (one lordship of two villages in a 30-village world at year 300) or holdings on
-  the ground. Details: `docs/tc2/SESSION_HANDOFF.md` "Session 21".
-
-## Session 20 (13 Oct 2026, 17:25-~21:00 IST) - stopped by Arjun; nothing running
-- Done and verified on main: **D2-154** the village builds round its burial ground (`--oldgraves` = `_m1`) and graves drawn as graves; stumps on
-  felled-bare ground; the threshing floor drawn in use; shot views `floorbusy`, `act:<Activity>`; **C3.7c the muck merged** (sim version 79; ten
-  seeds `_n1` at par).
-- **On branch `wip/c37d-stubble`, NOT merged**: C3.7d the herds on the stubble and the fallow, each household's own field cell (`FieldSpots`), a food's
-  cull by what the spares eat; controls byte-identical; ten seeds: people at par, fields x1.017, cattle x1.84 - **but pigs die out in 3 of 10 worlds**.
-- **Next**: (1) find why the pigs die out where cattle grow (end causes and `stock` lines with `--places`, seeds 5/7/11 `_u2` vs `_n1`), fix with its
-  own switch, ten seeds, merge, shots of the herds on the stubble; (2) the full suite on the final HEAD and the Web build and test (saves v79/v80:
-  new worlds); (3) shoot 107c100's woodlot framing (it compiles: `unity.mjs cc` on 4dd9b94) and the yards' muck heaps; (4) the next civilisation slice.
-- **Resource rule (Arjun D-1/D-2)**: one low-priority job at a time while RAM < 86 % and CPU < 85 % - use the queue in `tc2/out/tools/s20/`
-  (`runq.sh`, `lib.sh`; set `N`/`S` to the new scratchpad). No subagents.
-
-## Session 19 (13 Oct 2026, 14:53-~17:10 IST) - context handoff; queues still running
-- Done and verified: the full suite on 86b481d 372/372 (**stale for HEAD**: run it once on the final HEAD); **D2-148** W-FOREST pass 2b (b312f01);
-  **C3.7b the threshing floor** (merged 14a9156; sim version 77); **W-FELL** stumps, **D2-151** burial grounds (sim version 78), **D2-152** standards
-  (4caf9ee) - tests, Unity C#, the merge's control `--nothresh --oldrain` seed 4 = `_g4` byte-identical.
-- **Running at the handoff** (detached bash queues in the scratchpad `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/
-  f50753be-dec6-4e7f-8c7e-01e86c05c761/scratchpad`, logs `q19.log`, `q20.log`, `q21.log`; copies of the scripts in `tc2/out/tools/s19/`; do not
-  start another heavy job until they end): q19 ten seeds `_m1` (sim version 78) -> `cmp_r1_m1.txt`; q20 real shots `tc2/out/shots/s19e20`,
-  `s19f20`, `s19g4`, `s19g28` (threshing floor and ricks, stumps, graves, standards, the town, the four climates); q21 the muck worktree's build,
-  tests, control `--nomuck` = `_m1`, seed 4 `_k0`. If the logs are gone, rerun from `tc2/out/tools/s19/q19.sh`-`q21.sh` (fix `S=`).
-- q19 so far (17:10): seed 4 `_m1` 38.2 M FU threshed in 1.60 M h (0.042 h a FU), 35,687 burials, 2 dead with no grave; seed 5 10.3 M FU in
-  0.44 M h (0.042), 8,967 burials, 1 with no grave; seed 1 5.7 M FU in 0.24 M h (0.043), 5,276 burials, 3 with no grave; seed 6 15.7 M FU in 0.66 M h (0.042), 14,459 burials, 1 with no grave; seed 11 18.8 M FU in 0.79 M h (0.042), 16,861 burials, 0 with no grave; seed 2 22.7 M FU in 0.95 M h (0.042), 19,861 burials, 3 with no grave; seed 3 20.0 M FU in 0.84 M h (0.042), 18,808 burials, 5 with no grave; seed 7 14.6 M FU in 0.62 M h (0.042), 13,767 burials, 0 with no grave; seed 8 16.3 M FU in 0.69 M h (0.042), 15,210 burials, 5 with no grave; seed 42 28.8 M FU in 1.21 M h (0.042), 27,045 burials, 4 with no grave.
-  **q19 done (17:22): ten seeds `_m1` against `_r1` (`cmp_r1_m1.txt`) - threshing at par**: people over years 200-299 x1.000, births and deaths a
-  person-year x0.995 / x1.000, hunger a person-year x1.03 (t 0.45), famines x0.96, relief x0.87 (t -1.6); **fish caught x0.94 (t -3.1)** - the
-  floor's hours come out of the free hours the wild and the shore took (to confirm in `timeuse`, then record in D2-149). The comparison `cmp_r1_m1.txt` comes when all ten seeds end.
-- Next: read q19-q21's results, judge the shots and fix what reads wrong, finish C3.7c (D2-153), the full suite on the final HEAD, the Web build
-  and test, SESSION_19_REPORT.md - details in `docs/tc2/SESSION_HANDOFF.md` "Session 19".
-- **Resource rules (Arjun, Decision Inbox D-1, D-2)**: one low-priority job at a time (`cmd //c start "" //belownormal //wait //b ...`) while CPU < 85 %
-  and RAM < 86 %; gate every heavy job (`tc2/out/tools/s19/q*.sh`'s `gate`/`low`). Pitfalls hit this session: a local named like one in an
-  enclosing scope fails the build (CS0136 - `grounds`, `alt`); `place --seasons` and the shot views' logs give latitude and soil water.
-
-## Session 18 (11 Oct 2026) - stopped by Arjun at ~16:00 IST; nothing of ours running
-- Done and verified: **D2-144** (the gardens keep their village's own calendar), **D2-145** (a croft counted once, one wattle fence, beds by season),
-  **D2-146** (a COARSE day's garden by the lived urges - the full suite's two failures), **D2-147** (a drowned village's households find a lot at once -
-  a latent hang its seeds found), the 900-year check (seeds 4 and 42), the Web build and test `s18web1` 6/6. The full suite on c7edc68 was running at
-  the stop - see `docs/tc2/SESSION_18_REPORT.md`; run it once if it did not finish.
-- Next: **W-FOREST pass 2b** - `git apply tc2/out/tools/s18/pass2b.diff`, validate with `tc2/out/tools/s18/q10.sh`'s steps, write D2-148 from
-  `tc2/out/tools/s18/d2148.md`. Then C3.7b threshing / C3.7c muck and the visual-truth items. Details: `docs/tc2/SESSION_HANDOFF.md` "Session 18".
-- **Resource rules (Arjun, Decision Inbox D-1, D-2)**: one low-priority job at a time (`cmd //c start "" //belownormal //wait //b ...`) while CPU < 85 %
-  and RAM < 86 %; gate every heavy job (`tc2/out/tools/s18/q*.sh`'s `gate`/`low`).
-
-## Stopped by Arjun (10 Oct 2026, 12:45 IST, session 17's third context) - nothing running
-- HEAD = a8a45a9 + a WIP commit: **uncompiled** seasonal garden beds (`Gardens.Shown`, `WorldObjectsView.GardenBeds`, kit `garden_bare`; huts' crofts
-  drawn) - run `node tc2/scripts/unity.mjs cc` first. The full suite was stopped mid-run (no result).
-- **Bug found, not fixed**: the garden's work uses the unshifted day of the year (`AgentSystem.cs` ~577, ~1163, ~1989) while southern villages keep
-  their crop calendar 24 days on - southern gardens run on the wrong days. Fix it first (one helper, a test, ten seeds). Details and the next steps:
-  `docs/tc2/SESSION_HANDOFF.md` top block "Session 17, third context". Shots of gardens need `--days 6-10` or `--days 14-28` (a year-300 save opens
-  on the year's first day, nothing dug).
-
-## Where things stand (10 Oct 2026, ~12:35 IST, end of session 17's second context) - nothing running
-- **main 93ad626**, verified: headless build, GardenTests 4/4, DefenceTests 8/8, `node tc2/scripts/unity.mjs cc` (the Unity C# compiles).
-  Contains D2-141, **D2-142** (W-FOREST pass 2's simulation side: `--oldwoods`), **D2-143 C3.7a the garden** (sim version 76, `--nogarden`).
-  Ten seeds each: `_v4` (D2-141), `_w1` (D2-142, at par per person, people x1.10), `_g1` (D2-143, at par); controls byte-identical.
-- **Not yet done**: the full suite on 93ad626 (last full run 366/366 on the woods' source, before the garden); **real shots of the gardens**
-  (beds on the crofts and people hoeing behind their houses are compiled, never seen); the 900-year check; the Web build and test (the save
-  format is v76 - earlier saves load only in older binaries).
-- **Prepared, not applied**: W-FOREST pass 2b - `tc2/out/tools/s17b/p_drytropics.py` (the rain belt follows the sun in the outer tropics,
-  `--oldrain`) and `p_drytropics_view.py` (the dry woodland's leaf fall from the soil's own water). Why: `place --seasons` shows the dry
-  tropics' soil water at 0.15-0.25 in every season - the shots' dry tropics and wet woods read alike because there is no dry season in the state.
+## Session 23 (19 Oct 2026, 18:54-~21:25 IST) - context handoff; the job queue is still running
+- **On main**: C10.4 bread and dependence merged (ca3b4c8) with D2-157 and D2-158; validated - Unity C# compiles, Web build and test 6/6, the browser's
+  probe = headless dotnet = the editor's Mono, bit for bit (frame rates were halved by the user's Chrome running during the test: re-measure quietly).
+- **The 900-year check of C10.4** (seeds 2 and 4): no snowball and no growth - petty lordships of 1-4 villages; every one of 63 ended bonds ended because
+  "the lord was no longer the stronger", weighed by the fit people at home on one day and a lord by its own village. Real shots `tc2/out/shots/s23a`,
+  `s23b`: the bond reads only up close.
+- **Built, merged together on `wip/s23-int` (`C:/Game Dev/tc-int`, tip c5258d2), NOT yet on main**:
+  - **C10.5 a lordship's might** (sim 83): villages weigh each other by their people of fighting age, a lord with the men its call brings. Control
+    `--oldmight` byte-identical; ten seeds at par; its 900-year check is in the queue.
+  - **D2-160 the ways' woods** (sim 84) - VERIFIED: a route's forest cost read the woods of the moment it was first built, so a load or the view building
+    routes first changed history (three lived days: different hashes); routes now read the woods at the last turn of the plates - equal hashes with and
+    without the view's routes over 3 and 6 lived days and 3 COARSE years; control byte-identical; ten seeds at par.
+  - **C10.6 tribute carried** (sim 85): the tenth set aside at the tributary's harvest and carried to the lord's store by its people (lived walkers and
+    carts, COARSE the same loads), wearing the ways that converge on the lord; standards enlarged with distance up to 4x. TributeCarriedTests 5/5; its
+    control and ten seeds are in the queue.
+- **RUNNING: the job queue** `bash tc2/out/tools/s23/runq.sh` (background task bc2qpqxfq). `Q` =
+  `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/db1b5af7-2c1c-4e6f-a5ff-c8b25b1a81c2/scratchpad/q` (`runq.log`, `log/<job>.log`,
+  `todo`, `done`; `touch $Q/stop` ends it after the current job). Remaining at the handoff (about two hours): `3_d_l9z1_s2/s4` (C10.5's 900-year check),
+  `3_t_*` (C10.6's evaluation), `4_a_fullsuite_i1` (the full suite on the integration), `4_b_f1_*` (its ten seeds), `4_c_cmp_probe_f1`. Results land in
+  `tc2/out/tools/s23/results/` and `tc2/out/civ/`. If the scratchpad is gone, rebuild from the worktrees (SESSION_HANDOFF says how).
 
 ## Do next, in order
-1. **The full suite once** on 93ad626 (`node tc2/scripts/headless.mjs test`; ~17 min; fix failures). Then **real shots of the gardens**:
-   copy `tc2/out/tools/s17b/*` into the new scratchpad (set `S=`), then `bash shots.sh s18a "<repo>/tc2/out/civ/s4_g1/world_y300.tc2"
-   low,close,village,street 10` and `SHOTX="--village town" bash shots.sh s18b <same save> townlow,townstreet,townclose 10`; read the Unity log's
-   "people drawn N (at work or on the move M)" (a loaded save is shown only on its lived day); look at the PNGs: beds behind houses, people
-   hoeing in them, nothing drawn over streets. Fix what the shots show; commit.
-2. **The 900-year check** (`l9.sh`, `BIN=` a fresh build of HEAD, `TAG=g1`, seeds 4 and 42 in parallel) and **the Web build and test**
-   (`webgate.sh s18web1` - one Unity build alone).
-3. **W-FOREST pass 2b**: apply both patches (`python p_drytropics.py`, `python p_drytropics_view.py`), build, the control `--oldrain` (seed 4) must
-   equal the HEAD binary's run byte-identically, ten seeds (three lanes, `q8.sh`'s pattern), `place --seasons` before/after (seed 42), shots of the
-   dry tropics in the wet and the dry season and of four climates side by side (`sheet.py`) - DECISIONS D2-144; keep iterating until the climates
-   are not interchangeable (Arjun judges W-FOREST - never mark it done without his judgement in real shots).
-4. Then C3.7b the threshing floor and C3.7c the muck (`26` §2h), and the remaining visual-truth items (`27` §6-§8: the bed's season drawn,
-   headmen not drawn, famine weak, stumps of felled woods).
-
-## Tools (`tc2/out/tools/s17b/`; copies of this session's - set `S=`/`SCR=` to the new scratchpad)
-- `bld.sh` (BIN, TESTS, GATE: build the headless host, copy to the scratchpad, run test filters), `gwrun.sh` (gated seed runs; `EXTRA=` switches),
-  `cmp.py A B seeds`, `rates.py TAG seeds`, `decades.py A B` (people by 20-year spans), `shots.sh TAG SAVE VIEWS [HOUR]` (`SHOTX=` extra args),
-  `sheet.py OUT COLS W H imgs` (contact sheets), `l9.sh`, `webgate.sh TAG`, `bench.sh` (back-to-back timing), `q8.sh` (build, control, ten seeds
-  in three lanes, cmp, time use), `pt.py` (line-ending-aware patching), `v75.py`, `mkcc.py`.
-- Headless: `timeuse --load SAVE --days 48 --daylight --stages [--nogarden]`, `place --load SAVE --crofts | --housing | --seasons | --sheds |
-  --woods | --roads | --still`, `test --filter X [--noniche --nowallworks --noworkclear]`; run switches `--noniche --nowallworks --noworkclear
-  --oldwoods --nogarden`. `node tc2/scripts/unity.mjs cc` compiles the Unity C# without the editor (shaders need the real editor: `shots`).
+1. Read the queue's results: C10.5's 900-year check (`results/lordships_s*_l9z1_y600.txt` - do lordships hold, grow plausibly, or snowball? a snowball
+   needs a limit grounded in the record before landing), C10.6's control and `cmp_z1_t1.txt`, the integration's `fullsuite_i1.txt`, `cmp_t1_f1.txt` and
+   the probe's hashes on `s2_f1`.
+2. Land: write D2-159, D2-160, D2-161 into DECISIONS from the drafts (fill their FILL marks); `git merge --no-ff wip/s23-int` on main; `node
+   tc2/scripts/unity.mjs cc`; PROGRESS.
+3. A v85 seed-2 world (`run --seed 2 --years 300 ... --snap 300` with main's binary) for real shots of the tributary and the lord (`unity.mjs shots
+   --village tributary|lord`, views `standard,standardlow,village,region`; carriers after the tributary's harvest via `--doy`): do the standards and the
+   converging roads read now? Then the Web build and test (`tc2/out/tools/s23/1_a_web.sh`, a new tag) on a quiet machine.
+4. Then the next slice by evidence: the lord's household men (C10.7, `23` §3 - `lordships` measures each lord's surplus) or C9.5 boats across the water
+   (needs a lived "legs by boat" model).
 
 ## Rules that bite
-- Commits `[tc2] ...` ending with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`; stage only TC2 files; never force-push.
-- **No subagents.** Resource Governor (Control Room) was **HIGH** at the handoff: CPU 90 %, RAM 92 %, up to three heavy jobs, never two builds or
-  suites at once; other applications hold RAM at 65-96 % - gate heavy jobs (RAM < 88 %), never kill processes you did not start. Check the active
-  policy in the session's Control Room notices.
-- Start background queues with `exec bash q.sh > log` (stopping a `cd X && bash q.sh` task leaves the script running) and never edit a running
-  script above its current line. Write patch scripts with the Write tool (Bash heredocs mangle quotes); never `sed -i` a CRLF file.
-- Core is pure C#, deterministic, no float arithmetic (`headless.mjs test` lints it - cast floats to double before subtracting). A local named
-  like an enclosing one fails the headless build (CS0136). Judge simulation changes by ten seeds against a control on the same binary
-  (a `--no...` switch reproducing the previous runs byte-identically); wall time is not cost on this machine - compare the reports' `events`.
-- The save format is v76: v75 saves (`_w1` and older) load only in a v75 binary (build an older commit for tools on them).
+- Commits `[tc2] ...` ending with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`; stage only TC2 files; never force-push; push only when asked
+  (as Arjun0014, per the global CLAUDE.md).
+- **Resource rule (Arjun D-1/D-2)**: one low-priority heavy job at a time while RAM < 86 % and CPU < 85 % - the job queue (`tc2/out/tools/s23/runq.sh`,
+  `lib.sh`: `gate`, `low`, `world`); never kill processes you did not start (the user's Chrome and other Claude sessions share the machine).
+- Develop in a worktree per slice (`git worktree add -b wip/<slice> "C:/Game Dev/tc-<slice>" main`); keep the main checkout on main for the Unity editor
+  jobs (`unity.mjs cc`, shots, the Web build run in the main checkout). New test files need a `.meta` (fileFormatVersion 2, a new guid).
+- Core is pure C#, deterministic, no float arithmetic (floatcheck). A derived cache must give the same answer whenever it is filled (`03` §4; probe
+  `run --load SAVE --warmroutes`). Judge simulation changes by ten seeds against a control on the same binary (a `--old...` switch reproducing the
+  previous runs byte-identically); wall-clock time on this shared machine is not evidence.
+- Bash heredocs pass through a layer that collapses `\\`: write patch scripts or text with backslashes with the Write tool.
+- Saves carry a sim version; a save loads only in a binary of the same version (C10.6's branch alone is also 85 - read `_t1` saves with `bin_t7` only).
