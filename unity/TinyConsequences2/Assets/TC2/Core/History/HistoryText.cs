@@ -263,7 +263,11 @@ namespace TC2.Core.History
                     if (p.Why == WhyCode.Take) return p.CargoQty > 0f ? "hurrying home to " + home + " in the dark with " + Load(p.Cargo, p.CargoQty) + " taken from a neighbour's store" : "running home to " + home + " in the dark: seen at the store, they left the grain";
                     return "walking home to " + home + (p.CargoQty > 0f ? " with " + Load(p.Cargo, p.CargoQty) : "");
                 case ActivityKind.Visit:
-                    if (p.Voyage != 0) return "at " + at + ", come over the sea in the household's boat: they row home when the boat's business is done";
+                    if (p.Voyage != 0)
+                    {
+                        bool dug = w.Buildings.Exists(p.Voyage) && !TC2.Core.Places.Boats.IsPlank(w.Buildings.Get(p.Voyage).Kind);   // (a dugout is paddled: C9.5b)
+                        return "at " + at + ", come over the water in the household's " + (dug ? "dugout: they paddle" : "boat: they row") + " home when the boat's business is done";
+                    }
                     return "visiting " + at;
                 case ActivityKind.Flee: return "keeping to shelter: a fire is near";
                 case ActivityKind.Wait: return "waiting on the road for the fire ahead to burn out";
@@ -277,8 +281,10 @@ namespace TC2.Core.History
                     }
                 case ActivityKind.Voyage:
                     {
-                        // (C9.3) down at the landing, rowing over, or rowing home
+                        // (C9.3) down at the landing, rowing over, or rowing home - a dugout paddled across a short water (C9.5b)
                         string other = dest.Length > 0 ? dest : "another landing";
+                        bool dugout = w.Buildings.Exists(p.Voyage) && !TC2.Core.Places.Boats.IsPlank(w.Buildings.Get(p.Voyage).Kind);
+                        string boatOf = dugout ? "the household's dugout" : "the household's boat", goes = dugout ? "paddling" : "rowing";
                         string what = p.CargoTo == TC2.Core.Places.Trade.AsGift ? " with grain for its famine" :
                                       p.CargoTo == TC2.Core.Places.Trade.AsReturn ? " with grain given back for what " + other + " gave in famine" :
                                       p.CargoTo == TC2.Core.Places.Trade.ToFetch ? " to fetch the grain " + other + " owes " + home :
@@ -286,10 +292,10 @@ namespace TC2.Core.History
                                       p.CargoTo == TC2.Core.Places.Trade.ToTenth ? " to fetch the tenth " + other + " has set aside for " + home :
                                       p.CargoQty > 0f ? " with " + Load(p.Cargo, p.CargoQty) + " to trade: " + home + " spares it and they want it" : "";
                         if (p.Step == StepKind.Travel && p.Dest == p.Home)
-                            return "rowing home to " + home + " over the sea in the household's boat" + (p.CargoQty > 0f ? " with " + Load(p.Cargo, p.CargoQty) : "") +
+                            return goes + " home to " + home + " over the water in " + boatOf + (p.CargoQty > 0f ? " with " + Load(p.Cargo, p.CargoQty) : "") +
                                    (p.CargoTo == TC2.Core.Places.Trade.TenthAboard && p.CargoQty > 0f ? ", the tenth a tributary paid " + home : "");
-                        if (p.Step == StepKind.Travel) return "rowing over the sea to " + other + " in the household's boat" + what;
-                        return "down at " + home + "'s landing with the household's boat: it puts out for " + other + what;
+                        if (p.Step == StepKind.Travel) return goes + " over the water to " + other + " in " + boatOf + what;
+                        return "down at " + home + "'s landing with " + boatOf + ": it puts out for " + other + what;
                     }
                 case ActivityKind.Sail:
                     return "out in the household's " + (w.Buildings.Exists(p.WhyArg) ? TC2.Core.Places.Boats.NameOf(w.Buildings.Get(p.WhyArg).Kind) : "boat") + ", fishing the open sea" + (p.Why == WhyCode.NoFood ? ": nothing is left to eat at home" : p.Why == WhyCode.FoodShort ? ": rations are short in " + home : ": the shoals beyond the shore");
