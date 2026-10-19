@@ -38,7 +38,9 @@ lost with the fallen and taken as loot; shields, bows, armour.
 - **The watch** (D2-071): a night's labour at the store.
 - **The trained**: people who practise at a training ground (C1.5).
 - **Guards**: a watch kept by day at a gate or tower (C7).
-- **Retainers**: fighters fed by a leader's household from tribute and harvest (C10) - possible only where surplus flows to a leader.
+- **Retainers**: fighters fed by a leader's household from tribute and harvest (C10) - possible only where surplus flows to a leader. **Implemented
+  (C10.7b, D2-165)**: sworn men - young men of a village sworn to its first household, a year's food each at its harvest from its grain (a lord's from
+  its tribute), practising every day and going with every band (`Society/Retinue.cs`, `10` §12j).
 - **Mounted fighters**: need horses (no horse kind yet - added with livestock when the ecology has them), riding skill, fodder.
 - **Professional soldiers**: fed by a polity's stores in exchange for service (C10) - the costliest.
 Labels are read from what people do; nothing is assigned.
