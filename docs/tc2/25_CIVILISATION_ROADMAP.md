@@ -73,7 +73,7 @@ and loads moved) and cargo boats, coastal trade at the sea's cost ratio; C9.5 fe
 
 ### C10 governance, by slices: ~~C10.1 the lord's call~~ (D2-107; the lord's answer D2-108); ~~C10.2 standing and the village's first household~~
 (D2-127); ~~C10.3 a contested succession splits a village~~ (D2-128); ~~C10.4 bread and dependence~~ (D2-157); ~~C10.5 a lordship's might~~ (D2-159);
-~~C10.6 tribute carried to the lord's store~~ (D2-161: its labour and its ways - the ways of a lordship converge on its lord); next by evidence: the
+~~C10.6 tribute carried to the lord's store~~ (D2-161: its labour on the ways after each harvest; a fifth of the tribute has no way on foot to its lord - by boat next, C9.5); next by evidence: the
 lord's household men fed from the tribute (retainers, `23` §3), a lord's death and its tributaries (succession in a lordship), rebellion by those who
 rise together.
 

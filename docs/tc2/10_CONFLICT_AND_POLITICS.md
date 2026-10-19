@@ -258,9 +258,13 @@ Built on C3.3 (D2-126: household grain, loans recorded as debts, gifts). `Core/S
   carrying it by boat waits for boats across the water (C9.5). And what still stands set aside at the next harvest - carried by nobody in a year:
   no hands fit to carry it, or the way cut since - is the village's again before the new tenth is set aside, so no store keeps a pile for a lord
   its people cannot bring it to.
-- **What it changes in the world picture**: carriers with sacks (and carts) on the way to the lord after each tributary's harvest; the way between a
-  tributary and its lord walked two times a load - worn to a path or a road, so the ways of a lordship converge on its lord; the standards (real
-  state) enlarged with the camera's distance up to 4x so that the polity's colours read from the village view.
+- **What it changes in the world picture**: carriers with sacks (and carts) on the way to the lord after each tributary's harvest; the standards (real
+  state) enlarged with the camera's distance up to 4x so that the polity's colours read from the village view. The way between a tributary and its
+  lord is walked two times a load - but measured (ten worlds at year 300): every pair of villages within a day's walk is already worn to a path or a
+  road by its own traffic (the bound pairs 4 roads and 19 paths, the 599 others 89 roads, 500 paths, 10 tracks), so the ways of a lordship do not
+  stand out from the others' - the hope that they would converge visibly on the lord was not borne out.
+- **Measured** (D2-161): over ten worlds' 300 years 419,420 FU set aside and carried in 7,909 loads (half on carts); no way on foot to the lord at 444
+  harvests in five worlds - a fifth of all the tribute, kept at home: the case for carrying it by boat (C9.5).
 - **The record**: food rents carried to the lord's hall - the *feorm* of the early English kings, a night's food for the king's household brought in
   kind; manorial dues carted to the lord's barn after the harvest.
 - **Tools**: `--oldtribute` (the tenth into the lord's store at the harvest, carried by nobody), `--carrytally` (the `carried:` line: loads, FU,
