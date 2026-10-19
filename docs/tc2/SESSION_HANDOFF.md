@@ -1,5 +1,28 @@
 # TC2 Session handoff
 
+## Session 23, fourth context (20 Oct 2026, from 02:54 IST; Control Room run #63 session 4) - C10.7a in evaluation, C10.7b built, C9.5b's dugouts traced; the same queue
+
+### Exact state (kept current; 03:31)
+- **main** = cc66770 + PROGRESS (uncommitted edit); sim 87. Re-checked: code = bc99679's, full suite 433/433 (0 skipped), `unity.mjs cc` clean.
+- **C10.7a might by lasting strength** - `wip/c107a-arms` (worktree `C:/Game Dev/tc-arms`, tip 72c0490 + `10` §12i uncommitted), sim 88: `Conflict.Years`
+  (shared with `Strength`), `Kit`, `LastingOf`, `Lasting`, `Weigh` (heads or lasting), `--oldmightarms`, `--armstally` (`arms:` line). Tests on `bin_a8`
+  and `bin_a9`: Might 6, Bread 5, Defence 8, Leaders 8, Lordship 4, TributeCarried 9, Across 8, Determinism 6, SaveLoad 8 - all 0 skipped. Queued:
+  `6_7_f_ctl_k0_s2` (control `--oldmightarms` = `_y1`, seed 2, saves its year-300 world in v88 for the 900-year baseline), `6_7_g_k1_*` (ten seeds),
+  `6_7_h_cmp_k1` (`results/cmp_y1_k1.txt`, `might_s*_k1.txt`), `6_c_1..3` (900 years: `_l9k0` s2, `_l9k1` s2 and s4). Draft decision
+  `tc2/out/tools/s23/d2164.md`.
+- **C10.7b sworn men** - `wip/c107b-sworn` (worktree `C:/Game Dev/tc-sworn`, on C10.7a, tip d20b6bb), sim 89, NOT YET BUILT: `Society/Retinue.cs`,
+  `Person.Sworn`, history `Sworn`/`SwornReleased` (98, 99), practice daily (lived and COARSE), the ground laid out for sworn men, every band, pages,
+  `--oldsworn`, `--sworntally`; SwornTests 5. Queued `6_7_e3_build_s1` (build, floatcheck, ten classes -> `s1_ok`). Written, not queued (queue them when
+  `s1_ok`): `6_8_a_ctl_w0_s2`, `6_8_b_w1_*`, `6_8_c_cmp_w1`, `6_d_1..2` (900 years). Draft decision `d2165.md`; design `c107_design.md` (last section).
+- **C9.5b's dugouts in lived days** - the shots `s23m5`/`s23m4` framed no dugout (seed 4: a plank boat with pots at dawn). A probe
+  (`voyages --load SAVE --days N [--dugouts]`, branch `wip/s23-voyshots`, worktree `C:/Game Dev/tc-voy`; shot views take `dugout` and `voyageclose`)
+  lived each `_y1` year-300 world 96 days: **seed 2: 19 voyages, all in dugouts** (Lesgristholm fetching grain owed from Nemskundby, Tholdkeistmere's
+  pots to Diththorpe); **seeds 3, 4, 5, 11: no dugout crossed** (20, 18, 0, 64 voyages, all plank boats) - seed 3 never even booked one in 96 days,
+  though its COARSE history crossed by dugout ~4 times a year. Queued `6_7_e2_coarse_cross` (the same worlds two years at COARSE: does COARSE book
+  crossings at year 300?). Ready to queue after the Web job and a merge of `wip/s23-voyshots` into main: `6_7_e4_shots_dugout` (seed 2, aimed at real
+  crossings: `s23n1`, `s23n2`).
+- **RUNNING: the queue** (task bc2qpqxfq; `Q` as below): `6_7_e_web` (Web `s23web4` on main) since 03:25.
+
 ## Session 23, third context (20 Oct 2026, 00:04 - ~02:55 IST; Control Room run #63 session 3) - C9.5a and C9.5b landed; C10.7a drafted; context handoff with the queue running
 
 ### Exact state at the handoff (20 Oct ~02:45)

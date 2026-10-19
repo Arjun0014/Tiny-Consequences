@@ -4,6 +4,25 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 23, fourth context (20 Oct 2026, from 02:54 IST; Control Room run #63 session 4; the same job queue)** - IN PROGRESS. (1) **Main
+  re-checked** (the handoff's stale milestones): main's code is bc99679's (cc66770 changed docs only); **full suite 433/433, 0 skipped**
+  (`results/fullsuite_m4.txt`, 02:53), `unity.mjs cc` clean on bc99679 (covers `ShotRunner.cs`), D2-159-D2-163 in DECISIONS as drafted.
+  (2) **C10.7a measured first** (`lordships --might` on the ten `_y1` year-300 worlds, the draft's binary `bin_a7`; `results/might_s*_y1.txt`): a
+  village's people of fighting age by their lasting strength (tools, arms, iron, fighting skill) against heads - the median village x1.00 (seed 5: no
+  arms, nobody trained) to x2.03 (seed 7); seeds 2, 4 and 7 arm nearly everywhere (median x1.85-2.03), the others little (x1.00-1.15); grown people
+  with fighting skill over 0.1: 0 of 617 (seed 5) to 2,429 of 5,297 (seed 4); **the 26 bonds still paid at year 300 hold by either weighing**.
+  (3) **C9.5b's real shots** (`s23m5` seed 5, `s23m4` seed 4, `_y1` year 300; views `voyage`, `voyagenear`, `voyagestay`, `region`): **no dugout
+  framed** - seed 5's archipelago showed no voyage at all in 36 lived days (its dugouts cross about twice a year: 152 COARSE crossings in 300 years),
+  seed 4's views found Heimvahope's plank boat rowing 500 kg of pots and jars to Leigreldby at dusk (20:44; a boat with its crew reads at 90 m, dark).
+  A probe now finds the lived crossings first (`voyages --load SAVE --days N`, worktree `tc-voy`, branch `wip/s23-voyshots`) and the voyage views take
+  `dugout` and `voyageclose`, so a shot can be aimed at a real one (merged db4b8ba). Lived 96 days, each `_y1` year-300 world: **seed 2 made 19 voyages,
+  all in dugouts** (Lesgristholm fetching the grain Nemskundby owes it 17 times; pots to Diththorpe and Kaestead); **seeds 3, 4, 5, 11 made 20, 18, 0, 64,
+  all plank boats** - seed 3 booked no dugout at all, though its COARSE history crossed by dugout ~4 times a year (being compared with COARSE at the
+  same moment). (4) **Web `s23web4` on main with C9.5b: 6/6**, browser = headless dotnet = editor Mono, every part bit for bit (D2-163). (5) **C10.7a
+  built** (`wip/c107a-arms`; sim 88): all nine neighbouring test classes pass, 0 skipped; control, ten seeds and 900 years queued (D2-164 draft).
+  (6) **C10.7b sworn men built** (`wip/c107b-sworn`, sim 89; D2-165 draft): first build and tests queued. (7) **C9.5c measured first**: a COARSE day's
+  visits reach every village within 6 km, across water too - wearing "ways" history tells as paths where no way on foot exists, carrying sickness and
+  news nobody could carry lived; `--visittally` survey queued (`c95c_design.md`).
 - **Session 23, third context (20 Oct 2026, from 00:04 IST; Control Room run #63 session 3; the same job queue)** - **landed on main (c8f6f5d):
   C9.5a grain across water goes by boat; DECISIONS D2-162; sim version 86.** (1) **The 900-year check of the code as landed** (seed 2, `_l9g1`): no
   snowball (6-7 lords among 28-32 villages, the largest 2-4, depth 1-2); the tenth carried every year (1,334,050 FU in 18,940 loads, 70 % on carts,
