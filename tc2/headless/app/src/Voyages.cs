@@ -66,7 +66,12 @@ namespace TC2.Headless
                         open[bid] = v;
                     }
                     v.Last = t;
-                    if (p.CargoQty > 0f && v.Skipper == 0) { v.Skipper = id; v.Load = (p.CargoQty * Trade.KgOf(p.Cargo)).ToString("0") + " kg of " + GoodName(p.Cargo) + " (" + CargoToName(p.CargoTo) + ")"; }
+                    if (p.CargoQty > 0f && v.Skipper == 0)
+                    {
+                        v.Skipper = id;
+                        v.Load = p.CargoTo == Trade.ToFetch ? "nothing aboard, going to fetch " + p.CargoQty.ToString("0") + " FU of grain owed"
+                                                            : (p.CargoQty * Trade.KgOf(p.Cargo)).ToString("0") + " kg of " + GoodName(p.Cargo) + " (" + CargoToName(p.CargoTo) + ")";
+                    }
                     if (p.Act == ActivityKind.Voyage && p.Step == StepKind.Travel && p.At != p.Dest)
                     {
                         double f = p.T1 > p.T0 ? (t - p.T0) / (double)(p.T1 - p.T0) : 0;
