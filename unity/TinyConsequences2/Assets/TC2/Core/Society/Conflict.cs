@@ -99,7 +99,7 @@ namespace TC2.Core.Society
         public const double WallSeen = 0.6;
 
         // ---- tribute and lordship (D2-075)
-        /// <summary>A tributary pays its lord this share of each harvest; it bows only to raiders this much stronger (fit grown people).</summary>
+        /// <summary>A tributary pays its lord this share of each harvest; it bows only to a neighbour this much stronger (by might: C10.5, C10.7a).</summary>
         public const double TributeShare = 0.1, TributeOdds = 1.2;
 
         // ---- bread and dependence (C10.4, D2-157)
@@ -119,7 +119,8 @@ namespace TC2.Core.Society
         /// <summary>`--oldmight`: villages weigh each other as D2-075 did - by their fit grown people at home that day, a lord by its own village
         /// alone - on the same binary.</summary>
         public static bool MightOff;
-        /// <summary>`--oldmightarms` (C10.7a off): might counts people of fighting age by heads, as C10.5 weighed them - on the same binary.</summary>
+        /// <summary>`--oldmightarms` (C10.7a off, D2-164): might counts people of fighting age by heads, as C10.5 weighed them, not by their lasting
+        /// strength (years, tools and arms, fighting skill) - on the same binary.</summary>
         public static bool MightArmsOff;
         /// <summary>Tools (`--mighttally`): for each weighing - [0..3] a beaten village's bowing, [4..7] bowing for bread, [8..11] a bond's end at the
         /// harvest - the weighings, those the old count (D2-075) would carry, those might carries, and both; [12] lords' weighings in which their call
@@ -426,12 +427,15 @@ namespace TC2.Core.Society
             return age >= 16 && age < 60;
         }
 
+        /// <summary>What a body's years give it in a struggle: the young and the ageing less than those in their prime.</summary>
+        public static double Years(double age) => age < 18 ? 0.8 : age < 45 ? 1.0 : age < 60 ? 0.8 : 0.6;
+
         /// <summary>A body's strength in a struggle: its health and years, its hurt, and the metal its village holds (knives, axes).</summary>
         public double Strength(in Person q)
         {
             var w = _w;
             double age = q.AgeYears(w.Now);
-            double years = age < 18 ? 0.8 : age < 45 ? 1.0 : age < 60 ? 0.8 : 0.6;
+            double years = Years(age);
             double armed = 0.0, arms = 0.0, iron = 0.0;
             if (w.Settlements.Exists(q.Home))
             {
@@ -1101,9 +1105,14 @@ namespace TC2.Core.Society
             return (1.0 + 0.3 * armed) * (1.0 + 0.3 * arms) * (1.0 + 0.15 * iron);
         }
 
+        /// <summary>A person of fighting age as a fight weighs them over the seasons ahead (C10.7a): `Strength` with what lasts - their years, their
+        /// village's kit, their fighting skill (C1.5) - and without what passes, the day's health and wounds (C10.5's reason for counting heads).</summary>
+        static double LastingOf(in Person q, double age, double kit) => kit * Years(age) * (1.0 + 0.6 * (double)q.SkFight);
+
         /// <summary>
-        /// A village's people of fighting age by their lasting strength (C10.7a): each as a fight weighs them (`Strength`) with what lasts - the
-        /// village's kit and their own fighting skill (C1.5) - and without what passes, the day's health and wounds (C10.5's reason for counting heads).
+        /// A village's people of fighting age by their lasting strength (C10.7a, D2-164): each counted as a fight would weigh them over the seasons
+        /// ahead (`LastingOf`) - an untrained grown person in their prime with no tools or arms counts one; a trained one with a spear and an axe of
+        /// iron more than two. `Hands` counts them by heads (`--oldmightarms`).
         /// </summary>
         public double Lasting(int sid)
         {
@@ -1116,18 +1125,19 @@ namespace TC2.Core.Society
                 ref var q = ref w.People.Get(res[i]);
                 if (!q.Alive) continue;
                 double age = q.AgeYears(now);
-                if (age >= 16 && age < 60) m += kit * (1.0 + 0.6 * (double)q.SkFight);
+                if (age >= 16 && age < 60) m += LastingOf(in q, age, kit);
             }
             return m;
         }
 
         /// <summary>
         /// The might a village weighs another by (C10.5, D2-159) - in bowing to raiders (D2-075), in bowing for bread (C10.4) and in paying no more
-        /// (a bond's end): its people of fighting age (`Hands`) and, for a lord, the men its call would bring against that village - of each of its
+        /// (a bond's end): its people of fighting age and, for a lord, the men its call would bring against that village - of each of its
         /// tributaries within a day's walk of it, a quarter of the meek and more of the bold, never those with close kin there (C10.1's own call).
-        /// The village weighed is never its own caller. D2-075 weighed a lord by its own village's fit people at home that day: a lord of several
-        /// villages was no stronger than its seat, and a bond agreed the day after a raid (the beaten village's wounded abed) ended at the next
-        /// harvest, when they had mended.
+        /// Each is weighed by their lasting strength (C10.7a, D2-164: their years, their village's tools and arms, their fighting skill - `Lasting`);
+        /// `--oldmightarms` counts heads (`Hands`), as C10.5 did. The village weighed is never its own caller. D2-075 weighed a lord by its own
+        /// village's fit people at home that day: a lord of several villages was no stronger than its seat, and a bond agreed the day after a raid
+        /// (the beaten village's wounded abed) ended at the next harvest, when they had mended.
         /// </summary>
         public double Might(int sid, int against)
         {
@@ -1155,7 +1165,7 @@ namespace TC2.Core.Society
                     double age = q.AgeYears(now);
                     if (age < 16 || age >= 50 || KinInIndexed(in q, against)) continue;   // (whom the call takes: grown and under fifty, as a band's own)
                     double owed = CallOwed + CallBold * q.Bold / 255.0;
-                    called += MightArmsOff ? owed : owed * kit * (1.0 + 0.6 * (double)q.SkFight);   // (C10.7a: as they fight)
+                    called += MightArmsOff ? owed : owed * LastingOf(in q, age, kit);   // (C10.7a: as they would fight)
                 }
             }
             if (MightTally != null && called > 0) { MightTally[12] += 1; MightTally[13] += called; }
@@ -1518,7 +1528,7 @@ namespace TC2.Core.Society
                 {
                     Kind = HistoryKind.TributeEnded, Time = now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid), Object = EntityRef.Settlement(lord),
                     Cause1 = agreed, Rel1 = CauseRel.PartOf, ArgA = gone ? 1 : 0, RootKind = RootKind.People,
-                    // (C10.5: the weighing - what the lord could bring against it, and its own people of fighting age)
+                    // (C10.5: the weighing - what the lord could bring against it, and its own people of fighting age; by their lasting strength, C10.7a)
                     Magnitude = MightOff || gone ? 0f : (float)lordMight, ArgB = MightOff || gone ? 0 : (int)(ownMight + 0.5),
                 });
                 if (!gone)

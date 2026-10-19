@@ -227,6 +227,7 @@ namespace TC2.Headless
             if (a.Has("breadtally")) TC2.Core.Society.Conflict.BreadTally = new long[15];   // (C10.4: village-harvests by the relief still owed, bonds)
             if (a.Has("oldmight")) TC2.Core.Society.Conflict.MightOff = true;   // (C10.5 off: the day's fit grown people at home, a lord by its own village - D2-075's weighing)
             if (a.Has("mighttally")) TC2.Core.Society.Conflict.MightTally = new double[14];   // (C10.5: each weighing by the old count and by might)
+            if (a.Has("oldmightarms")) TC2.Core.Society.Conflict.MightArmsOff = true;   // (C10.7a off: might counts people of fighting age by heads, as C10.5 weighed them)
             if (a.Has("oldways")) TC2.Core.Agents.RouteCache.LiveForest = true;   // (D2-160 off: routes from the woods as they are when built)
             if (a.Has("oldtribute")) TC2.Core.Society.Conflict.CarryOff = true;   // (C10.6 off: the tenth into the lord's store at the harvest, carried by nobody)
             if (a.Has("carrytally")) TC2.Core.Society.Conflict.CarryTally = new double[TC2.Core.Society.Conflict.CarryTallyN];   // (C10.6: loads carried, FU, lived, set aside, given back, by cart, km, a year uncarried, no way on foot; by sea)

@@ -277,23 +277,24 @@ namespace TC2.Headless
                 double armed = TC2.Core.Knowledge.Tech.ToolShare(in s);
                 double arms = s.Population > 0 ? DMath.Clamp01(s.Arms / (TC2.Core.Places.Forge.ArmsPerHead * s.Population)) : 0.0;
                 double iron = s.Population > 0 ? DMath.Clamp01(s.IronArms / (TC2.Core.Places.Forge.ArmsPerHead * s.Population)) : 0.0;
-                double kit = (1.0 + 0.3 * armed) * (1.0 + 0.3 * arms) * (1.0 + 0.15 * iron);
+                // (the simulation's own weighings: heads, and their lasting strength - years, kit and skill)
+                int n = w.Conflict.Hands(sid);
+                double sum = w.Conflict.Lasting(sid), skill = 0;
                 var res = w.Residents(sid);
-                double sum = 0; int n = 0;
                 for (int i = 0; i < res.Count; i++)
                 {
                     ref var q = ref w.People.Get(res[i]);
                     if (!q.Alive) continue;
                     double age = q.AgeYears(now);
                     if (age < 16 || age >= 60) continue;
-                    n++; sum += kit * (1.0 + 0.6 * (double)q.SkFight);
-                    grown++; if (q.SkFight > 0.1f) skilled++;
+                    grown++; skill += q.SkFight; if (q.SkFight > 0.1f) skilled++;
                 }
                 if (n == 0) continue;
                 rows.Add((sum / n, n, sid));
                 bool isLord = w.Conflict.PolitySize(sid) > 0 && w.Settlements.Get(sid).Lord == 0;
                 Console.WriteLine("    might " + name(sid) + " (" + sid + (s.Lord != 0 ? ", pays " + name(s.Lord) : isLord ? ", a lord" : "") + "): " + n + " of fighting age, lasting strength x" +
-                                  (sum / n).ToString("0.00") + " (tools " + armed.ToString("0.00") + ", arms " + arms.ToString("0.00") + ", iron " + iron.ToString("0.00") + ") = " + sum.ToString("0"));
+                                  (sum / n).ToString("0.00") + " (kit x" + w.Conflict.Kit(sid).ToString("0.00") + ": tools " + armed.ToString("0.00") + ", arms " + arms.ToString("0.00") + ", iron " + iron.ToString("0.00") +
+                                  "; fighting skill " + (skill / n).ToString("0.00") + " a head) = " + sum.ToString("0"));
             }
             rows.Sort((x, y) => x.factor.CompareTo(y.factor));
             if (rows.Count > 0)

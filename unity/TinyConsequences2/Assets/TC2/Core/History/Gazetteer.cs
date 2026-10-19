@@ -369,8 +369,15 @@ namespace TC2.Core.History
                 {
                     if (!w.History.TryGet(evs[i], out var pe) || pe.Kind != HistoryKind.TributePaid || pe.Subject.Id != sid) continue;
                     if (pe.Object.Id == s.Lord && pe.ArgA > 0)
-                        sb.Append("At its last harvest ").Append(Name(w, s.Lord)).Append(" could bring the strength of ").Append(pe.ArgA).Append(" against it (its own people and those its call brings, by their arms and skill); its own came to ")
-                          .Append(pe.ArgB).Append(".\n");   // (C10.7a: lasting strength, not heads)
+                    {
+                        if (TC2.Core.Society.Conflict.MightArmsOff)   // (C10.5's heads)
+                            sb.Append("At its last harvest ").Append(Name(w, s.Lord)).Append(" could bring ").Append(pe.ArgA).Append(" against it (its own people and those its call brings); it had ")
+                              .Append(pe.ArgB).Append(" of fighting age.\n");
+                        else   // (C10.7a: by their lasting strength)
+                            sb.Append("At its last harvest ").Append(Name(w, s.Lord)).Append(" could bring a strength of ").Append(pe.ArgA)
+                              .Append(" against it - its own people and those its call brings, each by their years, arms and fighting skill (an untrained grown person in their prime with no arms counts one); its own came to ")
+                              .Append(pe.ArgB).Append(".\n");
+                    }
                     break;
                 }
             }
