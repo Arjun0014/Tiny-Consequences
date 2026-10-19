@@ -190,10 +190,10 @@ namespace TC2.Tests.Core
             {
                 AcrossTests.Famine(w, b);
                 w.Settlements.Get(a).Granary = 100000;
-                double g0 = w.Settlements.Get(b).Granary;
+                double r0 = w.Metrics.ReliefBySeaFu;   // (the island's own people bring food into its store too: count only what came by sea)
                 long end = w.Now + SimTime.Days(4);
                 string paddling = null;
-                while (w.Now < end && w.Settlements.Get(b).Granary - g0 < 1.0)
+                while (w.Now < end && w.Metrics.ReliefBySeaFu - r0 < 1.0)
                 {
                     w.Planet.Storms.Clear();
                     w.AdvanceTo(w.Now + SimTime.Minutes(30));
@@ -204,7 +204,7 @@ namespace TC2.Tests.Core
                         if (q.Alive && q.Voyage != 0 && q.Step == StepKind.Travel && q.CargoTo == Trade.AsGift) paddling = HistoryText.Doing(w, in q);
                     }
                 }
-                double got = w.Settlements.Get(b).Granary - g0;
+                double got = w.Metrics.ReliefBySeaFu - r0;
                 Console.WriteLine("lived: " + got.ToString("0") + " FU across the water in a dugout; crossings " + Boats.CrossTally[3] + "; " + paddling);
                 Assert.Greater(Boats.CrossTally[3], 0.0, "a lived crossing in a dugout");
                 Assert.Greater(got, 0.0, "the grain landed");
