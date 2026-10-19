@@ -75,8 +75,8 @@ and loads moved) and cargo boats, coastal trade at the sea's cost ratio; **C9.5a
 (D2-127); ~~C10.3 a contested succession splits a village~~ (D2-128); ~~C10.4 bread and dependence~~ (D2-157); ~~C10.5 a lordship's might~~ (D2-159);
 ~~C10.6 tribute carried to the lord's store~~ (D2-161: its labour on the ways after each harvest; a fifth of the tribute has no way on foot to its lord - by boat since C9.5a, D2-162); ~~C10.7a a
 lordship's might by lasting strength~~ (D2-164: villages weigh each other's people of fighting age by their years, tools and arms and fighting skill, not
-by heads); ~~C10.7b sworn men~~ (D2-165: a first household whose grain runs years beyond its needs keeps young men of its village sworn to it, fed from
-its grain - a lord's from its tribute; they practise every day and go with every band; retainers, `23` §3); next by evidence: a lord's death and its
+by heads); ~~C10.7b sworn men~~ (D2-165: the one first among a village's people, whose household's grain runs years beyond its needs, keeps young men of the
+village sworn to them, fed from that grain - a lord's from its tribute; they practise every day and go with every band; retainers, `23` §3); next by evidence: a lord's death and its
 tributaries (succession in a lordship), rebellion by those who rise together, a polity map layer (the standards do not read beyond the close view).
 
 ### C5 mining and metallurgy, by slices (D2-100): ~~C5.1 copper ore bodies, the mine, depletion~~ (done); ~~C5.2a charcoal~~ (done, D2-101); ~~C5.2b
