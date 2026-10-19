@@ -32,6 +32,13 @@
   `ForTribute` bookings delivered at the lord's landing; COARSE: at once); `--oldacross`; AcrossTests 3. Queued: `5_e1_a1_*` (the survey on the
   landed code: how much grain crossed water at once), `5_e2_*` (build, tests, control `--oldacross` = `_g1`, ten seeds `_x1`, `cmp_g1_x1`).
 
+- **The survey `_a1` (00:00)**: within a day's walk with no way on foot, 1,679 relief gifts (~604,000 FU) and 1,150 gifts back (~58,000 FU) crossed water
+  at once over ten worlds; 4 bows across water; of 444 no-way tenths 366 had a sea way, **the tributary never had a plank boat (0), the lord at 76** -
+  C9.5a's tenth by sea needs **the lord's boats to come and fetch it** (next: a `ForTributeFetch` booking like give-back's `ForFetch`; the dues
+  settled at pickup, the grain into the lord's store at its landing; COARSE the lord's free boats at once; set aside where either side has a boat).
+  The C9.5a build failed on a test premise (CS0177, fixed 39b7ce4); `5_e2_0`/`5_e2_1` requeued; its ten seeds `5_e2_2_*`, `5_e2_3` held in `$Q/hold`
+  until the fetch is in (then requeue them after a rebuild).
+
 ### Next, in order
 1. Read the queue: Unity C# (errors -> fix on main), the shots (standards from the village view? carriers on the road?), Web 6/6 with the probe =
    headless = Mono, the 900-year check, `_g2` (is the bonds lean D2-160's?), the profile -> PROGRESS and D2-161's shots line.
