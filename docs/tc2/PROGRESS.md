@@ -4,6 +4,27 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 23, second context (19 Oct 2026, from 21:26 IST; Control Room run #63 session 2; the same job queue)** - **landed on main (a19c077):
+  C10.5, D2-160 and C10.6 as amended; DECISIONS D2-159, D2-160, D2-161 (464e72c); sim version 85.** (1) **C10.5's 900-year check** (seeds 2 and 4
+  of `_z1` to year 900, against C10.4's `_y3`): no snowball and no growth - the largest lordship 2-3 villages, depth 1; bonds hold longer with less
+  churn (the mean life of a bond 114 -> 214 years on seed 2, 166 -> 201 on seed 4; bonds 49 -> 32 and 30 -> 23; pairs bound again 10 -> 6 and
+  3 -> 3); might ends a bond only where the old count also would (25 of 42, 14 of 29). (2) **Reviewing the integration before landing found two
+  C10.6 faults** (amended on `wip/c106b-carry`, f993e39, 32dba4c): a bond for bread needs only a day's walk as the crow flies (C10.4) and relief
+  within it moves at once, but the tenth is carried only along a way on foot - so a tributary across water set its tenth aside at every harvest
+  and nobody could ever carry it. **Measured on the landed code: 444 harvests in five of ten worlds, 100,504 FU - a fifth of all the tribute - had
+  no way on foot to the lord** (seed 5's only lordship for 107 years). Now the tenth is set aside only where a route on foot reaches the lord (else it
+  stays in the store; the pages say why), what a year left uncarried is the village's again (133 FU in ten worlds), a load sent home by a switch to
+  COARSE is set aside again, and one cart goes one way at a time (`Carts.Out`: two members had each taken the cart's load - the one cart and ox drawn
+  twice). (3) Evidence: floatcheck clean; TributeCarried 9/9 and ten neighbour classes (two test premises corrected: a made world's first tectonic
+  tick at time 0 relays the ground; Bread's and Leaders' pairs now a way on foot apart); **control** `--oldtribute --oldways` = C10.5's `_z1`
+  byte-identical; **full suite 419/419**; **ten seeds** `_g1` against `_z1`: vital rates at par (people x1.000, births and deaths a person-year
+  x1.003, x1.007), tribute agreed 40 -> 28 (x0.74, t -2.2) - the lean D2-160 alone showed (bonds for bread x0.65), being attributed by `_g2`
+  (D2-160 alone on the landed binary); the tenth carried 419,286 FU in 7,909 loads (half on carts), carriers' 102,949 km; **the ways of a lordship
+  do not stand out** - every pair of villages within a day's walk is worn to a path or a road by its traffic (bound 4 roads/19 paths, others
+  89/500/10 tracks): the design's hope corrected in `10` §12h; the route probe on the landed world: equal hashes with and without the view's routes.
+  (4) Tools: `lordships` prints the bonds with no way on foot and the ways of other neighbours; `--carrytally` [7]-[9]; shot view `why:<reason>`;
+  shots `--after tribute`. (5) Next: the Unity compile, real shots (`s23c` tributary, `s23d` lord, `s23e` carriers), the Web build and test, the
+  landed code's 900-year check and `_g2` are in the queue; then **C9.5's first slice: the tenth by sea** (a fifth of the tribute waits on it).
 - **Session 23 (19 Oct 2026, 18:54-~21:25 IST; Control Room run #63 session 1; one low-priority job queue `tc2/out/tools/s23/runq.sh`, gated RAM < 86 %,
   CPU < 85 %; context handoff with the queue still running - SESSION_HANDOFF "Session 23")** - (1) **C10.4 merged** (`wip/c104-bread` --no-ff, ca3b4c8;
   DECISIONS D2-157, D2-158; `25`; sim version 82); Unity C# compiles on main; **Web build and test `s23web1` 6/6** - the browser's probe (WebGPU, IL2CPP)

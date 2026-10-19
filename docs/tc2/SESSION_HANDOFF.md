@@ -1,33 +1,34 @@
 # TC2 Session handoff
 
-## Session 23, second context (19 Oct 2026, from 21:26 IST; Control Room run #63 session 2) - the same job queue, re-pointed
+## Session 23, second context (19 Oct 2026, from 21:26 IST; Control Room run #63 session 2) - C10.5, D2-160 and C10.6 (amended) landed; the queue validates main
 
 ### State (keep current)
-- **Reviewing the integration before landing found a C10.6 fault**: a bond for bread needs only a day's walk as the crow flies (C10.4) and relief
-  within it moves at once, but the tenth is carried only along a way on foot - so a tributary across water would set its tenth aside every harvest
-  and nobody would ever carry it (grain gone from its store, "its people carrying it there" on its page, for as long as the bond held). Also: a load
-  sent home by a switch to COARSE went into the common store (the lord lost it). **Fixed on `wip/c106b-carry`** (worktree `C:/Game Dev/tc-carry`, on
-  `wip/s23-int` c5258d2; uncommitted until its tests pass): the tenth is set aside only where `Routes.Get(tributary, lord)` exists (else it stays in
-  the store, the pages say "No way on foot leads from it to X"); what still stands set aside at the next harvest (>= 1 FU: a year uncarried) is the
-  village's again; a `ToLord` load unloaded at home while the village still pays is set aside again (`Trade.Unload`); `TakeLoad` unloads what a
-  carrier still holds first; `CarryTally` [7]-[9] (`CarryTallyN` 10), the `carried:` line; `lordships` prints the bonds with no way on foot and what
-  stands set aside; three new TributeCarriedTests (8 in all); `10` §12h. Sim version stays 85 (no format change; C10.6 has not landed).
-- **C10.5's 900-year check, seed 2** (`results/lordships_s2_l9z1_y600.txt`, against C10.4's `lordships_s2_l9y3_y600.txt`): no snowball - bonds 32
-  (49), median life of a bread bond 113 years (73) and of a peace bond 242 (55), pairs bound again 6 (10), the largest lordship 3 villages, depth 1
-  (3-4); `might:` - of 6,686 weighings at tributaries' harvests the old count would end 42 bonds, might 25 (all 25 among the 42). Seed 4: in the queue.
-- **Also amended (32dba4c): one cart goes one way at a time** - two members of a household could each take its cart's load at once (lived: the one
-  cart and its ox drawn twice on the road; COARSE: the cart's load twice a day); now `Carts.Out` (another member on the road with more than a back's
-  load, or at the woods, the quarry or the muck) gives a back's load, and a COARSE day sends each household's cart once a day. TributeCarriedTests 9.
-- **The queue** (same runner, task bc2qpqxfq; `Q` as below): the pre-amendment jobs - `4_a_fullsuite_i1`, `4_b_f1_*`, `4_c_cmp_probe_f1` and C10.6
-  as first built (`3_t_*`, `_t1`: no longer what lands) - moved to `$Q/hold`; queued instead `3_e_build_p1` (builds `tc-carry` to `bin_p1`,
-  floatcheck, eleven test classes, `p1_ok`), `3_f_ctl_g0_s4` (the control: `bin_p1 --oldtribute --oldways` must equal `_z1`), `4_a_fullsuite_p1`,
-  `4_b_g1_*` (ten seeds of the code to land, `_g1`), `4_c_cmp_probe_g1` (`results/cmp_z1_g1.txt`; each world's `carried:` line and its bonds with
-  no way on foot, `results/lordships_s*_g1.txt`; the route probe on `s2_g1`), `4_d_profile_g1` (30 COARSE years of `s2_g1` profiled with the rules
-  and with `--oldmight --oldtribute`: C10.5's ten seeds ran 18 % longer by the wall clock - to be measured).
-- **Results so far (22:29)**: C10.5's 900-year check on seed 4 too - no snowball (the largest lordship 2 villages), mean bond life 166 -> 201 years (seed 2: 114 -> 214), fewer bonds and less churn (filled into `d2159.md`). The amended code (`bin_p1`, c86649e): floatcheck clean; Might 4, RouteGround 3, Lordship 4, Trade 7, Carts 6, Determinism 6, SaveLoad 8, TributeCarried 9, Bread 5, Leaders 8, Defence 8 (3_e's two failures were premises: a made world's first tectonic tick at time 0 relaid the ground the test had sunk; Bread's pair and Leaders' pair needed a way on foot, as "within a day's walk" means - fixed e6c3b86, c86649e); **the control `--oldtribute --oldways` = `_z1` byte-identical; the full suite 419/419**. Running: `4_b_g1_*` (ten seeds), then `4_c`, `4_d`.
-- **To land when they pass**: commit `wip/c106b-carry`; in `tc-int` `git merge --ff-only wip/c106b-carry`; on main `git merge --no-ff wip/s23-int`;
-  DECISIONS D2-159 (`d2159.md` + the 900-year checks), D2-160 (`d2160.md`), D2-161 (`d2161.md` + the amendment and `_g1`); `unity.mjs cc`; shots
-  from `tc2/out/civ/s2_g1/world_y300.tc2` (the landed code's own world); the Web build and test.
+- **main** = a19c077 (`--no-ff` merge of `wip/s23-int`: C10.5 + D2-160 + C10.6 as amended on `wip/c106b-carry`) + 464e72c (DECISIONS D2-159, D2-160,
+  D2-161) + PROGRESS and this handoff. Sim version 85. `.claude/launch.json` (modified) and `Assets/Resources.meta` (untracked) are not ours.
+- **The amendment** (found reviewing the integration; D2-161 (6)-(8), `10` §12h): the tenth is set aside only where a route on foot reaches the lord
+  (a bond for bread needs only 6 km as the crow flies) - **444 harvests in five of ten worlds, 100,504 FU, a fifth of all the tribute, have no way on
+  foot** and stay home (as first built they would have been set aside for ever); what a year left uncarried returns at the next harvest; a load sent
+  home by a switch to COARSE is set aside again; one cart goes one way at a time (`Carts.Out`). Tools: `lordships` (bonds with no way on foot, other
+  neighbours' ways), `--carrytally` [7]-[9], shot view `why:<reason>`, shots `--after tribute`.
+- **Evidence**: C10.5's 900-year checks (seeds 2, 4): no snowball, bonds hold longer (mean life 114 -> 214, 166 -> 201 years). The landed code: floatcheck
+  clean, full suite 419/419, control (`--oldtribute --oldways`) = `_z1` byte-identical, ten seeds `_g1` vs `_z1` at par in the vital rates, tribute
+  agreed x0.74 (t -2.2; D2-160 alone leaned the same way), the route probe on `s2_g1` equal hashes; the ways of a lordship do not stand out (every
+  neighbour pair is a path or road by year 300).
+- **The queue** (runner task bc2qpqxfq; `Q` = the session-23 scratchpad's `q`, below): `4_d_profile_g1` (running at 23:00: might and carrying's cost by
+  the profiler), then `5_a_build_m2` (main's headless build + hashtest -> `bin_m2`), `5_b_cc_main` (the Unity C#), `5_c_shots` (`s23c` the tributary,
+  `s23d` the lord, `s23e` the carriers `--after tribute`, seed 2 `_g1`), `5_d_web` (TAG `s23web2`), `5_e_l9g1_s2` (the landed code's 900-year check),
+  `6_a_g2_*` + `6_b_cmp_g2` (ten seeds with D2-160 alone, `--oldtribute`: attributes the bonds lean). `$Q/hold`: the pre-amendment jobs - do not run.
+- Worktrees all merged (may be removed): `tc-int`, `tc-carry`, `tc-might`, `tc-routes`, `tc-tribute`, `tc-s23`, `tc-bread`, `tc-dry`, `tc-stubble`.
+
+### Next, in order
+1. Read the queue: Unity C# (errors -> fix on main), the shots (standards from the village view? carriers on the road?), Web 6/6 with the probe =
+   headless = Mono, the 900-year check, `_g2` (is the bonds lean D2-160's?), the profile -> PROGRESS and D2-161's shots line.
+2. **Next slice: the tenth by sea (C9.5's first slice)** - a fifth of the tribute has no way on foot. A tributary with no way on foot but a sea way
+   between its landing and its lord's carries its tenth in its plank boats in a calm sea, or the lord's come for it - as relief and give-back go by sea
+   (C9.3: `Trade.Book` a new `ForTribute`, `LoadAboard`, `Deliver` -> `Conflict.Brought`; COARSE at once at the boats' rate). Measure first (a tally:
+   of the no-way harvests, how many had a sea way, and plank boats). Then the lived legs by boat (island woodcutters, a town on two shores).
+3. Or C10.7 the lord's household men: the evidence is mixed - seed 2's lords' first households hold 3-10 years of their own need (Lounstead takes in
+   25 people's food a year), seed 4's spends its tribute (0.3 years).
 
 ## Session 23 (19 Oct 2026, 18:54 - ~21:25 IST; Control Room run #63 session 1) - context handoff; ONE job queue still running
 
