@@ -2509,6 +2509,7 @@ namespace TC2.Core.Agents
             w.Metrics.Voyages++;
             if (bk.Kind == Trade.ForTrade) w.Metrics.VoyageSeats += crew.Count;   // (the seats of trade voyages, as COARSE counts them)
             if (bk.Kind != Trade.ForFetch && bk.Kind != Trade.ForTenth) w.Metrics.SeaCargoKg += kg;   // (going for grain: nothing aboard yet)
+            if (!Boats.IsPlank(kind) && Boats.CrossTally != null) Boats.CrossTally[3]++;   // (tools: a dugout's crossing, lived - C9.5b)
             return true;
         }
 

@@ -20,7 +20,7 @@ namespace TC2.Tests.Core
         /// Premise: two villages within a day's walk that keep landings, a way by sea between them - and the way on foot between them cut by water
         /// sunk all round the second's ground (after the made world's first ticks: the plates' first step lays the ground anew).
         /// </summary>
-        static World Across(out int a, out int b, ulong from = 701)
+        internal static World Across(out int a, out int b, ulong from = 701)
         {
             for (ulong seed = from; seed < from + 60; seed++)
             {
@@ -57,7 +57,7 @@ namespace TC2.Tests.Core
             return null;
         }
 
-        static int PlankBoat(World w, int sid)
+        internal static int PlankBoat(World w, int sid)
         {
             var hl = w.HouseholdsOf(sid);
             for (int i = 0; i < hl.Count; i++)
@@ -72,13 +72,13 @@ namespace TC2.Tests.Core
             return 0;
         }
 
-        static void Coarse(World w)
+        internal static void Coarse(World w)
         {
             w.RequestResolution(Resolution.Coarse, SimTime.StartOfDay(w.Now) + SimTime.Day);
             w.AdvanceTo(SimTime.StartOfDay(w.Now) + SimTime.Day + 1);
         }
 
-        static void Famine(World w, int sid)
+        internal static void Famine(World w, int sid)
         {
             ref var s = ref w.Settlements.Get(sid);
             s.Granary = 0; s.Sheaves = 0;
@@ -237,7 +237,7 @@ namespace TC2.Tests.Core
             finally { Conflict.CarryTally = null; }
         }
 
-        static long ToLocal(World w, int sid, double hour)
+        internal static long ToLocal(World w, int sid, double hour)
         {
             long lsec = SimTime.FloorMod(w.Now + w.LocalOffsetOf(sid), SimTime.Day);
             long d = SimTime.FloorMod(SimTime.Hours(hour) - lsec, SimTime.Day);

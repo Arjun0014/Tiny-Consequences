@@ -232,6 +232,8 @@ namespace TC2.Headless
             if (a.Has("carrytally")) TC2.Core.Society.Conflict.CarryTally = new double[TC2.Core.Society.Conflict.CarryTallyN];   // (C10.6: loads carried, FU, lived, set aside, given back, by cart, km, a year uncarried, no way on foot; by sea)
             if (a.Has("oldacross")) TC2.Core.Places.Trade.AcrossOff = true;   // (C9.5a off: grain within a day's walk across water at once, the tenth across water kept at home)
             if (a.Has("acrosstally")) TC2.Core.Places.Trade.AcrossTally = new double[TC2.Core.Places.Trade.AcrossTallyN];   // (C9.5 survey: grain and trade across water at once between villages within a day's walk)
+            if (a.Has("oldcross")) TC2.Core.Places.Boats.CrossOff = true;   // (C9.5b off: dugouts carry no loads, no boat is made to cross the water)
+            if (a.Has("crosstally")) TC2.Core.Places.Boats.CrossTally = new double[TC2.Core.Places.Boats.CrossTallyN];   // (C9.5b: boats made to cross, dugouts' crossings)
             if (a.Has("wetways")) TC2.Core.Places.Afoot.Off = true;   // (D2-156 off: lived walks straight across the water, the well's and the idle's spots and crofts in it, the woods by the straight line)
             if (a.Has("waytally")) TC2.Core.Places.Afoot.Tally = new long[128];   // (tools: the walks bent round the water and those no bend kept dry, by what was done at their end)
             if (a.Has("oldmuckorder")) TC2.Core.Agents.AgentSystem.CoarseMuckOld = true;   // (D2-158: a COARSE day's muck before the household's own roof, as C3.7c built it)
@@ -999,6 +1001,10 @@ namespace TC2.Headless
                     if (at != null)   // (C9.5 survey)
                         Console.WriteLine("across: between villages within a day's walk no way on foot joins - relief " + at[0] + " gifts, " + F(at[1], "0") + " FU; given back " + at[2] + ", " +
                                           F(at[3], "0") + " FU; bows for bread " + at[4] + "; traders dealing across it at once " + at[5] + " (COARSE), lived traders finding no road to their partner " + at[6]);
+                    var xt = TC2.Core.Places.Boats.CrossTally;
+                    if (xt != null)   // (C9.5b: boats to cross the water)
+                        Console.WriteLine("cross: boats laid down to cross the water - dugouts " + xt[0] + ", of planks " + xt[1] + "; made " + xt[2] + "; crossings in dugouts lived " + xt[3] +
+                                          ", COARSE trade " + xt[4] + " (" + F(xt[5], "0") + " kg)");
                     long firstLord = 0, firstEnd = 0;
                     for (int i = 0; i < w.History.Count && (firstLord == 0 || firstEnd == 0); i++)
                     {

@@ -349,7 +349,8 @@ namespace TC2.Core.History
                   .Append(bread ? ": its grain kept it through its famines, and it could not give it back.\n" : ": it could neither stand against its bands nor go elsewhere.\n");
                 // (C9.5a) a way by sea between their landings, and a boat of planks of its own to row it over or of its lord's to come for it
                 bool seaWay = !Places.Trade.AcrossOff && !Places.Trade.NoSea && s.LandAt != 0 && w.Settlements.Exists(s.Lord) && w.Settlements.Get(s.Lord).LandAt != 0 && w.SeaRoutes.Get(w, sid, s.Lord) != null;
-                bool ownBoats = seaWay && w.Conflict.PlankBoats(sid) > 0, lordBoats = seaWay && w.Conflict.PlankBoats(s.Lord) > 0;
+                double farL = seaWay ? Vec3d.ArcDistance(s.Anchor, w.Settlements.Get(s.Lord).Anchor, w.Planet.Radius) : 0;   // (dugouts across a short water too: C9.5b)
+                bool ownBoats = seaWay && w.Conflict.CrossBoats(sid, farL) > 0, lordBoats = seaWay && w.Conflict.CrossBoats(s.Lord, farL) > 0;
                 if (!TC2.Core.Society.Conflict.CarryOff && w.Routes.Get(w, sid, s.Lord) == null && !ownBoats && !lordBoats)   // (C10.6: across water and no boat to cross it - nothing is set aside)
                     sb.Append("No way on foot leads from it to ").Append(Name(w, s.Lord)).Append(": its people cannot carry the tenth there, and it stays in its store.\n");
                 else if (!TC2.Core.Society.Conflict.CarryOff && w.Routes.Get(w, sid, s.Lord) == null)   // (C9.5a: by boat)
@@ -382,7 +383,8 @@ namespace TC2.Core.History
                 {
                     sb.Append(Name(w, o)).Append(" pays it tribute");
                     bool seaWay2 = !Places.Trade.AcrossOff && !Places.Trade.NoSea && t.LandAt != 0 && s.LandAt != 0 && w.SeaRoutes.Get(w, o, sid) != null;
-                    bool itsBoats = seaWay2 && w.Conflict.PlankBoats(o) > 0, ourBoats = seaWay2 && w.Conflict.PlankBoats(sid) > 0;
+                    double farT = seaWay2 ? Vec3d.ArcDistance(s.Anchor, t.Anchor, w.Planet.Radius) : 0;
+                    bool itsBoats = seaWay2 && w.Conflict.CrossBoats(o, farT) > 0, ourBoats = seaWay2 && w.Conflict.CrossBoats(sid, farT) > 0;
                     if (!TC2.Core.Society.Conflict.CarryOff && w.Routes.Get(w, o, sid) == null)   // (C10.6; by boat, C9.5a)
                         sb.Append(itsBoats ? " - over the sea, in its boats" : ourBoats ? " - over the sea: boats from here go for its tenth" : " - but no way on foot leads from it here, and its tenth stays there");
                     else if (t.TributeDue >= 1.0) sb.Append(": its people are carrying in this year's tenth, ").Append(F(t.TributeDue / TC2.Core.Society.Conflict.LoadFu, "0")).Append(" loads still to come");   // (C10.6)

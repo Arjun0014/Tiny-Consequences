@@ -86,6 +86,7 @@ namespace TC2.Core.History
         OreGaveOut = 82,
         OreTaken = 83,
         BoatBuilt = 85,         // a household made a boat (Subject the household, Object the boat, Other who led the making; C9.1)
+        BoatToCross = 97,       // a household laid down a boat to reach a village across the water no way on foot leads to (Subject the household, Object the village across, Other the boat; ArgA its kind, ArgB why - 1 a trade, 2 grain owed there, 3 its lord's tenth; Magnitude the deal's gain or the FU owed; C9.5b)
         FieldsRested = 96,      // a village began to rest a share of its arable each year: its crops a hectare had fallen (Magnitude the share resting; ArgA what a sown hectare bears, % of a fresh field's crop; ArgB its arable ha; C3.6f)
         PartyJoined = 95,       // a party that set out to found a village found one standing at its place and made its home there (Subject the village it left, Object the village it joined, Other its first household; ArgA households, ArgB people; Cause1 its setting out; D2-137)
         Retired = 94,           // an old household went to live with a younger one, taking its land and grain there for its keep (Subject the old household, Object the household that took them in, Other its eldest; ArgA ha handed over, ArgB 1 a child's household, 0 not kin; Magnitude FU of grain; C3.6e)
@@ -244,6 +245,7 @@ namespace TC2.Core.History
                 case HistoryKind.OreTaken:
                 case HistoryKind.CallAnswered:
                 case HistoryKind.BoatBuilt:
+                case HistoryKind.BoatToCross:
                 case HistoryKind.BoatLost:
                 case HistoryKind.CartMade:
                 case HistoryKind.HeadmanRose:
@@ -339,6 +341,7 @@ namespace TC2.Core.History
                 case HistoryKind.OreTaken: b = 7; break;
                 case HistoryKind.CallAnswered: b = 8; break;
                 case HistoryKind.BoatBuilt: b = 3; break;
+                case HistoryKind.BoatToCross: b = 3; break;
                 case HistoryKind.CartMade: b = 2; break;
                 case HistoryKind.HeadmanRose: b = 12; break;
                 case HistoryKind.FieldsWorkedHarder: b = 6; break;

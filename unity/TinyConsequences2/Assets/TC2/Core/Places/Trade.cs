@@ -338,6 +338,9 @@ namespace TC2.Core.Places
         public const double BoatLoadKg = 500.0;
         /// <summary>The least gain (in the villages' own values) worth a boat's crew's day at sea (three walks).</summary>
         public const double WorthAVoyage = 12.0;
+        /// <summary>The least gain worth a dugout's crossing to a neighbour within a day's walk: two walkers' day, as the two at its paddles give it
+        /// (C9.5b).</summary>
+        public const double WorthACrossing = 2.0 * WorthAWalk;
         /// <summary>Voyages a village's plank boat makes a day while a deal by sea is to be had (COARSE: about one a month).</summary>
         public const double VoyagesPerBoatDay = 0.04;
 
@@ -345,26 +348,27 @@ namespace TC2.Core.Places
         /// The coastal village with the best deal for a boat's load from this one now, reached over the sea from landing to landing (its way:
         /// `SeaRoutes`), or 0 - a market there deals better, as on land; none worth a crew's day at sea.
         /// </summary>
-        public int BestSeaPartner(int sid, out double gain, out Agents.Route way)
+        public int BestSeaPartner(int sid, out double gain, out Agents.Route way, double loadKg = BoatLoadKg, bool dugout = false)
         {
             var w = _w;
             gain = 0; way = null; int best = 0;
             ref var s = ref w.Settlements.Get(sid);
             if (!s.Inhabited || s.LandAt == 0) return 0;
+            double reach = dugout ? Boats.CrossReach : SeaRoutes.Most;   // (a dugout crosses a short water only: C9.5b)
             for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
             {
                 if (o == sid) continue;
                 ref var t = ref w.Settlements.Get(o);
                 if (!t.Inhabited || t.LandAt == 0) continue;
-                if (Vec3d.ArcDistance(s.Anchor, t.Anchor, w.Planet.Radius) > SeaRoutes.Most) continue;
+                if (Vec3d.ArcDistance(s.Anchor, t.Anchor, w.Planet.Radius) > reach) continue;
                 bool market = t.Market != 0 && w.Buildings.Exists(t.Market) && Structures.Working(in w.Buildings.Get(t.Market), w.Now);
-                double g = Plan(sid, o, out _, out _, out _, BoatLoadKg) * (market ? MarketGain : 1.0);
+                double g = Plan(sid, o, out _, out _, out _, loadKg) * (market ? MarketGain : 1.0);
                 if (g <= gain) continue;
                 var r = w.SeaRoutes.Get(w, sid, o);
                 if (r == null) continue;
                 gain = g; best = o; way = r;
             }
-            return gain >= WorthAVoyage ? best : 0;
+            return gain >= (dugout ? WorthACrossing : WorthAVoyage) ? best : 0;
         }
 
         /// <summary>
@@ -376,21 +380,31 @@ namespace TC2.Core.Places
         /// </summary>
         void Voyages(int sid, int step)
         {
+            VoyagesIn(sid, step, false);
+            if (!Boats.CrossOff) VoyagesIn(sid, step, true);   // (its dugouts across a short water to a neighbour within a day's walk: C9.5b)
+        }
+
+        /// <summary>A free boat for a voyage of the pass: a plank boat (as far as the sea's ways go), or a dugout (across a short water, C9.5b).</summary>
+        bool FreeFor(int bid, bool dugouts) => dugouts ? _w.Buildings.Get(bid).Kind == Structures.Boat && Free(bid, Boats.CrossReach) : Free(bid);
+
+        void VoyagesIn(int sid, int step, bool dugouts)
+        {
             var w = _w;
             long now = w.Now;
-            int to = BestSeaPartner(sid, out _, out var way);
+            double loadKg = dugouts ? Boats.DugoutLoadKg : BoatLoadKg, worth = dugouts ? WorthACrossing : WorthAVoyage;
+            int to = BestSeaPartner(sid, out _, out var way, loadKg, dugouts);
             if (to == 0) return;
             var bl = w.BuildingsOf(sid);
             int boats = 0;
-            for (int i = 0; i < bl.Count; i++) if (Free(bl[i])) boats++;
+            for (int i = 0; i < bl.Count; i++) if (FreeFor(bl[i], dugouts)) boats++;
             if (boats == 0) return;
-            int n = System.Math.Min(boats, Poisson(boats * VoyagesPerBoatDay * step, KeyedRng.Hash(w.Seed, RngStream.Travel, (ulong)sid, (ulong)now, 601)));
+            int n = System.Math.Min(boats, Poisson(boats * VoyagesPerBoatDay * step, KeyedRng.Hash(w.Seed, RngStream.Travel, (ulong)sid, (ulong)now, dugouts ? 602UL : 601UL)));
             bool lived = w.Resolution != Resolution.Coarse;
             int k = 0;
             for (int i = 0; i < bl.Count && k < n; i++)
             {
                 int bid = bl[i];
-                if (!Free(bid)) continue;
+                if (!FreeFor(bid, dugouts)) continue;
                 k++;
                 ref var b = ref w.Buildings.Get(bid);
                 int hid = b.Household;
@@ -405,7 +419,7 @@ namespace TC2.Core.Places
                     if (CanSail(in q, sid, now)) crew.Add(mem[j]);
                 }
                 if (crew.Count < 2) continue;   // (a boat's load wants two at the oars at least)
-                if (Plan(sid, to, out _, out _, out _, BoatLoadKg) < WorthAVoyage) break;   // (the deal as it stands after the voyages before)
+                if (Plan(sid, to, out _, out _, out _, loadKg) < worth) break;   // (the deal as it stands after the voyages before)
                 double wind = Boats.WindAt(w, way.PointAt(0.5 * way.Length));
                 if (wind >= Boats.MaxOf(kind)) continue;
                 int outcome = Boats.Trip(w, sid, hid, bid, crew[0], wind, out long lost, 1, true);
@@ -415,15 +429,16 @@ namespace TC2.Core.Places
                     continue;
                 }
                 ref var p = ref w.People.Get(crew[0]);
-                Load(ref p, sid, to, BoatLoadKg);
+                Load(ref p, sid, to, loadKg);
                 if (p.Cargo == None) continue;
                 double outKg = p.CargoQty * Kg(p.Cargo);
-                Exchange(ref p, to, BoatLoadKg);
+                Exchange(ref p, to, loadKg);
                 double backKg = p.Cargo != None ? p.CargoQty * Kg(p.Cargo) : 0.0;
                 for (int j = 0; j < crew.Count; j++) w.Disease.Arrive(ref w.People.Get(crew[j]), to, SimTime.Hours(VisitHoursCoarse));
                 w.DeedBook.Meet(sid, to);
                 Unload(ref w.People.Get(crew[0]), sid);
                 w.Metrics.Voyages++; w.Metrics.VoyageSeats += crew.Count; w.Metrics.SeaCargoKg += outKg + backKg;
+                if (dugouts && Boats.CrossTally != null) { Boats.CrossTally[4]++; Boats.CrossTally[5] += outKg + backKg; }   // (tools: a dugout's crossing, C9.5b)
             }
         }
 
@@ -458,7 +473,6 @@ namespace TC2.Core.Places
             ref var s = ref w.Settlements.Get(sid);
             double spare = Spare(sid, Grain);
             if (spare <= 0) return;
-            int boats = -1;   // (its plank boats free to carry a load: counted when a famine beyond a day's walk calls for them, C9.3)
             bool lived = w.Resolution != Resolution.Coarse;
             for (int o = w.Settlements.First(); o != 0 && spare > 0; o = w.Settlements.Next(o))
             {
@@ -472,17 +486,17 @@ namespace TC2.Core.Places
                 // dead starved beside a full one). Beyond a day's walk, by sea: a boat's load a day for each of its free plank boats,
                 // along the coast to the famine's landing, in a calm sea (C9.3) - and so across water within a day's walk where no way on foot
                 // joins them (C9.5a: grain moves on foot along a way or by sea in a boat, never across the water at once)
-                double carry;
+                double carry, cap = 0;
                 bool bySea = false;
                 if (far <= 6000 && (AcrossOff || w.Routes.Get(w, sid, o) != null)) carry = 3.0 * need0(w, in t) * step;
                 else
                 {
                     if (NoSea || far > SeaRoutes.Most || t.LandAt == 0) continue;
-                    if (boats < 0) boats = LoadBoats(sid);
-                    if (boats == 0) continue;
+                    cap = FreeLoadKg(sid, far);   // (its free boats' loads: plank boats, and its dugouts across a short water - C9.5b)
+                    if (cap <= 0) continue;
                     var way = w.SeaRoutes.Get(w, sid, o);
                     if (way == null || Boats.WindAt(w, way.PointAt(0.5 * way.Length)) > Boats.Calm) continue;
-                    carry = boats * BoatLoadKg / Kg(Grain) * step;
+                    carry = cap / Kg(Grain) * step;
                     bySea = true;
                 }
                 double days = DaysOfFood(w, in t, out double need);
@@ -497,7 +511,7 @@ namespace TC2.Core.Places
                     SeaShort[2] += 1;
                     if (would > carry * open + 1e-9) { SeaShort[0] += would - carry * open; SeaShort[1] += 1; }
                 }
-                if (gift < (bySea ? MinSeaLoadFu : 1.0)) continue;   // (nobody rows a boat over the sea for a few baskets)
+                if (gift < (bySea ? SeaLoadAtLeast(cap) : 1.0)) continue;   // (nobody rows a boat over the sea for a few baskets)
                 if (bySea && lived)
                 {
                     // lived: a boatload booked on each free boat it takes, for their households to row over in the morning - given when landed
@@ -505,13 +519,12 @@ namespace TC2.Core.Places
                     var bl = w.BuildingsOf(sid);
                     for (int i = 0; i < bl.Count && left >= 1.0; i++)
                     {
-                        if (!Free(bl[i])) continue;
-                        double q = DMath.Min(left, BoatLoadKg / Kg(Grain));
+                        if (!Free(bl[i], far)) continue;
+                        double q = DMath.Min(left, Boats.LoadKgOf(w.Buildings.Get(bl[i]).Kind) / Kg(Grain));
                         Book(bl[i], w.Buildings.Get(bl[i]).Household, sid, o, ForRelief, q);
                         left -= q;
                     }
                     spare -= gift - left;
-                    boats = -1;
                     continue;
                 }
                 ref var s2 = ref w.Settlements.Get(sid);
@@ -552,6 +565,9 @@ namespace TC2.Core.Places
 
         /// <summary>FU of grain worth a boat's voyage (a fifth of its load): less goes by land or waits (C9.3).</summary>
         public const double MinSeaLoadFu = 0.2 * BoatLoadKg / 0.75;
+        /// <summary>FU worth a voyage with boats of these loads (kg in all): a fifth of a plank boat's load - or of a dugout's, where only dugouts
+        /// would go across a short water (C9.5b).</summary>
+        static double SeaLoadAtLeast(double capKg) => 0.2 * DMath.Min(capKg, BoatLoadKg) / Kg(Grain);
 
         /// <summary>Days of a famine village's need what a giver has given it and not had back may reach before it gives no more (D2-113).</summary>
         public const double CreditDays = 60.0;
@@ -584,7 +600,6 @@ namespace TC2.Core.Places
                 if (k < 0) { _givers.Add(d.ByS); _owes.Add(owe); } else _owes[k] += owe;
             }
             bool lived = w.Resolution != Resolution.Coarse;
-            int boats = -1;
             for (int k = 0; k < _givers.Count && spare > 0; k++)
             {
                 int giver = _givers[k];
@@ -593,33 +608,31 @@ namespace TC2.Core.Places
                 ref var s = ref w.Settlements.Get(sid);
                 ref var g = ref w.Settlements.Get(giver);
                 double far = Vec3d.ArcDistance(s.Anchor, g.Anchor, w.Planet.Radius);
-                double carry;
+                double carry, mine = 0, theirs = 0;
                 bool bySea = false;
-                int theirs = 0;
                 if (far <= 6000 && (AcrossOff || w.Routes.Get(w, sid, giver) != null)) carry = 3.0 * need0(w, in s) * step;   // (across water: by sea, C9.5a)
                 else
                 {
                     if (NoSea || far > SeaRoutes.Most || s.LandAt == 0 || g.LandAt == 0) continue;
-                    if (boats < 0) boats = LoadBoats(sid);
-                    theirs = LoadBoats(giver);   // (or the giver's come for it)
-                    if (boats + theirs == 0) continue;
+                    mine = FreeLoadKg(sid, far); theirs = FreeLoadKg(giver, far);   // (or the giver's come for it; dugouts across a short water - C9.5b)
+                    if (mine + theirs <= 0) continue;
                     var way = w.SeaRoutes.Get(w, sid, giver);
                     if (way == null || Boats.WindAt(w, way.PointAt(0.5 * way.Length)) > Boats.Calm) continue;
-                    carry = (boats + theirs) * BoatLoadKg / Kg(Grain) * step;
+                    carry = (mine + theirs) / Kg(Grain) * step;
                     bySea = true;
                 }
                 double back = DMath.Min(DMath.Min(0.05 * spare * step, carry), owe);
-                if (back < (bySea ? MinSeaLoadFu : 1.0)) continue;
+                if (back < (bySea ? SeaLoadAtLeast(DMath.Max(mine, theirs)) : 1.0)) continue;
                 if (bySea && lived)
                 {
                     // lived: a boatload booked on its own free boat to carry it over, or on the giver's to come and fetch it
-                    back = DMath.Min(back, BoatLoadKg / Kg(Grain));
-                    int bid = boats > 0 ? FirstFree(sid) : 0;
-                    if (bid != 0) { Book(bid, w.Buildings.Get(bid).Household, sid, giver, ForReturn, back); boats = -1; }
+                    int bid = mine > 0 ? FirstFree(sid, far) : 0;
+                    if (bid != 0) { back = DMath.Min(back, Boats.LoadKgOf(w.Buildings.Get(bid).Kind) / Kg(Grain)); Book(bid, w.Buildings.Get(bid).Household, sid, giver, ForReturn, back); }
                     else
                     {
-                        bid = FirstFree(giver);
+                        bid = FirstFree(giver, far);
                         if (bid == 0) continue;
+                        back = DMath.Min(back, Boats.LoadKgOf(w.Buildings.Get(bid).Kind) / Kg(Grain));
                         Book(bid, w.Buildings.Get(bid).Household, giver, sid, ForFetch, back);
                     }
                     spare -= back;
@@ -791,11 +804,11 @@ namespace TC2.Core.Places
         /// Whether a plank boat can carry a load now: sound, of a household, at its landing (nobody out in it), not booked, and its household has
         /// two who can take an oar (C9.3: the same at both resolutions - grain by sea goes in a boat somebody rows).
         /// </summary>
-        bool Free(int bid)
+        bool Free(int bid, double far = double.MaxValue)
         {
             var w = _w;
             ref var b = ref w.Buildings.Get(bid);
-            return Boats.IsPlank(b.Kind) && Boats.Sound(in b, w.Now) && b.Household != 0 && !IsBooked(bid) && Boats.Aboard(w, b.Household, bid) == 0 && Crewed(b.Household, b.Settlement);
+            return Boats.Carries(b.Kind, far) && Boats.Sound(in b, w.Now) && b.Household != 0 && !IsBooked(bid) && Boats.Aboard(w, b.Household, bid) == 0 && Crewed(b.Household, b.Settlement);
         }
 
         /// <summary>Whether a household has two who can take an oar now (a boat's load wants two at the oars at least).</summary>
@@ -809,12 +822,23 @@ namespace TC2.Core.Places
         }
 
         /// <summary>The village's plank boats free to carry a load now (C9.3).</summary>
-        int LoadBoats(int sid)
+        int LoadBoats(int sid, double far = double.MaxValue)
         {
             var bl = _w.BuildingsOf(sid);
             int n = 0;
-            for (int i = 0; i < bl.Count; i++) if (Free(bl[i])) n++;
+            for (int i = 0; i < bl.Count; i++) if (Free(bl[i], far)) n++;
             return n;
+        }
+
+        /// <summary>kg the village's free boats carry now to a village this far away (m): its plank boats' loads, and its dugouts' across a short water
+        /// (C9.5b; `Boats.Carries`).</summary>
+        public double FreeLoadKg(int sid, double far = double.MaxValue)
+        {
+            var w = _w;
+            var bl = w.BuildingsOf(sid);
+            double kg = 0;
+            for (int i = 0; i < bl.Count; i++) if (Free(bl[i], far)) kg += Boats.LoadKgOf(w.Buildings.Get(bl[i]).Kind);
+            return kg;
         }
 
         /// <summary>Lived (C9.5a): the lord's tenth booked on the tributary's free plank boats, a boat's load each, for their households to row over
@@ -827,12 +851,13 @@ namespace TC2.Core.Places
                 if ((_booked[i].From == sid && _booked[i].Kind == ForTribute) || (_booked[i].To == sid && _booked[i].Kind == ForTenth)) return 0.0;
             var w = _w;
             if (w.Settlements.Exists(lord) && GoingForTenth(lord, sid)) return 0.0;
+            double far = w.Settlements.Exists(lord) ? Vec3d.ArcDistance(w.Settlements.Get(sid).Anchor, w.Settlements.Get(lord).Anchor, w.Planet.Radius) : double.MaxValue;   // (dugouts across a short water: C9.5b)
             var bl = w.BuildingsOf(sid);
             double left = due;
             for (int i = 0; i < bl.Count && left >= 1.0; i++)
             {
-                if (!Free(bl[i])) continue;
-                double q = DMath.Min(left, BoatLoadKg / Kg(Grain));
+                if (!Free(bl[i], far)) continue;
+                double q = DMath.Min(left, Boats.LoadKgOf(w.Buildings.Get(bl[i]).Kind) / Kg(Grain));
                 Book(bl[i], w.Buildings.Get(bl[i]).Household, sid, lord, ForTribute, q);
                 left -= q;
             }
@@ -840,8 +865,8 @@ namespace TC2.Core.Places
             var ll = w.BuildingsOf(lord);
             for (int i = 0; i < ll.Count && left >= 1.0; i++)
             {
-                if (!Free(ll[i])) continue;
-                double q = DMath.Min(left, BoatLoadKg / Kg(Grain));
+                if (!Free(ll[i], far)) continue;
+                double q = DMath.Min(left, Boats.LoadKgOf(w.Buildings.Get(ll[i]).Kind) / Kg(Grain));
                 Book(ll[i], w.Buildings.Get(ll[i]).Household, lord, sid, ForTenth, q);
                 left -= q;
             }
@@ -857,13 +882,14 @@ namespace TC2.Core.Places
             return false;
         }
 
-        /// <summary>The village's plank boats free to carry a load now (C9.3; the lord's tenth by sea, C9.5a).</summary>
-        public int FreeBoats(int sid) => LoadBoats(sid);
+        /// <summary>The village's plank boats free to carry a load now (C9.3; the lord's tenth by sea, C9.5a) - or, to a village this far away, its
+        /// dugouts too across a short water (C9.5b).</summary>
+        public int FreeBoats(int sid, double far = double.MaxValue) => LoadBoats(sid, far);
 
-        int FirstFree(int sid)
+        int FirstFree(int sid, double far = double.MaxValue)
         {
             var bl = _w.BuildingsOf(sid);
-            for (int i = 0; i < bl.Count; i++) if (Free(bl[i])) return bl[i];
+            for (int i = 0; i < bl.Count; i++) if (Free(bl[i], far)) return bl[i];
             return 0;
         }
 
@@ -927,7 +953,7 @@ namespace TC2.Core.Places
                 }
                 default:
                     if (p.Cargo == None || p.CargoQty <= 0f) return;
-                    Exchange(ref p, at, BoatLoadKg);
+                    Exchange(ref p, at, w.Buildings.Exists(p.Voyage) ? Boats.LoadKgOf(w.Buildings.Get(p.Voyage).Kind) : BoatLoadKg);   // (a dugout's load: C9.5b)
                     if (p.Cargo != None && p.CargoQty > 0f) w.Metrics.SeaCargoKg += p.CargoQty * Kg(p.Cargo);
                     return;
             }
@@ -941,9 +967,12 @@ namespace TC2.Core.Places
             switch (bk.Kind)
             {
                 case ForTrade:
-                    if (Plan(sid, bk.To, out _, out _, out _, BoatLoadKg) < WorthAVoyage) return 0;
-                    Load(ref p, sid, bk.To, BoatLoadKg);
+                {
+                    byte bk0 = w.Buildings.Exists(bk.Boat) ? w.Buildings.Get(bk.Boat).Kind : Structures.PlankBoat;   // (a dugout's load and worth: C9.5b)
+                    if (Plan(sid, bk.To, out _, out _, out _, Boats.LoadKgOf(bk0)) < (Boats.IsPlank(bk0) ? WorthAVoyage : WorthACrossing)) return 0;
+                    Load(ref p, sid, bk.To, Boats.LoadKgOf(bk0));
                     return p.Cargo != None ? p.CargoQty * Kg(p.Cargo) : 0;
+                }
                 case ForRelief:
                 case ForReturn:
                 {
