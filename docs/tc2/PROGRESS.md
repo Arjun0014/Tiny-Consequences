@@ -23,7 +23,11 @@
   **the archipelago (seed 5) pays**: trades 3,889 -> 174, hunger deaths 1,018 -> 1,733, people -14 % over years 200-299 - its boats are made only by
   fishers: C9.5b's case. (3) Tools: `--acrosstally` [5]-[6], `--carrytally` [16]-[17], `lordships --bonds` with ids and boats; shot views
   `voyagetenth...`/`voyagerelief...`; shots `--after tribute` across water. Left for C9.5b: a COARSE day's visits still carry news and sickness
-  across water at once (`Conflict.News`, `Disease`). Next: the landing's checks (Unity C#, full suite, Web), real shots, then C9.5b or C10.7.
+  across water at once (`Conflict.News`, `Disease`). **Validated on main**: builds (`bin_m3`), floatcheck clean, Unity C# compiles (`unity.mjs cc`),
+  **full suite 427/427**, **Web build and test `s23web3` 6/6** - browser (WebGPU) = headless dotnet = editor Mono bit for bit (frame rates 27-52 fps
+  at the village and region views on a busy machine: not evidence). (4) **C9.5b a boat to cross** built (`wip/c95b-cross`, sim 87): CrossTests 6/6 and
+  the neighbours pass; its control and ten seeds in the queue. No lordship of the ten C9.5a worlds is bound across water at year 300 (`lordships`):
+  the shots of boats crossing come with C9.5b's worlds.
 - **Session 23, second context (19 Oct 2026, from 21:26 IST; Control Room run #63 session 2; the same job queue)** - **landed on main (a19c077):
   C10.5, D2-160 and C10.6 as amended; DECISIONS D2-159, D2-160, D2-161 (464e72c); sim version 85.** (1) **C10.5's 900-year check** (seeds 2 and 4
   of `_z1` to year 900, against C10.4's `_y3`): no snowball and no growth - the largest lordship 2-3 villages, depth 1; bonds hold longer with less
