@@ -9,7 +9,8 @@
   version 87.** Not ours: `.claude/launch.json` (modified), `Assets/Resources.meta` (untracked) - leave them.
 - **Verified on main**: after C9.5a (6482ab0) - builds (`bin_m3`), floatcheck clean, `unity.mjs cc` ok, **full suite 427/427**
   (`results/fullsuite_m3.txt`), **Web `s23web3` 6/6**, browser = headless dotnet = editor Mono bit for bit (frame rates 27-52 fps at the village and region
-  views on a busy machine: not evidence). After C9.5b (bc99679) - builds (`bin_m4`), floatcheck clean, `unity.mjs cc` ok; **the rest was running**.
+  views on a busy machine: not evidence). After C9.5b (bc99679) - builds (`bin_m4`), floatcheck clean, `unity.mjs cc` ok, **full suite 433/433**
+  (`results/fullsuite_m4.txt`, 02:53); the shots and Web `s23web4` still running.
 - **C9.5a's evidence** (`results/cmp_g1_x2.txt`): control `--oldacross` = `_g1` (annals and state hash); the old rule's survey (`--oldacross
   --acrosstally`, = `_g1` too): 91 % of seed 5's trades and 99.5 % of its relief crossed water at once; ten seeds `_x2` at par in the vital rates; no tenth
   went by sea (bonds across water no longer arise: their relief now crosses only in boats). **C9.5b's** (`results/cmp_x2_y1.txt`): control `--oldcross` =
@@ -18,8 +19,7 @@
   for the tenth by boat; the shots frame any boat on a voyage).
 - **RUNNING at the handoff: the session-23 job queue** (`bash tc2/out/tools/s23/runq.sh`, task bc2qpqxfq; `Q` =
   `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/db1b5af7-2c1c-4e6f-a5ff-c8b25b1a81c2/scratchpad/q`, its log `runq.log`, job logs
-  `log/<job>.log`; `touch $Q/stop` ends it after the current job; copies of every job in `tc2/out/tools/s23/`). In order: `6_7_c_fullsuite_m4` (main
-  after C9.5b -> `results/fullsuite_m4.txt`, `fs_m4_ok`), `6_7_c5_might_measure` (C10.7a measured first: builds `tc-arms` - the WIP - to `bin_a7`, runs
+  `log/<job>.log`; `touch $Q/stop` ends it after the current job; copies of every job in `tc2/out/tools/s23/`). In order (the full suite done: 433/433): `6_7_c5_might_measure` (C10.7a measured first: builds `tc-arms` - the WIP - to `bin_a7`, runs
   `lordships --might` on the ten `_y1` saves -> `results/might_s*_y1.txt`: villages' lasting strength a head, bonds held by heads and by lasting
   strength), `6_7_d_shots_cross` (real shots `s23m5` seed 5's archipelago, `s23m4` seed 4: `voyage`, `voyagenear`, `voyagestay`, `region`; the log tells
   each framed crew's doing - read `shots_s23m*.txt` in the scratchpad and the PNGs in `tc2/out/shots/`), `6_7_e_web` (Web `s23web4` on main with
@@ -34,7 +34,7 @@
   `tc-stubble` (`tc-tribute`: its one unmerged tools commit is on main in another form). Live: `tc-arms`.
 
 ### Next, in order
-1. Read the queue: `fullsuite_m4` (all pass?), the shots (do boats crossing read? any dugout framed - the log says "paddling ... in the household's
+1. Read the queue: the shots (do boats crossing read? any dugout framed - the log says "paddling ... in the household's
    dugout"), `s23web4` (6/6, three runtimes identical?), `might_s*_y1.txt` (how far lasting strength parts from heads; how many bonds would hold by it),
    `_g2` (is the tribute lean D2-160's?). Record them in PROGRESS (and D2-161 for `_g2`, D2-163 for the shots and Web).
 2. **C10.7a**: finish on `wip/c107a-arms` - MightTests to the new rule (premises `Triple`/`Pair` by `Lasting`; the expected call by `Kit` and skill;

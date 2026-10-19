@@ -25,12 +25,12 @@ answers "what changes in the world picture?" and is judged in real game shots.
   `BoatToCross`), and a dugout carries 150 kg across a short water. Both: control byte-identical (annals and state hash), ten seeds at par in the
   vital rates; C9.5b: voyages x2.4, the archipelago (seed 5) made 11 dugouts to reach its neighbours and its hunger deaths fell 1,752 -> 1,283.
   Validated after C9.5a: full suite 427/427, Unity C# compiles, Web `s23web3` 6/6 (browser = headless = Mono bit for bit). After C9.5b: build,
-  floatcheck and Unity C# clean - **its full suite, real shots and Web `s23web4` were running at the handoff**.
+  floatcheck and Unity C# clean, **full suite 433/433** - its real shots and Web `s23web4` were running at the handoff.
 - **Drafted, NOT built: C10.7a a lordship's might by lasting strength** (`wip/c107a-arms`, worktree `C:/Game Dev/tc-arms`, tip d182cf2): might
   weighs each person of fighting age by the village's tools, arms and iron and their own fighting skill (as a fight weighs them), not the day's health;
   `--oldmightarms`. MightTests still encode C10.5's head count (to update); its measurement (`lordships --might`) is queued.
 - **RUNNING: the job queue** - `bash tc2/out/tools/s23/runq.sh` (task bc2qpqxfq). `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/db1b5af7-2c1c-4e6f-a5ff-c8b25b1a81c2/scratchpad/q`
-  (`runq.log`, `log/<job>.log`, `todo`, `done`; `touch $Q/stop` ends it after the current job). At the handoff, in order: `6_7_c_fullsuite_m4`,
+  (`runq.log`, `log/<job>.log`, `todo`, `done`; `touch $Q/stop` ends it after the current job). At the handoff, in order (the full suite done):
   `6_7_c5_might_measure`, `6_7_d_shots_cross` (`s23m5`, `s23m4`), `6_7_e_web` (`s23web4`), `6_a_g2_05..10`, `6_b_cmp_g2` - about 75 minutes.
 
 ## Do next, in order
