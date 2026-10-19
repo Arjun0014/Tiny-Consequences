@@ -149,8 +149,10 @@ context): a probe that lives a save as the game loads it (`voyages --load SAVE -
 news they carry (`Conflict.News`) went to every village within 6 km as the crow flies. Measured first (`--visittally`, four worlds of main's rules):
 in the archipelago (seed 5) 65 % of a COARSE day's visits, 81 % of the news met and two thirds of the sickness caught on visits crossed water no lived
 visitor could cross; in the others 5-20 % of visits; and every world told of paths and roads "worn" between villages no way on foot joins (6-14 a
-world). Now a COARSE day's visitors go only to neighbours a way on foot joins (`Disease.Visited`), as a lived visitor walks one; across water villages
-meet as their boats' crews do - voyages, relief, grain given back and the tenth, at both resolutions. `--oldvisits`, `--visittally`. Not yet:
+world). Now a COARSE day's visitors go only to neighbours a way on foot joins (`Disease.Visited`), as a lived visitor walks one - with a lived day's odds:
+a lived visitor picks a neighbour among all within a day's walk by nearness and does not go where no way on foot leads (`World.PickNeighbour`), so
+the COARSE visits to such a village are not made, never spread over the rest (a first version spread them: 17.5 visits along a way against 9.6);
+across water villages meet as their boats' crews do - voyages, relief, grain given back and the tenth, at both resolutions. `--oldvisits`, `--visittally`. Not yet:
 visits by boat for themselves (a household rowing over to kin, an island's woodcutters) - wanted if the islands' news and kin ties show the loss.
 
 ## 6. Ports (C9)
