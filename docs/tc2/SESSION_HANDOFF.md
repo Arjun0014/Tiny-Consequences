@@ -6,14 +6,16 @@
 - **main** = cc66770 + PROGRESS (uncommitted edit); sim 87. Re-checked: code = bc99679's, full suite 433/433 (0 skipped), `unity.mjs cc` clean.
 - **C10.7a might by lasting strength** - `wip/c107a-arms` (worktree `C:/Game Dev/tc-arms`, tip 72c0490 + `10` §12i uncommitted), sim 88: `Conflict.Years`
   (shared with `Strength`), `Kit`, `LastingOf`, `Lasting`, `Weigh` (heads or lasting), `--oldmightarms`, `--armstally` (`arms:` line). Tests on `bin_a8`
-  and `bin_a9`: Might 6, Bread 5, Defence 8, Leaders 8, Lordship 4, TributeCarried 9, Across 8, Determinism 6, SaveLoad 8 - all 0 skipped. Queued:
-  `6_7_f_ctl_k0_s2` (control `--oldmightarms` = `_y1`, seed 2, saves its year-300 world in v88 for the 900-year baseline), `6_7_g_k1_*` (ten seeds),
-  `6_7_h_cmp_k1` (`results/cmp_y1_k1.txt`, `might_s*_k1.txt`), `6_c_1..3` (900 years: `_l9k0` s2, `_l9k1` s2 and s4). Draft decision
-  `tc2/out/tools/s23/d2164.md`.
+  and `bin_a9`: Might 6, Bread 5, Defence 8, Leaders 8, Lordship 4, TributeCarried 9, Across 8, Determinism 6, SaveLoad 8 - all 0 skipped. **Control
+  `--oldmightarms` seed 2 (`_k0`, its year-300 world saved in v88) = `_y1`** (annals and state hash). Queued (run tags renamed at 04:15 to unused ones -
+  `k1`, `w0`/`w1` were older sessions' outputs; the queue's file names still say k1/w1): `6_7_g_k1_*` (ten seeds **`_a7`**), `6_7_h_cmp_k1`
+  (`results/cmp_y1_a7.txt`, `might_s*_a7.txt`), `6_c_1..3` (900 years: `_l9k0` s2, `_l9a7` s2 and s4). Draft decision `tc2/out/tools/s23/d2164.md`.
 - **C10.7b sworn men** - `wip/c107b-sworn` (worktree `C:/Game Dev/tc-sworn`, on C10.7a, tip d20b6bb), sim 89, NOT YET BUILT: `Society/Retinue.cs`,
   `Person.Sworn`, history `Sworn`/`SwornReleased` (98, 99), practice daily (lived and COARSE), the ground laid out for sworn men, every band, pages,
-  `--oldsworn`, `--sworntally`; SwornTests 5. Queued `6_7_e3_build_s1` (build, floatcheck, ten classes -> `s1_ok`). Written, not queued (queue them when
-  `s1_ok`): `6_8_a_ctl_w0_s2`, `6_8_b_w1_*`, `6_8_c_cmp_w1`, `6_d_1..2` (900 years). Draft decision `d2165.md`; design `c107_design.md` (last section).
+  `--oldsworn`, `--sworntally`; **SwornTests 5/5 and nine neighbours (Training, Might, Lordship, Leaders, Defence, Taking 18, Bread, Determinism,
+  SaveLoad) pass, 0 skipped (`s1_ok`, bin_s1 of 63280e1)**; a later test-only commit d258ead (the test's "others" excluded the sworn) is not yet run.
+  Queued: `6_8_a_ctl_w0_s2` (control `--oldsworn` = `_a7`, tag **`_sw0`**), `6_8_b_w1_*` (ten seeds **`_sw1`**), `6_8_c_cmp_w1`
+  (`results/cmp_a7_sw1.txt`), `6_d_1..2` (900 years `_l9sw1` against `_l9a7`). Draft decision `d2165.md`; design `c107_design.md` (last section).
 - **C9.5b's dugouts in lived days** - the shots `s23m5`/`s23m4` framed no dugout (seed 4: a plank boat with pots at dawn). A probe
   (`voyages --load SAVE --days N [--dugouts]`, branch `wip/s23-voyshots`, worktree `C:/Game Dev/tc-voy`; shot views take `dugout` and `voyageclose`)
   lived each `_y1` year-300 world 96 days: **seed 2: 19 voyages, all in dugouts** (Lesgristholm fetching grain owed from Nemskundby, Tholdkeistmere's
@@ -21,7 +23,20 @@
   though its COARSE history crossed by dugout ~4 times a year. Queued `6_7_e2_coarse_cross` (the same worlds two years at COARSE: does COARSE book
   crossings at year 300?). Ready to queue after the Web job and a merge of `wip/s23-voyshots` into main: `6_7_e4_shots_dugout` (seed 2, aimed at real
   crossings: `s23n1`, `s23n2`).
-- **RUNNING: the queue** (task bc2qpqxfq; `Q` as below): `6_7_e_web` (Web `s23web4` on main) since 03:25.
+- **C9.5c people across water** - `wip/c95c-visits` (worktree `C:/Game Dev/tc-visits`, from main, tip f20c5e0), sim 88 on main's line (90 integrated):
+  `Disease.Visited` - a COARSE day's visits, their sickness, the news and the ways' wear only where a way on foot leads; `--oldvisits`. Measured first
+  (`--visittally`, `c95c_design.md`): the archipelago's visits 65 % across water, news 81 %, 6-14 false paths a world. VisitsTests 1, CrossTests 14,
+  DiseaseTests 7 pass (Trade, Determinism, SaveLoad running at 04:20). Queued `6_9_a` (control `--oldvisits` = `_y1`, tag `_pv0`), `6_9_b` (ten seeds
+  `_pv1`), `6_9_c` (`results/cmp_y1_pv1.txt`). Draft decision `d2166.md`.
+- **The landing branch** - `wip/s23b-int` (worktree `C:/Game Dev/tc-int2`): main a8ca460 + C10.7b's branch (with C10.7a) + C9.5c, conflicts resolved
+  (the report lines; sim version 90 = 88 C10.7a, 89 C10.7b, 90 C9.5c) + docs (`24` §5 C9.5c, `25`, `23` §3). Queued `6_9_d_int_fullsuite` (build `bin_i2`,
+  floatcheck, hashtest, the full suite -> `fs_i2_ok`). To land when the evaluations are at par: `git merge --no-ff wip/s23b-int` on main, DECISIONS
+  D2-164, D2-165, D2-166 from the drafts, `unity.mjs cc`, Web, real shots of sworn men at a lord's ground.
+- **main** = a8ca460 (tools merged: `voyages` probe, voyage views `dugout`/`voyageclose`, `--visittally`; db4b8ba broke the headless build with a
+  name clash `vt` - fixed a8ca460, built as `bin_v3`). C9.5b's checks complete (Web `s23web4` 6/6, aimed shots `s23n1`/`s23n2`).
+- **RUNNING: the queue** (task bc2qpqxfq; `Q` as below), in order from 04:20: `6_7_f2` (C9.5c tests), `6_7_g_k1_*` (C10.7a seeds `_a7`), `6_7_h`,
+  `6_8_*` (C10.7b `_sw0`, `_sw1`), `6_9_*` (C9.5c), `6_9_d` (the landing branch's full suite), `6_a_g2_*`/`6_b` (D2-160's attribution), `6_c_*`
+  (C10.7a's 900 years `_l9k0`, `_l9a7`), `6_d_*` (C10.7b's `_l9sw1`) - about four hours.
 
 ## Session 23, third context (20 Oct 2026, 00:04 - ~02:55 IST; Control Room run #63 session 3) - C9.5a and C9.5b landed; C10.7a drafted; context handoff with the queue running
 
