@@ -174,6 +174,33 @@ namespace TC2.Headless
                 lordMost.TryGetValue(lo, out int most);
                 Console.WriteLine("    " + name(lo) + (live(lo, now) ? "" : " (gone)") + ": " + lordYears[lo].ToString("0") + " years, most " + most + ", bonds " + held + (w.Settlements.Exists(lo) ? ", people now " + w.Settlements.Get(lo).Population : ""));
             }
+            // the lords now: their first households' grain against their own needs, and the tribute that came in over the last ten years (what a
+            // lordship's surplus could keep - the measure for the lord's household men, `23` §3)
+            {
+                var tribIn = new Dictionary<int, double>();
+                for (int i = 0; i < w.History.Count; i++)
+                {
+                    var e = w.History.At(i);
+                    if (e.Kind != HistoryKind.TributePaid || now - e.Time > 10 * Y) continue;
+                    tribIn.TryGetValue(e.Object.Id, out double t); tribIn[e.Object.Id] = t + e.Magnitude;
+                }
+                var heads = new List<int>(lordYears.Keys); heads.Sort();
+                foreach (int lo in heads)
+                {
+                    if (!live(lo, now) || !w.Settlements.Exists(lo)) continue;
+                    int paying = 0; foreach (var kv in lord) if (kv.Value == lo && live(kv.Key, now)) paying++;
+                    if (paying == 0) continue;
+                    ref var ls = ref w.Settlements.Get(lo);
+                    int hh = ls.HeadHh;
+                    double grain = hh != 0 && w.Households.Exists(hh) ? w.Households.Get(hh).Grain : 0;
+                    int mem = hh != 0 && w.Households.Exists(hh) ? w.Members(hh).Count : 0;
+                    double yearNeed = Math.Max(1, mem) * w.Config.FoodPerAdultDay * SimTime.DaysPerYear;
+                    tribIn.TryGetValue(lo, out double ti);
+                    Console.WriteLine("  lord " + name(lo) + " (" + ls.Population + ", " + paying + " paying): first household " + mem + " people, grain " + grain.ToString("0") +
+                                      " FU = " + (grain / yearNeed).ToString("0.0") + " years of its own need; tribute in over ten years " + ti.ToString("0") + " FU (" +
+                                      (ti / 10.0 / (w.Config.FoodPerAdultDay * SimTime.DaysPerYear)).ToString("0.0") + " people's food a year)");
+                }
+            }
             // the ways between the villages still bound and their lords (C10.6: the tenth carried along them wears them)
             int[] wayStates = new int[4];
             foreach (var b in bonds)
