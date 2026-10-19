@@ -23,6 +23,9 @@ namespace TC2.Core.Places
         public static double[] Diag;
         /// <summary>Tools: no voyages and no relief by sea (C9.3 against C9.2b in one binary); false in the game.</summary>
         public static bool NoSea;
+        /// <summary>`--oldacross`: grain within a day's walk moves at once even where no way on foot joins the two villages (across water), as
+        /// before C9.5a - on the same binary.</summary>
+        public static bool AcrossOff;
         /// <summary>Tools (C3.1): what wares were traded for - wares given, grain (FU), fibre (kg), hides, metal and iron (kg) taken for them, and the
         /// wares the shed villages' traders gave (to a village without a shed); null in the game.</summary>
         public static double[] WaresFor;
@@ -452,10 +455,11 @@ namespace TC2.Core.Places
                 // a twentieth of what can be spared a day, as much as feeds them three days (what its people can carry over), while
                 // their store holds less than a month: relief feeds the hungry, it does not fill a granary (nor reach a village whose
                 // dead starved beside a full one). Beyond a day's walk, by sea: a boat's load a day for each of its free plank boats,
-                // along the coast to the famine's landing, in a calm sea (C9.3)
+                // along the coast to the famine's landing, in a calm sea (C9.3) - and so across water within a day's walk where no way on foot
+                // joins them (C9.5a: grain moves on foot along a way or by sea in a boat, never across the water at once)
                 double carry;
                 bool bySea = false;
-                if (far <= 6000) carry = 3.0 * need0(w, in t) * step;
+                if (far <= 6000 && (AcrossOff || w.Routes.Get(w, sid, o) != null)) carry = 3.0 * need0(w, in t) * step;
                 else
                 {
                     if (NoSea || far > SeaRoutes.Most || t.LandAt == 0) continue;
@@ -577,7 +581,7 @@ namespace TC2.Core.Places
                 double carry;
                 bool bySea = false;
                 int theirs = 0;
-                if (far <= 6000) carry = 3.0 * need0(w, in s) * step;
+                if (far <= 6000 && (AcrossOff || w.Routes.Get(w, sid, giver) != null)) carry = 3.0 * need0(w, in s) * step;   // (across water: by sea, C9.5a)
                 else
                 {
                     if (NoSea || far > SeaRoutes.Most || s.LandAt == 0 || g.LandAt == 0) continue;
@@ -728,7 +732,7 @@ namespace TC2.Core.Places
 
         // ------------------------------------------------------------------ lived voyages (C9.3)
         /// <summary>What a booked voyage is for: a load to trade, grain to a famine, grain given back, grain fetched back from those who owe it.</summary>
-        public const byte ForTrade = 1, ForRelief = 2, ForReturn = 3, ForFetch = 4;
+        public const byte ForTrade = 1, ForRelief = 2, ForReturn = 3, ForFetch = 4, ForTribute = 5;   // (ForTribute: the lord's tenth by sea, C9.5a)
         /// <summary>Where a boat's load goes (`Person.CargoTo` beside ToStore and ToLarder): grain for a famine, grain given back, grain to fetch.</summary>
         public const byte AsGift = 2, AsReturn = 3, ToFetch = 4;
 
@@ -796,6 +800,27 @@ namespace TC2.Core.Places
             return n;
         }
 
+        /// <summary>Lived (C9.5a): the lord's tenth booked on the tributary's free plank boats, a boat's load each, for their households to row over
+        /// in the morning; the FU booked. None while one is booked already (a lapsed booking is booked afresh by the village's next day).</summary>
+        public double BookTribute(int sid, int lord, double due)
+        {
+            for (int i = 0; i < _booked.Count; i++) if (_booked[i].From == sid && _booked[i].Kind == ForTribute) return 0.0;
+            var w = _w;
+            var bl = w.BuildingsOf(sid);
+            double left = due;
+            for (int i = 0; i < bl.Count && left >= 1.0; i++)
+            {
+                if (!Free(bl[i])) continue;
+                double q = DMath.Min(left, BoatLoadKg / Kg(Grain));
+                Book(bl[i], w.Buildings.Get(bl[i]).Household, sid, lord, ForTribute, q);
+                left -= q;
+            }
+            return due - left;
+        }
+
+        /// <summary>The village's plank boats free to carry a load now (C9.3; the lord's tenth by sea, C9.5a).</summary>
+        public int FreeBoats(int sid) => LoadBoats(sid);
+
         int FirstFree(int sid)
         {
             var bl = _w.BuildingsOf(sid);
@@ -814,6 +839,17 @@ namespace TC2.Core.Places
             if (!w.Settlements.Exists(at)) return;
             switch (p.CargoTo)
             {
+                case ToLord:
+                    // the lord's tenth, rowed over (C9.5a): into its store if the village still pays it; else it goes home aboard (the store or set aside: `Unload`)
+                    if (p.Cargo == Grain && p.CargoQty > 0f && w.Settlements.Exists(home) && w.Settlements.Get(home).Lord == at)
+                    {
+                        double fu = p.CargoQty;
+                        p.Cargo = None; p.CargoQty = 0f; p.CargoTo = ToStore;
+                        w.Conflict.Brought(home, at, fu);
+                        var ct = TC2.Core.Society.Conflict.CarryTally;
+                        if (ct != null) { ct[0]++; ct[1] += fu; ct[2]++; ct[14]++; ct[15] += fu; }   // (tools: a lived load, by sea)
+                    }
+                    return;
                 case AsGift:
                     if (p.Cargo == Grain && p.CargoQty > 0f) Given(home, at, p.CargoQty, true);
                     p.Cargo = None; p.CargoQty = 0f; p.CargoTo = ToStore;
@@ -862,6 +898,19 @@ namespace TC2.Core.Places
                     if (p.CargoQty > 0f && w.Settlements.Exists(p.Home)) Unload(ref p, p.Home);
                     s.Granary -= q;
                     p.Cargo = Grain; p.CargoQty = (float)q; p.CargoTo = bk.Kind == ForRelief ? AsGift : AsReturn;
+                    return q * Kg(Grain);
+                }
+                case ForTribute:
+                {
+                    // the lord's tenth (C9.5a): what still stands set aside, up to the booked load - the store loses what the boat holds
+                    ref var st = ref w.Settlements.Get(sid);
+                    if (st.Lord != bk.To) return 0;
+                    float q = (float)DMath.Min(bk.Qty, st.TributeDue);
+                    if (q < 1f) return 0;
+                    if (p.CargoQty > 0f && w.Settlements.Exists(p.Home)) Unload(ref p, p.Home);
+                    ref var st2 = ref w.Settlements.Get(sid);
+                    st2.TributeDue -= q;
+                    p.Cargo = Grain; p.CargoQty = q; p.CargoTo = ToLord;
                     return q * Kg(Grain);
                 }
                 case ForFetch:
