@@ -124,9 +124,11 @@ and cargo boats, coastal trade at the sea's cost ratio (C9.4), ferries (C9.5).
 D2-067, grain given back D2-113) - and so a village across water could owe, and bow to, a neighbour no way on foot led to, its tenth then never carried
 (a fifth of all the tribute in ten worlds, D2-161). Now within a day's walk grain moves at once only along a way on foot (`RouteCache`); across water
 relief and grain given back go by sea as they do beyond a day's walk (the giver's boats, or the giver's come to fetch it), and the lord's tenth is
-set aside only where a way by sea joins the two landings and is rowed over in the tributary's own plank boats in a calm sea (`Trade.BookTribute`,
-`ForTribute`; `Conflict.CarrySea`). `--oldacross`. Not yet: people crossing water in boats - island woodcutters, a town on two shores (lived legs by
-boat, C9.5b).
+set aside only where a way by sea joins the two landings and a plank boat can carry it in a calm sea: the tributary's own, rowing it over to the lord's
+landing, or - none of its own free - the lord's, come for it (`Trade.BookTribute`: `ForTribute`, `ForTenth`; `Conflict.CarrySea`). Handed over at the
+tributary's landing, the dues are settled there (`Conflict.Settle`) and the grain is the lord's when its boat is home (`Conflict.Stored`). The
+survey that asked for the lord's boats: the tributaries across water had no plank boat at any of 444 harvests, their lords at 76. `--oldacross`. Not
+yet: people crossing water in boats - island woodcutters, a town on two shores (lived legs by boat, C9.5b).
 
 ## 6. Ports (C9)
 
