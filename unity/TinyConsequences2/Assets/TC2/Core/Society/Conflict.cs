@@ -141,8 +141,8 @@ namespace TC2.Core.Society
         /// <summary>The length of `CarryTally`.</summary>
         public const int CarryTallyN = 16;
 
-        /// <summary>Tools: a village's sound plank boats (C9.2b).</summary>
-        int PlankBoats(int sid)
+        /// <summary>A village's sound plank boats (C9.2b): what could row its tenth over the water (C9.5a); tools.</summary>
+        public int PlankBoats(int sid)
         {
             var bl = _w.BuildingsOf(sid);
             int n = 0;
@@ -1494,8 +1494,8 @@ namespace TC2.Core.Society
                 if (s.TributeDue >= 1.0) { if (CarryTally != null) CarryTally[7] += s.TributeDue; s.Granary += s.TributeDue; s.TributeDue = 0; s.CarryToday = 0; }
                 // the tenth is set aside only where its people can carry it: along a way on foot to the lord's village. A bond for bread needs only a day's
                 // walk as the crow flies (C10.4) and relief within it moves at once, so a village across water can be bound to a lord no way on foot
-                // leads to - its tenth stays in its store, unless a way by sea joins their landings: then it waits for its boats (C9.5a)
-                if (w.Routes.Get(w, sid, lord) == null && !BySea(sid, lord))
+                // leads to - its tenth stays in its store, unless a way by sea joins their landings and it has a boat of planks to row it over (C9.5a)
+                if (w.Routes.Get(w, sid, lord) == null && !(BySea(sid, lord) && PlankBoats(sid) > 0))
                 {
                     if (CarryTally != null)
                     {

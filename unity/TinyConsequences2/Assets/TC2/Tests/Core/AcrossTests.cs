@@ -130,16 +130,20 @@ namespace TC2.Tests.Core
             Conflict.CarryTally = new double[Conflict.CarryTallyN];
             try
             {
+                // no boat of its own: nothing set aside - it stays in its store, as where no way by sea joins them
+                double g0 = w.Settlements.Get(b).Granary;
                 w.Settlements.Get(b).Granary += 1000;
                 w.Conflict.Harvested(b, 1000);
-                Assert.AreEqual(100.0, w.Settlements.Get(b).TributeDue, 1e-6, "a way by sea: the tenth set aside");
-                // no boat: it waits
-                double lord0 = w.Settlements.Get(a).Granary;
-                w.AdvanceTo(w.Now + SimTime.Days(3));
-                Assert.AreEqual(100.0, w.Settlements.Get(b).TributeDue, 1e-6, "no boat of its own: the tenth waits");
-                StringAssert.Contains("goes over the sea in its own boats", Gazetteer.Neighbours(w, b), "the page tells how it goes");
-                // a plank boat: rowed over in a calm sea
+                Assert.AreEqual(0.0, w.Settlements.Get(b).TributeDue, 1e-9, "no boat: nothing set aside");
+                Assert.AreEqual(g0 + 1000.0, w.Settlements.Get(b).Granary, 1e-6, "the harvest in its store");
+                StringAssert.Contains("its people cannot carry the tenth there", Gazetteer.Neighbours(w, b), "the page tells why");
+                // a plank boat: the next tenth is set aside and rowed over in a calm sea
                 Assume.That(PlankBoat(w, b) != 0, "a plank boat of the tributary's");
+                w.Settlements.Get(b).Granary += 1000;
+                w.Conflict.Harvested(b, 1000);
+                Assert.AreEqual(100.0, w.Settlements.Get(b).TributeDue, 1e-6, "a way by sea and a boat: the tenth set aside");
+                StringAssert.Contains("goes over the sea in its own boats", Gazetteer.Neighbours(w, b), "the page tells how it goes");
+                double lord0 = w.Settlements.Get(a).Granary;
                 long t0 = w.Now;
                 while (w.Settlements.Get(b).TributeDue >= 1.0 && w.Now - t0 < SimTime.Days(10)) w.AdvanceTo(w.Now + SimTime.Day);
                 Console.WriteLine("by sea: " + Conflict.CarryTally[14] + " loads, " + Conflict.CarryTally[15].ToString("0.0") + " FU in " + ((w.Now - t0) / (double)SimTime.Day).ToString("0") + " days");
