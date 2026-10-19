@@ -191,12 +191,13 @@ namespace TC2.Tests.Core
                 Assert.IsFalse(Forge.Threatened(in w.Settlements.Get(sid)), "premise: no fear - nobody else practises");
                 double might0 = w.Conflict.Lasting(sid);
                 var others = Candidates(w, sid);
+                others.RemoveAll(sworn.Contains);   // (the willing not sworn)
                 var skill0 = new Dictionary<int, float>();
                 foreach (int pid in others) skill0[pid] = w.People.Get(pid).SkFight;   // (some were born with a little: the world's first people)
                 Retinue.Tally = new double[Retinue.TallyN];
                 var trainedOn = new Dictionary<int, HashSet<long>>();
                 foreach (int pid in sworn) trainedOn[pid] = new HashSet<long>();
-                // (the village's own harvest may fall in these days: its first household weighs its men again - those sworn at any hour are not "others")
+                // (and should the village's harvest fall in these days, its first household weighs its men again: those sworn at any hour are not "others")
                 var ever = new HashSet<int>(sworn);
                 string doing = null;
                 try
