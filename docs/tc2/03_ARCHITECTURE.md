@@ -97,6 +97,11 @@ populations, herds), `Agents` (persons, households, body, decisions, activities,
   `tc2/tools/floatcheck` fails the headless tests on any (D2-057).
 - **Allocation discipline**: no allocation per event in hot paths (pools, preallocated scratch); the Web GC
   only runs between frames.
+- **Derived caches give the same answer whenever they are filled** (session 12's lakes and flows; D2-160's routes): a load empties
+  every cache and a view may ask first, so a cache may never hold what moves (the day's lakes, the woods) unless keyed to that moment
+  (`PlanetState.WaterDay`) or read from a copy taken at a deterministic moment that also clears the cache (`PlanetState.WayForest`, the
+  routes' woods, taken at each turn of the plates). Probe: `run --load SAVE --warmroutes` (the routes the view builds at its first frame,
+  built at load) leaves the state hash unchanged; before D2-160 three lived days of seed 2's year-300 world ended in another state.
 
 ## 5. The world root and the main loop
 

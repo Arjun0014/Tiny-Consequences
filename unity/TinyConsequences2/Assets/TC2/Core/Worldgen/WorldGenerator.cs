@@ -44,6 +44,8 @@ namespace TC2.Core.Worldgen
             w.ScheduleSystems();
             if (cfg.Settlements <= 0) sites.Clear();   // a world without people (tools): the clock still starts at the first site's morning
             for (int i = 0; i < sites.Count; i++) Found(w, sites[i], i);
+            System.Array.Copy(P.Forest, P.WayForest, P.Cells);   // (the woods the first ways are worked out from, as the world begins: D2-160)
+            if (!TC2.Core.Agents.RouteCache.LiveForest) w.Routes.Invalidate();   // (routes the founding built before them are worked out again)
             return w;
         }
 

@@ -227,6 +227,7 @@ namespace TC2.Headless
             if (a.Has("breadtally")) TC2.Core.Society.Conflict.BreadTally = new long[15];   // (C10.4: village-harvests by the relief still owed, bonds)
             if (a.Has("oldmight")) TC2.Core.Society.Conflict.MightOff = true;   // (C10.5 off: the day's fit grown people at home, a lord by its own village - D2-075's weighing)
             if (a.Has("mighttally")) TC2.Core.Society.Conflict.MightTally = new double[14];   // (C10.5: each weighing by the old count and by might)
+            if (a.Has("oldways")) TC2.Core.Agents.RouteCache.LiveForest = true;   // (D2-160 off: routes from the woods as they are when built)
             if (a.Has("wetways")) TC2.Core.Places.Afoot.Off = true;   // (D2-156 off: lived walks straight across the water, the well's and the idle's spots and crofts in it, the woods by the straight line)
             if (a.Has("waytally")) TC2.Core.Places.Afoot.Tally = new long[128];   // (tools: the walks bent round the water and those no bend kept dry, by what was done at their end)
             if (a.Has("oldmuckorder")) TC2.Core.Agents.AgentSystem.CoarseMuckOld = true;   // (D2-158: a COARSE day's muck before the household's own roof, as C3.7c built it)
@@ -299,6 +300,16 @@ namespace TC2.Headless
             {
                 w = SaveFile.Load(File.ReadAllBytes(a.Get("load")), out var hdr);
                 Console.WriteLine("loaded " + a.Get("load") + " at " + SimTime.Format(w.Now) + " (saved " + hdr.SavedRealUtcMs + ")");
+                if (a.Has("warmroutes"))
+                {
+                    // (session 23, a determinism probe: the routes the view builds at its first frame for the ways it draws - TerrainLod, WaterView,
+                    // WorldObjectsView - built here at load; if history then differs from a run without, watching changes history)
+                    var ways = new List<TC2.Core.Agents.Way>();
+                    w.Ways.Collect(w.Now, ways);
+                    int built = 0;
+                    foreach (var wy in ways) if (w.Routes.Get(w, wy.A, wy.B) != null) built++;
+                    Console.WriteLine("warmroutes: " + built + " routes of " + ways.Count + " ways built at load");
+                }
             }
             else w = WorldGenerator.Create(ConfigFrom(a));
             long genMs = sw.ElapsedMilliseconds;
