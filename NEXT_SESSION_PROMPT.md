@@ -60,3 +60,8 @@ answers "what changes in the world picture?" and is judged in real game shots.
 - The headless build does not compile Game code (`Game/`, the view, `ShotRunner`): after any Game edit run `node tc2/scripts/unity.mjs cc`.
 - On the 6 km planet 5 km is ~48 degrees of longitude: villages a day's walk apart keep local times ~3 hours apart - shoot a village's activity in its own
   hours.
+- `Commands.cs`'s report is one long method: give a new tally's local a long, unique name (two builds broke on `at` and `vt`, CS0128/CS0136), and build
+  the headless app after merging tools into main - `unity.mjs cc` does not compile it (main's headless build was broken for an hour by db4b8ba).
+- Run tags in `tc2/out/civ` are reused across sessions (`k1`, `w1`, `v3` held older runs): check `ls tc2/out/civ | grep _TAG` before queuing a new tag.
+- To shoot something rare, find it first: `voyages --load SAVE --days N` (and probes like it) live the save as the game loads it - the same world, the
+  same minute - then `unity.mjs shots --village V --days D --hour H` frames it (D2-163).
