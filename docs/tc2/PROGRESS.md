@@ -26,8 +26,11 @@
   across water at once (`Conflict.News`, `Disease`). **Validated on main**: builds (`bin_m3`), floatcheck clean, Unity C# compiles (`unity.mjs cc`),
   **full suite 427/427**, **Web build and test `s23web3` 6/6** - browser (WebGPU) = headless dotnet = editor Mono bit for bit (frame rates 27-52 fps
   at the village and region views on a busy machine: not evidence). (4) **C9.5b a boat to cross** built (`wip/c95b-cross`, sim 87): CrossTests 6/6 and
-  the neighbours pass; its control and ten seeds in the queue. No lordship of the ten C9.5a worlds is bound across water at year 300 (`lordships`):
-  the shots of boats crossing come with C9.5b's worlds.
+  the neighbours pass; **landed (0a8b0b0; DECISIONS D2-163; sim version 87)**: control `--oldcross` = `_x2` (annals and state hash); **ten seeds
+  `_y1` at par in the vital rates** (people x0.995, births and deaths x1.015, x1.018, hunger x0.996); voyages x2.4, trades x1.20, relief x1.54; boats
+  made to cross in eight of ten worlds (72 in all); the archipelago (seed 5) made 11 dugouts to reach each other - trades 174 -> 618, relief
+  1,273 -> 50,006 FU, hunger deaths 1,752 -> 1,283. No lordship of the ten C9.5a worlds is bound across water at year 300 (`lordships`): the shots
+  of boats crossing are taken on C9.5b's worlds. Main's checks after the merge (build, Unity C#, full suite, shots, Web `s23web4`) are queued.
 - **Session 23, second context (19 Oct 2026, from 21:26 IST; Control Room run #63 session 2; the same job queue)** - **landed on main (a19c077):
   C10.5, D2-160 and C10.6 as amended; DECISIONS D2-159, D2-160, D2-161 (464e72c); sim version 85.** (1) **C10.5's 900-year check** (seeds 2 and 4
   of `_z1` to year 900, against C10.4's `_y3`): no snowball and no growth - the largest lordship 2-3 villages, depth 1; bonds hold longer with less
