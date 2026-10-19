@@ -20,6 +20,18 @@
   `6_a_g2_*` + `6_b_cmp_g2` (ten seeds with D2-160 alone, `--oldtribute`: attributes the bonds lean). `$Q/hold`: the pre-amendment jobs - do not run.
 - Worktrees all merged (may be removed): `tc-int`, `tc-carry`, `tc-might`, `tc-routes`, `tc-tribute`, `tc-s23`, `tc-bread`, `tc-dry`, `tc-stubble`.
 
+- **After landing (23:00-23:35)**: `unity.mjs cc` on main caught a coroutine `ref` local in the new shot option (fixed 420ef71); real shots `s23c`/`s23d`
+  (tributary Paerdal, lord Lounstead): the standards read up close and from the low view, **not from the village view** (an 8x curve tried and reverted,
+  `s23g`/`s23h`) - D2-161's claim (4) corrected; the palette has no green nor teal (12dc99c). Lived carriers carry (seed 2's world lived 20 days: 19
+  loads); the carrier shots missed them (they set out at 7 and are visitors at the lord's by 9) - `--after tribute` now steps to the first carrier on
+  the way (4e736cb); the re-shot `s23k` is queued (`5_c65`). The profile: might and carrying cost nothing per village-day (D2-159). DECISIONS has a
+  FILL in D2-161 (the carriers' shot) - uncommitted edits in DECISIONS and `10` §12h wait for it.
+- **C9.5a grain across water goes by boat** (branch `wip/c95-across`, worktree `C:/Game Dev/tc-across`, c02b012 + the survey aea29b6; sim 86): within a
+  day's walk grain moves at once only where a way on foot joins two villages; relief and give-back across water go by sea (the giver's boats) or
+  not at all; the lord's tenth across water is set aside where a way by sea joins the landings and rowed over in the tributary's plank boats (lived:
+  `ForTribute` bookings delivered at the lord's landing; COARSE: at once); `--oldacross`; AcrossTests 3. Queued: `5_e1_a1_*` (the survey on the
+  landed code: how much grain crossed water at once), `5_e2_*` (build, tests, control `--oldacross` = `_g1`, ten seeds `_x1`, `cmp_g1_x1`).
+
 ### Next, in order
 1. Read the queue: Unity C# (errors -> fix on main), the shots (standards from the village view? carriers on the road?), Web 6/6 with the probe =
    headless = Mono, the 900-year check, `_g2` (is the bonds lean D2-160's?), the profile -> PROGRESS and D2-161's shots line.
