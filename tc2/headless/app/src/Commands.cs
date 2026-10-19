@@ -998,7 +998,7 @@ namespace TC2.Headless
                     var at = TC2.Core.Places.Trade.AcrossTally;
                     if (at != null)   // (C9.5 survey)
                         Console.WriteLine("across: between villages within a day's walk no way on foot joins - relief " + at[0] + " gifts, " + F(at[1], "0") + " FU; given back " + at[2] + ", " +
-                                          F(at[3], "0") + " FU; bows for bread " + at[4]);
+                                          F(at[3], "0") + " FU; bows for bread " + at[4] + "; traders dealing across it at once " + at[5] + " (COARSE), lived traders finding no road to their partner " + at[6]);
                     long firstLord = 0, firstEnd = 0;
                     for (int i = 0; i < w.History.Count && (firstLord == 0 || firstEnd == 0); i++)
                     {
