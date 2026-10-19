@@ -992,10 +992,10 @@ namespace TC2.Headless
                     if (mt != null)   // (C10.5: each weighing of the stronger - weighed, carried by the old count, carried by might, by both)
                         Console.WriteLine("might: bowing to raiders weighed " + mt[0] + " (the old count " + mt[1] + ", might " + mt[2] + ", both " + mt[3] + "); bowing for bread " + mt[4] + " (" + mt[5] + ", " + mt[6] + ", " + mt[7] +
                                           "); a lord no longer the stronger " + mt[8] + " (" + mt[9] + ", " + mt[10] + ", " + mt[11] + "); lords' calls counted " + mt[12] + " times, " + F(mt[13], "0") + " men");
-                    var vt = TC2.Core.Health.Disease.VisitTally;
-                    if (vt != null)   // (C9.5c survey: a COARSE day's visits between neighbours within a day's walk, along a way on foot and across water)
-                        Console.WriteLine("visits: COARSE visits along a way on foot " + F(vt[0], "0") + ", across water " + F(vt[1], "0") + "; caught on them " + vt[2] + " and " + vt[3] +
-                                          "; news met " + vt[4] + " and " + vt[5] + "; ways told worn to a path or a road with no way on foot " + vt[6]);
+                    var visitT = TC2.Core.Health.Disease.VisitTally;
+                    if (visitT != null)   // (C9.5c survey: a COARSE day's visits between neighbours within a day's walk, along a way on foot and across water)
+                        Console.WriteLine("visits: COARSE visits along a way on foot " + F(visitT[0], "0") + ", across water " + F(visitT[1], "0") + "; caught on them " + visitT[2] + " and " + visitT[3] +
+                                          "; news met " + visitT[4] + " and " + visitT[5] + "; ways told worn to a path or a road with no way on foot " + visitT[6]);
                     var ct = TC2.Core.Society.Conflict.CarryTally;
                     if (ct != null)   // (C10.6: the lord's tenth carried to its store)
                         Console.WriteLine("carried: set aside " + F(ct[3], "0") + " FU; loads " + ct[0] + " (lived " + ct[2] + "), " + F(ct[1], "0") + " FU (by cart " + F(ct[5], "0") + "), carriers' km " + F(ct[6], "0") +
