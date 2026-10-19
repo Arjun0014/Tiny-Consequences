@@ -100,7 +100,8 @@ namespace TC2.Headless
                     if (mlive && headKin(sid, m)) line += ", first households kin";
                 }
                 else line += " (first places)";
-                if (s.Lord != 0) line += "; pays " + name(s.Lord);
+                if (s.Lord != 0) line += "; pays " + name(s.Lord) + (s.LordEvent != 0 && w.History.TryGet(s.LordEvent, out var le) && le.ArgB == 1 ? " (for bread)" : " (for peace)")
+                                         + " since " + (s.LordSince / SimTime.Year);
                 double owe = 0; int cred = 0;
                 foreach (int o in live) { if (o == sid) continue; double q = w.DeedBook.Owed(sid, o); if (q > owe) { owe = q; cred = o; } }
                 if (owe > 0) line += "; owes " + name(cred) + " " + owe.ToString("0") + " FU of relief";

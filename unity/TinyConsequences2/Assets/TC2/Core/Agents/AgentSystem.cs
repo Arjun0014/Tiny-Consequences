@@ -1859,6 +1859,24 @@ namespace TC2.Core.Agents
         /// Whether a COARSE day's garden takes this member's hours now (true), after the household's own building (`later`), or not today: what its
         /// season still wants, against the wild when hunger presses and against building its own roof - each by the urge a lived day gives it.
         /// </summary>
+        /// <summary>
+        /// Whether a COARSE day's muck waits for the household's own roof (D2-158): the roof's urge (a camp's 0.85, a hut's 0.4, a house's none) beats
+        /// the muck's as a lived day weighs it (0.30 + 0.25 of the heaps a field hectare up to 3 t, by diligence, and its chance - 0.05 on average).
+        /// </summary>
+        bool RoofBeforeMuck(World w, in Settlement s, in Person p)
+        {
+            if (!w.Households.Exists(p.Household)) return false;
+            ref var hh = ref w.Households.Get(p.Household);
+            double roof = hh.Shelter == Construction.Camp ? 0.85 : hh.Shelter == Construction.Hut ? 0.4 : 0.0;
+            if (roof <= 0) return false;
+            double heaps = s.Muck / 1000.0 / DMath.Max(1.0, s.FieldHa);
+            double u = (0.30 + 0.25 * DMath.Clamp01(heaps / 3.0)) * (0.6 + 0.4 * p.Diligence / 255.0) + 0.05;
+            return roof > u;
+        }
+
+        /// <summary>`--oldmuckorder`: a COARSE day's muck carted before the household's own roof, as C3.7c built it (D2-158's control).</summary>
+        public static bool CoarseMuckOld;
+
         bool GardenOrder(World w, in Settlement s, in Person p, int days, long now, bool shortNow, double ration, bool old, out bool later)
         {
             later = false;
@@ -2187,12 +2205,19 @@ namespace TC2.Core.Agents
                     w.Learning.Practice(ref p, Knowledge.Tech.Ard, h);
                     p.SkFarm = (float)DMath.Min(1.0, p.SkFarm + 0.0015 * h);
                 }
+                bool muckLater = false;
                 if (hours > 0 && age >= 16 && age < 60 && p.Health > 0.6 && s.Muck > 1.0 && Muck.Window(in s))
                 {
                     // the yards' muck out on the fields before the ploughing (C3.7c): after the fields' own work, at most half the free hours (as a lived
-                    // day's urge gives it beside the rest), at the household's cart's pace or a back's
-                    double used = Muck.Cart(w, ref s, hours * 0.5, Muck.HoursPerTonne(w, p.Household), 0.5 + 0.5 * p.Health);
-                    hours -= used;
+                    // day's urge gives it beside the rest), at the household's cart's pace or a back's - and after the household's own roof where that
+                    // pulls harder, as a lived day's urges order them (D2-158: a camp's always, a hut's house unless the heaps are high - as the garden's,
+                    // D2-146; carted first, a household in a camp still had no house after sixty days of free hours)
+                    if (!CoarseMuckOld && RoofBeforeMuck(w, in s, in p)) muckLater = true;
+                    else
+                    {
+                        double used = Muck.Cart(w, ref s, hours * 0.5, Muck.HoursPerTonne(w, p.Household), 0.5 + 0.5 * p.Health);
+                        hours -= used;
+                    }
                 }
                 int lslot = -1;
                 if (LandHours != null) { lslot = LandSlot(w, in s); LandHours[lslot] += days; LandHours[lslot + 1] += cropH; LandHours[lslot + 2] += hours; }
@@ -2224,6 +2249,7 @@ namespace TC2.Core.Agents
                     }
                 }
                 if (gardenLater && hours > 0) hours -= CoarseGarden(w, in s, p.Household, days, now, hours);
+                if (muckLater && hours > 0) hours -= Muck.Cart(w, ref s, hours * 0.5, Muck.HoursPerTonne(w, p.Household), 0.5 + 0.5 * p.Health);   // (after the roof: D2-158)
                 if (hours > 0 && age >= 16 && age < 60 && p.Health > 0.6 && Boats.HasWork(w, in s, p.Household) && !(shortNow && WildNeed(in s, now, ration) > 0.42))
                 {
                     // the household is making a boat (C9.1): its grown members' free hours go to it, as a lived day's would

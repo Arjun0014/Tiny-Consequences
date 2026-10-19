@@ -124,6 +124,31 @@ namespace TC2.Game
                         if (n > most) { most = n; pick = s2; }
                     }
                 }
+                else if (vArg == "tributary" || vArg == "lord")
+                {
+                    // (C10.4 shots) the most peopled village paying tribute - for bread before for peace - or the lord of the largest lordship: the standards
+                    // in the lord's colour (D2-152)
+                    int best = -1;
+                    for (int s2 = w.Settlements.First(); s2 != 0; s2 = w.Settlements.Next(s2))
+                    {
+                        if (!w.Settlements.Get(s2).Inhabited) continue;
+                        int score;
+                        if (vArg == "lord")
+                        {
+                            int paying = w.Conflict.LordOf(s2) == 0 ? w.Conflict.PolitySize(s2) : 0;
+                            if (paying == 0) continue;
+                            score = paying * 100000 + w.Settlements.Get(s2).Population;
+                        }
+                        else
+                        {
+                            var st = w.Settlements.Get(s2);
+                            if (st.Lord == 0) continue;
+                            bool bread = st.LordEvent != 0 && w.History.TryGet(st.LordEvent, out var le) && le.ArgB == 1;
+                            score = (bread ? 100000 : 0) + st.Population;
+                        }
+                        if (score > best) { best = score; pick = s2; }
+                    }
+                }
                 else int.TryParse(vArg, out pick);
                 if (pick != 0 && w.Settlements.Exists(pick)) { sid = pick; CameraRig.FocusSid = pick; Debug.Log("[TC2] framing village " + pick + " (" + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(pick)) + ", " + w.Settlements.Get(pick).Population + " people)"); }
             }

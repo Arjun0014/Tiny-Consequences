@@ -174,6 +174,9 @@ namespace TC2.Core.History
                 case HistoryKind.WallBuilt: return "The people of " + subj + " finished their palisade (" + e.ArgA + " m round): " + subj + " is a walled place.";
                 case HistoryKind.WallFallen: return "The palisade of " + subj + " has rotted and fallen.";
                 case HistoryKind.TributeAgreed:
+                    if (e.ArgB == 1)   // (for bread: C10.4)
+                        return "The people of " + subj + " bowed to " + obj + " and agreed to pay it a tenth of every harvest: its grain had kept them through their famines and they could not give it back" +
+                               (e.ArgA > 1 ? " (" + obj + " now has " + e.ArgA + " villages paying)." : ".");
                     return "The people of " + subj + " bowed to " + obj + " and agreed to pay it a tenth of every harvest: they could neither stand against its bands nor go elsewhere" +
                            (e.ArgA > 1 ? " (" + obj + " now has " + e.ArgA + " villages paying)." : ".");
                 case HistoryKind.TributePaid: return subj + " paid " + obj + " its tribute (" + F(e.Magnitude, "0") + " days' grain).";

@@ -102,6 +102,19 @@ namespace TC2.Core.Society
         /// <summary>A tributary pays its lord this share of each harvest; it bows only to raiders this much stronger (fit grown people).</summary>
         public const double TributeShare = 0.1, TributeOdds = 1.2;
 
+        // ---- bread and dependence (C10.4, D2-157)
+        /// <summary>`--nobread`: no village bows for the grain it cannot give back; a lord's relief to its tributaries counts what they owe; tribute
+        /// does not pay relief down (D2-075's lordship by conquest alone) - on the same binary.</summary>
+        public static bool BreadOff;
+        /// <summary>Days of its people's food a village still owes one giver for relief after giving back all its new harvest can spare, from which it
+        /// bows to that giver: a famine's whole relief (`Trade.ReliefUpToDays`) unreturned.</summary>
+        public const double BowDays = 30.0;
+        /// <summary>m: a lord for bread is a neighbour within a day's walk (its call and its relief come over the land).</summary>
+        public const double BreadReach = 6000.0;
+        /// <summary>Tools (`--breadtally`): village-harvests with no lord by the days of food still owed to the main giver after the harvest's spare
+        /// (0: none, then 0-5, 5-10, 10-20, 20-30, 30-60, 60+), [7..13] those whose giver was also stronger by `TributeOdds` and within reach; [14] bonds.</summary>
+        public static long[] BreadTally;
+
         /// <summary>A person is hungry enough to go when the last day fed them less than this share of their need (both resolutions
         /// keep that share, the body's day: a lived meal-time flag would clear at the first bite).</summary>
         public const double HungryBelow = 0.5;
@@ -1305,6 +1318,7 @@ namespace TC2.Core.Society
         {
             var w = _w;
             long now = w.Now;
+            if (!BreadOff && w.Settlements.Get(sid).Lord == 0) Indebted(sid);   // (the grain it cannot give back: C10.4)
             ref var s = ref w.Settlements.Get(sid);
             if (s.Lord == 0) return;
             int lord = s.Lord;
@@ -1339,7 +1353,51 @@ namespace TC2.Core.Society
                 Cause1 = s.LordEvent, Rel1 = CauseRel.PartOf, Magnitude = (float)pay, RootKind = RootKind.People,
             });
             w.DeedBook.SettleBy(lord, sid, pay);
+            if (!BreadOff) w.Trade.Repaid(sid, lord, pay);   // (and gives back the grain its lord gave it in its famines: C10.4)
             w.Metrics.TributeFu += pay;
+        }
+
+        /// <summary>
+        /// Bread and dependence (C10.4, D2-157), at a village's harvest while it pays no lord: what it still owes the neighbour that fed it most in its
+        /// famines (`Trade.MainCreditor`, the relief it saw given, weighed now) beyond all its new harvest can spare is more than a month of its people's
+        /// food - a famine's whole relief unreturned - and that neighbour is within a day's walk and the stronger (`TributeOdds`): it bows to it, a tenth
+        /// of each harvest, as Attica's hektemoroi paid a sixth to the creditors of their bad years and the early medieval poor commended themselves in
+        /// famine to whoever would feed them. The tribute gives the grain back (`Trade.Repaid`), its lord feeds it in its famines without counting what it
+        /// owes (`Trade.Relief`), and it answers its lord's call; it ends as D2-075's does - the lord gone or no longer the stronger. History tells it, its
+        /// cause the gift.
+        /// </summary>
+        void Indebted(int sid)
+        {
+            var w = _w;
+            long now = w.Now;
+            ref var s = ref w.Settlements.Get(sid);
+            if (!s.Inhabited) return;
+            int giver = w.Trade.MainCreditor(sid, out double owed, out long gift);
+            double daily;
+            Places.Trade.DaysOfFood(w, in s, out daily);
+            double left = owed - w.Trade.Spare(sid, Places.Trade.Grain);
+            double days = left / daily;
+            bool near = giver != 0 && w.Settlements.Exists(giver) && w.Settlements.Get(giver).Inhabited &&
+                        Vec3d.ArcDistance(s.Anchor, w.Settlements.Get(giver).Anchor, w.Planet.Radius) <= BreadReach;
+            bool stronger = near && FitAt(giver, now) >= TributeOdds * FitAt(sid, now);
+            bool loop = near && Root(giver) == sid;   // (not to a village that pays it, directly or through its lords)
+            if (BreadTally != null)
+            {
+                int b = giver == 0 || days <= 0 ? 0 : days < 5 ? 1 : days < 10 ? 2 : days < 20 ? 3 : days < 30 ? 4 : days < 60 ? 5 : 6;
+                BreadTally[b]++;
+                if (stronger && !loop) BreadTally[7 + b]++;
+            }
+            if (giver == 0 || days < BowDays || !stronger || loop) return;
+            ref var s2 = ref w.Settlements.Get(sid);
+            s2.Lord = giver; s2.LordSince = now;
+            s2.LordEvent = w.Record(new HistoryEvent
+            {
+                Kind = HistoryKind.TributeAgreed, Time = now, Cell = s2.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid), Object = EntityRef.Settlement(giver),
+                Cause1 = gift, Rel1 = CauseRel.InResponseTo, Magnitude = (float)TributeShare, ArgA = PolitySize(Root(giver)), ArgB = 1, RootKind = RootKind.People,
+            });
+            w.Metrics.Tributes++; w.Metrics.BreadBonds++;
+            if (BreadTally != null) BreadTally[14]++;
+            Diagnostics.ScaleTally.Pair(w, Diagnostics.ScaleTally.Tribute, sid, giver);
         }
 
         /// <summary>The village a village pays tribute to (0 none).</summary>

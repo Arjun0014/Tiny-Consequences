@@ -181,6 +181,35 @@ Built on C3.3 (D2-126: household grain, loans recorded as debts, gifts). `Core/S
 - **Result** (ten seeds against `_j1`): successions at a retirement 37-127 -> 0-17 a world, headmen x0.83 (the place changes hands less), splits at
   a living headman's move 4 -> 2; people and vital rates at par; conflict lower inside the noise; tribute agreements 17 -> 8 (low counts).
 
+## 12f. Bread and dependence: lordship from the famine grain a village cannot give back (C10.4, D2-157)
+- **Measured first** (session 22). Polities were nearly absent: over twenty worlds at year 300, 0-3 lords a world, each with 1-2 tributaries, depth
+  1 (seed 4: 30 villages, 10,000 people, one lordship of two) - lordship came only by conquest (D2-075: a raided village, hemmed in, bows to its
+  stronger raiders), and raids are rare (6 in 300 years on seed 4). `polity --load SAVE` (the ties a polity could be made of) on seed 4 at year
+  300: **kin does not mark mother and daughter villages** - 24 of 30 villages were founded by another's people, but after decades of marriages
+  between villages every pair within 6 km is kin (99 of 100 other pairs; 43 kin links a mother-daughter pair, 36 an other pair) and no daughter's
+  first household is close kin of its mother's - a lordship of founders over daughters would be written, not read from the state. **Relief is**:
+  famines are common (110-257 a world in 300 years), neighbours with grain to spare send it (seed 4: 692,900 FU over the run, by 1,007 neighbours'
+  hands), and only 15 % of it ever comes back (100,767 FU, D2-113) - half the villages owe a neighbour at any time (15 of 30 at year 300, up to
+  9,740 FU).
+- **The record**: famine was the commonest road into dependence before states and under weak ones - Attica's hektemoroi paid a sixth of their
+  crop to the creditors of their bad years until Solon (Aristotle, *Ath. Pol.* 2); the early medieval poor commended themselves in famine to whoever
+  would feed and clothe them (*Formulae Turonenses* 43: "since I have nothing to feed and clothe myself..."); chiefs' storehouses that fed the
+  hungry bound them (Earle 1997, staple finance); debt from bad harvests as the ancient origin of bondage (Graeber 2011).
+- **The rule** (`Conflict.Indebted`, both resolutions, at a village's harvest while it pays no lord): what it still owes the neighbour that fed it
+  most in its famines (`Trade.MainCreditor`: the relief it saw given within 16 years, weighed now) beyond all its new harvest can spare is more than
+  a month of its people's food (`BowDays` 30: a famine's whole relief unreturned), and that neighbour lies within a day's walk (6 km) and is the
+  stronger by D2-075's odds (1.2 x its fit grown people), and does not pay it: it bows - a tenth of each harvest. History: `TributeAgreed` (ArgB 1),
+  its cause the weightiest gift.
+- **What the bond does** (all from what was there): the tribute (`Conflict.Harvested`) is grain to the lord's first household (C10.2) and **gives
+  the relief back** (`Trade.Repaid`: the gifts weigh that much less, as given-back grain does); **a lord feeds its own** - its relief to a
+  tributary in famine is not closed by what the tributary owes (`Trade.Relief`; D2-113's open hand applies to everyone else); the tributary answers
+  its lord's call (C10.1), its lord answers its wrongs (D2-108), no band of its lord's falls on it, it flies its lord's standard (D2-152). It ends as
+  D2-075's does: the lord gone, or no longer the stronger (a refusal the lord holds).
+- **Pages**: the settlement page says why it pays ("its grain kept it through its famines, and it could not give it back" / "it could neither stand
+  against its bands nor go elsewhere") and the famine grain it still owes each neighbour. Headless: `lordships:` counts the bonds for bread,
+  `--breadtally` (village-harvests by the days still owed to the main giver; those whose giver was the stronger and near), `--nobread` (D2-075
+  alone on the same binary); `polity` marks each lord for bread or for peace.
+
 ## 13. Civilisation depth (D2-089)
 
 Force, fortification, war and sieges are designed in `23_MILITARY_AND_WAR.md` (fighters as persistent people, arms as goods, training,

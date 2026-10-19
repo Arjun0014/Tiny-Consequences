@@ -75,7 +75,7 @@ namespace TC2.Core.History
         WallPlanned = 69,       // a village began a palisade (Magnitude its losses a year, FU; Cause1 the latest; D2-074)
         WallBuilt = 70,         // a village finished its palisade (ArgA its length, m)
         WallFallen = 71,        // a palisade rotted and fell
-        TributeAgreed = 72,     // a village bowed to its raiders and agreed to pay them tribute (Subject the payer, Object the lord; Magnitude the share; ArgA the lordship's size after; D2-075)
+        TributeAgreed = 72,     // a village bowed to its raiders and agreed to pay them tribute (Subject the payer, Object the lord; Magnitude the share; ArgA the lordship's size after; D2-075) - or (ArgB 1) to the neighbour whose famine grain it could not give back (C10.4, D2-157)
         TributePaid = 73,       // a tributary paid its lord at harvest (Magnitude FU)
         TributeEnded = 74,      // a tributary paid no more (ArgA 1 the lord is gone, 0 grown too weak)
         HomesDrowned = 75,      // the sea rose over homes' lots (Settlement; ArgA homes lost; Cause1 the coast's change; D2-087)

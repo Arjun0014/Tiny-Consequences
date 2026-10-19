@@ -457,8 +457,9 @@ namespace TC2.Core.Places
                 }
                 double days = DaysOfFood(w, in t, out double need);
                 if (days >= ReliefUpToDays) continue;
-                // what it gave them before and has not had back weighs against giving more (D2-113)
-                double open = DMath.Clamp01(1.0 - w.DeedBook.Owed(o, sid) / (CreditDays * need));
+                // what it gave them before and has not had back weighs against giving more (D2-113) - but a lord feeds its own (C10.4: its tribute
+                // gives the grain back)
+                double open = !TC2.Core.Society.Conflict.BreadOff && t.Lord == sid ? 1.0 : DMath.Clamp01(1.0 - w.DeedBook.Owed(o, sid) / (CreditDays * need));
                 double gift = DMath.Min(DMath.Min(0.05 * spare * step, carry), (ReliefUpToDays - days) * need) * open;   // (DEEP: the step's days of it)
                 if (SeaShort != null && bySea)
                 {
@@ -641,6 +642,73 @@ namespace TC2.Core.Places
                     ArgA = bySea ? 1 : 0,
                 });
             }
+        }
+
+        /// <summary>
+        /// Grain a tributary's tribute gives back to its lord for the relief the lord gave it (C10.4, D2-157; the grain itself moved by the caller): the
+        /// lord's gifts to it weigh that much less, oldest first - told as tribute paid, not as gifts returned.
+        /// </summary>
+        public void Repaid(int sid, int giver, double qty)
+        {
+            var w = _w;
+            var list = w.DeedBook.KnownBy(sid);
+            if (list == null || qty <= 0) return;
+            long now = w.Now, since = now - TC2.Core.Society.DeedBook.OwedYears * SimTime.Year;
+            int i0 = list.Count;
+            while (i0 > 0 && w.Deeds.Get(list[i0 - 1].Deed).Time >= since) i0--;
+            double left = qty;
+            for (int i = i0; i < list.Count && left > 1e-9; i++)
+            {
+                if (list[i].How != TC2.Core.Society.KnownHow.Saw) continue;
+                int did = list[i].Deed;
+                ref var d = ref w.Deeds.Get(did);
+                if (d.Kind != TC2.Core.Society.DeedKind.Relief || d.ToS != sid || d.ByS != giver) continue;
+                double owe = w.DeedBook.Weight(in d, now);
+                if (owe <= 0) continue;
+                double back = DMath.Min(left, owe);
+                w.DeedBook.GiveBack(did, back);
+                left -= back;
+            }
+        }
+
+        /// <summary>
+        /// The neighbour a village owes most for relief (C10.4, D2-157): of the gifts it saw given within `DeedBook.OwedYears`, weighed now, the giver
+        /// whose sum is largest (ties: the giver it first owed) - that sum, and the event of its weightiest gift from that giver (the cause a bond is
+        /// told by). 0 none. Reads only.
+        /// </summary>
+        public int MainCreditor(int sid, out double owed, out long gift)
+        {
+            var w = _w;
+            owed = 0; gift = 0;
+            if (!w.DeedBook.OwesAny(sid, 1.0)) return 0;
+            var list = w.DeedBook.KnownBy(sid);
+            if (list == null) return 0;
+            long now = w.Now, since = now - TC2.Core.Society.DeedBook.OwedYears * SimTime.Year;
+            _givers.Clear(); _owes.Clear();
+            int i0 = list.Count;
+            while (i0 > 0 && w.Deeds.Get(list[i0 - 1].Deed).Time >= since) i0--;
+            for (int i = i0; i < list.Count; i++)
+            {
+                if (list[i].How != TC2.Core.Society.KnownHow.Saw) continue;
+                ref var d = ref w.Deeds.Get(list[i].Deed);
+                if (d.Kind != TC2.Core.Society.DeedKind.Relief || d.ToS != sid) continue;
+                double owe = w.DeedBook.Weight(in d, now);
+                int k = _givers.IndexOf(d.ByS);
+                if (k < 0) { _givers.Add(d.ByS); _owes.Add(owe); } else _owes[k] += owe;
+            }
+            int best = 0;
+            for (int k = 0; k < _givers.Count; k++) if (_owes[k] > owed) { owed = _owes[k]; best = _givers[k]; }
+            if (best == 0) return 0;
+            double top = 0;
+            for (int i = i0; i < list.Count; i++)
+            {
+                if (list[i].How != TC2.Core.Society.KnownHow.Saw) continue;
+                ref var d = ref w.Deeds.Get(list[i].Deed);
+                if (d.Kind != TC2.Core.Society.DeedKind.Relief || d.ToS != sid || d.ByS != best) continue;
+                double owe = w.DeedBook.Weight(in d, now);
+                if (owe > top) { top = owe; gift = d.Event; }
+            }
+            return best;
         }
 
         static double need0(World w, in Settlement t) { DaysOfFood(w, in t, out double need); return need; }
