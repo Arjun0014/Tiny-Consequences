@@ -284,6 +284,16 @@ stronger neighbour within a day's walk gave it bows to that neighbour; the tribu
 the lord's call answered, vital rates untouched. **D2-158**: the full suite's one failure (since C3.7c) - a COARSE day's muck before a camp's own roof.
 See SESSION_HANDOFF "Session 22".
 
+**Where we are (session 23, 19 Oct 2026)**: **C10.4 merged** (ca3b4c8, D2-157, D2-158) and validated: Unity C# compiles, Web 6/6, the browser's probe
+= headless dotnet = the editor's Mono bit for bit. **The 900-year check** (seeds 2 and 4): no snowball and no growth - petty lordships of 1-4 villages,
+every bond ended because "the lord was no longer the stronger", weighed by the fit people at home on one day and a lord by its own village (a mild
+epidemic ended five lordships in one year). Built on branches, merged together on `wip/s23-int` (worktree `C:/Game Dev/tc-int`) and under evaluation in
+the job queue: **C10.5 a lordship's might** (D2-159, sim 83: people of fighting age and the lord's call), **D2-160 the ways' woods** (sim 84: a route's
+forest cost read the woods of the moment it was first built - a load or the view building routes first changed history; now the woods at the last turn
+of the plates), **C10.6 tribute carried** (D2-161, sim 85: the tenth set aside and carried to the lord's store by the tributary's people; the ways of a
+lordship converge on its lord; standards read from the village view). Real shots `s23a`/`s23b`: the lordship read only up close. See SESSION_HANDOFF
+"Session 23" for the queue, the drafts (`tc2/out/tools/s23/d2159.md`, `d2160.md`, `d2161.md`) and the next steps.
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.
