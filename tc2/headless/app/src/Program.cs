@@ -56,6 +56,9 @@ namespace TC2.Headless
                         return Commands.Polity(args);
                     case "lordships":
                         return Commands.Lordships(args);
+                    case "voyages":
+                        Commands.Switches(args);
+                        return Commands.Voyages(args);
                     case "woodways":
                         return Commands.WoodWays(args);
                     case "planet":

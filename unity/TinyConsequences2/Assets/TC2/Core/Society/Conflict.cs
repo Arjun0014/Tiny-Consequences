@@ -754,7 +754,11 @@ namespace TC2.Core.Society
                 if (o == sid || !w.Settlements.Get(o).Inhabited) continue;
                 ref var t = ref w.Settlements.Get(o);
                 if (Vec3d.ArcDistance(s.Anchor, t.Anchor, w.Planet.Radius) > 6000) continue;
-                if (KeyedRng.Unit(w.Seed, RngStream.Society, (ulong)sid, (ulong)now, (ulong)(40 + o)) < 1.0 - DMath.Exp(-expect)) w.DeedBook.Meet(sid, o);
+                if (KeyedRng.Unit(w.Seed, RngStream.Society, (ulong)sid, (ulong)now, (ulong)(40 + o)) < 1.0 - DMath.Exp(-expect))
+                {
+                    w.DeedBook.Meet(sid, o);
+                    if (TC2.Core.Health.Disease.VisitTally != null) TC2.Core.Health.Disease.VisitTally[w.Routes.Get(w, sid, o) != null ? 4 : 5] += 1;   // (tools: C9.5c survey)
+                }
             }
         }
 

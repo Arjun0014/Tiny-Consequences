@@ -58,6 +58,11 @@ namespace TC2.Core.Health
         /// <summary>Visits a healthy grown person makes a day to a neighbouring village (measured in lived days: 0.032 over five test worlds,
         /// D2-067 - D2-066's 0.027 was one small sample), and their hours.</summary>
         public const double VisitsPerAdultDay = 0.03, VisitHours = 3.0;
+        /// <summary>Tools (`--visittally`, C9.5c survey): a COARSE day's visits between neighbours within a day's walk - [0] visits along a way on foot,
+        /// [1] across water (no way on foot); [2] caught on visits along a way, [3] across water; news met [4] along a way, [5] across water; [6] ways worn
+        /// to a path or a road between villages no way on foot joins (history told it); null in the game.</summary>
+        public static double[] VisitTally;
+        public const int VisitTallyN = 7;
         public const double ForLife = 99.0;
 
         readonly List<int> _present = new List<int>();
@@ -313,6 +318,7 @@ namespace TC2.Core.Health
                 if (!t.Inhabited) continue;
                 double d = Vec3d.ArcDistance(s.Anchor, t.Anchor, w.Planet.Radius);
                 if (d <= 6000) w.Ways.Walk(w, sid, o, 2.0 * visits * (1.0 / (300.0 + d)) / total);
+                if (d <= 6000 && VisitTally != null) VisitTally[w.Routes.Get(w, sid, o) != null ? 0 : 1] += visits * (1.0 / (300.0 + d)) / total;   // (tools: C9.5c survey)
             }
             for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
             {
@@ -333,6 +339,7 @@ namespace TC2.Core.Health
                     double age = q.AgeYears(now);
                     if (!q.Alive || q.Sick != 0 || age < 16 || age >= 62) continue;
                     Infect(ref q, t.InfPath, CauseIn(o, t.InfPath));
+                    if (VisitTally != null) VisitTally[w.Routes.Get(w, sid, o) != null ? 2 : 3] += 1;   // (tools: C9.5c survey)
                 }
             }
         }
