@@ -194,8 +194,10 @@ namespace TC2.Game
                     for (int o = w.Settlements.First(); o != 0 && !due; o = w.Settlements.Next(o))
                     {
                         int lordOf = w.Settlements.Get(o).Lord;   // (no ref locals in a coroutine)
-                        // (the village's day has set the day's loads: its grown people take them in the morning - a tenth set aside after it waits a day)
-                        if (lordOf != 0 && (o == sid || lordOf == sid) && w.Settlements.Get(o).CarryToday > 0) due = true;
+                        // (the village's day has set the day's loads: its grown people take them in the morning - a tenth set aside after it waits a day;
+                        // across water a tenth set aside waits for a boat: C9.5a)
+                        if (lordOf != 0 && (o == sid || lordOf == sid) && (w.Settlements.Get(o).CarryToday > 0 ||
+                            (w.Settlements.Get(o).TributeDue >= 1.0 && w.Routes.Get(w, o, lordOf) == null))) due = true;
                     }
                 }
                 long loc3 = w.LocalOffsetOf(sid);
@@ -211,11 +213,13 @@ namespace TC2.Game
                     {
                         var pp = w.People.Get(id);   // (a copy: no ref locals in a coroutine)
                         if (pp.Alive && pp.Why == TC2.Core.Agents.WhyCode.Tribute && pp.Act == TC2.Core.Agents.ActivityKind.TripOut) onWay = true;
+                        // (C9.5a) or a boat's crew carrying a tenth, out on the sea
+                        if (pp.Alive && pp.Voyage != 0 && pp.Act == TC2.Core.Agents.ActivityKind.Voyage && pp.Step == TC2.Core.Agents.StepKind.Travel && CameraRig.CrewCarries(w, in pp, 1)) onWay = true;
                     }
                     if (!onWay) w.AdvanceTo(w.Now + 10 * SimTime.Minute, ref b);
                 }
                 if (onWay) w.AdvanceTo(w.Now + 20 * SimTime.Minute, ref b);   // (out on the way)
-                Debug.Log("[TC2] after tribute: " + (onWay ? "a carrier on the way" : "no carrier on the way by " + SimTime.Format(w.Now)));
+                Debug.Log("[TC2] after tribute: " + (onWay ? "a carrier on the way (on foot or in a boat)" : "no carrier on the way by " + SimTime.Format(w.Now)));
                 Debug.Log("[TC2] after tribute: " + (due ? "a tenth set aside, the next morning" : "no tenth set aside within a year") + " - " + SimTime.Format(w.Now));
             }
             // seals live on a shore anywhere on the planet: when only they are shot, the world goes on to the same hour at the
