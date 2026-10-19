@@ -1,5 +1,40 @@
 # TC2 Session handoff
 
+## Session 23 (19 Oct 2026, from 18:54 IST; Control Room) - IN PROGRESS; one job queue running
+
+### Exact state (keep current)
+- **main 3712056**: C10.4 merged (ca3b4c8, `--no-ff`) + DECISIONS D2-157, D2-158 + `25` (C10.4 done). Sim version 82. `.claude/launch.json` (modified)
+  and `Assets/Resources.meta` (untracked) are not ours - leave them.
+- **Branches (worktrees)**, none merged yet:
+  - `wip/s23-tools` (`C:/Game Dev/tc-s23`, 8e06c4a): tools only - `lordships --load SAVE [--every N] [--bonds]`, `run --load SAVE --warmroutes`.
+  - `wip/c105-might` (`C:/Game Dev/tc-might`, 7d426d3; contains the tools): **C10.5 a lordship's might** (D2-159 draft `tc2/out/tools/s23/d2159.md`,
+    sim version 83, `10` §12g, `25` C10 by slices). Binary `bin_c2` (scratchpad), its tests pass.
+  - `wip/route-ground` (`C:/Game Dev/tc-routes`, 2e4914c; contains the tools): **D2-160 the ways' woods** (draft `tc2/out/tools/s23/d2160.md`, sim
+    version 84, `03` §4) - a determinism fix: watching changed history (see below).
+- **The queue**: `bash tc2/out/tools/s23/runq.sh` (background), queue dir `Q` = this session's scratchpad `q` (`todo`, `done`, `log`, `runq.log`;
+  `touch $Q/stop` ends it after the current job). Jobs (copies in `tc2/out/tools/s23/`): `2_a_shots_bread` (real shots s23a tributary, s23b lord on
+  `s2_y3`), `3_a_ctl_z0_s4` (`--oldmight` = `_y3`?), `3_b_z1_*` (ten seeds C10.5), `3_c_cmp_y3_z1`, `3_cr_*` (D2-160: build `bin_r2` and tests,
+  `--oldways` control, ten seeds `_r2`, comparison and the probe on a D2-160 world), `3_d_l9z1_s2/s4` (C10.5's own 900-year check). Results:
+  `tc2/out/tools/s23/results/`. If the scratchpad is gone: rebuild a binary from its worktree (`2_3_build_c2.sh`, `3_cr_0_build_r2.sh`) and rerun.
+
+### Verified this session
+- Unity C# compiles on main (`unity.mjs cc`); **Web build and test `s23web1` 6/6**; cross-runtime determinism: browser (WebGPU, IL2CPP) = headless
+  dotnet = editor Mono, bit for bit. Frame rates were half session 18's because the user's Chrome ran heavily during the test - re-measure quietly.
+- **The 900-year check of C10.4** (`_y3` seeds 2 and 4, years 300-900; `lordships`): seed 2 - 49 bonds, 39 ended, every one "the lord no longer the
+  stronger"; 4-9 lords among 27-31 villages; the largest lordship never above 4 villages; in year 464 a mild epidemic (12 villages, 6 dead) ended
+  five lordships; flickers (bound and freed within 2-5 years, 10 rebindings). Seed 4 - 30 bonds, 24 ended, all "no longer the stronger"; the largest
+  never above 3. **Verdict: no snowball and no growth - petty lordships capped by a seat-only, day's-count weighing** -> C10.5.
+- **The route probe** (`run --load s2_y3/world_y300.tc2 --warmroutes`): three lived days b5329437ba119770 without, 8101ffe7abef7b57 with the view's
+  109 routes built at load -> D2-160 (fix built, RouteGroundTests 3/3, SaveLoad/Afoot/Determinism/Trade/Voyage pass).
+
+### Next, in order
+1. Read the queue: shots s23a/s23b (judge: does the lordship read in the picture?), `cmp_y3_z1.txt` and `lordships_s*_z1.txt` (C10.5), the D2-160
+   control, `cmp_y3_r2.txt` and the probe on the D2-160 world (equal hashes expected), C10.5's 900-year check.
+2. Merge C10.5 (`--no-ff`, D2-159), then D2-160 (sim version 84 on top), the tools branch with them; then the full suite, Unity cc, a v84 world for
+   shots, the Web build and test.
+3. Then by evidence: tribute carried to the lord's seat (C10.6: makes the polity visible and its reach a cost), C9.5 boats across the water, the
+   lord's household men.
+
 ## Session 22 (16 Oct 22:19 - 17 Oct ~02:15 IST; Control Room run #51 session 2) - stopped by Arjun; report `SESSION_22_REPORT.md`
 
 ### Exact state at the stop
