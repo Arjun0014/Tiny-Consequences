@@ -4560,3 +4560,57 @@ little to move a world's people. Merged f200b9c.
 **Open.** Woodcutters of an island village cross the water to the only woods within reach (in the record by boat: boats that carry people and loads
 across water - C9.5 ferries); a town on two shores walks across its water (one bend cannot keep the way dry); the ways between villages are drawn past
 a shore's edge in places.
+
+## D2-157 — 2026-10-16 — Bread and dependence: a village bows to the neighbour whose famine grain it cannot give back (C10.4)
+
+**Context.** `25` C10 (governance: lords and obligations); the session 21 handoff: a 30-village world at year 300 had one lordship of two villages.
+Measured first (`10` §12f): over twenty worlds at year 300, 0-3 lords a world, each with 1-2 tributaries, depth 1 - lordship came only by conquest
+(D2-075), and raids are rare. A new tool, `polity --load SAVE`, read the ties a polity could be made of on seed 4 at year 300: **kin does not mark
+mother and daughter villages** (every pair within 6 km is kin after decades of marriages between villages - 43 kin links a mother-daughter pair,
+36 an other pair - and no daughter's first household is close kin of its mother's: a founders' lordship over daughters would be written, not read);
+**relief does** - famines are common (110-257 a world over 300 years), neighbours send grain (seed 4: 692,900 FU), only 15 % of it comes back
+(D2-113), and half the villages owe a neighbour at any time (15 of 30, up to 9,740 FU). The record: famine was the commonest road into dependence
+before and beneath states (Attica's hektemoroi, *Ath. Pol.* 2; *Formulae Turonenses* 43; chiefs' storehouses, Earle 1997; Graeber 2011).
+**Decision.** (1) `Conflict.Indebted` (both resolutions, at a village's harvest while it pays no lord): what it still owes the neighbour that fed it
+most in its famines (`Trade.MainCreditor`: the relief it saw given within 16 years, weighed now) beyond all its new harvest can spare is more than a
+month of its people's food (`BowDays` 30: a famine's whole relief unreturned), and that neighbour lies within a day's walk (6 km), is the stronger
+by D2-075's odds (1.2 x its fit grown people) and does not pay it: it bows - a tenth of each harvest (`TributeAgreed`, ArgB 1, its cause the
+weightiest gift). (2) The tribute gives the relief back (`Trade.Repaid`), and **a lord feeds its own**: its relief to a tributary in famine is not
+closed by what the tributary owes (D2-113's open hand applies to everyone else). Everything else is the lordship that was: tribute to the lord's
+first household (C10.2), the lord's call (C10.1) and answer (D2-108), no band against one's own, the lord's standard (D2-152), the end when the lord
+is gone or no longer the stronger. (3) Pages: the settlement page says why a village pays and the famine grain it owes each neighbour. (4) Tools:
+`--nobread` (D2-075 alone on the same binary), `--breadtally`, the `lordships:` line's bonds for bread, `polity` (for bread or for peace).
+Sim version 82.
+**Evidence.** BreadTests 5/5: a village owing a stronger neighbour 45 days of its food with 40 in store bows at its harvest (`TributeAgreed`
+ArgB 1, caused by the gift; "...its grain had kept them through their famines and they could not give it back"), its first tribute gives the grain
+back (owed 648 -> 590 FU), the settlement page says why it pays and what it owes; with 120 days in store it gives back instead; not to a weaker giver,
+nor for 20 days; `--nobread` none; a lord with grain to spare feeds its tributary owing it 2,362 FU (43 FU a day) where D2-113's open hand gives
+nothing. Neighbours: Lordship 4, Trade 7, Leaders 8, Defence 8, Taking 18, Voyage 6, Determinism 6, Afoot 6. Control: `--nobread` seed 4 = `_x2`
+(annals byte-identical). **Ten seeds** (`_y2` against `_x2`; `tc2/out/tools/s22/results/cmp_x2_y2.txt`): **the vital rates untouched** - people over
+years 200-299 x0.991 (t -0.7), births and deaths a person-year x1.003, hunger x1.005, famines x1.000, relief x1.03; **lordships**: tribute agreed 9 ->
+35 (21 for bread, in 8 of 10 worlds - seed 4 never reached a famine in this history, seed 8's one such debt was to a neighbour no stronger), lords at year 300 8 -> 21, the largest lordship 1
+-> 3 villages (depth 1), tribute paid 75,665 -> 504,648 FU; `--breadtally`: of the 107 village-harvests that still owed their main giver
+30-60 days, 19 owed a stronger neighbour within a day's walk. **The lordships fight as lordships**: tributaries' men answered their lords' call (C10.1) in 28
+bands (471 men; none before), lords raised 11 bands over their tributaries' wrongs (D2-108; none before), so raids 79 -> 118 (seed 2: 8 -> 32), fewer
+driven off, loot 3,604 -> 13,704 FU (t 3.5), wound deaths x1.11 (t 1.9) - in the worlds where lordships formed. Bonds ended 4 (lords no longer the
+stronger). Full suite on the branch tip's code (with D2-158): 403/403. Unity C#: compiles (`unity.mjs cc`, de22762). Merged ca3b4c8 (`--no-ff`, session 23).
+
+## D2-158 — 2026-10-17 — A COARSE day's muck waits for the household's own roof (the full suite's MigrationTests since C3.7c)
+
+**Context.** The first full suite since session 19 (on main with D2-155 and D2-156, and C10.4: 402 of 403) failed
+`MigrationTests.AHomeIsRaisedOnlyByLabourAndWood`: a household whose house is gone (a camp), in a village kept in wood, raised only a hut in sixty
+COARSE days, not a house (a house of 240 hours takes a working household some 50 days). Traced on the binaries and their switches: it fails on every
+build since C3.7c - with main's earlier rules too (`--nostubble --onefieldspot --oldspare --oldhands`), and whatever D2-156 and C10.4 do - and passes
+with `--nomuck` or with `--nogarden`, not with `--nothresh`. A COARSE day gave the yards' muck up to half the free hours after the fields' work, before
+the household's own roof, where a lived day's urges put a camp's roof (0.85) far above the muck (0.30-0.55): the garden (in the lived order since
+D2-146) and the muck together left too few hours for the house. The muck (C3.7c, D2-153) had been added in the old place; the suite was not run
+between D2-149 and now.
+**Decision.** A COARSE day's muck waits for the household's own roof where the roof's urge (a camp's 0.85, a hut's 0.4, a house's none) beats the
+muck's as a lived day weighs it (0.30 + 0.25 of the heaps a field hectare up to 3 t, by diligence, and its chance - 0.05 on average): then it takes its
+share of what the building leaves (`AgentSystem.RoofBeforeMuck`), as the garden does (D2-146). `--oldmuckorder` restores C3.7c's order.
+**Evidence.** `MigrationTests` 9/9 (the house raised from a camp in sixty days again; with `--oldmuckorder` it fails as before), Muck 3, HouseholdWork 4,
+Garden 5, Coarse 3, Homes 5, Bread 5, Determinism 6. Control: `--oldmuckorder` seed 4 = `_y2` (annals byte-identical). **Ten seeds** (`_y3` against
+`_y2`; `tc2/out/tools/s22/results/cmp_y2_y3.txt`): births and deaths a person-year at par (x1.004, x0.996), people over years 200-299 x1.05 (t 0.9),
+muck made and carted alike (seed 4: 96,658 t made, 89,564 t carted in 241,658 h); **foundings over the run x1.14 (t 2.5)** - a new village begins in
+camps, and its households now raise their roofs before they cart the yards' muck. Hunger and famines (x1.9, x1.6, t 1.0) and sickness (x0.44) move
+with a few seeds' timing, as the placebos do. Full suite (with C10.4): 403/403 - bin_b3 had 402/403, this test the one failure. Merged with C10.4 (ca3b4c8, session 23).
