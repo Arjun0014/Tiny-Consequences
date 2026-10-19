@@ -347,6 +347,16 @@ namespace TC2.Core.History
                 bool bread = s.LordEvent != 0 && w.History.TryGet(s.LordEvent, out var le) && le.Kind == HistoryKind.TributeAgreed && le.ArgB == 1;
                 sb.Append("It pays tribute to ").Append(Name(w, s.Lord)).Append(" since ").Append(Year(s.LordSince))
                   .Append(bread ? ": its grain kept it through its famines, and it could not give it back.\n" : ": it could neither stand against its bands nor go elsewhere.\n");
+                // why it still pays (C10.5): the weighing at its last harvest, as history keeps it
+                var evs = w.History.EventsOf(EntityRef.Settlement(sid));
+                for (int i = evs == null ? -1 : evs.Count - 1; i >= 0; i--)
+                {
+                    if (!w.History.TryGet(evs[i], out var pe) || pe.Kind != HistoryKind.TributePaid || pe.Subject.Id != sid) continue;
+                    if (pe.Object.Id == s.Lord && pe.ArgA > 0)
+                        sb.Append("At its last harvest ").Append(Name(w, s.Lord)).Append(" could bring ").Append(pe.ArgA).Append(" against it (its own people and those its call brings); it had ")
+                          .Append(pe.ArgB).Append(" of fighting age.\n");
+                    break;
+                }
             }
             Places.Trade.DaysOfFood(w, in s, out double daily);
             for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))

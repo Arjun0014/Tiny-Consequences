@@ -115,6 +115,15 @@ namespace TC2.Core.Society
         /// (0: none, then 0-5, 5-10, 10-20, 20-30, 30-60, 60+), [7..13] those whose giver was also stronger by `TributeOdds` and within reach; [14] bonds.</summary>
         public static long[] BreadTally;
 
+        // ---- a lordship's might (C10.5, D2-159)
+        /// <summary>`--oldmight`: villages weigh each other as D2-075 did - by their fit grown people at home that day, a lord by its own village
+        /// alone - on the same binary.</summary>
+        public static bool MightOff;
+        /// <summary>Tools (`--mighttally`): for each weighing - [0..3] a beaten village's bowing, [4..7] bowing for bread, [8..11] a bond's end at the
+        /// harvest - the weighings, those the old count (D2-075) would carry, those might carries, and both; [12] lords' weighings in which their call
+        /// counted, [13] the men it added; null in the game.</summary>
+        public static double[] MightTally;
+
         /// <summary>A person is hungry enough to go when the last day fed them less than this share of their need (both resolutions
         /// keep that share, the body's day: a lived meal-time flag would clear at the first bite).</summary>
         public const double HungryBelow = 0.5;
@@ -1019,6 +1028,101 @@ namespace TC2.Core.Society
             return n;
         }
 
+        /// <summary>
+        /// A village's people of fighting age (C10.5): its grown people of 16 to 60 who live there, wherever they are today. What a neighbour
+        /// weighs it by over the seasons ahead: a day's wounds, sickness and hunger pass and away is not gone, so they do not count against it;
+        /// the dead, the old and those who left do.
+        /// </summary>
+        public int Hands(int sid)
+        {
+            var w = _w;
+            long now = w.Now;
+            var res = w.Residents(sid);
+            int n = 0;
+            for (int i = 0; i < res.Count; i++)
+            {
+                ref var q = ref w.People.Get(res[i]);
+                if (!q.Alive) continue;
+                double age = q.AgeYears(now);
+                if (age >= 16 && age < 60) n++;
+            }
+            return n;
+        }
+
+        /// <summary>
+        /// The might a village weighs another by (C10.5, D2-159) - in bowing to raiders (D2-075), in bowing for bread (C10.4) and in paying no more
+        /// (a bond's end): its people of fighting age (`Hands`) and, for a lord, the men its call would bring against that village - of each of its
+        /// tributaries within a day's walk of it, a quarter of the meek and more of the bold, never those with close kin there (C10.1's own call).
+        /// The village weighed is never its own caller. D2-075 weighed a lord by its own village's fit people at home that day: a lord of several
+        /// villages was no stronger than its seat, and a bond agreed the day after a raid (the beaten village's wounded abed) ended at the next
+        /// harvest, when they had mended.
+        /// </summary>
+        public double Might(int sid, int against)
+        {
+            var w = _w;
+            long now = w.Now;
+            if (MightOff) return FitAt(sid, now);
+            double m = Hands(sid);
+            if (against == 0 || !w.Settlements.Exists(against)) return m;
+            var anchor = w.Settlements.Get(against).Anchor;
+            double called = 0;
+            bool indexed = false;
+            for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
+            {
+                if (o == against || o == sid) continue;
+                ref var tr = ref w.Settlements.Get(o);
+                if (tr.Lord != sid || !tr.Inhabited) continue;
+                if (Vec3d.ArcDistance(tr.Anchor, anchor, w.Planet.Radius) > 6000 || w.Routes.Get(w, o, against) == null) continue;
+                if (!indexed) { KinIndex(against); indexed = true; }
+                var tres = w.Residents(o);
+                for (int i = 0; i < tres.Count; i++)
+                {
+                    ref var q = ref w.People.Get(tres[i]);
+                    if (!q.Alive) continue;
+                    double age = q.AgeYears(now);
+                    if (age < 16 || age >= 50 || KinInIndexed(in q, against)) continue;   // (whom the call takes: grown and under fifty, as a band's own)
+                    called += CallOwed + CallBold * q.Bold / 255.0;
+                }
+            }
+            if (MightTally != null && called > 0) { MightTally[12] += 1; MightTally[13] += called; }
+            return m + called;
+        }
+
+        // (Might's kin test, `KinIn` with the village's parents gathered once: its living residents' mothers and fathers)
+        readonly System.Collections.Generic.HashSet<int> _kinMothers = new System.Collections.Generic.HashSet<int>(), _kinFathers = new System.Collections.Generic.HashSet<int>();
+
+        void KinIndex(int o)
+        {
+            var w = _w;
+            _kinMothers.Clear(); _kinFathers.Clear();
+            var res = w.Residents(o);
+            for (int i = 0; i < res.Count; i++)
+            {
+                ref var q = ref w.People.Get(res[i]);
+                if (!q.Alive) continue;
+                if (q.Mother != 0) _kinMothers.Add(q.Mother);
+                if (q.Father != 0) _kinFathers.Add(q.Father);
+            }
+        }
+
+        /// <summary>`KinIn` read from `KinIndex(o)`: a parent, partner, child or sibling (by a mother) living in o.</summary>
+        bool KinInIndexed(in Person p, int o)
+        {
+            if (LivesIn(p.Mother, o) || LivesIn(p.Father, o) || LivesIn(p.Partner, o)) return true;
+            if (_kinMothers.Contains(p.Id) || _kinFathers.Contains(p.Id)) return true;   // (their child lives there)
+            return p.Mother != 0 && _kinMothers.Contains(p.Mother);                    // (a brother or sister by their mother)
+        }
+
+        /// <summary>Tools: one weighing of the stronger, by the old count and by might ([0..3] bowing to raiders, [4..7] for bread, [8..11] a bond's end).</summary>
+        void TallyMight(int kind, bool old, bool now)
+        {
+            if (MightTally == null) return;
+            MightTally[kind * 4] += 1;
+            if (old) MightTally[kind * 4 + 1] += 1;
+            if (now) MightTally[kind * 4 + 2] += 1;
+            if (old && now) MightTally[kind * 4 + 3] += 1;
+        }
+
         double SideStrength(System.Collections.Generic.List<int> side)
         {
             double s = 0;
@@ -1275,11 +1379,13 @@ namespace TC2.Core.Society
             double cost = w.DeedBook.Grievance(sid, lord) / 3.0;   // what they cost it a year, as it weighs it
             double harvest = DMath.Max(s.LastHarvest, s.ExpectedHarvest);
             double tribute = TributeShare * harvest;
-            int mine = FitAt(sid, now), theirs = FitAt(lord, now);
             s.Lore.Best(out float place);
             bool hemmed = place < 0.6f;                 // (no good land known to go to: flight is hard)
-            bool weaker = theirs >= TributeOdds * mine;
-            if (!(hemmed && weaker && cost > tribute && tribute > 0)) return;
+            if (!(hemmed && cost > tribute && tribute > 0)) return;
+            // (C10.5: its people and theirs with the men their call brings - not the day after the raid's count, its wounded abed)
+            bool weaker = Might(lord, sid) >= TributeOdds * Might(sid, lord);
+            if (MightTally != null) TallyMight(0, FitAt(lord, now) >= TributeOdds * FitAt(sid, now), weaker);
+            if (!weaker) return;
             ref var s2 = ref w.Settlements.Get(sid);
             s2.Lord = lord; s2.LordSince = now;
             s2.LordEvent = w.Record(new HistoryEvent
@@ -1323,7 +1429,11 @@ namespace TC2.Core.Society
             if (s.Lord == 0) return;
             int lord = s.Lord;
             bool gone = !w.Settlements.Exists(lord) || !w.Settlements.Get(lord).Inhabited;
-            if (gone || FitAt(lord, now) < FitAt(sid, now))
+            // (C10.5: no longer the stronger with the men its call brings - a season's sick and wounded mend)
+            double lordMight = gone ? 0.0 : Might(lord, sid), ownMight = gone ? 0.0 : Might(sid, lord);
+            bool weak = !gone && lordMight < ownMight;
+            if (MightTally != null && !gone) TallyMight(2, FitAt(lord, now) < FitAt(sid, now), weak);
+            if (gone || weak)
             {
                 long agreed = s.LordEvent;
                 s.Lord = 0; s.LordEvent = 0;
@@ -1331,6 +1441,8 @@ namespace TC2.Core.Society
                 {
                     Kind = HistoryKind.TributeEnded, Time = now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid), Object = EntityRef.Settlement(lord),
                     Cause1 = agreed, Rel1 = CauseRel.PartOf, ArgA = gone ? 1 : 0, RootKind = RootKind.People,
+                    // (C10.5: the weighing - what the lord could bring against it, and its own people of fighting age)
+                    Magnitude = MightOff || gone ? 0f : (float)lordMight, ArgB = MightOff || gone ? 0 : (int)(ownMight + 0.5),
                 });
                 if (!gone)
                 {
@@ -1351,6 +1463,7 @@ namespace TC2.Core.Society
             {
                 Kind = HistoryKind.TributePaid, Time = now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid), Object = EntityRef.Settlement(lord),
                 Cause1 = s.LordEvent, Rel1 = CauseRel.PartOf, Magnitude = (float)pay, RootKind = RootKind.People,
+                ArgA = MightOff ? 0 : (int)(lordMight + 0.5), ArgB = MightOff ? 0 : (int)(ownMight + 0.5),   // (C10.5: the weighing it paid by)
             });
             w.DeedBook.SettleBy(lord, sid, pay);
             if (!BreadOff) w.Trade.Repaid(sid, lord, pay);   // (and gives back the grain its lord gave it in its famines: C10.4)
@@ -1379,8 +1492,10 @@ namespace TC2.Core.Society
             double days = left / daily;
             bool near = giver != 0 && w.Settlements.Exists(giver) && w.Settlements.Get(giver).Inhabited &&
                         Vec3d.ArcDistance(s.Anchor, w.Settlements.Get(giver).Anchor, w.Planet.Radius) <= BreadReach;
-            bool stronger = near && FitAt(giver, now) >= TributeOdds * FitAt(sid, now);
+            // (the stronger with the men its call brings: C10.5 - weighed where it could matter, or for the tally)
+            bool stronger = near && (BreadTally != null || MightTally != null || days >= BowDays) && Might(giver, sid) >= TributeOdds * Might(sid, giver);
             bool loop = near && Root(giver) == sid;   // (not to a village that pays it, directly or through its lords)
+            if (MightTally != null && near && days >= BowDays && !loop) TallyMight(1, FitAt(giver, now) >= TributeOdds * FitAt(sid, now), stronger);
             if (BreadTally != null)
             {
                 int b = giver == 0 || days <= 0 ? 0 : days < 5 ? 1 : days < 10 ? 2 : days < 20 ? 3 : days < 30 ? 4 : days < 60 ? 5 : 6;

@@ -141,13 +141,13 @@ namespace TC2.Tests.Core
                     var w = Village(945, out int a);
                     int b = w.Settlements.Next(a);
                     Assume.That(b != 0, "two villages");
-                    if (w.Conflict.FitAt(b, w.Now) < w.Conflict.FitAt(a, w.Now)) { int t = a; a = b; b = t; }   // (the stronger is the lord)
+                    if (w.Conflict.Hands(b) < w.Conflict.Hands(a)) { int t = a; a = b; b = t; }   // (the stronger is the lord: its people of fighting age, C10.5)
                     Leaders.Weigh(w, b);
                     int first = w.Settlements.Get(b).HeadHh;
                     Assume.That(first != 0);
                     // premise: a pays tribute to b, and b is the stronger (it keeps a as its tributary)
                     ref var sa = ref w.Settlements.Get(a); sa.Lord = b; sa.Granary = 5000;
-                    Assume.That(w.Conflict.FitAt(b, w.Now) >= w.Conflict.FitAt(a, w.Now), "the lord the stronger");
+                    Assume.That(w.Conflict.Hands(b) >= w.Conflict.Hands(a), "the lord the stronger");
                     double g0 = w.Households.Get(first).Grain, c0 = w.Settlements.Get(b).Common, s0 = w.Settlements.Get(b).Granary;
                     w.Conflict.Harvested(a, 1000);
                     double paid = w.Settlements.Get(b).Granary - s0;

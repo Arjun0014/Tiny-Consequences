@@ -210,6 +210,35 @@ Built on C3.3 (D2-126: household grain, loans recorded as debts, gifts). `Core/S
   `--breadtally` (village-harvests by the days still owed to the main giver; those whose giver was the stronger and near), `--nobread` (D2-075
   alone on the same binary); `polity` marks each lord for bread or for peace.
 
+## 12g. A lordship's might: a lord is as strong as the men it can bring (C10.5, D2-159)
+- **Measured first** (session 23, the 900-year check of C10.4; `lordships --load SAVE`, a new tool that reads every bond of tribute from the
+  history). Seed 2, years 0-900: 49 bonds (31 for bread, 18 for peace); 39 ended, **every one because the lord was "no longer the stronger"** -
+  none because it was gone; 4-9 lords at a time among 27-31 villages, the largest lordship never more than 4 villages (depth 1-2), no growth over
+  600 years. Two faults in how "the stronger" was weighed (D2-075: the fit grown people at home in each village on the day of the tributary's
+  harvest; a lord by its own village alone):
+  - **a day's count**: in year 464 a mild epidemic reached 12 villages and killed 6 people - and five lordships ended that year, their lords'
+    people abed on their tributaries' harvest days; bonds agreed the day after a raid (the beaten village's wounded abed) ended at its next
+    harvest when they had mended - the same pair bound and freed again within 2-5 years (Naekthorpe and Krounpelthorpe three times in seed 11's
+    first 300 years; 10 rebindings of a pair in seed 2's 900);
+  - **a lord's own village only**: a lord with tributaries near a village is weighed as if they did not exist, though its call (C10.1) brings
+    their men to its bands - against a refuser too (a refusal is a wrong the lord holds). D2-075's own evidence said it: "lordships stay small and
+    short ... while a lord's strength is only its own village's".
+- **The rule** (`Conflict.Hands`, `Conflict.Might`): a village is weighed by its **people of fighting age** - its grown people of 16 to 60 who live
+  there, wherever they are that day: a day's wounds, sickness and hunger pass and do not count against it; the dead, the old and those who left do.
+  A lord is weighed with **the men its call would bring** against the village weighed: of each of its tributaries within a day's walk of it, a
+  quarter of the meek and more of the bold (C10.1's own odds, grown and under fifty), never those with close kin there; the village weighed is
+  never its own caller. Used wherever two villages weigh who is the stronger for a bond: a beaten village bowing to its raiders (D2-075), a
+  village bowing for bread (C10.4), a tributary that would pay no more at its harvest. The tactical counts of a night's raid (who wakes, who comes
+  running) stay the day's: those abed cannot come.
+- **The record**: a paramount's power lay in the fighters its subordinate villages owed it, not in its own village alone (Earle 1997 on the
+  chief's military power; Carneiro 1981 on chiefdoms grown by conquest, the conquered owing men as well as tribute), and dependants broke away
+  from a lord weakened in fact - a lost war, a dead lord, a plague that killed - not from its sickbeds.
+- **Tells**: the weighing is recorded with each tribute (`TributePaid` ArgA/ArgB) and with its end (`TributeEnded` Magnitude/ArgB): the settlement
+  page says "At its last harvest X could bring N against it (its own people and those its call brings); it had M of fighting age"; history says
+  why a tributary paid no more ("...is no longer the stronger - it could bring N against them ..., and they have M of fighting age").
+- **Tools**: `--oldmight` (D2-075's day count and a lord's own village, on the same binary), `--mighttally` (each weighing by the old count and by
+  might), the `might:` report line; `lordships --load SAVE [--every N] [--bonds]` (session 23).
+
 ## 13. Civilisation depth (D2-089)
 
 Force, fortification, war and sieges are designed in `23_MILITARY_AND_WAR.md` (fighters as persistent people, arms as goods, training,
