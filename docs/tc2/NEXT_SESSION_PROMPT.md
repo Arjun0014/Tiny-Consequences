@@ -306,6 +306,17 @@ grain moves at once only along a way on foot; relief, give-back and the tenth cr
 of relief crossed water at once in ten worlds; tributaries across water never had a plank boat (their lords did) - next, the lord's boats fetch the tenth,
 then C9.5a's ten seeds. SESSION_HANDOFF "Session 23, second context" has the queue (running at the handoff) and the next steps.
 
+**Where we are (session 23, third context, 20 Oct 2026, 00:04-02:45 IST)**: **C9.5a grain across water goes by boat landed** (c8f6f5d, D2-162, sim
+86) - within a day's walk grain moves at once and traders walk only along a way on foot; across water relief, grain given back and the lord's tenth go
+by boat (the tributary's own, or the lord's come to fetch it) or not at all; validated: full suite 427/427, Unity C# compiles, Web `s23web3` 6/6 with
+three runtimes bit-identical, ten seeds at par. Its seeds showed the cost: boats were made only for the sea's fish, so an archipelago (seed 5) lost its
+trade and relief. **C9.5b a boat to cross landed** (0a8b0b0, D2-163, sim 87): a village whose neighbour across the water is worth reaching makes a boat
+for that, a dugout carries 150 kg across a short water; ten seeds at par, voyages x2.4, the archipelago made 11 dugouts and its hunger deaths fell;
+main's build and Unity compile clean after the merge - its full suite, the real shots of boats crossing (`s23m5`, `s23m4`) and Web `s23web4` were in the
+queue at the handoff. The 900-year check of the tribute code: no snowball. **Next: C10.7a a lordship's might by lasting strength** (arms, iron, fighting
+skill; drafted, NOT built, on `wip/c107a-arms`, worktree `C:/Game Dev/tc-arms`; design `tc2/out/tools/s23/c107_design.md`), then C10.7b sworn men fed
+from the tribute, C9.5c people across water. SESSION_HANDOFF "Session 23, third context" has the queue and the steps.
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.

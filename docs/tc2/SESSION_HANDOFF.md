@@ -1,26 +1,49 @@
 # TC2 Session handoff
 
-## Session 23, third context (20 Oct 2026, from 00:04 IST; Control Room run #63 session 3) - C9.5a landed; C9.5b built, in evaluation
+## Session 23, third context (20 Oct 2026, 00:04 - ~02:55 IST; Control Room run #63 session 3) - C9.5a and C9.5b landed; C10.7a drafted; context handoff with the queue running
 
-### Exact state (keep current)
-- **main** = C9.5a landed: c8f6f5d (`--no-ff` merge of `wip/c95-across`), shot runner `--after tribute` across water (cbc99ab), DECISIONS D2-162 and
-  D2-161's 900-year line, `10` §12h, PROGRESS (6482ab0). Sim version 86. Not ours: `.claude/launch.json`, `Assets/Resources.meta`. Verified on main:
-  builds (`bin_m3`), floatcheck clean, `unity.mjs cc` ok; the full suite, the Web build/test (`s23web3`) and the real shots are in the queue.
-- **C9.5b a boat to cross** - branch `wip/c95b-cross`, worktree `C:/Game Dev/tc-cross` (from main 6482ab0), sim 87, draft decision
-  `tc2/out/tools/s23/d2163.md`, design note in `24` §5 on the branch, design draft `c95b_design.md`. Queued: `6_3_c5_build_y1` (bin_y1 + CrossTests and
-  ten neighbour classes -> `y1_ok`), `6_4_ctl_y1_s4` (`--oldcross` = `_x2`, annals and state hash), `6_5_y1_*` (ten seeds), `6_6_cmp_y1`
-  (`results/cmp_x2_y1.txt`).
-- **The queue** (task bc2qpqxfq, `Q` as below): after C9.5b's jobs, `6_a_g2_04..10` + `6_b_cmp_g2` (the tribute lean's attribution for D2-161).
-  Results of this context: `results/cmp_g1_x2.txt` (C9.5a's ten seeds), `lordships_s2_l9g1_y600.txt` (the 900-year check).
-- Branches merged and removable: `wip/c95-across` (`tc-across`), `wip/c95-fetch` (`tc-fetch`), and the older ones listed below.
+### Exact state at the handoff (20 Oct ~02:45)
+- **main** = bc99679 (+ this handoff's docs commit): **C9.5a landed** c8f6f5d (`--no-ff` of `wip/c95-across`; the lord's fetch, the trade fix and the
+  premise fix developed on `wip/c95-fetch` and fast-forwarded into it), shot runner `--after tribute` across water cbc99ab, DECISIONS D2-162 and
+  D2-161's 900-year line 6482ab0; **C9.5b landed** 0a8b0b0 (`--no-ff` of `wip/c95b-cross`), DECISIONS D2-163 and `25` a2e244d, PROGRESS bc99679. **Sim
+  version 87.** Not ours: `.claude/launch.json` (modified), `Assets/Resources.meta` (untracked) - leave them.
+- **Verified on main**: after C9.5a (6482ab0) - builds (`bin_m3`), floatcheck clean, `unity.mjs cc` ok, **full suite 427/427**
+  (`results/fullsuite_m3.txt`), **Web `s23web3` 6/6**, browser = headless dotnet = editor Mono bit for bit (frame rates 27-52 fps at the village and region
+  views on a busy machine: not evidence). After C9.5b (bc99679) - builds (`bin_m4`), floatcheck clean, `unity.mjs cc` ok; **the rest was running**.
+- **C9.5a's evidence** (`results/cmp_g1_x2.txt`): control `--oldacross` = `_g1` (annals and state hash); the old rule's survey (`--oldacross
+  --acrosstally`, = `_g1` too): 91 % of seed 5's trades and 99.5 % of its relief crossed water at once; ten seeds `_x2` at par in the vital rates; no tenth
+  went by sea (bonds across water no longer arise: their relief now crosses only in boats). **C9.5b's** (`results/cmp_x2_y1.txt`): control `--oldcross` =
+  `_x2`; ten seeds `_y1` at par; voyages x2.4, trades x1.2, relief x1.5; boats made to cross in eight of ten worlds (72); the archipelago (seed 5) made 11
+  dugouts, trades 174 -> 618, hunger deaths 1,752 -> 1,283. `lordships` on the `_x2` saves: no lordship bound across water at year 300 (no shot target
+  for the tenth by boat; the shots frame any boat on a voyage).
+- **RUNNING at the handoff: the session-23 job queue** (`bash tc2/out/tools/s23/runq.sh`, task bc2qpqxfq; `Q` =
+  `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/db1b5af7-2c1c-4e6f-a5ff-c8b25b1a81c2/scratchpad/q`, its log `runq.log`, job logs
+  `log/<job>.log`; `touch $Q/stop` ends it after the current job; copies of every job in `tc2/out/tools/s23/`). In order: `6_7_c_fullsuite_m4` (main
+  after C9.5b -> `results/fullsuite_m4.txt`, `fs_m4_ok`), `6_7_c5_might_measure` (C10.7a measured first: builds `tc-arms` - the WIP - to `bin_a7`, runs
+  `lordships --might` on the ten `_y1` saves -> `results/might_s*_y1.txt`: villages' lasting strength a head, bonds held by heads and by lasting
+  strength), `6_7_d_shots_cross` (real shots `s23m5` seed 5's archipelago, `s23m4` seed 4: `voyage`, `voyagenear`, `voyagestay`, `region`; the log tells
+  each framed crew's doing - read `shots_s23m*.txt` in the scratchpad and the PNGs in `tc2/out/shots/`), `6_7_e_web` (Web `s23web4` on main with
+  C9.5b), `6_a_g2_05..10` + `6_b_cmp_g2` (D2-160 alone on the landed binary: attributes C10.6's tribute lean -> `results/cmp_z1_g2.txt`,
+  `cmp_g2_g1.txt`, a line in D2-161). About 75 minutes in all.
+- **C10.7a a lordship's might by lasting strength - DRAFTED, NOT BUILT, NOT TESTED**: branch `wip/c107a-arms`, worktree `C:/Game Dev/tc-arms`, tip
+  d182cf2 (from main bc99679). `Conflict.Kit` (the village's tools, arms, iron a head - as `Strength` weighs them), `Conflict.Lasting` (people of
+  fighting age by kit x (1 + 0.6 x fighting skill); the day's health and wounds left out, C10.5's reason for counting heads), `Might` and the call's men
+  weighed so; `--oldmightarms` (`Conflict.MightArmsOff`) keeps C10.5's heads; texts ("could bring the strength of N ... its own came to M"); `lordships
+  --might`. Design and evidence: `tc2/out/tools/s23/c107_design.md`.
+- Worktrees merged and removable: `tc-cross`, `tc-across`, `tc-fetch`, `tc-int`, `tc-carry`, `tc-might`, `tc-routes`, `tc-s23`, `tc-bread`, `tc-dry`,
+  `tc-stubble` (`tc-tribute`: its one unmerged tools commit is on main in another form). Live: `tc-arms`.
 
 ### Next, in order
-1. Read the queue: main's full suite (`results/fullsuite_m3.txt`), `6_3_d_lords_x2` (bonds with no way on foot at year 300 - shot targets),
-   Web `s23web3` (6/6?), C9.5b's tests, control and ten seeds (`cmp_x2_y1.txt`: does the archipelago, seed 5, regain trade and relief through boats
-   made to cross?). Then D2-163 from the draft, merge `wip/c95b-cross`, `unity.mjs cc`, full suite.
-2. Real shots of boats crossing (`voyagerelief...`, `voyagetenth...` views; `--after tribute` across water): the world picture of C9.5.
-3. Then by evidence: C10.7 the lord's household men (`tc2/out/tools/s23/c107_design.md`: lords' first households hold 0.3-30 years of their need;
-   their tribute would feed 0-50 people a year), C9.5c people across water (COARSE visits still carry news and sickness across water at once).
+1. Read the queue: `fullsuite_m4` (all pass?), the shots (do boats crossing read? any dugout framed - the log says "paddling ... in the household's
+   dugout"), `s23web4` (6/6, three runtimes identical?), `might_s*_y1.txt` (how far lasting strength parts from heads; how many bonds would hold by it),
+   `_g2` (is the tribute lean D2-160's?). Record them in PROGRESS (and D2-161 for `_g2`, D2-163 for the shots and Web).
+2. **C10.7a**: finish on `wip/c107a-arms` - MightTests to the new rule (premises `Triple`/`Pair` by `Lasting`; the expected call by `Kit` and skill;
+   the text check "came to"), a test where arms and skill decide a bow that heads would not, `--oldmightarms` in `Commands.cs`, sim version 88; build,
+   tests (Might, Bread, Defence, Leaders, Lordship, TributeCarried, Determinism, SaveLoad), control `--oldmightarms` = `_y1`, ten seeds, the 900-year
+   check (does arming and training make lordships snowball?). The measure decides how much it matters.
+3. Then **C10.7b sworn men** (the lord's first household feeds men of its own village who practise daily and go with every band - `c107_design.md`),
+   **C9.5c people across water** (a COARSE day's visits still carry news and sickness across water at once - `Conflict.News`, `Disease` - while a lived
+   visitor goes only along a way), a polity map layer (the standards do not read at the village view).
 
 ## Session 23, second context (19 Oct 21:26 - 20 Oct ~00:10 IST; Control Room run #63 session 2) - C10.5, D2-160, C10.6 landed and validated; C9.5a built, in evaluation; context handoff with the queue running
 
