@@ -17,8 +17,9 @@
   A probe now finds the lived crossings first (`voyages --load SAVE --days N`, worktree `tc-voy`, branch `wip/s23-voyshots`) and the voyage views take
   `dugout` and `voyageclose`, so a shot can be aimed at a real one (merged db4b8ba). Lived 96 days, each `_y1` year-300 world: **seed 2 made 19 voyages,
   all in dugouts** (Lesgristholm fetching the grain Nemskundby owes it 17 times; pots to Diththorpe and Kaestead); **seeds 3, 4, 5, 11 made 20, 18, 0, 64,
-  all plank boats** - seed 3 booked no dugout at all, though its COARSE history crossed by dugout ~4 times a year (being compared with COARSE at the
-  same moment). (4) **Web `s23web4` on main with C9.5b: 6/6**, browser = headless dotnet = editor Mono, every part bit for bit (D2-163). (5) **C10.7a
+  all plank boats** - seed 3 booked no dugout at all, though its COARSE history crossed by dugout ~4 times a year. **Compared with COARSE at the same
+  moment** (the same saves two years on at COARSE, `--crosstally`): seeds 3 and 11 cross by dugout 0 times either way, seed 2 9 trade crossings COARSE
+  against 5 lived (with 14 fetches) - lived and COARSE agree; those worlds' crossings belong to earlier centuries. (4) **Web `s23web4` on main with C9.5b: 6/6**, browser = headless dotnet = editor Mono, every part bit for bit (D2-163). (5) **C10.7a
   built** (`wip/c107a-arms`; sim 88): all nine neighbouring test classes pass, 0 skipped; control, ten seeds and 900 years queued (D2-164 draft).
   (6) **C10.7b sworn men built** (`wip/c107b-sworn`, sim 89; D2-165 draft): first build and tests queued. (7) **C9.5c measured first**: a COARSE day's
   visits reach every village within 6 km, across water too - wearing "ways" history tells as paths where no way on foot exists, carrying sickness and

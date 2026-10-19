@@ -4778,4 +4778,5 @@ found a plank boat rowing 500 kg of pots and jars to Leigreldby at dawn (a boat 
 loads it and logs each voyage (`voyages --load SAVE --days N`; shot views `dugout`, `voyageclose`) found the dugouts' crossings to aim at: in 96 lived
 days seed 2's world made 19 voyages, every one in a dugout (Lesgristholm fetching the grain Nemskundby owed it, 17 times; pots carried to Diththorpe
 and Kaestead), while seeds 3, 4, 5 and 11 made 20, 18, 0 and 64 voyages, all in plank boats - seed 3 never booked a dugout in those 96 days, though its
-COARSE history crossed by dugout about four times a year (the shots and the COARSE comparison: PROGRESS, session 23, fourth context).
+COARSE history crossed by dugout about four times a year - and the same saves lived on two years at COARSE cross by dugout as rarely (seeds 3 and 11
+none, seed 2 nine trades against five lived): lived and COARSE agree; those worlds' crossings belong to earlier centuries.
