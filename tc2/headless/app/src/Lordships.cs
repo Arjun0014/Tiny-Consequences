@@ -174,6 +174,11 @@ namespace TC2.Headless
                 lordMost.TryGetValue(lo, out int most);
                 Console.WriteLine("    " + name(lo) + (live(lo, now) ? "" : " (gone)") + ": " + lordYears[lo].ToString("0") + " years, most " + most + ", bonds " + held + (w.Settlements.Exists(lo) ? ", people now " + w.Settlements.Get(lo).Population : ""));
             }
+            // the ways between the villages still bound and their lords (C10.6: the tenth carried along them wears them)
+            int[] wayStates = new int[4];
+            foreach (var b in bonds)
+                if (b.How == null && live(b.Payer, now) && live(b.Lord, now)) wayStates[w.Ways.State(now, b.Payer, b.Lord)]++;
+            Console.WriteLine("  ways between the bound and their lords now: road " + wayStates[3] + ", path " + wayStates[2] + ", track " + wayStates[1] + ", none " + wayStates[0]);
             if (listBonds)
                 foreach (var b in bonds)
                 {
