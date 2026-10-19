@@ -746,7 +746,7 @@ namespace TC2.Core.Society
             if (adults == 0) return;
             int near = 0;
             for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
-                if (o != sid && w.Settlements.Get(o).Inhabited && TC2.Core.Health.Disease.Visited(w, sid, o, Vec3d.ArcDistance(s.Anchor, w.Settlements.Get(o).Anchor, w.Planet.Radius))) near++;   // (along a way on foot: C9.5c)
+                if (o != sid && w.Settlements.Get(o).Inhabited && Vec3d.ArcDistance(s.Anchor, w.Settlements.Get(o).Anchor, w.Planet.Radius) <= 6000) near++;   // (the day's visits shared among them all: those to a village no way on foot reaches are not made - C9.5c)
             if (near == 0) return;
             double expect = adults * TC2.Core.Health.Disease.VisitsPerAdultDay * days / near;   // (DEEP: the step's visits)
             for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
