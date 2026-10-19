@@ -241,8 +241,9 @@ namespace TC2.Headless
                         TC2.Core.Places.Trade.DaysOfFood(w, in ps, out double perDay);
                         if (perDay > 0) mostDays = Math.Max(mostDays, ps.TributeDue / perDay);
                     }
-                    if (listBonds && !foot)
-                        Console.WriteLine("    no way on foot: " + name(b.Payer) + " -> " + name(b.Lord) + (sea ? " (a sea way between their landings)" : " (no sea way)") + ", set aside " + ps.TributeDue.ToString("0") + " FU");
+                    if (listBonds && !foot)   // (C9.5a: the ids to frame in shots, and the plank boats on either side that carry the tenth over)
+                        Console.WriteLine("    no way on foot: " + name(b.Payer) + " (" + b.Payer + ") -> " + name(b.Lord) + " (" + b.Lord + ")" + (sea ? " (a sea way between their landings)" : " (no sea way)") +
+                                          ", plank boats " + w.Conflict.PlankBoats(b.Payer) + " / " + w.Conflict.PlankBoats(b.Lord) + ", set aside " + ps.TributeDue.ToString("0") + " FU");
                 }
                 Console.WriteLine("  bonds whose tenth has no way on foot to the lord: " + noFoot + " (a sea way " + bySea + "); set aside and waiting: " + due.ToString("0") + " FU in " + waiting +
                                   " villages (" + dueStuck.ToString("0") + " FU with no way on foot; the most " + mostDays.ToString("0") + " days' food)");

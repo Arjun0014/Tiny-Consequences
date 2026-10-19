@@ -330,11 +330,14 @@ namespace TC2.Game
                 {
                     // (C9.3) the world lives on until it shows what the view frames: a boat halfway along a way over the sea ("voyage",
                     // "voyagefar"), or a crew ashore at the other landing ("voyagestay") - waiting for it, never staging it (12 days at most)
-                    int mode = view == "voyagestay" ? 2 : view == "voyagenear" ? 1 : 0;
+                    // (C9.5a) "voyagetenth...", "voyagerelief...": only a boat carrying a lord's tenth or famine grain
+                    int cargo = CameraRig.VoyageCargoFilter(view);
+                    string vb = CameraRig.VoyageBase(view);
+                    int mode = vb == "voyagestay" ? 2 : vb == "voyagenear" ? 1 : 0;
                     var bv = Budget.Unlimited;
                     long until = w.Now + 12 * SimTime.Day;
-                    while (w.Now < until && !VoyageInView(w, mode)) w.AdvanceTo(w.Now + 5 * SimTime.Minute, ref bv);
-                    Debug.Log("[TC2] " + spec + ": " + (VoyageInView(w, mode) ? "found" : "none") + " at " + SimTime.Format(w.Now));
+                    while (w.Now < until && !VoyageInView(w, mode, cargo)) w.AdvanceTo(w.Now + 5 * SimTime.Minute, ref bv);
+                    Debug.Log("[TC2] " + spec + ": " + (VoyageInView(w, mode, cargo) ? "found" : "none") + " at " + SimTime.Format(w.Now) + VoyageNote(w, mode, cargo));
                 }
                 Rig.SetView(view);
                 // terrain patches, trees and people settle (real time: views rebuild on timers; no end-of-frame in batch mode)
@@ -360,19 +363,33 @@ namespace TC2.Game
         }
 
         /// <summary>C9.3 shots: a boat rowing a way, a third to two-thirds along it (mode 0), within its first or last fifth - near a landing
-        /// (1), or a crew ashore at the other landing (2).</summary>
-        static bool VoyageInView(TC2.Core.Simulation.World w, int mode)
+        /// (1), or a crew ashore at the other landing (2); with a cargo filter (C9.5a) only a boat carrying it (`CameraRig.CrewCarries`).</summary>
+        static bool VoyageInView(TC2.Core.Simulation.World w, int mode, int cargo = 0) => VoyagerInView(w, mode, cargo) != 0;
+
+        static int VoyagerInView(TC2.Core.Simulation.World w, int mode, int cargo)
         {
             for (int id = w.People.First(); id != 0; id = w.People.Next(id))
             {
                 ref var p = ref w.People.Get(id);
                 if (!p.Alive || p.Voyage == 0) continue;
-                if (mode == 2) { if (p.At != 0 && p.At != p.Home && p.Step != TC2.Core.Agents.StepKind.Travel) return true; continue; }
+                if (cargo != 0 && !CameraRig.CrewCarries(w, in p, cargo)) continue;
+                if (mode == 2) { if (p.At != 0 && p.At != p.Home && p.Step != TC2.Core.Agents.StepKind.Travel) return id; continue; }
                 if (p.Act != TC2.Core.Agents.ActivityKind.Voyage || p.Step != TC2.Core.Agents.StepKind.Travel) continue;
                 double f = p.T1 > p.T0 ? (w.Now - p.T0) / (double)(p.T1 - p.T0) : 0;
-                if (mode == 0 ? f > 0.33 && f < 0.67 : (f > 0.06 && f < 0.2) || (f > 0.8 && f < 0.94)) return true;
+                if (mode == 0 ? f > 0.33 && f < 0.67 : (f > 0.06 && f < 0.2) || (f > 0.8 && f < 0.94)) return id;
             }
-            return false;
+            return 0;
+        }
+
+        /// <summary>What the framed crew is doing, as the person page tells its skipper (the shot's log: what the picture shows).</summary>
+        static string VoyageNote(TC2.Core.Simulation.World w, int mode, int cargo)
+        {
+            int id = VoyagerInView(w, mode, cargo);
+            if (id == 0) return "";
+            var p = w.People.Get(id);   // (copies: this is called from a coroutine)
+            int sk = CameraRig.CrewSkipper(w, in p, cargo);
+            var q = w.People.Get(sk != 0 ? sk : id);
+            return " - a crew of " + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(q.Home)) + ": " + TC2.Core.History.HistoryText.Doing(w, in q);
         }
 
         static double Parse(string s, double def) => s != null && double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out double v) ? v : def;

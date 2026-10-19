@@ -2508,7 +2508,7 @@ namespace TC2.Core.Agents
             }
             w.Metrics.Voyages++;
             if (bk.Kind == Trade.ForTrade) w.Metrics.VoyageSeats += crew.Count;   // (the seats of trade voyages, as COARSE counts them)
-            if (bk.Kind != Trade.ForFetch) w.Metrics.SeaCargoKg += kg;
+            if (bk.Kind != Trade.ForFetch && bk.Kind != Trade.ForTenth) w.Metrics.SeaCargoKg += kg;   // (going for grain: nothing aboard yet)
             return true;
         }
 
@@ -2632,7 +2632,7 @@ namespace TC2.Core.Agents
             var w = _w;
             if (to == 0 || p.At != p.Home) return false;
             var r = w.Routes.Get(w, p.At, to);
-            if (r == null) return false;
+            if (r == null) { if (Trade.AcrossTally != null) Trade.AcrossTally[6] += 1; return false; }   // (tools: a partner across water, C9.5 survey)
             w.Trade.Load(ref p, p.Home, to);
             if (p.CargoQty <= 0f) return false;
             double from = p.At == r.A ? 0.0 : r.Length, dest = to == r.A ? 0.0 : r.Length;

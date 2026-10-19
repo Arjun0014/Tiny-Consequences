@@ -75,6 +75,32 @@ namespace TC2.Game
             Distance = R + alt;
         }
 
+        /// <summary>A voyage view's cargo (C9.5a shots): 1 "voyagetenth..." a lord's tenth, 2 "voyagerelief..." famine grain; 0 any boat.</summary>
+        public static int VoyageCargoFilter(string view) => view.Contains("tenth") ? 1 : view.Contains("relief") ? 2 : 0;
+
+        /// <summary>A voyage view's framing without its cargo filter: "voyage", "voyagefar", "voyagenear" or "voyagestay".</summary>
+        public static string VoyageBase(string view) => view.Replace("tenth", "").Replace("relief", "");
+
+        /// <summary>Whether a person's boat on a voyage carries that cargo (C9.5a shots): its skipper - the one of its crew holding the load - is
+        /// out with it.</summary>
+        public static bool CrewCarries(TC2.Core.Simulation.World w, in TC2.Core.Agents.Person p, int cargo) => CrewSkipper(w, in p, cargo) != 0;
+
+        /// <summary>The one of a voyaging person's crew who holds a load of that cargo (C9.5a shots; 0 any load), or 0.</summary>
+        public static int CrewSkipper(TC2.Core.Simulation.World w, in TC2.Core.Agents.Person p, int cargo)
+        {
+            var mem = w.Members(p.Household);
+            for (int i = 0; i < mem.Count; i++)
+            {
+                ref var q = ref w.People.Get(mem[i]);
+                if (!q.Alive || q.Voyage != p.Voyage) continue;
+                byte to = q.CargoTo;
+                bool tenth = to == TC2.Core.Places.Trade.ToLord || to == TC2.Core.Places.Trade.ToTenth || to == TC2.Core.Places.Trade.TenthAboard;
+                bool relief = to == TC2.Core.Places.Trade.AsGift || to == TC2.Core.Places.Trade.AsReturn || to == TC2.Core.Places.Trade.ToFetch || (to == TC2.Core.Places.Trade.ToStore && q.Cargo == TC2.Core.Places.Trade.Grain && q.CargoQty > 0f);
+                if (cargo == 1 ? tenth : cargo == 2 ? relief : (to != TC2.Core.Places.Trade.ToStore || q.CargoQty > 0f)) return mem[i];
+            }
+            return 0;
+        }
+
         /// <summary>A named view of the first village (orbit, region, village, close, low) or "lat,lon,alt" (degrees, m).</summary>
         /// <summary>
         /// The liveliest shore cell within a reach of a point (seals first, then the shoals off a coast; D2-039), or -1. The
@@ -313,11 +339,15 @@ namespace TC2.Game
             if (view.StartsWith("voyage"))
             {
                 // a boat on a voyage (C9.3): the first crew found rowing a way over the sea; "voyagestay": the other landing where a crew
-                // is ashore, its boat drawn up there (none: the framed village)
+                // is ashore, its boat drawn up there (none: the framed village). "voyagetenth...": only a boat carrying a lord's tenth, "voyagerelief...":
+                // only one carrying famine grain - relief, grain given back or fetched (C9.5a)
+                int cargo = VoyageCargoFilter(view);
+                view = VoyageBase(view);
                 for (int id = w.People.First(); id != 0; id = w.People.Next(id))
                 {
                     ref var vp = ref w.People.Get(id);
                     if (!vp.Alive || vp.Voyage == 0) continue;
+                    if (cargo != 0 && !CrewCarries(w, in vp, cargo)) continue;
                     if (view == "voyagestay")
                     {
                         if (vp.At == 0 || vp.At == vp.Home || vp.Step == TC2.Core.Agents.StepKind.Travel || !w.Settlements.Exists(vp.At)) continue;

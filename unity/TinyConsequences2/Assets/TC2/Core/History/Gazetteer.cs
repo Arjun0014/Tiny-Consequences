@@ -347,8 +347,15 @@ namespace TC2.Core.History
                 bool bread = s.LordEvent != 0 && w.History.TryGet(s.LordEvent, out var le) && le.Kind == HistoryKind.TributeAgreed && le.ArgB == 1;
                 sb.Append("It pays tribute to ").Append(Name(w, s.Lord)).Append(" since ").Append(Year(s.LordSince))
                   .Append(bread ? ": its grain kept it through its famines, and it could not give it back.\n" : ": it could neither stand against its bands nor go elsewhere.\n");
-                if (!TC2.Core.Society.Conflict.CarryOff && w.Routes.Get(w, sid, s.Lord) == null)   // (C10.6: across water - nothing is set aside)
+                // (C9.5a) a way by sea between their landings, and a boat of planks of its own to row it over or of its lord's to come for it
+                bool seaWay = !Places.Trade.AcrossOff && !Places.Trade.NoSea && s.LandAt != 0 && w.Settlements.Exists(s.Lord) && w.Settlements.Get(s.Lord).LandAt != 0 && w.SeaRoutes.Get(w, sid, s.Lord) != null;
+                bool ownBoats = seaWay && w.Conflict.PlankBoats(sid) > 0, lordBoats = seaWay && w.Conflict.PlankBoats(s.Lord) > 0;
+                if (!TC2.Core.Society.Conflict.CarryOff && w.Routes.Get(w, sid, s.Lord) == null && !ownBoats && !lordBoats)   // (C10.6: across water and no boat to cross it - nothing is set aside)
                     sb.Append("No way on foot leads from it to ").Append(Name(w, s.Lord)).Append(": its people cannot carry the tenth there, and it stays in its store.\n");
+                else if (!TC2.Core.Society.Conflict.CarryOff && w.Routes.Get(w, sid, s.Lord) == null)   // (C9.5a: by boat)
+                    sb.Append("No way on foot leads from it to ").Append(Name(w, s.Lord))
+                      .Append(ownBoats ? ": its tenth goes over the sea in its own boats" + (lordBoats ? ", or " + Name(w, s.Lord) + "'s come for it" : "") : ": " + Name(w, s.Lord) + "'s boats come over the sea for its tenth")
+                      .Append(s.TributeDue >= 1.0 ? " - " + F(s.TributeDue, "0") + " FU of it still set aside" : "").Append(".\n");
                 else if (s.TributeDue >= 1.0)   // (C10.6: set aside at its harvest, carried by its people)
                 {
                     Places.Trade.DaysOfFood(w, in s, out double perDay);
@@ -374,7 +381,10 @@ namespace TC2.Core.History
                 if (t.Lord == sid && t.Inhabited)
                 {
                     sb.Append(Name(w, o)).Append(" pays it tribute");
-                    if (!TC2.Core.Society.Conflict.CarryOff && w.Routes.Get(w, o, sid) == null) sb.Append(" - but no way on foot leads from it here, and its tenth stays there");   // (C10.6)
+                    bool seaWay2 = !Places.Trade.AcrossOff && !Places.Trade.NoSea && t.LandAt != 0 && s.LandAt != 0 && w.SeaRoutes.Get(w, o, sid) != null;
+                    bool itsBoats = seaWay2 && w.Conflict.PlankBoats(o) > 0, ourBoats = seaWay2 && w.Conflict.PlankBoats(sid) > 0;
+                    if (!TC2.Core.Society.Conflict.CarryOff && w.Routes.Get(w, o, sid) == null)   // (C10.6; by boat, C9.5a)
+                        sb.Append(itsBoats ? " - over the sea, in its boats" : ourBoats ? " - over the sea: boats from here go for its tenth" : " - but no way on foot leads from it here, and its tenth stays there");
                     else if (t.TributeDue >= 1.0) sb.Append(": its people are carrying in this year's tenth, ").Append(F(t.TributeDue / TC2.Core.Society.Conflict.LoadFu, "0")).Append(" loads still to come");   // (C10.6)
                     sb.Append(".\n");
                 }
