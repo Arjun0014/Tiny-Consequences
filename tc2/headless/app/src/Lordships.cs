@@ -206,6 +206,21 @@ namespace TC2.Headless
             foreach (var b in bonds)
                 if (b.How == null && live(b.Payer, now) && live(b.Lord, now)) wayStates[w.Ways.State(now, b.Payer, b.Lord)]++;
             Console.WriteLine("  ways between the bound and their lords now: road " + wayStates[3] + ", path " + wayStates[2] + ", track " + wayStates[1] + ", none " + wayStates[0]);
+            {
+                // the baseline in the same world: the ways between the other pairs of living villages within a day's walk of each other
+                int[] other = new int[4];
+                var liveIds = new List<int>();
+                for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid)) if (w.Settlements.Get(sid).Inhabited) liveIds.Add(sid);
+                for (int i = 0; i < liveIds.Count; i++)
+                    for (int j = i + 1; j < liveIds.Count; j++)
+                    {
+                        int x = liveIds[i], y = liveIds[j];
+                        if (w.Settlements.Get(x).Lord == y || w.Settlements.Get(y).Lord == x) continue;
+                        if (Vec3d.ArcDistance(w.Settlements.Get(x).Anchor, w.Settlements.Get(y).Anchor, w.Planet.Radius) > 6000) continue;
+                        other[w.Ways.State(now, x, y)]++;
+                    }
+                Console.WriteLine("  ways between other neighbours within a day's walk: road " + other[3] + ", path " + other[2] + ", track " + other[1] + ", none " + other[0]);
+            }
             // whether the tenth can reach the lord at all (C10.6: carried on foot along a route, or - where none - by sea): a bond for bread needs only a
             // day's walk as the crow flies (C10.4), and relief within it moves at once, so a village across water can be bound to a lord its people
             // cannot walk to - and what it sets aside for the lord then waits
