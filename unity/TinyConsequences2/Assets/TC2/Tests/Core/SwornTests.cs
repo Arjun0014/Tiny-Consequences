@@ -196,6 +196,8 @@ namespace TC2.Tests.Core
                 Retinue.Tally = new double[Retinue.TallyN];
                 var trainedOn = new Dictionary<int, HashSet<long>>();
                 foreach (int pid in sworn) trainedOn[pid] = new HashSet<long>();
+                // (the village's own harvest may fall in these days: its first household weighs its men again - those sworn at any hour are not "others")
+                var ever = new HashSet<int>(sworn);
                 string doing = null;
                 try
                 {
@@ -203,6 +205,7 @@ namespace TC2.Tests.Core
                     {
                         { ref var sk = ref w.Settlements.Get(sid); sk.CropWork = Math.Max(sk.CropWork, sk.CropWorkNeed); if (sk.Granary < 20 * sk.Population) sk.Granary = 20 * sk.Population; }
                         w.AdvanceTo(w.Now + SimTime.Hour);
+                        foreach (int pid in SwornTo(w, sid, first)) ever.Add(pid);
                         if (coarse) continue;
                         foreach (int pid in sworn)
                         {
@@ -214,14 +217,16 @@ namespace TC2.Tests.Core
                     }
                     double hours = Retinue.Tally[7];
                     Console.WriteLine((coarse ? "COARSE" : "lived") + ": the sworn practised " + hours.ToString("0.0") + " h in six days; others " + (w.Metrics.TrainHours - hours).ToString("0.0") + " h" + (doing != null ? "; " + doing : ""));
+                    var still = SwornTo(w, sid, first);
+                    Console.WriteLine("sworn at the start " + sworn.Count + ", at any hour " + ever.Count + ", at the end " + still.Count);
                     foreach (int pid in sworn) Assert.Greater(w.People.Get(pid).SkFight, 0f, "each sworn man grows skilled");
-                    foreach (int pid in others) Assert.LessOrEqual(w.People.Get(pid).SkFight, skill0[pid], "the village does not fear its neighbours: the others do not practise");
+                    foreach (int pid in others) if (!ever.Contains(pid)) Assert.LessOrEqual(w.People.Get(pid).SkFight, skill0[pid], "the village does not fear its neighbours: the others do not practise");
                     Assert.AreEqual(hours, w.Metrics.TrainHours, 1e-6, "only the sworn practised");
                     // (COARSE from the first midnight: five days and a lived evening - a session a day each, as their free hours allow)
-                    if (coarse) { Assert.GreaterOrEqual(hours, 3 * 4 * Training.Session, "COARSE: a session most days each"); Assert.LessOrEqual(hours, 3 * 6 * Training.Session + 1e-6, "never more than a session a day"); }
+                    if (coarse) { Assert.GreaterOrEqual(hours, 3 * 4 * Training.Session, "COARSE: a session most days each"); Assert.LessOrEqual(hours, ever.Count * 6 * Training.Session + 1e-6, "never more than a session a day"); }
                     else
                     {
-                        foreach (int pid in sworn) Assert.GreaterOrEqual(trainedOn[pid].Count, 4, "lived: at the ground most afternoons");
+                        foreach (int pid in sworn) if (still.Contains(pid)) Assert.GreaterOrEqual(trainedOn[pid].Count, 4, "lived: at the ground most afternoons");
                         Assert.IsNotNull(doing);
                         StringAssert.Contains("sworn to the", doing);
                     }
