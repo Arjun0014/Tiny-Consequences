@@ -1066,24 +1066,51 @@ namespace TC2.Core.Society
             if (against == 0 || !w.Settlements.Exists(against)) return m;
             var anchor = w.Settlements.Get(against).Anchor;
             double called = 0;
+            bool indexed = false;
             for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
             {
                 if (o == against || o == sid) continue;
                 ref var tr = ref w.Settlements.Get(o);
                 if (tr.Lord != sid || !tr.Inhabited) continue;
                 if (Vec3d.ArcDistance(tr.Anchor, anchor, w.Planet.Radius) > 6000 || w.Routes.Get(w, o, against) == null) continue;
+                if (!indexed) { KinIndex(against); indexed = true; }
                 var tres = w.Residents(o);
                 for (int i = 0; i < tres.Count; i++)
                 {
                     ref var q = ref w.People.Get(tres[i]);
                     if (!q.Alive) continue;
                     double age = q.AgeYears(now);
-                    if (age < 16 || age >= 50 || KinIn(in q, against)) continue;   // (whom the call takes: grown and under fifty, as a band's own)
+                    if (age < 16 || age >= 50 || KinInIndexed(in q, against)) continue;   // (whom the call takes: grown and under fifty, as a band's own)
                     called += CallOwed + CallBold * q.Bold / 255.0;
                 }
             }
             if (MightTally != null && called > 0) { MightTally[12] += 1; MightTally[13] += called; }
             return m + called;
+        }
+
+        // (Might's kin test, `KinIn` with the village's parents gathered once: its living residents' mothers and fathers)
+        readonly System.Collections.Generic.HashSet<int> _kinMothers = new System.Collections.Generic.HashSet<int>(), _kinFathers = new System.Collections.Generic.HashSet<int>();
+
+        void KinIndex(int o)
+        {
+            var w = _w;
+            _kinMothers.Clear(); _kinFathers.Clear();
+            var res = w.Residents(o);
+            for (int i = 0; i < res.Count; i++)
+            {
+                ref var q = ref w.People.Get(res[i]);
+                if (!q.Alive) continue;
+                if (q.Mother != 0) _kinMothers.Add(q.Mother);
+                if (q.Father != 0) _kinFathers.Add(q.Father);
+            }
+        }
+
+        /// <summary>`KinIn` read from `KinIndex(o)`: a parent, partner, child or sibling (by a mother) living in o.</summary>
+        bool KinInIndexed(in Person p, int o)
+        {
+            if (LivesIn(p.Mother, o) || LivesIn(p.Father, o) || LivesIn(p.Partner, o)) return true;
+            if (_kinMothers.Contains(p.Id) || _kinFathers.Contains(p.Id)) return true;   // (their child lives there)
+            return p.Mother != 0 && _kinMothers.Contains(p.Mother);                    // (a brother or sister by their mother)
         }
 
         /// <summary>Tools: one weighing of the stronger, by the old count and by might ([0..3] bowing to raiders, [4..7] for bread, [8..11] a bond's end).</summary>
