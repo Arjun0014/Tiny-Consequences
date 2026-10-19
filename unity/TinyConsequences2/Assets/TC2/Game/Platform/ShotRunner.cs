@@ -194,12 +194,13 @@ namespace TC2.Game
                     for (int o = w.Settlements.First(); o != 0 && !due; o = w.Settlements.Next(o))
                     {
                         int lordOf = w.Settlements.Get(o).Lord;   // (no ref locals in a coroutine)
-                        if (lordOf != 0 && (o == sid || lordOf == sid) && w.Settlements.Get(o).TributeDue >= 1.0) due = true;
+                        // (the village's day has set the day's loads: its grown people take them in the morning - a tenth set aside after it waits a day)
+                        if (lordOf != 0 && (o == sid || lordOf == sid) && w.Settlements.Get(o).CarryToday > 0) due = true;
                     }
                 }
                 long loc3 = w.LocalOffsetOf(sid);
                 long at3 = SimTime.FloorMod(w.Now + loc3, SimTime.Day);
-                long ahead3 = SimTime.Day - at3 + DMath.ToLong(hour * SimTime.Hour);   // (the next morning: the village's day sets the day's loads)
+                long ahead3 = SimTime.FloorMod(DMath.ToLong(hour * SimTime.Hour) - at3, SimTime.Day);   // (the next such hour: the carriers set out from 7)
                 w.AdvanceTo(w.Now + ahead3, ref b);
                 Debug.Log("[TC2] after tribute: " + (due ? "a tenth set aside, the next morning" : "no tenth set aside within a year") + " - " + SimTime.Format(w.Now));
             }

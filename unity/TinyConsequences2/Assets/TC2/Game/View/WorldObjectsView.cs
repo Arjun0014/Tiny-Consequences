@@ -575,7 +575,7 @@ namespace TC2.Game
                 if (s.BurialCount > 0) DrawGraves(w, P, in s, sid, ex);
                 // the first household's standard (D2-152): a pole by the door of the house of the household most of the village follows (C10.2), its
                 // cloth in its polity's colour - the head of its lordship's (C10.1: a tributary flies its lord's), taller for a lord over more villages
-                if (s.Inhabited && s.HeadHh != 0) DrawStandard(w, P, in s, sid, Exaggeration(center, StandardFar));   // (enlarged further with distance: a polity read from the village view, C10.6)
+                if (s.Inhabited && s.HeadHh != 0) DrawStandard(w, P, in s, sid, Exaggeration(center, StandardFar));   // (enlarged further with distance, C10.6 - it does not make a polity read from the village view: real shots s23g/s23h)
                 // its palisade (D2-074): standing (an abandoned village's too, as it rots), or as far as its people have set it
                 if (s.Wall == 1 || s.Wall == 2 || s.OldR > 0f) DrawWall(w, P, in s, sid, ex);
                 if (!s.Inhabited) continue;   // (an abandoned village's well and granary decay as structures: C1.1)
@@ -626,9 +626,10 @@ namespace TC2.Game
         /// <summary>The polities' colours (D2-152): a heraldic dye for each polity, by its head village (a tributary's is its lord's).</summary>
         static readonly Color[] Heraldry =
         {
-            new Color(0.70f, 0.10f, 0.10f), new Color(0.12f, 0.24f, 0.62f), new Color(0.10f, 0.45f, 0.20f), new Color(0.85f, 0.65f, 0.10f),
+            // (C10.6: no green nor teal - a standard is read over green fields and the woods; azure and rose in their places)
+            new Color(0.70f, 0.10f, 0.10f), new Color(0.12f, 0.24f, 0.62f), new Color(0.30f, 0.62f, 0.95f), new Color(0.85f, 0.65f, 0.10f),
             new Color(0.45f, 0.15f, 0.50f), new Color(0.92f, 0.90f, 0.84f), new Color(0.10f, 0.10f, 0.12f), new Color(0.85f, 0.40f, 0.10f),
-            new Color(0.15f, 0.55f, 0.60f), new Color(0.55f, 0.08f, 0.25f),
+            new Color(0.88f, 0.35f, 0.62f), new Color(0.55f, 0.08f, 0.25f),
         };
 
         /// <summary>A village's polity's colour: its lordship's head's (its own when it pays nobody), by that village's number.</summary>
@@ -638,8 +639,9 @@ namespace TC2.Game
             return Heraldry[(int)(KeyedRng.Mix((ulong)root * 0x9E3779B97F4A7C15UL ^ 0xBA22E7) % (ulong)Heraldry.Length)];
         }
 
-        /// <summary>The most a standard is enlarged with the camera's distance (life-size within 900 m, the village's own objects at most 1.6x): the
-        /// polity's colours read from the village view over the villages that fly them - real state exaggerated, never invented (D2-084; C10.6).</summary>
+        /// <summary>The most a standard is enlarged with the camera's distance (life-size within 900 m, the village's own objects at most 1.6x) - real state
+        /// exaggerated, never invented (D2-084; C10.6). Real shots (s23c-s23h): it reads up close and from the low view, not from the village view, where a
+        /// village spans a few hundred pixels and even five times its size is a speck; a polity at the village and region views wants a map layer (the UI).</summary>
         const float StandardFar = 4f;
 
         /// <summary>The first household's standard (D2-152): by its house's door, toward the house's front; taller for a lord's village by the villages
