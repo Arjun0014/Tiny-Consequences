@@ -126,12 +126,12 @@ namespace TC2.Tests.Core
             Assert.AreEqual(3, told.Count);
             foreach (var e in told) { Assert.AreEqual(w.Settlements.Get(sid).Head, e.Object.Id, "sworn to the one first among the people"); Assert.AreEqual(first, e.Other.Id, "fed by their household"); Assert.IsTrue(sworn.Contains(e.Subject.Id)); }
             Console.WriteLine(HistoryText.Line(w, told[2]));
-            StringAssert.Contains("swore to the", HistoryText.Line(w, told[0]));
+            StringAssert.Contains("swore to " + w.History.NameOf(EntityRef.Person(w.Settlements.Get(sid).Head)), HistoryText.Line(w, told[0]));
             string page = Gazetteer.All(w, sid);
             StringAssert.Contains("3 men are sworn to the", page, "the settlement page");
             string life = Biography.Work(w, sworn[0]);
             Console.WriteLine(life);
-            StringAssert.Contains("sworn to the", life, "his own page");
+            StringAssert.Contains("sworn to " + w.History.NameOf(EntityRef.Person(w.Settlements.Get(sid).Head)), life, "his own page");
             // --oldsworn: nobody is sworn
             var w2 = Village(out int sid2, out int first2, 3);
             Retinue.Off = true;
@@ -238,7 +238,7 @@ namespace TC2.Tests.Core
                     {
                         foreach (int pid in sworn) if (still.Contains(pid)) Assert.GreaterOrEqual(trainedOn[pid].Count, 4, "lived: at the ground most afternoons");
                         Assert.IsNotNull(doing);
-                        StringAssert.Contains("sworn to the", doing);
+                        StringAssert.Contains("sworn to " + w.History.NameOf(EntityRef.Person(w.Settlements.Get(sid).Head)), doing);
                     }
                     Assert.Greater(w.Conflict.Lasting(sid), might0, "their skill weighs in the village's might (C10.7a)");
                 }
