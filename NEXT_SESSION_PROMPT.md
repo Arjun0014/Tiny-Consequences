@@ -18,38 +18,24 @@ answers "what changes in the world picture?" and is judged in real game shots.
 5. `docs/tc2/PROGRESS.md` CURRENT STATE (the session 23 entry first).
 6. `git status`, `git log --oneline -10`, `git worktree list`, and the queue: `cat $Q/runq.log` (path below).
 
-## Session 23 (19 Oct 2026, 18:54-~21:25 IST) - context handoff; the job queue is still running
-- **On main**: C10.4 bread and dependence merged (ca3b4c8) with D2-157 and D2-158; validated - Unity C# compiles, Web build and test 6/6, the browser's
-  probe = headless dotnet = the editor's Mono, bit for bit (frame rates were halved by the user's Chrome running during the test: re-measure quietly).
-- **The 900-year check of C10.4** (seeds 2 and 4): no snowball and no growth - petty lordships of 1-4 villages; every one of 63 ended bonds ended because
-  "the lord was no longer the stronger", weighed by the fit people at home on one day and a lord by its own village. Real shots `tc2/out/shots/s23a`,
-  `s23b`: the bond reads only up close.
-- **Built, merged together on `wip/s23-int` (`C:/Game Dev/tc-int`, tip c5258d2), NOT yet on main**:
-  - **C10.5 a lordship's might** (sim 83): villages weigh each other by their people of fighting age, a lord with the men its call brings. Control
-    `--oldmight` byte-identical; ten seeds at par; its 900-year check is in the queue.
-  - **D2-160 the ways' woods** (sim 84) - VERIFIED: a route's forest cost read the woods of the moment it was first built, so a load or the view building
-    routes first changed history (three lived days: different hashes); routes now read the woods at the last turn of the plates - equal hashes with and
-    without the view's routes over 3 and 6 lived days and 3 COARSE years; control byte-identical; ten seeds at par.
-  - **C10.6 tribute carried** (sim 85): the tenth set aside at the tributary's harvest and carried to the lord's store by its people (lived walkers and
-    carts, COARSE the same loads), wearing the ways that converge on the lord; standards enlarged with distance up to 4x. TributeCarriedTests 5/5; its
-    control and ten seeds are in the queue.
-- **RUNNING: the job queue** `bash tc2/out/tools/s23/runq.sh` (background task bc2qpqxfq). `Q` =
-  `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/db1b5af7-2c1c-4e6f-a5ff-c8b25b1a81c2/scratchpad/q` (`runq.log`, `log/<job>.log`,
-  `todo`, `done`; `touch $Q/stop` ends it after the current job). Remaining at the handoff (about two hours): `3_d_l9z1_s2/s4` (C10.5's 900-year check),
-  `3_t_*` (C10.6's evaluation), `4_a_fullsuite_i1` (the full suite on the integration), `4_b_f1_*` (its ten seeds), `4_c_cmp_probe_f1`. Results land in
-  `tc2/out/tools/s23/results/` and `tc2/out/civ/`. If the scratchpad is gone, rebuild from the worktrees (SESSION_HANDOFF says how).
+## Session 23 (19 Oct 2026; two contexts) - C10.5, D2-160, C10.6 landed; C9.5a in evaluation; the job queue may still be running
+- **On main** (b7cc066 and later): C10.4; **C10.5 a lordship's might, D2-160 the ways' woods, C10.6 tribute carried - amended before landing** (a19c077;
+  DECISIONS D2-159, D2-160, D2-161). The amendment: the tenth is set aside only where a way on foot reaches the lord (a fifth of all tribute in ten worlds
+  had none - a bond for bread needs only 6 km as the crow flies); a year uncarried returns; one cart goes one way at a time. Validated: full suite
+  419/419, control byte-identical, ten seeds at par, Web `s23web2` 6/6 (browser = dotnet = Mono), real shots (carriers on the road `s23k`; standards
+  not legible from the village view - a map layer is wanted).
+- **In evaluation: C9.5a grain across water goes by boat** (`wip/c95-across`, worktree `C:/Game Dev/tc-across`, sim 86; draft `tc2/out/tools/s23/d2162.md`).
+- **The job queue** (`bash tc2/out/tools/s23/runq.sh`, `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/db1b5af7-2c1c-4e6f-a5ff-c8b25b1a81c2/scratchpad/q`):
+  `5_e1_a1_*` (the survey: grain across water at once on the landed code), `5_e2_*` (C9.5a: build, tests, control `--oldacross` = `_g1`, ten seeds
+  `_x1`, `results/cmp_g1_x1.txt`), `5_e_l9g1_s2` (the landed code's 900-year check), `6_*` (ten seeds with D2-160 alone: who caused tribute agreed
+  x0.74?). `cat $Q/runq.log`; `touch $Q/stop` stops it after the current job.
 
 ## Do next, in order
-1. Read the queue's results: C10.5's 900-year check (`results/lordships_s*_l9z1_y600.txt` - do lordships hold, grow plausibly, or snowball? a snowball
-   needs a limit grounded in the record before landing), C10.6's control and `cmp_z1_t1.txt`, the integration's `fullsuite_i1.txt`, `cmp_t1_f1.txt` and
-   the probe's hashes on `s2_f1`.
-2. Land: write D2-159, D2-160, D2-161 into DECISIONS from the drafts (fill their FILL marks); `git merge --no-ff wip/s23-int` on main; `node
-   tc2/scripts/unity.mjs cc`; PROGRESS.
-3. A v85 seed-2 world (`run --seed 2 --years 300 ... --snap 300` with main's binary) for real shots of the tributary and the lord (`unity.mjs shots
-   --village tributary|lord`, views `standard,standardlow,village,region`; carriers after the tributary's harvest via `--doy`): do the standards and the
-   converging roads read now? Then the Web build and test (`tc2/out/tools/s23/1_a_web.sh`, a new tag) on a quiet machine.
-4. Then the next slice by evidence: the lord's household men (C10.7, `23` §3 - `lordships` measures each lord's surplus) or C9.5 boats across the water
-   (needs a lived "legs by boat" model).
+1. Read the queue: C9.5a's tests, control and ten seeds against `_g1` (vital rates at par? relief across water by boat; the tenth by sea) with the survey
+   `_a1` as the before; then land it (DECISIONS D2-162 from the draft, `git merge --no-ff wip/c95-across`, `unity.mjs cc`, the full suite, Web).
+2. The 900-year check of the landed code and the `_g2` attribution -> PROGRESS, D2-161.
+3. Next by evidence: C9.5b people across water in boats (island woodcutters, a town on two shores: lived legs by boat), or C10.7 the lord's household
+   men (seed 2's lords hold 3-10 years of their own need; seed 4's spends it), or a map layer for polities (the UI pass).
 
 ## Rules that bite
 - Commits `[tc2] ...` ending with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`; stage only TC2 files; never force-push; push only when asked

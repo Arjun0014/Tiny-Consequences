@@ -296,6 +296,15 @@ tributary's people; the ways of a lordship converge on its lord; standards enlar
 "Session 23" (the queue, the drafts `tc2/out/tools/s23/d2159.md`, `d2160.md`, `d2161.md`, the next steps). Wall-clock timings on this busy machine are
 not evidence.
 
+**Where we are (session 23, second context, 19 Oct 2026, night)**: **C10.5, D2-160 and C10.6 landed** (a19c077; DECISIONS D2-159-D2-161; sim 85) after a
+review found two C10.6 faults and amended them: a bond for bread needs only a day's walk as the crow flies, so **a fifth of all tribute (ten worlds) had no
+way on foot to its lord** - it is now kept at home instead of set aside for ever - and one cart now goes one way at a time. Validated: full suite 419/419,
+control byte-identical, ten seeds at par, Web `s23web2` 6/6 with three runtimes bit-identical; real shots: carriers with handcarts on the road to the lord
+(`s23k`); the standards read up close, not from the village view (a polity there wants a map layer). C10.5's 900-year checks: bonds hold longer, no snowball.
+**In evaluation: C9.5a grain across water goes by boat** (branch `wip/c95-across`, sim 86; D2-162 draft `tc2/out/tools/s23/d2162.md`): within a day's walk
+grain moves at once only along a way on foot; relief, give-back and the tenth cross water in boats or not at all. SESSION_HANDOFF "Session 23, second
+context" has the queue and the next steps.
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.
