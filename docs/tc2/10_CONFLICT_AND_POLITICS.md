@@ -255,7 +255,7 @@ Built on C3.3 (D2-126: household grain, loans recorded as debts, gifts). `Core/S
 - **Only what can be carried is set aside** (found reading the code before landing): a bond for bread needs only a day's walk as the crow flies
   (C10.4), and relief within it moves at once, so a village across water can owe - and bow to - a neighbour no way on foot leads to. Its tenth is
   then not set aside: it stays in its store, and the pages say why ("No way on foot leads from it to X: its people cannot carry the tenth there");
-  carrying it by boat waits for boats across the water (C9.5). And what still stands set aside at the next harvest - carried by nobody in a year:
+  since C9.5a (D2-162) it goes by boat where a way by sea joins the two landings and a plank boat on either side can carry it - the tributary's own rowed over to the lord's landing, or the lord's come for it, the dues settled as it is handed over. Measured over ten worlds, no tenth needed a boat: the bonds across water had grown from famine relief that crossed the water at once, and with relief across water only in boats they no longer arise (harvests with no way on foot to the lord 444 -> 66). And what still stands set aside at the next harvest - carried by nobody in a year:
   no hands fit to carry it, or the way cut since - is the village's again before the new tenth is set aside, so no store keeps a pile for a lord
   its people cannot bring it to.
 - **What it changes in the world picture**: carriers with sacks (and carts) on the way to the lord the morning after each tributary's village sets the

@@ -4,6 +4,26 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 23, third context (20 Oct 2026, from 00:04 IST; Control Room run #63 session 3; the same job queue)** - **landed on main (c8f6f5d):
+  C9.5a grain across water goes by boat; DECISIONS D2-162; sim version 86.** (1) **The 900-year check of the code as landed** (seed 2, `_l9g1`): no
+  snowball (6-7 lords among 28-32 villages, the largest 2-4, depth 1-2); the tenth carried every year (1,334,050 FU in 18,940 loads, 70 % on carts,
+  none left a year); 27 % of the tenths (484,105 FU) had no way on foot to the lord; a lord's first household holds up to 30 years of its need (the
+  evidence for C10.7) - a line in D2-161. (2) **C9.5a finished and judged**: its first test run (39b7ce4) had two test-premise faults and no code
+  fault (the relief test checked "told as by sea" after an at-once gift had told that famine; the tribute premise's lord was the weaker, so every
+  tribute test was skipped - and the queue's gate had counted skips as passes: it no longer does). Added: **the lord's boats come for the tenth**
+  where its tributary has none free (`ForTenth`: nothing aboard going out; the dues settled at the tributary's landing, `Conflict.Settle`; the grain
+  the lord's when its boat is home, `Conflict.Stored`); **a trader walks only to a partner a way on foot reaches** (found in a sweep of every
+  "within a day's walk" rule: a COARSE day's traders dealt across a strait at once while a lived trader found no road); the voyage text (the tenth
+  rowed over had been told as a trade). **A save taken while the lord's boat is out did not continue** - a probe comparing the two worlds part by
+  part found the planet alone diverging: the test premise had sunk ground by hand, outside the plates' turn and its `LandChanged`, so the running
+  world's waters were drained for the old ground; loaded once, the premise continues identically (the game was right). Evidence: AcrossTests 8/8
+  and ten neighbour classes; control `--oldacross` = `_g1` (annals and state hash); the old rule's survey: **91 % of seed 5's trades and 99.5 % of
+  its relief crossed water at once** (seed 3: 9 % and 34 %); **ten seeds `_x2` at par in the vital rates** (people x0.993, births and deaths
+  x1.010, x1.021), trade x0.60, relief x0.63; no tenth went by sea - bonds across water no longer arise (444 -> 66 harvests with no way on foot);
+  **the archipelago (seed 5) pays**: trades 3,889 -> 174, hunger deaths 1,018 -> 1,733, people -14 % over years 200-299 - its boats are made only by
+  fishers: C9.5b's case. (3) Tools: `--acrosstally` [5]-[6], `--carrytally` [16]-[17], `lordships --bonds` with ids and boats; shot views
+  `voyagetenth...`/`voyagerelief...`; shots `--after tribute` across water. Left for C9.5b: a COARSE day's visits still carry news and sickness
+  across water at once (`Conflict.News`, `Disease`). Next: the landing's checks (Unity C#, full suite, Web), real shots, then C9.5b or C10.7.
 - **Session 23, second context (19 Oct 2026, from 21:26 IST; Control Room run #63 session 2; the same job queue)** - **landed on main (a19c077):
   C10.5, D2-160 and C10.6 as amended; DECISIONS D2-159, D2-160, D2-161 (464e72c); sim version 85.** (1) **C10.5's 900-year check** (seeds 2 and 4
   of `_z1` to year 900, against C10.4's `_y3`): no snowball and no growth - the largest lordship 2-3 villages, depth 1; bonds hold longer with less
