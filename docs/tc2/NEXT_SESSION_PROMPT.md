@@ -317,6 +317,16 @@ queue at the handoff. The 900-year check of the tribute code: no snowball. **Nex
 skill; drafted, NOT built, on `wip/c107a-arms`, worktree `C:/Game Dev/tc-arms`; design `tc2/out/tools/s23/c107_design.md`), then C10.7b sworn men fed
 from the tribute, C9.5c people across water. SESSION_HANDOFF "Session 23, third context" has the queue and the steps.
 
+**Where we are (session 23, fourth context, 20 Oct 2026, 02:54-05:10 IST)**: **C9.5b's checks completed** - Web `s23web4` 6/6 (three runtimes
+bit-identical), and real shots aimed by a new probe (`voyages --load SAVE --days N`: a save lived as the game loads it, every voyage with its village's
+day and hour) show dugouts crossing at 45 m (`s23n1`, `s23n2`); lived and COARSE dugout crossings agree. **Three slices built, in evaluation, not on
+main**: **C10.7a** might by lasting strength (years, tools and arms, fighting skill; `wip/c107a-arms`, sim 88; ten seeds at par, D2-164 draft);
+**C10.7b** sworn men - the one first among a village's people keeps young men sworn to them, fed from their household's grain (a lord's from its
+tribute), practising daily and going with every band; the oath is personal (a household-id first version churned) (`wip/c107b-sworn`, sim 89; D2-165
+draft); **C9.5c** a COARSE day's visits, their sickness, news and the ways' wear go only where a way on foot leads, keeping a lived day's odds
+(`wip/c95c-visits`; D2-166 draft). The landing branch `wip/s23b-int` (all three, sim 90) waits for the queue's evaluations, its full suite and the
+900-year checks - SESSION_HANDOFF "Session 23, fourth context" has the queue and the steps.
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.

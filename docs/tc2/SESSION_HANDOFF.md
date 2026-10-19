@@ -2,7 +2,10 @@
 
 ## Session 23, fourth context (20 Oct 2026, 02:54 - ~05:05 IST; Control Room run #63 session 4) - C9.5b checked; C10.7a, C10.7b, C9.5c built and in evaluation; context handoff with the queue running
 
-### Exact state at the handoff (05:05)
+### Exact state at the handoff (05:10; every worktree committed and clean)
+- **Stale verification noted by Control Room** (re-checked at the handoff): main's code since bc99679 is tools-only (the survey's four worlds on the
+  main-line build reproduce `_y1` byte for byte; `unity.mjs cc` ok on 874a27e, after the shot views); **the full suite has not run on main's exact
+  code** since bc99679 - the landing branch's full suite (`6_9_d`) covers it.
 - **main** = bc59303 (+ this handoff): sim 87; tools merged (`voyages` probe, voyage views `dugout`/`voyageclose`, `--visittally`; a8ca460 fixed
   db4b8ba's headless compile break). C9.5b complete: Web `s23web4` 6/6 (browser = dotnet = Mono), aimed shots `s23n1`/`s23n2` read at 45 m, lived and
   COARSE dugout crossings agree (D2-163 updated).
@@ -18,8 +21,8 @@
   with grain keep men (emergent thegns); judge by the vital rates, raids and the 900-year check. Draft `d2165.md` (personal oath written in).
 - **C9.5c people across water** (`wip/c95c-visits`, `C:/Game Dev/tc-visits`, tip 8a270c4, sim 88 on main's line): COARSE visits keep a lived day's
   odds and the visits to a village no way on foot reaches are lost (a first version spread them - found in review, fixed). Survey in `c95c_design.md`.
-  Rebuild and tests `6_8_z` running at 05:03, then control `6_9_a` (`_pv0` = `_y1`), ten seeds `6_9_b` (`_pv1`), `6_9_c` (`results/cmp_y1_pv1.txt`).
-  Draft `d2166.md`.
+  Rebuild and tests `6_8_z` running at 05:03 (VisitsTests passed on it: visits along a way 9.6 - the old rule's 9.6 - across water 0; news 8 and 0),
+  then control `6_9_a` (`_pv0` = `_y1`), ten seeds `6_9_b` (`_pv1`), `6_9_c` (`results/cmp_y1_pv1.txt`). Draft `d2166.md`.
 - **The landing branch** `wip/s23b-int` (`C:/Game Dev/tc-int2`, tip bb2ec81): main a8ca460 + C10.7a + C10.7b (personal oath) + C9.5c (kept odds), sim
   90, docs (`10` §12i-j, `24` §5, `25`, `23` §3), shot view `act:<Activity>:sworn`. `6_9_d_int_fullsuite` (build `bin_i2`, full suite -> `fs_i2_ok`).
 - **RUNNING: the queue** (task bc2qpqxfq; `Q` below): `6_8_z` -> `6_9_a..c` -> `6_9_d2` -> `6_9_d` -> `6_9_e..g` -> `6_a_g2_*`, `6_b` -> `6_c_*` ->
