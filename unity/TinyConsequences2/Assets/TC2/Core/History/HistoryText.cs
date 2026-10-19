@@ -180,7 +180,10 @@ namespace TC2.Core.History
                     return "The people of " + subj + " bowed to " + obj + " and agreed to pay it a tenth of every harvest: they could neither stand against its bands nor go elsewhere" +
                            (e.ArgA > 1 ? " (" + obj + " now has " + e.ArgA + " villages paying)." : ".");
                 case HistoryKind.TributePaid: return subj + " paid " + obj + " its tribute (" + F(e.Magnitude, "0") + " days' grain).";
-                case HistoryKind.TributeEnded: return e.ArgA == 1 ? subj + " pays tribute no more: " + obj + " is gone." : subj + " would pay " + obj + " tribute no more: " + obj + " is no longer the stronger.";
+                case HistoryKind.TributeEnded:
+                    if (e.ArgA == 1) return subj + " pays tribute no more: " + obj + " is gone.";
+                    return subj + " would pay " + obj + " tribute no more: " + obj + " is no longer the stronger" +
+                           (e.Magnitude > 0f ? " - it could bring " + F(e.Magnitude, "0") + " against them (its own people and those its call brings), and they have " + e.ArgB + " of fighting age." : ".");   // (C10.5)
                 case HistoryKind.PathogenAppeared: return "A new sickness, " + subj + ", appeared in " + place + (e.ArgA == 1 ? ", caught from its animals" : "") + ".";
                 case HistoryKind.EpidemicArrived:
                     return e.ArgA == 1 ? Cap(obj) + " broke out in " + place + (e.Other.IsNone ? "" : ", " + other + " the first to fall ill") + "."

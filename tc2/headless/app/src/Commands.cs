@@ -225,6 +225,8 @@ namespace TC2.Headless
             if (a.Has("stubbletally")) TC2.Core.Places.Stubble.Tally = new double[3];   // (C3.7d: kg eaten on the stubble and the fallow, day dung on the fields)
             if (a.Has("nobread")) TC2.Core.Society.Conflict.BreadOff = true;   // (C10.4 off: lordship by conquest alone, as D2-075 built it)
             if (a.Has("breadtally")) TC2.Core.Society.Conflict.BreadTally = new long[15];   // (C10.4: village-harvests by the relief still owed, bonds)
+            if (a.Has("oldmight")) TC2.Core.Society.Conflict.MightOff = true;   // (C10.5 off: the day's fit grown people at home, a lord by its own village - D2-075's weighing)
+            if (a.Has("mighttally")) TC2.Core.Society.Conflict.MightTally = new double[14];   // (C10.5: each weighing by the old count and by might)
             if (a.Has("wetways")) TC2.Core.Places.Afoot.Off = true;   // (D2-156 off: lived walks straight across the water, the well's and the idle's spots and crofts in it, the woods by the straight line)
             if (a.Has("waytally")) TC2.Core.Places.Afoot.Tally = new long[128];   // (tools: the walks bent round the water and those no bend kept dry, by what was done at their end)
             if (a.Has("oldmuckorder")) TC2.Core.Agents.AgentSystem.CoarseMuckOld = true;   // (D2-158: a COARSE day's muck before the household's own roof, as C3.7c built it)
@@ -955,13 +957,23 @@ namespace TC2.Headless
                         lords++;
                         if (n > biggest) { biggest = n; biggestRoot = sid; }
                     }
-                    for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid)) { int d = 0, r = sid; while (w.Conflict.LordOf(r) != 0 && d < 16) { r = w.Conflict.LordOf(r); d++; } if (d > deepest) deepest = d; }
+                    for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+                    {
+                        if (!w.Settlements.Get(sid).Inhabited) continue;   // (an abandoned village's last lord is no lordship's depth)
+                        int d = 0, r = sid;
+                        while (d < 16) { int l = w.Conflict.LordOf(r); if (l == 0 || !w.Settlements.Get(l).Inhabited) break; r = l; d++; }
+                        if (d > deepest) deepest = d;
+                    }
                     Console.WriteLine("lordships: tribute agreed " + m.Tributes + (m.BreadBonds > 0 ? " (for bread " + m.BreadBonds + ")" : "") + ", ended " + m.TributesEnded + ", paid " + F(m.TributeFu, "0") + " FU; lords now " + lords +
                                       (biggest > 0 ? ", the greatest " + w.History.NameOf(EntityRef.Settlement(biggestRoot)) + " with " + biggest + " paying, depth " + deepest : ""));
                     var bt = TC2.Core.Society.Conflict.BreadTally;
                     if (bt != null)   // (C10.4: village-harvests with no lord by the relief they still owed their main giver beyond the harvest's spare, in days of their food)
                         Console.WriteLine("bread: village-harvests owing none " + bt[0] + ", 0-5 d " + bt[1] + ", 5-10 d " + bt[2] + ", 10-20 d " + bt[3] + ", 20-30 d " + bt[4] + ", 30-60 d " + bt[5] + ", 60+ d " + bt[6] +
                                           "; to a stronger giver within reach: 0-5 d " + bt[8] + ", 5-10 d " + bt[9] + ", 10-20 d " + bt[10] + ", 20-30 d " + bt[11] + ", 30-60 d " + bt[12] + ", 60+ d " + bt[13] + "; bonds " + bt[14]);
+                    var mt = TC2.Core.Society.Conflict.MightTally;
+                    if (mt != null)   // (C10.5: each weighing of the stronger - weighed, carried by the old count, carried by might, by both)
+                        Console.WriteLine("might: bowing to raiders weighed " + mt[0] + " (the old count " + mt[1] + ", might " + mt[2] + ", both " + mt[3] + "); bowing for bread " + mt[4] + " (" + mt[5] + ", " + mt[6] + ", " + mt[7] +
+                                          "); a lord no longer the stronger " + mt[8] + " (" + mt[9] + ", " + mt[10] + ", " + mt[11] + "); lords' calls counted " + mt[12] + " times, " + F(mt[13], "0") + " men");
                     long firstLord = 0, firstEnd = 0;
                     for (int i = 0; i < w.History.Count && (firstLord == 0 || firstEnd == 0); i++)
                     {

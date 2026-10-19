@@ -14,8 +14,8 @@ namespace TC2.Tests.Core
     [TestFixture]
     public class BreadTests
     {
-        /// <summary>Premise: two inhabited villages within a day's walk - the giver and the receiver; the receiver's fit grown people laid up until the
-        /// giver is the stronger by `TributeOdds` (or, `weaker`, the giver's until it is not).</summary>
+        /// <summary>Premise: two inhabited villages within a day's walk - the giver and the receiver, the giver the stronger by `TributeOdds` in its
+        /// people of fighting age (or, `weaker`, not). (Before C10.5 the receiver's people were laid up with wounds: a day's wounds no longer count.)</summary>
         static World Pair(out int giver, out int receiver, bool weaker = false, ulong from = 701)
         {
             for (ulong seed = from; seed < from + 40; seed++)
@@ -26,28 +26,14 @@ namespace TC2.Tests.Core
                     {
                         if (a == b || !w.Settlements.Get(a).Inhabited || !w.Settlements.Get(b).Inhabited) continue;
                         if (Vec3d.ArcDistance(w.Settlements.Get(a).Anchor, w.Settlements.Get(b).Anchor, w.Planet.Radius) > Conflict.BreadReach) continue;
+                        bool stronger = w.Conflict.Might(a, b) >= Conflict.TributeOdds * w.Conflict.Might(b, a);
+                        if (stronger == weaker) continue;
                         giver = a; receiver = b;
-                        LayUp(w, weaker ? a : b, weaker ? b : a, weaker);
                         return w;
                     }
             }
             giver = receiver = 0;
             return null;
-        }
-
-        /// <summary>Lays up `who`'s fit grown people one by one (hurt to the road's limit) until the other is the stronger by `TributeOdds` - or, `weaker`,
-        /// until `who` is no longer the stronger.</summary>
-        static void LayUp(World w, int who, int other, bool weaker)
-        {
-            var res = w.Residents(who);
-            for (int i = 0; i < res.Count; i++)
-            {
-                int mine = w.Conflict.FitAt(who, w.Now), theirs = w.Conflict.FitAt(other, w.Now);
-                if (!weaker && theirs >= Conflict.TributeOdds * mine) return;
-                if (weaker && mine < Conflict.TributeOdds * theirs) return;
-                ref var q = ref w.People.Get(res[i]);
-                if (Conflict.Fit(in q, w.Now)) q.Hurt = (float)Conflict.RoadHurt;
-            }
         }
 
         /// <summary>The giver's relief to the receiver in a famine: `days` of the receiver's people's food, known as relief deeds are (`Trade.Given`).</summary>
