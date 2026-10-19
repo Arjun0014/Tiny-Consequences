@@ -136,10 +136,11 @@ namespace TC2.Core.Society
         /// tributary whose bond ended before its due was carried, [5] FU carried on carts, [6] carriers' km, [7] FU still set aside at the next harvest
         /// (carried by nobody in a year) and given back, [8] harvests whose tenth was not set aside - no way on foot to the lord, [9] the FU of those
         /// tenths, [10] of those harvests a way by sea between their landings, [11] the tributary with plank boats, [12] the lord with plank boats, [13] the FU
-        /// of [10]'s tenths (C9.5 survey), [14] loads carried by sea (C9.5a), [15] their FU; null in the game.</summary>
+        /// of [10]'s tenths (C9.5 survey), [14] loads carried by sea (C9.5a), [15] their FU, [16] loads fetched home in the lord's boats, [17] their FU;
+        /// null in the game.</summary>
         public static double[] CarryTally;
         /// <summary>The length of `CarryTally`.</summary>
-        public const int CarryTallyN = 16;
+        public const int CarryTallyN = 18;
 
         /// <summary>A village's sound plank boats (C9.2b): what could row its tenth over the water (C9.5a); tools.</summary>
         public int PlankBoats(int sid)
@@ -1494,8 +1495,9 @@ namespace TC2.Core.Society
                 if (s.TributeDue >= 1.0) { if (CarryTally != null) CarryTally[7] += s.TributeDue; s.Granary += s.TributeDue; s.TributeDue = 0; s.CarryToday = 0; }
                 // the tenth is set aside only where its people can carry it: along a way on foot to the lord's village. A bond for bread needs only a day's
                 // walk as the crow flies (C10.4) and relief within it moves at once, so a village across water can be bound to a lord no way on foot
-                // leads to - its tenth stays in its store, unless a way by sea joins their landings and it has a boat of planks to row it over (C9.5a)
-                if (w.Routes.Get(w, sid, lord) == null && !(BySea(sid, lord) && PlankBoats(sid) > 0))
+                // leads to - its tenth stays in its store, unless a way by sea joins their landings and it has a boat of planks to row it over or its lord
+                // one to come for it (C9.5a)
+                if (w.Routes.Get(w, sid, lord) == null && !(BySea(sid, lord) && (PlankBoats(sid) > 0 || PlankBoats(lord) > 0)))
                 {
                     if (CarryTally != null)
                     {
@@ -1550,9 +1552,26 @@ namespace TC2.Core.Society
         {
             var w = _w;
             if (fu <= 0 || !w.Settlements.Exists(lord)) return;
+            Stored(lord, fu);
+            Settle(sid, lord, fu);
+        }
+
+        /// <summary>The lord's tenth into its store (C10.6): its first household's grain (C10.2).</summary>
+        public void Stored(int lord, double fu)
+        {
+            var w = _w;
+            if (fu <= 0 || !w.Settlements.Exists(lord)) return;
             ref var l = ref w.Settlements.Get(lord);
             l.Granary += fu;
             if (!Leaders.Off && !Leaders.TributeOff && l.HeadHh != 0) w.Holdings.Put(l.HeadHh, lord, fu);   // (the lord's own: C10.2)
+        }
+
+        /// <summary>The tenth handed over (C10.6) - at the lord's store, or at the tributary's landing when the lord's boat comes for it (C9.5a): it
+        /// answers the lord's wrongs against the tributary and gives back the grain the lord gave it in its famines (C10.4).</summary>
+        public void Settle(int sid, int lord, double fu)
+        {
+            var w = _w;
+            if (fu <= 0) return;
             w.DeedBook.SettleBy(lord, sid, fu);
             if (!BreadOff) w.Trade.Repaid(sid, lord, fu);
             w.Metrics.TributeFu += fu;
@@ -1628,9 +1647,11 @@ namespace TC2.Core.Society
 
         /// <summary>
         /// The lord's tenth across water (C9.5a): no way on foot joins them but a way by sea does - its own free plank boats carry it, a boat's load
-        /// each, in a calm sea, as its relief and its grain given back go (C9.3). Lived, the village's day books them for their households to row
-        /// over in the morning (`Trade.BookTribute`; delivered at the lord's landing, `Trade.Deliver`); a COARSE day carries the boats' loads at once.
-        /// With no boat free it waits - and what a year left uncarried is the village's again at the next harvest.
+        /// each, in a calm sea, as its relief and its grain given back go (C9.3), or with none of its own free the lord's come for it, as a giver's
+        /// come for the grain given back. Lived, the village's day books them for their households to row in the morning (`Trade.BookTribute`;
+        /// delivered at the lord's landing or taken aboard at its own, `Trade.Deliver`); a COARSE day carries the boats' loads at once. With no boat
+        /// free it waits - and what a year left uncarried is the village's again at the next harvest. The record: island dues carried in kind by ship
+        /// - the Norse skat of the isles, the food rents Hebridean lords' galleys gathered.
         /// </summary>
         void CarrySea(int sid, int lord, int days)
         {
@@ -1639,15 +1660,20 @@ namespace TC2.Core.Society
             if (way == null || Boats.WindAt(w, way.PointAt(0.5 * way.Length)) > Boats.Calm) return;   // (they wait for a calm sea)
             ref var s = ref w.Settlements.Get(sid);
             if (w.Resolution != Resolution.Coarse) { w.Trade.BookTribute(sid, lord, s.TributeDue); return; }
-            int boats = w.Trade.FreeBoats(sid);
-            if (boats == 0) return;
-            double fu = DMath.Min(boats * Trade.BoatLoadKg / Trade.KgOf(Trade.Grain) * days, s.TributeDue);
+            int boats = w.Trade.FreeBoats(sid), theirs = w.Trade.FreeBoats(lord);   // (its own first; the lord's come for the rest)
+            if (boats + theirs == 0) return;
+            double fu = DMath.Min((boats + theirs) * Trade.BoatLoadKg / Trade.KgOf(Trade.Grain) * days, s.TributeDue);
             if (fu < 1.0) return;
+            double fetched = fu - DMath.Min(fu, boats * Trade.BoatLoadKg / Trade.KgOf(Trade.Grain) * days);
             s.TributeDue -= fu;
             Brought(sid, lord, fu);
             w.Metrics.Voyages++; w.Metrics.SeaCargoKg += fu * Trade.KgOf(Trade.Grain);
             w.DeedBook.Meet(sid, lord);
-            if (CarryTally != null) { CarryTally[0]++; CarryTally[1] += fu; CarryTally[14]++; CarryTally[15] += fu; }
+            if (CarryTally != null)
+            {
+                CarryTally[0]++; CarryTally[1] += fu; CarryTally[14]++; CarryTally[15] += fu;
+                if (fetched > 0) { CarryTally[16]++; CarryTally[17] += fetched; }
+            }
         }
 
         /// <summary>Lived (C10.6): a carrier at the end of the way - the load into the lord's store if the village still pays it; else they carry it home.</summary>

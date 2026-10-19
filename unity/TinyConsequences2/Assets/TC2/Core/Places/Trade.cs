@@ -271,6 +271,14 @@ namespace TC2.Core.Places
                 // set aside with the rest, to be carried again (C10.6); a bond ended on the way, it is the village's (the store, below)
                 w.Settlements.Get(home).TributeDue += p.CargoQty;
             }
+            else if (p.CargoTo == TenthAboard && p.Cargo == Grain && home == p.Home)
+            {
+                // a tributary's tenth home in the lord's boat (C9.5a): into the lord's store, its first household's grain - the dues were settled as it
+                // was handed over (`Deliver`)
+                w.Conflict.Stored(home, p.CargoQty);
+                var ct = TC2.Core.Society.Conflict.CarryTally;
+                if (ct != null) { ct[16]++; ct[17] += p.CargoQty; }   // (tools: fetched home by the lord's boats)
+            }
             else
             {
                 ref var s = ref w.Settlements.Get(home);
@@ -731,10 +739,12 @@ namespace TC2.Core.Places
         static double need0(World w, in Settlement t) { DaysOfFood(w, in t, out double need); return need; }
 
         // ------------------------------------------------------------------ lived voyages (C9.3)
-        /// <summary>What a booked voyage is for: a load to trade, grain to a famine, grain given back, grain fetched back from those who owe it.</summary>
-        public const byte ForTrade = 1, ForRelief = 2, ForReturn = 3, ForFetch = 4, ForTribute = 5;   // (ForTribute: the lord's tenth by sea, C9.5a)
-        /// <summary>Where a boat's load goes (`Person.CargoTo` beside ToStore and ToLarder): grain for a famine, grain given back, grain to fetch.</summary>
-        public const byte AsGift = 2, AsReturn = 3, ToFetch = 4;
+        /// <summary>What a booked voyage is for: a load to trade, grain to a famine, grain given back, grain fetched back from those who owe it; the
+        /// lord's tenth rowed over by its tributary, or the lord's boat sent for it (C9.5a).</summary>
+        public const byte ForTrade = 1, ForRelief = 2, ForReturn = 3, ForFetch = 4, ForTribute = 5, ForTenth = 6;
+        /// <summary>Where a boat's load goes (`Person.CargoTo` beside ToStore, ToLarder and ToLord): grain for a famine, grain given back, grain to
+        /// fetch; the lord's boat going for the tenth (nothing aboard, the booked FU held), the tenth aboard for the lord's store (C9.5a).</summary>
+        public const byte AsGift = 2, AsReturn = 3, ToFetch = 4, ToTenth = 6, TenthAboard = 7;
 
         /// <summary>A voyage its village decided on (lived, C9.3): booked on one of its plank boats for the household to sail in the morning.</summary>
         public struct Booking
@@ -801,10 +811,13 @@ namespace TC2.Core.Places
         }
 
         /// <summary>Lived (C9.5a): the lord's tenth booked on the tributary's free plank boats, a boat's load each, for their households to row over
-        /// in the morning; the FU booked. None while one is booked already (a lapsed booking is booked afresh by the village's next day).</summary>
+        /// in the morning - or, none of its own free, on the lord's free boats, to come for it (`ForTenth`: nothing aboard going out, as grain given
+        /// back is fetched); the FU booked. None while one is booked already or a boat of the lord's is on its way for it (a lapsed booking is booked
+        /// afresh by the village's next day).</summary>
         public double BookTribute(int sid, int lord, double due)
         {
-            for (int i = 0; i < _booked.Count; i++) if (_booked[i].From == sid && _booked[i].Kind == ForTribute) return 0.0;
+            for (int i = 0; i < _booked.Count; i++)
+                if ((_booked[i].From == sid && _booked[i].Kind == ForTribute) || (_booked[i].To == sid && _booked[i].Kind == ForTenth)) return 0.0;
             var w = _w;
             var bl = w.BuildingsOf(sid);
             double left = due;
@@ -815,7 +828,25 @@ namespace TC2.Core.Places
                 Book(bl[i], w.Buildings.Get(bl[i]).Household, sid, lord, ForTribute, q);
                 left -= q;
             }
+            if (left < due || !w.Settlements.Exists(lord) || GoingForTenth(lord, sid)) return due - left;
+            var ll = w.BuildingsOf(lord);
+            for (int i = 0; i < ll.Count && left >= 1.0; i++)
+            {
+                if (!Free(ll[i])) continue;
+                double q = DMath.Min(left, BoatLoadKg / Kg(Grain));
+                Book(ll[i], w.Buildings.Get(ll[i]).Household, lord, sid, ForTenth, q);
+                left -= q;
+            }
             return due - left;
+        }
+
+        /// <summary>Whether a boat of the lord's is on its way for a tributary's tenth (C9.5a): its skipper out with nothing aboard yet (`ToTenth`).</summary>
+        bool GoingForTenth(int lord, int sid)
+        {
+            var w = _w;
+            var res = w.Residents(lord);
+            for (int i = 0; i < res.Count; i++) { ref var p = ref w.People.Get(res[i]); if (p.Alive && p.Voyage != 0 && p.CargoTo == ToTenth && p.Dest == sid) return true; }
+            return false;
         }
 
         /// <summary>The village's plank boats free to carry a load now (C9.3; the lord's tenth by sea, C9.5a).</summary>
@@ -870,6 +901,22 @@ namespace TC2.Core.Places
                     w.Metrics.SeaCargoKg += q * Kg(Grain);
                     return;
                 }
+                case ToTenth:
+                {
+                    // the lord's boat at its tributary's landing (C9.5a): what stands set aside of the tenth, up to the booked load, aboard for home - the
+                    // dues settled as it is handed over (`Conflict.Settle`), the grain the lord's when the boat is home (`Unload`). No bond now: nothing
+                    ref var t = ref w.Settlements.Get(at);
+                    float q = t.Lord == home ? (float)DMath.Min(p.CargoQty, t.TributeDue) : 0f;
+                    p.Cargo = None; p.CargoQty = 0f; p.CargoTo = ToStore;
+                    if (q < 1f) return;
+                    t.TributeDue -= q;
+                    p.Cargo = Grain; p.CargoQty = q; p.CargoTo = TenthAboard;
+                    w.Conflict.Settle(at, home, q);
+                    w.Metrics.SeaCargoKg += q * Kg(Grain);
+                    var ct = TC2.Core.Society.Conflict.CarryTally;
+                    if (ct != null) { ct[0]++; ct[1] += q; ct[2]++; ct[14]++; ct[15] += q; }   // (tools: a lived load, by sea)
+                    return;
+                }
                 default:
                     if (p.Cargo == None || p.CargoQty <= 0f) return;
                     Exchange(ref p, at, BoatLoadKg);
@@ -917,6 +964,16 @@ namespace TC2.Core.Places
                     if (p.CargoQty > 0f && w.Settlements.Exists(p.Home)) Unload(ref p, p.Home);
                     p.Cargo = None; p.CargoQty = (float)bk.Qty; p.CargoTo = ToFetch;
                     return 1;   // (nothing aboard going out)
+                case ForTenth:
+                {
+                    // the lord's boat sent for the tenth (C9.5a): while the village still pays it and some of it stands set aside; nothing aboard going out
+                    if (!w.Settlements.Exists(bk.To)) return 0;
+                    ref var t = ref w.Settlements.Get(bk.To);
+                    if (t.Lord != sid || t.TributeDue < 1.0) return 0;
+                    if (p.CargoQty > 0f && w.Settlements.Exists(p.Home)) Unload(ref p, p.Home);
+                    p.Cargo = None; p.CargoQty = (float)bk.Qty; p.CargoTo = ToTenth;
+                    return 1;
+                }
             }
             return 0;
         }

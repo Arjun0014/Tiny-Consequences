@@ -271,8 +271,12 @@ namespace TC2.Core.History
                         string what = p.CargoTo == TC2.Core.Places.Trade.AsGift ? " with grain for its famine" :
                                       p.CargoTo == TC2.Core.Places.Trade.AsReturn ? " with grain given back for what " + other + " gave in famine" :
                                       p.CargoTo == TC2.Core.Places.Trade.ToFetch ? " to fetch the grain " + other + " owes " + home :
+                                      p.CargoTo == TC2.Core.Places.Trade.ToLord && p.CargoQty > 0f ? " with " + Load(p.Cargo, p.CargoQty) + ", the tenth " + home + " pays " + other :   // (C9.5a)
+                                      p.CargoTo == TC2.Core.Places.Trade.ToTenth ? " to fetch the tenth " + other + " has set aside for " + home :
                                       p.CargoQty > 0f ? " with " + Load(p.Cargo, p.CargoQty) + " to trade: " + home + " spares it and they want it" : "";
-                        if (p.Step == StepKind.Travel && p.Dest == p.Home) return "rowing home to " + home + " over the sea in the household's boat" + (p.CargoQty > 0f ? " with " + Load(p.Cargo, p.CargoQty) : "");
+                        if (p.Step == StepKind.Travel && p.Dest == p.Home)
+                            return "rowing home to " + home + " over the sea in the household's boat" + (p.CargoQty > 0f ? " with " + Load(p.Cargo, p.CargoQty) : "") +
+                                   (p.CargoTo == TC2.Core.Places.Trade.TenthAboard && p.CargoQty > 0f ? ", the tenth a tributary paid " + home : "");
                         if (p.Step == StepKind.Travel) return "rowing over the sea to " + other + " in the household's boat" + what;
                         return "down at " + home + "'s landing with the household's boat: it puts out for " + other + what;
                     }

@@ -993,7 +993,8 @@ namespace TC2.Headless
                     if (ct != null)   // (C10.6: the lord's tenth carried to its store)
                         Console.WriteLine("carried: set aside " + F(ct[3], "0") + " FU; loads " + ct[0] + " (lived " + ct[2] + "), " + F(ct[1], "0") + " FU (by cart " + F(ct[5], "0") + "), carriers' km " + F(ct[6], "0") +
                                           "; given back at a bond's end " + F(ct[4], "0") + " FU, a year uncarried " + F(ct[7], "0") + " FU; tenths not set aside (no way on foot to the lord) " + ct[8] + ", " + F(ct[9], "0") + " FU" +
-                                          " (a way by sea between their landings " + ct[10] + ", " + F(ct[13], "0") + " FU; the tributary with plank boats " + ct[11] + ", the lord " + ct[12] + "); by sea " + ct[14] + " loads, " + F(ct[15], "0") + " FU");
+                                          " (a way by sea between their landings " + ct[10] + ", " + F(ct[13], "0") + " FU; the tributary with plank boats " + ct[11] + ", the lord " + ct[12] + "); by sea " + ct[14] + " loads, " + F(ct[15], "0") + " FU" +
+                                          " (fetched home in the lord's boats " + ct[16] + " loads, " + F(ct[17], "0") + " FU)");
                     var at = TC2.Core.Places.Trade.AcrossTally;
                     if (at != null)   // (C9.5 survey)
                         Console.WriteLine("across: between villages within a day's walk no way on foot joins - relief " + at[0] + " gifts, " + F(at[1], "0") + " FU; given back " + at[2] + ", " +
