@@ -193,8 +193,8 @@ namespace TC2.Game
                     w.AdvanceTo(w.Now + SimTime.Hour, ref b);
                     for (int o = w.Settlements.First(); o != 0 && !due; o = w.Settlements.Next(o))
                     {
-                        ref var so = ref w.Settlements.Get(o);
-                        if (so.Lord != 0 && (o == sid || so.Lord == sid) && so.TributeDue >= 1.0) due = true;
+                        int lordOf = w.Settlements.Get(o).Lord;   // (no ref locals in a coroutine)
+                        if (lordOf != 0 && (o == sid || lordOf == sid) && w.Settlements.Get(o).TributeDue >= 1.0) due = true;
                     }
                 }
                 long loc3 = w.LocalOffsetOf(sid);
