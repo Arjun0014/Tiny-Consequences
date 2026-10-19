@@ -746,14 +746,14 @@ namespace TC2.Core.Society
             if (adults == 0) return;
             int near = 0;
             for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
-                if (o != sid && w.Settlements.Get(o).Inhabited && Vec3d.ArcDistance(s.Anchor, w.Settlements.Get(o).Anchor, w.Planet.Radius) <= 6000) near++;
+                if (o != sid && w.Settlements.Get(o).Inhabited && TC2.Core.Health.Disease.Visited(w, sid, o, Vec3d.ArcDistance(s.Anchor, w.Settlements.Get(o).Anchor, w.Planet.Radius))) near++;   // (along a way on foot: C9.5c)
             if (near == 0) return;
             double expect = adults * TC2.Core.Health.Disease.VisitsPerAdultDay * days / near;   // (DEEP: the step's visits)
             for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
             {
                 if (o == sid || !w.Settlements.Get(o).Inhabited) continue;
                 ref var t = ref w.Settlements.Get(o);
-                if (Vec3d.ArcDistance(s.Anchor, t.Anchor, w.Planet.Radius) > 6000) continue;
+                if (!TC2.Core.Health.Disease.Visited(w, sid, o, Vec3d.ArcDistance(s.Anchor, t.Anchor, w.Planet.Radius))) continue;
                 if (KeyedRng.Unit(w.Seed, RngStream.Society, (ulong)sid, (ulong)now, (ulong)(40 + o)) < 1.0 - DMath.Exp(-expect))
                 {
                     w.DeedBook.Meet(sid, o);
