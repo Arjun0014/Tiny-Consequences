@@ -40,7 +40,7 @@ namespace TC2.Tests.Core
                         for (int q = 0; q < 8; q++) { int nb = P.Grid.Nbr8[c * 8 + q]; if (P.IsLand(nb)) P.Elev[nb] = (float)(P.SeaLevel - 20.0); }
                         P.CoastVersion++;   // (the ways by sea are found again)
                         w.Routes.Invalidate();
-                        if (w.Routes.Get(w, s1, s2) != null || w.SeaRoutes.Get(w, s1, s2) == null) return null;
+                        if (w.Routes.Get(w, s1, s2) != null || w.SeaRoutes.Get(w, s1, s2) == null) { a = b = 0; return null; }
                         a = s1; b = s2;
                         return w;
                     }
