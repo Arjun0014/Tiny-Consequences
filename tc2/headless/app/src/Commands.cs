@@ -229,6 +229,8 @@ namespace TC2.Headless
             if (a.Has("mighttally")) TC2.Core.Society.Conflict.MightTally = new double[14];   // (C10.5: each weighing by the old count and by might)
             if (a.Has("oldmightarms")) TC2.Core.Society.Conflict.MightArmsOff = true;   // (C10.7a off: might counts people of fighting age by heads, as C10.5 weighed them)
             if (a.Has("armstally")) TC2.Core.Society.Conflict.ArmsTally = new double[12];   // (C10.7a: each weighing by heads and by lasting strength)
+            if (a.Has("oldsworn")) TC2.Core.Society.Retinue.Off = true;   // (C10.7b off: nobody is sworn to a first household)
+            if (a.Has("sworntally")) TC2.Core.Society.Retinue.Tally = new double[TC2.Core.Society.Retinue.TallyN];   // (C10.7b: men sworn and released, fed, their practice and bands)
             if (a.Has("oldways")) TC2.Core.Agents.RouteCache.LiveForest = true;   // (D2-160 off: routes from the woods as they are when built)
             if (a.Has("oldtribute")) TC2.Core.Society.Conflict.CarryOff = true;   // (C10.6 off: the tenth into the lord's store at the harvest, carried by nobody)
             if (a.Has("carrytally")) TC2.Core.Society.Conflict.CarryTally = new double[TC2.Core.Society.Conflict.CarryTallyN];   // (C10.6: loads carried, FU, lived, set aside, given back, by cart, km, a year uncarried, no way on foot; by sea)
@@ -997,6 +999,16 @@ namespace TC2.Headless
                     if (armt != null)   // (C10.7a: each weighing of the stronger - weighed, carried by heads, carried by lasting strength, by both)
                         Console.WriteLine("arms: bowing to raiders weighed " + armt[0] + " (by heads " + armt[1] + ", by lasting strength " + armt[2] + ", both " + armt[3] + "); bowing for bread " + armt[4] + " (" + armt[5] + ", " + armt[6] + ", " + armt[7] +
                                           "); a lord no longer the stronger " + armt[8] + " (" + armt[9] + ", " + armt[10] + ", " + armt[11] + ")");
+                    var swt = TC2.Core.Society.Retinue.Tally;
+                    if (swt != null)   // (C10.7b: men sworn to their villages' first households)
+                    {
+                        int swornNow = 0, keeping = 0;
+                        for (int ps = w.People.First(); ps != 0; ps = w.People.Next(ps)) { ref var pq = ref w.People.Get(ps); if (pq.Alive && TC2.Core.Society.Retinue.SwornHere(w, in pq)) swornNow++; }
+                        for (int ks = w.Settlements.First(); ks != 0; ks = w.Settlements.Next(ks)) if (w.Settlements.Get(ks).Inhabited && TC2.Core.Society.Retinue.Count(w, ks) > 0) keeping++;
+                        Console.WriteLine("sworn: men sworn " + swt[0] + "; released - the grain short " + swt[1] + ", their household no longer first " + swt[2] + ", past forty " + swt[3] + ", gone to another village " + swt[4] +
+                                          "; fed " + F(swt[5], "0") + " FU (" + F(swt[6], "0") + " man-years); their practice " + F(swt[7], "0") + " h; bands with sworn men " + swt[8] + " (sworn men in them " + swt[9] +
+                                          "); village-harvests keeping men " + swt[10] + ", the most sworn to one household " + swt[11] + "; sworn now " + swornNow + " in " + keeping + " villages");
+                    }
                     var ct = TC2.Core.Society.Conflict.CarryTally;
                     if (ct != null)   // (C10.6: the lord's tenth carried to its store)
                         Console.WriteLine("carried: set aside " + F(ct[3], "0") + " FU; loads " + ct[0] + " (lived " + ct[2] + "), " + F(ct[1], "0") + " FU (by cart " + F(ct[5], "0") + "), carriers' km " + F(ct[6], "0") +

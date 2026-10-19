@@ -204,6 +204,7 @@ namespace TC2.Core.History
             if (p.SkWood >= 0.6f) r.Add("a woodcutter and builder");
             if (p.SkPot >= 0.3f) r.Add(home != 0 && w.Settlements.Exists(home) && Pottery.Kiln(w, home) != 0 && Pottery.Maker(in w.Settlements.Get(home), in p, w.Now) ? "a potter at the kiln" : "a potter");   // (from their hours at a kiln - before, everyone who could fire a pot: C3.2)
             if (p.SkCraft >= 0.3f) r.Add(home != 0 && w.Settlements.Exists(home) && Weaving.Shed(w, home) != 0 && Weaving.Maker(in w.Settlements.Get(home), in p, w.Now) ? "a weaver at the weaver's shed" : "a weaver");   // (from their hours at a shed: C3.1)
+            if (Society.Retinue.SwornHere(w, in p)) r.Add("sworn to the " + HistoryText.Plural(w.History.NameOf(EntityRef.Household(p.Sworn))) + ", first among the people of " + Place(w, p.Home) + ", who feed him");   // (C10.7b)
             if (p.SkFight >= 0.3f) r.Add(p.Fights > 0 ? "a fighter who has fought" : "a trained fighter");
             return string.Join(", ", r);
         }

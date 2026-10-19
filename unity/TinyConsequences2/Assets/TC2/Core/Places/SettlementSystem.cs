@@ -688,6 +688,7 @@ namespace TC2.Core.Places
                 long hev = w.Record(new HistoryEvent { Kind = HistoryKind.Harvest, Time = w.Now, Cell = s.FieldCell, Settlement = s.Id, Subject = EntityRef.Settlement(s.Id), Magnitude = (float)yield });
                 Structures.AfterHarvest(w, s.Id, hev);   // (an overfilled store wants another granary: C1.1)
                 w.Conflict.Harvested(s.Id, yield);   // (a tributary pays its lord: D2-075)
+                TC2.Core.Society.Retinue.Harvest(w, s.Id, hev);   // (its first household's sworn men weighed, sworn, released and fed: C10.7b)
                 if (s.ExpectedHarvest > 0 && yield < 0.5 * s.ExpectedHarvest)
                 {
                     w.Record(new HistoryEvent

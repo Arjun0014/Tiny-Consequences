@@ -840,17 +840,28 @@ namespace TC2.Core.Society
             if (!t.Inhabited || Vec3d.ArcDistance(s.Anchor, t.Anchor, w.Planet.Radius) > 6000 || w.Routes.Get(w, sid, target) == null) return;
             int leader = Boldest(sid, now, target);
             if (leader == 0) return;
-            // who goes with them: each decides
+            // who goes with them: each decides - and the men sworn to its first household go, beyond the band's own count (C10.7b)
             _band.Clear();
             _band.Add(leader);
             ref var L = ref w.People.Get(leader);
-            for (int i = 0; i < res.Count && _band.Count < BandAtMost; i++)
+            int swornIn = Retinue.SwornHere(w, in L) ? 1 : 0;   // (the leader one of them)
+            if (!Retinue.Off)
+                for (int i = 0; i < res.Count && _band.Count < CallAtMost; i++)
+                {
+                    int pid = res[i];
+                    if (pid == leader) continue;
+                    ref var q = ref w.People.Get(pid);
+                    if (!Retinue.SwornHere(w, in q) || !Fit(in q, now) || q.Band != 0 || KinIn(in q, target)) continue;
+                    _band.Add(pid); swornIn++;
+                }
+            for (int i = 0; i < res.Count && _band.Count - swornIn < BandAtMost; i++)
             {
                 int pid = res[i];
                 if (pid == leader) continue;
                 ref var q = ref w.People.Get(pid);
                 if (!Fit(in q, now) || q.AgeYears(now) >= 50 || q.PregDue != 0 || (q.NursingUntil != 0 && q.NursingUntil - now > SimTime.Year / 2) || q.Band != 0) continue;
                 if (KinIn(in q, target)) continue;   // (not against their own kin)
+                if (Retinue.SwornHere(w, in q)) continue;   // (gone already, or kept from it)
                 bool kin = q.Mother == leader || q.Father == leader || L.Mother == pid || L.Father == pid || q.Partner == leader || (q.Mother != 0 && q.Mother == L.Mother);
                 double join = (0.15 + 0.7 * q.Bold / 255.0) * (kin ? 1.5 : 1.0) * (motive != 0 ? 1.0 : (q.Nutrition < HungryBelow ? 1.0 : 0.3));
                 if (KeyedRng.Unit(w.Seed, RngStream.Society, (ulong)pid, (ulong)now, 51) < join) _band.Add(pid);
@@ -894,6 +905,7 @@ namespace TC2.Core.Society
                 Other = forT != 0 ? EntityRef.Settlement(forT) : default, Cause1 = cause, Rel1 = CauseRel.InResponseTo, ArgA = _band.Count, ArgB = motive, RootKind = RootKind.People,
             });
             w.Bands.Add(id, new Band { Id = id, Origin = sid, Target = target, Leader = leader, Size = (byte)_band.Count, Motive = motive, Formed = now, Arrive = arrive, Event = ev, Called = (byte)(_callers.Count / 2), For = forT });
+            if (swornIn > 0 && Retinue.Tally != null) { Retinue.Tally[8] += 1; Retinue.Tally[9] += swornIn; }   // (tools: C10.7b)
             for (int i = 0; i < _band.Count; i++) w.People.Get(_band[i]).Band = id;
             w.Metrics.Bands++;
             if (motive == 2) w.Metrics.LordsAnswered++;

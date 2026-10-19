@@ -70,6 +70,12 @@ namespace TC2.Core.History
                   .Append(" (").Append(kin).Append(" of kin, ").Append(owing).Append(" owing them grain, ").Append(fed).Append(" fed by them or lent to lately)");
                 if (s.Head != 0 && w.People.Exists(s.Head)) sb.Append("; first among its people ").Append(w.History.NameOf(EntityRef.Person(s.Head))).Append(", ").Append(F(w.People.Get(s.Head).AgeYears(w.Now), "0")).Append(", since ").Append(Year(s.HeadSince));
                 sb.Append(".\n");
+                // its sworn men (C10.7b): fed from the first household's grain - a lord's from its tribute
+                int sworn = Society.Retinue.Count(w, sid);
+                if (sworn > 0)
+                    sb.Append(sworn).Append(sworn == 1 ? " man is" : " men are").Append(" sworn to the ").Append(HistoryText.Plural(w.History.NameOf(EntityRef.Household(s.HeadHh))))
+                      .Append(", fed from their grain").Append(w.Conflict.PolitySize(sid) > 0 ? " - the tribute of the villages that pay it" : "")
+                      .Append(": they practise arms at its ground every day and go with its bands.\n");
             }
             {
                 // its splits (C10.3): factions that would not follow a new first and left to found villages of their own
