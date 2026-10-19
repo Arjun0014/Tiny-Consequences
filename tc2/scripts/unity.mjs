@@ -1,5 +1,5 @@
 // Runs the Unity 6.6 editor in batchmode for TC2 (one Unity process at a time: 11 GB RAM).
-// Usage: node tc2/scripts/unity.mjs <cc|configure|test|hashtest|build-web|build-win|method NAME> [--dev] [--threads] [--webgl2] [--out PATH]
+// Usage: node tc2/scripts/unity.mjs <cc [--src DIR]|configure|test|hashtest|build-web|build-win|method NAME> [--dev] [--threads] [--webgl2] [--out PATH]
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -45,10 +45,15 @@ function tail(file, pattern) {
 // A compile check without the editor (session 17): Unity's generated csproj files list the sources it knew when it last ran and reference
 // its DLLs; copies in tc2/out/cc take every .cs under each asmdef's folder (as Unity compiles them), the same references and defines, no
 // analyzers, and are built with the editor's own dotnet (~0.5 GB, half a minute, against the editor's several GB). Shaders are not checked.
+// `--src DIR` compiles the sources of another checkout's Unity project (a worktree: DIR its unity/TinyConsequences2) against this checkout's
+// generated csproj files and references - a worktree has no Library of its own (session 23: a landing branch's Game code checked before it lands).
 function compileCheck() {
   const dotnet = path.join(path.dirname(unity), 'Data', 'DotNetSdk', 'dotnet.exe');
   const cc = path.join(outDir, 'cc').replace(/\\/g, '/');
   const proj = project.replace(/\\/g, '/');
+  const src = path.resolve(opt('--src', project)).replace(/\\/g, '/');
+  if (!existsSync(path.join(src, 'Assets', 'TC2'))) { console.log('no Assets/TC2 under ' + src); return 1; }
+  if (src !== proj) console.log('sources from ' + src);
   mkdirSync(cc, { recursive: true });
   const projects = { Core: ['TC2.Core.csproj', 'Assets/TC2/Core'], Game: ['TC2.Game.csproj', 'Assets/TC2/Game'], Editor: ['TC2.Editor.csproj', 'Assets/TC2/Editor'], Tests: ['TC2.Tests.Core.csproj', 'Assets/TC2/Tests/Core'] };
   for (const [name, [src, folder]] of Object.entries(projects)) {
@@ -58,7 +63,7 @@ function compileCheck() {
     s = s.replace(/<BaseIntermediateOutputPath>.*?<\/BaseIntermediateOutputPath>/, `<BaseIntermediateOutputPath>${cc}/obj/${name}/</BaseIntermediateOutputPath>`);
     s = s.replace(/<OutputPath>.*?<\/OutputPath>/, `<OutputPath>${cc}/bin/</OutputPath>`);
     s = s.replace(/\s*<Analyzer Include="[^"]*" \/>/g, '');
-    s = s.replace(/<ItemGroup>\s*(<Compile Include="[^"]*" \/>\s*)+<\/ItemGroup>/, `<ItemGroup>\n    <Compile Include="${proj}/${folder}/**/*.cs" />\n  </ItemGroup>`);
+    s = s.replace(/<ItemGroup>\s*(<Compile Include="[^"]*" \/>\s*)+<\/ItemGroup>/, `<ItemGroup>\n    <Compile Include="${src}/${folder}/**/*.cs" />\n  </ItemGroup>`);
     s = s.replace(/\s*<None Include="[^"]*" \/>/g, '');
     s = s.replace(/<HintPath>(?![A-Za-z]:)([^<]*)<\/HintPath>/g, (m, rel) => `<HintPath>${proj}/${rel.replace(/\\/g, '/')}</HintPath>`);
     s = s.replace(/<ProjectReference Include="TC2\.Core\.csproj" \/>/, '<ProjectReference Include="Core.csproj" />');
