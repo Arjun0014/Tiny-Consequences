@@ -7,8 +7,9 @@ namespace TC2.Game
 {
     /// <summary>
     /// The realms map layer (D2-167: the polity map layer the C10.6 shots asked for - a standard reads only up close, `10` §12h). With it on, the land
-    /// each village of a lordship works - its fields (`PlanetState.FieldOwner`) and its built ground - is washed on the ground in its realm's colour, the
-    /// lord's seat more strongly than its tributaries (`TerrainLod`, `Terrain.shader`), with a line along the edge of the washed land; and chevrons in that
+    /// each village of a lordship works - its fields (`PlanetState.FieldOwner`) and its built ground - is washed on the ground in its realm's colour (the
+    /// map's brighter dye: `WorldObjectsView.PolityMapColour`), the lord's seat more strongly than its tributaries, with a band of that colour a few
+    /// pixels wide along the edge of the land, fading out as the camera comes within a few hundred metres (`TerrainLod`, `Terrain.shader`); and chevrons in that
     /// colour run from each tributary toward its own lord along the way its tenth is carried (C10.6: the way on foot; over the water, where no way on foot
     /// runs, straight), drifting toward the lord. A village that pays nobody and is paid by nobody is left as it is. Every mark is real state: the bonds
     /// (`Settlement.Lord`, `Conflict.Root`), the land a village works, the colours of the standards (D2-152). A map layer the player turns on and off (the
@@ -25,8 +26,9 @@ namespace TC2.Game
         /// abandoned): `TerrainLod` recolours its patches when it does.</summary>
         public static int Version;
 
-        /// <summary>How strongly a realm's colour washes its lord's seat's land and its tributaries' (the realm's alpha in the terrain's wash).</summary>
-        const float SeatWash = 0.85f, MemberWash = 0.62f;
+        /// <summary>How strongly a realm's colour fills its lord's seat's land and its tributaries' (the alpha of `WashOf`'s colour; the terrain's border
+        /// band is drawn alike for both).</summary>
+        const float SeatWash = 1.0f, MemberWash = 0.6f;
         /// <summary>A chevron's length as a share of its distance from the camera (~16 px tall on a 900-px screen at any distance), its least and most
         /// (m); none nearer than `NearestM` - up close the standards and the carriers tell the bond.</summary>
         const float ChevronK = 0.018f, ChevronMin = 14f, ChevronMax = 420f, NearestM = 450f;
@@ -121,7 +123,7 @@ namespace TC2.Game
                 bool pays = s.Lord != 0 && w.Settlements.Exists(s.Lord) && w.Settlements.Get(s.Lord).Inhabited;
                 int held = pays ? 0 : C.PolitySize(sid);
                 if (!pays && held == 0) continue;
-                Color col = WorldObjectsView.PolityColour(w, sid);
+                Color col = WorldObjectsView.PolityMapColour(w, sid);   // (the realm's dye as the map draws it - brighter than the standard's cloth)
                 col.a = pays ? MemberWash : SeatWash;
                 _wash[sid] = col;
                 if (!pays)

@@ -632,11 +632,82 @@ namespace TC2.Game
             new Color(0.88f, 0.35f, 0.62f), new Color(0.55f, 0.08f, 0.25f),
         };
 
-        /// <summary>A village's polity's colour: its lordship's head's (its own when it pays nobody), by that village's number.</summary>
-        public static Color PolityColour(TC2.Core.Simulation.World w, int sid)
+        /// <summary>The same dyes as the realms map layer draws them on the ground (D2-167): brighter and fuller, so that a realm's land reads as its
+        /// colour over fields of any crop and does not pass for ripe grain or bare earth; one for one with `Heraldry`.</summary>
+        static readonly Color[] HeraldryMap =
         {
-            int root = w.Conflict.Root(sid);
-            return Heraldry[(int)(KeyedRng.Mix((ulong)root * 0x9E3779B97F4A7C15UL ^ 0xBA22E7) % (ulong)Heraldry.Length)];
+            new Color(0.95f, 0.18f, 0.15f), new Color(0.22f, 0.40f, 1.00f), new Color(0.30f, 0.82f, 1.00f), new Color(1.00f, 0.84f, 0.08f),
+            new Color(0.74f, 0.30f, 0.95f), new Color(0.97f, 0.97f, 0.95f), new Color(0.12f, 0.12f, 0.16f), new Color(1.00f, 0.52f, 0.08f),
+            new Color(1.00f, 0.42f, 0.78f), new Color(0.86f, 0.12f, 0.42f),
+        };
+
+        /// <summary>A village's polity's colour: its lordship's head's (its own when it pays nobody) - the head's own dye by its number, unless an
+        /// older realm within 9 km flies it (D2-167: two realms side by side in one colour read as one).</summary>
+        public static Color PolityColour(TC2.Core.Simulation.World w, int sid) => Heraldry[Dye(w, w.Conflict.Root(sid))];
+
+        /// <summary>The polity's colour as the realms map layer draws it on the ground (D2-167).</summary>
+        public static Color PolityMapColour(TC2.Core.Simulation.World w, int sid) => HeraldryMap[Dye(w, w.Conflict.Root(sid))];
+
+        // the dye of each realm's head now, refreshed when a village's bond is made or ends (checked every thirty frames: a signature of every village's lord)
+        static readonly Dictionary<int, int> _dye = new Dictionary<int, int>();
+        static readonly List<(long since, int sid)> _realmHeads = new List<(long, int)>();
+        static long _dyeSig = long.MinValue;
+        static int _dyeFrame = int.MinValue;
+        static TC2.Core.Simulation.World _dyeWorld;
+
+        static int OwnDye(int root) => (int)(KeyedRng.Mix((ulong)root * 0x9E3779B97F4A7C15UL ^ 0xBA22E7) % (ulong)Heraldry.Length);
+
+        static int Dye(TC2.Core.Simulation.World w, int root)
+        {
+            if (w != _dyeWorld || Time.frameCount - _dyeFrame >= 30 || Time.frameCount < _dyeFrame) { _dyeFrame = Time.frameCount; RefreshDyes(w); }
+            return _dye.TryGetValue(root, out int k) ? k : OwnDye(root);
+        }
+
+        /// <summary>
+        /// The realms' dyes (D2-167): the heads of the realms now - villages whose own lord is nobody (or gone) that some village pays - in the order their
+        /// realms began (the oldest bond still held in each, then the head's number); each takes its own dye by its number unless a realm before it within
+        /// 9 km has it, then the next of its dyes (in steps of three, through all ten) none of those has. A realm's colour changes only when an older
+        /// neighbour of the same colour ends; a village in no realm flies its own.
+        /// </summary>
+        static void RefreshDyes(TC2.Core.Simulation.World w)
+        {
+            long sig = 17;
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                ref var s = ref w.Settlements.Get(sid);
+                if (s.Inhabited) sig = sig * 1000003L + sid * 31L + s.Lord;
+            }
+            if (sig == _dyeSig && w == _dyeWorld) return;
+            _dyeSig = sig; _dyeWorld = w;
+            _dye.Clear(); _realmHeads.Clear();
+            var C = w.Conflict;
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                if (!w.Settlements.Get(sid).Inhabited || C.Root(sid) != sid || C.PolitySize(sid) == 0) continue;
+                long since = long.MaxValue;
+                for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
+                {
+                    ref var so = ref w.Settlements.Get(o);
+                    if (o != sid && so.Inhabited && so.Lord != 0 && C.Root(o) == sid && so.LordSince < since) since = so.LordSince;
+                }
+                _realmHeads.Add((since, sid));
+            }
+            _realmHeads.Sort();
+            var P = w.Planet;
+            for (int i = 0; i < _realmHeads.Count; i++)
+            {
+                int h = _realmHeads[i].sid, own = OwnDye(h), pick = own;
+                var at = w.Settlements.Get(h).Anchor;
+                for (int t = 0; t < Heraldry.Length; t++)
+                {
+                    int k = (own + 3 * t) % Heraldry.Length;
+                    bool taken = false;
+                    for (int j = 0; j < i && !taken; j++)
+                        if (_dye[_realmHeads[j].sid] == k && Vec3d.ArcDistance(at, w.Settlements.Get(_realmHeads[j].sid).Anchor, P.Radius) < 9000.0) taken = true;
+                    if (!taken) { pick = k; break; }
+                }
+                _dye[h] = pick;
+            }
         }
 
         /// <summary>The most a standard is enlarged with the camera's distance (life-size within 900 m, the village's own objects at most 1.6x) - real state
