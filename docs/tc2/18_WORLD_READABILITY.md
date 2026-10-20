@@ -210,6 +210,8 @@ just inside the land's edge at every view (measured by the weight's own derivati
 standards and the carriers tell the bond; chevrons in the realm's colour run from each tributary toward its own lord along the way its tenth is
 carried (straight over water); a legend lists each head of a lordship with the villages that pay it and their people. The map's dyes are the
 standards', drawn brighter (`WorldObjectsView.HeraldryMap`: over fields the standards' gold read as ripe grain and the dark dyes as bare earth), and
-no two realms fly one colour while there are dyes for all. Every mark is real state - the land worked, who pays whom, the way the tenth goes; no
-border is drawn where no bond is. Judged in two rounds of real shots (`s24r3`/`s24r8` found the first look's faults; `s24s3`/`s24s8` read at the
-region and orbit views).
+a realm takes only dyes that cannot pass for the land's own colours (`MapSafe`): never white or black (snow or salt, burnt ground), no sky blue
+(magenta in its place), azure drawn blue-violet (a blue wash reads as a lake) - eight dyes, and no two realms fly one colour while there are dyes for
+all. Every mark is real state - the land worked, who pays whom, the way the tenth goes; no border is drawn where no bond is. Judged in real shots
+(`s24r3`/`s24r8` found the first look's faults; `s24s3`/`s24s8` read at the region and orbit views; `s24t`, a year-900 overkingship, found a sky-blue
+realm reading as lakes and a white one as a salt flat).
