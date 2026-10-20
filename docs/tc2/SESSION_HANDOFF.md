@@ -2,6 +2,26 @@
 
 ## Session 24, second context (21 Oct 2026, from 01:45 IST; Control Room run #73 session 2) - C10.7a, C10.7b, C9.5c LANDED on main; the job queue RUNNING
 
+### Update at ~04:30 - the landing checks passed; the realms layer's dyes fixed twice from real shots; a browser OOM under investigation
+- **Landing checks (all passed)**: `0_a` bin_m5 (main e191331) floatcheck clean, `cc` ok, seed 2's `_m5` = `_i2` byte for byte (state hash 56fb1fe012804dd3);
+  `0_b` **full suite 441 passed, 0 failed, 0 skipped**; `0_d` **Web `s24web1` 6/6** (built at e191331 in 22.5 min; Mono = dotnet hash parts; browser =
+  headless; reload continues; a day away catches up 96 years) - its frame rates are about half of `s23web4`'s in every view (orbit 56 against 120), the
+  machine loaded by other sessions (CPU 65 %): not evidence of a regression.
+- **Shots judged**: `s24p` sworn men at practice at Vaildwick's ground (nine drilling, its afternoon) - reads; `s24q` Vaildwick's orange realm at year 300 -
+  reads; **`s24t` (the year-900 overkingship) found the sky-blue realm reading as lakes and lagoons, the white one as a salt flat** -> realms take only
+  ground-safe dyes (`MapSafe`: never argent/sable; magenta for the sky blue; azure blue-violet on the map: wip/realms ed74cb0, main e210eca); **`s24u`
+  then found magenta beside rose reading as one realm** -> realms seen together at least 60 delta E apart (`DyeDelta`, `DyesApart`: c806b27, main
+  9d7c796); `s24v`: magenta, orange, crimson read as three realms. Preview tool `tc2/out/tools/s24/dye_preview.py` (the shader's wash on a screenshot).
+- **The realms layer's frame cost** (new tool `tc2/scripts/realmsperf.mjs`: a headless save injected into the game's IndexedDB as saved now, paused;
+  paired off/on frame counts by requestAnimationFrame): year 300 (5,991 people) region x0.998, orbit x1.003, village x1.038; year 900 region x0.981, orbit
+  x1.010 - **no measurable cost**. But absolute rates of great worlds are low (region 8-11 fps, village 5-7 fps on the loaded machine; `s23web4`'s 569-person
+  world 24 fps at the village view): a performance gap of mature worlds in the browser, older than this session.
+- **A browser OOM** (`s24perf900`): the year-900 world (9,532 people, 21 MB save, managed heap 238 MB headless) aborted on OOM (`abortOnCannotGrowMemory`,
+  the 2 GB ceiling; `02` budgets 1 GB) at the village view after ~30 toggles of the layer across three views; with no toggling (`0_h` a) every view including
+  close survived, and 30 toggles at one view (`0_h` b) too - but `0_h` read the heap as -1 (the framework exports `Module.HEAPU32`, not `HEAPU8`; webtest's
+  `--export` trace was blind the same way - both fixed). `0_i_heap2` (queued) traces the heap for the views and for the sequence that aborted.
+- **The profile** (`6_c`): sworn men and might by lasting strength cost nothing measurable (40.4 s against 40.0 s for 30 COARSE years; in `d2165.md`).
+
 ### Exact state (21 Oct ~02:55)
 - **main** = 0e84d21: the landing merge 3b236ee (`wip/s23b-int` ca25d71: C10.7a, C10.7b, C9.5c; **sim version 90**), the tools merge 3bf3d44
   (`wip/s24-tools` 8bf5141: `lordships --heads --margins --could --wrongs`), docs `18` §9 (D2-167) and `10` §12h. Not ours: `.claude/launch.json`

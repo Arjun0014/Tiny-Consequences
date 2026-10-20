@@ -4,7 +4,9 @@
 // could win); then at each view the frames the browser draws are counted (requestAnimationFrame over a window) with the layer off and on, in
 // alternating pairs, so the machine's load drifts across both alike. The paired ratio is the measure; the absolute rate is the machine's.
 // Usage: node tc2/scripts/realmsperf.mjs --save F.tc2 --lat DEG --lon DEG [--views region:6000,orbit:22000,village:1400] [--pairs 5]
-//        [--settle 2500] [--window 2500] [--tag NAME] [--webgl2]
+//        [--settle 2500] [--window 2500] [--toggles N] [--tag NAME] [--webgl2]
+// The wasm heap (MB; it only grows) is traced after the load, at each view and pair: --pairs 0 takes the views with the layer off only (what the
+// world and its views hold); --toggles N first turns the layer on and off N times at the first view (does turning it leak?).
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -24,6 +26,7 @@ if (!savePath || !fs.existsSync(savePath) || !Number.isFinite(lat) || !Number.is
 }
 const views = opt('--views', 'region:6000,orbit:22000,village:1400').split(',').map((v) => { const [n, d] = v.split(':'); return { name: n, dist: Number(d) }; });
 const pairs = Number(opt('--pairs', '5'));
+const toggles = Number(opt('--toggles', '0'));
 const settle = Number(opt('--settle', '2500'));
 const windowMs = Number(opt('--window', '2500'));
 const tag = opt('--tag', 'realmsperf');
@@ -83,6 +86,23 @@ try {
   if (String(s0.seed) !== seed.toString() || s0.catchingUp) throw new Error('the game did not load the save as saved');
   report.loaded = { year: s0.year, people: s0.people, places: s0.places, gfx: s0.gfx };
   const cmd = (c) => page.evaluate((x) => { (window.__TC2_CMDS = window.__TC2_CMDS || []).push(x); }, c);
+  // the wasm heap in MB (Unity's instance; it grows and never shrinks), and whether the page has failed
+  const heapMb = () => page.evaluate(() => { try { const M = window.__TC2_INSTANCE && window.__TC2_INSTANCE.Module; const b = M && (M.HEAPU8 || M.HEAP8 || M.HEAPU32 || M.HEAP32 || M.HEAPF32); return b ? Math.round(b.buffer.byteLength / 1048576) : -1; } catch (e) { return -1; } });
+  const failed = () => consoleLines.some((l) => l.startsWith('[pageerror]') || l.includes('abort("OOM")'));
+  report.heap = [{ at: 'loaded', mb: await heapMb() }];
+  const traceHeap = async (at) => { const mb = await heapMb(); report.heap.push({ at, mb }); console.log(`heap ${mb} MB (${at})${failed() ? ' - THE PAGE HAS FAILED' : ''}`); };
+  await traceHeap('loaded');
+  if (toggles > 0 && views.length > 0) {
+    // the layer turned on and off at the first view, as a player pressing R
+    await cmd(`look ${lat} ${lon} ${views[0].dist}`);
+    await page.waitForTimeout(settle * 2);
+    await traceHeap(`${views[0].name}, before turning`);
+    for (let i = 1; i <= toggles; i++) {
+      await cmd('on realms'); await page.waitForTimeout(1000);
+      await cmd('off realms'); await page.waitForTimeout(1000);
+      if (i % 5 === 0 || i === toggles) await traceHeap(`${views[0].name}, turned on and off ${i} times`);
+    }
+  }
   // frames the browser draws in a window (the game renders on the animation frame)
   const fps = () => page.evaluate((ms) => new Promise((res) => {
     let n = 0; const t0 = performance.now();
@@ -93,6 +113,12 @@ try {
     await cmd(`look ${lat} ${lon} ${v.dist}`);
     await cmd('off realms');
     await page.waitForTimeout(settle * 2);   // (the view's patches and meshes come up)
+    await traceHeap(`${v.name}, the layer off`);
+    if (pairs <= 0) {
+      report.views.push({ view: v.name, dist: v.dist, fpsOff: await fps() });
+      await page.screenshot({ path: path.join(outDir, `${v.name}_plain.png`) });
+      continue;
+    }
     const off = [], on = [], ratio = [];
     for (let i = 0; i < pairs; i++) {
       // alternate which goes first, so a drift in the machine's load falls on both alike
@@ -105,6 +131,8 @@ try {
       }
       off.push(got.off); on.push(got.on); ratio.push(got.on / got.off);
       console.log(`${v.name} pair ${i + 1}: off ${got.off.toFixed(1)} fps, on ${got.on.toFixed(1)} fps (x${(got.on / got.off).toFixed(3)})`);
+      await traceHeap(`${v.name}, pair ${i + 1}`);
+      if (failed()) throw new Error('the page failed (see console.txt) - the frame counts after it are not the game\'s');
     }
     await cmd('on realms'); await page.waitForTimeout(settle);
     await page.screenshot({ path: path.join(outDir, `${v.name}_realms.png`) });
