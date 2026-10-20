@@ -255,7 +255,67 @@ namespace TC2.Headless
                     Console.WriteLine("    " + name(b.Payer) + " -> " + name(b.Lord) + " (" + (b.Bread ? "bread" : "peace") + ", " + b.Cause + ", lordship " + b.SizeAfter + " after, " + km.ToString("0.0") + " km): " +
                                       (b.Start / Y) + "-" + (b.End != 0 ? (b.End / Y).ToString() : "now") + " " + (b.How ?? "still paid"));
                 }
+            if (a.Has("might")) MightNow(w, name);
             return 0;
+        }
+
+        /// <summary>
+        /// (C10.7a measure, `lordships --might`) each living village's people of fighting age (C10.5's might counts them by heads) and their lasting
+        /// strength - the village's tools, arms and iron (C1.4, C5.2b) and each fighter's skill (C1.5), as `Conflict.Strength` weighs them in a fight, the
+        /// day's health and wounds left out: how far a weighing by lasting strength would part from the head count, and whether the bonds still paid
+        /// would hold by it.
+        /// </summary>
+        static void MightNow(World w, Func<int, string> name)
+        {
+            long now = w.Now;
+            var rows = new List<(double factor, int hands, int sid)>();
+            int skilled = 0, grown = 0;
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                ref var s = ref w.Settlements.Get(sid);
+                if (!s.Inhabited) continue;
+                double armed = TC2.Core.Knowledge.Tech.ToolShare(in s);
+                double arms = s.Population > 0 ? DMath.Clamp01(s.Arms / (TC2.Core.Places.Forge.ArmsPerHead * s.Population)) : 0.0;
+                double iron = s.Population > 0 ? DMath.Clamp01(s.IronArms / (TC2.Core.Places.Forge.ArmsPerHead * s.Population)) : 0.0;
+                // (the simulation's own weighings: heads, and their lasting strength - years, kit and skill)
+                int n = w.Conflict.Hands(sid);
+                double sum = w.Conflict.Lasting(sid), skill = 0;
+                var res = w.Residents(sid);
+                for (int i = 0; i < res.Count; i++)
+                {
+                    ref var q = ref w.People.Get(res[i]);
+                    if (!q.Alive) continue;
+                    double age = q.AgeYears(now);
+                    if (age < 16 || age >= 60) continue;
+                    grown++; skill += q.SkFight; if (q.SkFight > 0.1f) skilled++;
+                }
+                if (n == 0) continue;
+                rows.Add((sum / n, n, sid));
+                bool isLord = w.Conflict.PolitySize(sid) > 0 && w.Settlements.Get(sid).Lord == 0;
+                Console.WriteLine("    might " + name(sid) + " (" + sid + (s.Lord != 0 ? ", pays " + name(s.Lord) : isLord ? ", a lord" : "") + "): " + n + " of fighting age, lasting strength x" +
+                                  (sum / n).ToString("0.00") + " (kit x" + w.Conflict.Kit(sid).ToString("0.00") + ": tools " + armed.ToString("0.00") + ", arms " + arms.ToString("0.00") + ", iron " + iron.ToString("0.00") +
+                                  "; fighting skill " + (skill / n).ToString("0.00") + " a head) = " + sum.ToString("0"));
+            }
+            rows.Sort((x, y) => x.factor.CompareTo(y.factor));
+            if (rows.Count > 0)
+                Console.WriteLine("  lasting strength a head across " + rows.Count + " villages: least x" + rows[0].factor.ToString("0.00") + ", median x" + rows[rows.Count / 2].factor.ToString("0.00") +
+                                  ", most x" + rows[rows.Count - 1].factor.ToString("0.00") + "; grown people with fighting skill over 0.1: " + skilled + " of " + grown);
+            // the bonds still paid: the lord the stronger by heads, and by lasting strength
+            int bonds = 0, byHeads = 0, byLasting = 0;
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                ref var s = ref w.Settlements.Get(sid);
+                if (!s.Inhabited || s.Lord == 0 || !w.Settlements.Exists(s.Lord) || !w.Settlements.Get(s.Lord).Inhabited) continue;
+                bonds++;
+                // (both weighings on this binary: C10.5's heads with `--oldmightarms`, C10.7a's lasting strength without)
+                bool was = TC2.Core.Society.Conflict.MightArmsOff;
+                TC2.Core.Society.Conflict.MightArmsOff = true;
+                if (w.Conflict.Might(s.Lord, sid) >= w.Conflict.Might(sid, s.Lord)) byHeads++;
+                TC2.Core.Society.Conflict.MightArmsOff = false;
+                if (w.Conflict.Might(s.Lord, sid) >= w.Conflict.Might(sid, s.Lord)) byLasting++;
+                TC2.Core.Society.Conflict.MightArmsOff = was;
+            }
+            Console.WriteLine("  bonds still paid " + bonds + ": the lord the stronger by heads " + byHeads + ", by lasting strength " + byLasting);
         }
 
         sealed class Bond { public int Payer, Lord, SizeAfter; public long Start, End; public bool Bread; public string How, Cause; }

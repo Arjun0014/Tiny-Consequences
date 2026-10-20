@@ -183,8 +183,10 @@ namespace TC2.Game
             if (view.StartsWith("act:"))
             {
                 // the busiest spot of an activity anywhere in the world now (tools: "act:Muck", "act:Thresh:low"): the person drawn at it with the most
-                // others at the same work within 60 m - the shot frames work being done, never a guess of where it might be
+                // others at the same work within 60 m - the shot frames work being done, never a guess of where it might be; ":sworn" (C10.7b) counts only
+                // men sworn to their village's first household ("act:Train:sworn": a lord's men at their daily practice)
                 string[] ap = view.Split(':');
+                bool swornOnly = view.Contains(":sworn");
                 if (System.Enum.TryParse(ap[1], out TC2.Core.Agents.ActivityKind ak))
                 {
                     var at = new System.Collections.Generic.List<Vec3d>();
@@ -193,6 +195,7 @@ namespace TC2.Game
                     {
                         ref var pp = ref w.People.Get(id);
                         if (!pp.Alive || pp.Act != ak) continue;
+                        if (swornOnly && !TC2.Core.Society.Retinue.SwornHere(w, in pp)) continue;
                         if (TC2.Core.Agents.Presence.Of(w, in pp, tnow, out Vec3d pd, out _, out _, out _)) at.Add(pd);
                     }
                     int bestN = 0;

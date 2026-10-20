@@ -63,6 +63,16 @@ namespace TC2.Core.Health
         /// to a path or a road between villages no way on foot joins (history told it); null in the game.</summary>
         public static double[] VisitTally;
         public const int VisitTallyN = 7;
+        /// <summary>`--oldvisits`: a COARSE day's visits go to every village within a day's walk, across water too (before C9.5c) - on the same binary.</summary>
+        public static bool OldVisits;
+
+        /// <summary>
+        /// A neighbour a COARSE day's visitors reach (C9.5c, D2-166): within a day's walk and joined by a way on foot, as a lived visitor walks one. A lived
+        /// visitor picks a neighbour among all within a day's walk by nearness and does not go where no way on foot leads (`World.PickNeighbour`): so a
+        /// COARSE day keeps those odds and its visits to the others are not made - never spread over the rest. Across water villages meet only as their
+        /// boats' crews do - on voyages, with relief, grain given back or the tenth, at both resolutions.
+        /// </summary>
+        public static bool Visited(World w, int sid, int o, double d) => d <= 6000 && (OldVisits || w.Routes.Get(w, sid, o) != null);
         public const double ForLife = 99.0;
 
         readonly List<int> _present = new List<int>();
@@ -306,7 +316,7 @@ namespace TC2.Core.Health
                 ref var t = ref w.Settlements.Get(o);
                 if (!t.Inhabited) continue;
                 double d = Vec3d.ArcDistance(s.Anchor, t.Anchor, w.Planet.Radius);
-                if (d <= 6000) total += 1.0 / (300.0 + d);
+                if (d <= 6000) total += 1.0 / (300.0 + d);   // (a lived visitor picks among them all: where no way on foot leads, the visit is not made - C9.5c)
             }
             if (total <= 0) return;
             double visits = adults * VisitsPerAdultDay * days;   // (DEEP: the step's visits)
@@ -317,8 +327,9 @@ namespace TC2.Core.Health
                 ref var t = ref w.Settlements.Get(o);
                 if (!t.Inhabited) continue;
                 double d = Vec3d.ArcDistance(s.Anchor, t.Anchor, w.Planet.Radius);
-                if (d <= 6000) w.Ways.Walk(w, sid, o, 2.0 * visits * (1.0 / (300.0 + d)) / total);
-                if (d <= 6000 && VisitTally != null) VisitTally[w.Routes.Get(w, sid, o) != null ? 0 : 1] += visits * (1.0 / (300.0 + d)) / total;   // (tools: C9.5c survey)
+                if (!Visited(w, sid, o, d)) continue;
+                w.Ways.Walk(w, sid, o, 2.0 * visits * (1.0 / (300.0 + d)) / total);
+                if (VisitTally != null) VisitTally[w.Routes.Get(w, sid, o) != null ? 0 : 1] += visits * (1.0 / (300.0 + d)) / total;   // (tools: C9.5c survey)
             }
             for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
             {
@@ -326,7 +337,7 @@ namespace TC2.Core.Health
                 ref var t = ref w.Settlements.Get(o);
                 if (!t.Inhabited || t.InfNow <= 0 || t.InfPath == 0 || t.InfPresent <= 0 || !w.Pathogens.Exists(t.InfPath)) continue;
                 double d = Vec3d.ArcDistance(s.Anchor, t.Anchor, w.Planet.Radius);
-                if (d > 6000) continue;
+                if (!Visited(w, sid, o, d)) continue;
                 ref var g = ref w.Pathogens.Get(t.InfPath);
                 double perVisit = 1.0 - DMath.Exp(-g.Beta * VisitHours / 24.0 * t.InfNow / t.InfPresent);
                 double expect = visits * (1.0 / (300.0 + d)) / total * perVisit;

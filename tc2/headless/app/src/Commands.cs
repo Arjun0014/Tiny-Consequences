@@ -227,13 +227,18 @@ namespace TC2.Headless
             if (a.Has("breadtally")) TC2.Core.Society.Conflict.BreadTally = new long[15];   // (C10.4: village-harvests by the relief still owed, bonds)
             if (a.Has("oldmight")) TC2.Core.Society.Conflict.MightOff = true;   // (C10.5 off: the day's fit grown people at home, a lord by its own village - D2-075's weighing)
             if (a.Has("mighttally")) TC2.Core.Society.Conflict.MightTally = new double[14];   // (C10.5: each weighing by the old count and by might)
+            if (a.Has("oldmightarms")) TC2.Core.Society.Conflict.MightArmsOff = true;   // (C10.7a off: might counts people of fighting age by heads, as C10.5 weighed them)
+            if (a.Has("armstally")) TC2.Core.Society.Conflict.ArmsTally = new double[12];   // (C10.7a: each weighing by heads and by lasting strength)
+            if (a.Has("oldsworn")) TC2.Core.Society.Retinue.Off = true;   // (C10.7b off: nobody is sworn to a first household)
+            if (a.Has("sworntally")) TC2.Core.Society.Retinue.Tally = new double[TC2.Core.Society.Retinue.TallyN];   // (C10.7b: men sworn and released, fed, their practice and bands)
             if (a.Has("oldways")) TC2.Core.Agents.RouteCache.LiveForest = true;   // (D2-160 off: routes from the woods as they are when built)
             if (a.Has("oldtribute")) TC2.Core.Society.Conflict.CarryOff = true;   // (C10.6 off: the tenth into the lord's store at the harvest, carried by nobody)
             if (a.Has("carrytally")) TC2.Core.Society.Conflict.CarryTally = new double[TC2.Core.Society.Conflict.CarryTallyN];   // (C10.6: loads carried, FU, lived, set aside, given back, by cart, km, a year uncarried, no way on foot; by sea)
             if (a.Has("oldacross")) TC2.Core.Places.Trade.AcrossOff = true;   // (C9.5a off: grain within a day's walk across water at once, the tenth across water kept at home)
             if (a.Has("acrosstally")) TC2.Core.Places.Trade.AcrossTally = new double[TC2.Core.Places.Trade.AcrossTallyN];   // (C9.5 survey: grain and trade across water at once between villages within a day's walk)
             if (a.Has("oldcross")) TC2.Core.Places.Boats.CrossOff = true;   // (C9.5b off: dugouts carry no loads, no boat is made to cross the water)
-            if (a.Has("visittally")) TC2.Core.Health.Disease.VisitTally = new double[TC2.Core.Health.Disease.VisitTallyN];   // (C9.5c survey: a COARSE day's visits, news and ways across water)
+            if (a.Has("visittally")) TC2.Core.Health.Disease.VisitTally = new double[TC2.Core.Health.Disease.VisitTallyN];
+            if (a.Has("oldvisits")) TC2.Core.Health.Disease.OldVisits = true;   // (C9.5c off: a COARSE day's visits to every village within a day's walk, across water too)   // (C9.5c survey: a COARSE day's visits, news and ways across water)
             if (a.Has("crosstally")) TC2.Core.Places.Boats.CrossTally = new double[TC2.Core.Places.Boats.CrossTallyN];   // (C9.5b: boats made to cross, dugouts' crossings)
             if (a.Has("wetways")) TC2.Core.Places.Afoot.Off = true;   // (D2-156 off: lived walks straight across the water, the well's and the idle's spots and crofts in it, the woods by the straight line)
             if (a.Has("waytally")) TC2.Core.Places.Afoot.Tally = new long[128];   // (tools: the walks bent round the water and those no bend kept dry, by what was done at their end)
@@ -996,6 +1001,20 @@ namespace TC2.Headless
                     if (visitT != null)   // (C9.5c survey: a COARSE day's visits between neighbours within a day's walk, along a way on foot and across water)
                         Console.WriteLine("visits: COARSE visits along a way on foot " + F(visitT[0], "0") + ", across water " + F(visitT[1], "0") + "; caught on them " + visitT[2] + " and " + visitT[3] +
                                           "; news met " + visitT[4] + " and " + visitT[5] + "; ways told worn to a path or a road with no way on foot " + visitT[6]);
+                    var armt = TC2.Core.Society.Conflict.ArmsTally;
+                    if (armt != null)   // (C10.7a: each weighing of the stronger - weighed, carried by heads, carried by lasting strength, by both)
+                        Console.WriteLine("arms: bowing to raiders weighed " + armt[0] + " (by heads " + armt[1] + ", by lasting strength " + armt[2] + ", both " + armt[3] + "); bowing for bread " + armt[4] + " (" + armt[5] + ", " + armt[6] + ", " + armt[7] +
+                                          "); a lord no longer the stronger " + armt[8] + " (" + armt[9] + ", " + armt[10] + ", " + armt[11] + ")");
+                    var swt = TC2.Core.Society.Retinue.Tally;
+                    if (swt != null)   // (C10.7b: men sworn to their villages' first households)
+                    {
+                        int swornNow = 0, keeping = 0;
+                        for (int ps = w.People.First(); ps != 0; ps = w.People.Next(ps)) { ref var pq = ref w.People.Get(ps); if (pq.Alive && TC2.Core.Society.Retinue.SwornHere(w, in pq)) swornNow++; }
+                        for (int ks = w.Settlements.First(); ks != 0; ks = w.Settlements.Next(ks)) if (w.Settlements.Get(ks).Inhabited && TC2.Core.Society.Retinue.Count(w, ks) > 0) keeping++;
+                        Console.WriteLine("sworn: men sworn " + swt[0] + "; released - the grain short " + swt[1] + ", another first among the people " + swt[2] + ", past forty " + swt[3] + ", lord and man of two villages " + swt[4] + ", the lord dead " + swt[12] +
+                                          "; fed " + F(swt[5], "0") + " FU (" + F(swt[6], "0") + " man-years); their practice " + F(swt[7], "0") + " h; bands with sworn men " + swt[8] + " (sworn men in them " + swt[9] +
+                                          "); village-harvests keeping men " + swt[10] + ", the most sworn to one lord " + swt[11] + "; sworn now " + swornNow + " in " + keeping + " villages");
+                    }
                     var ct = TC2.Core.Society.Conflict.CarryTally;
                     if (ct != null)   // (C10.6: the lord's tenth carried to its store)
                         Console.WriteLine("carried: set aside " + F(ct[3], "0") + " FU; loads " + ct[0] + " (lived " + ct[2] + "), " + F(ct[1], "0") + " FU (by cart " + F(ct[5], "0") + "), carriers' km " + F(ct[6], "0") +

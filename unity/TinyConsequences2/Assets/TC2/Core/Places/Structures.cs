@@ -198,9 +198,13 @@ namespace TC2.Core.Places
             // traders come often to deal: a market on its green (C1.6)
             if (s.Market == 0 && s.TradeIn >= Trade.MarketFrom && s.Population >= 100 && s.Wall != 1 && (s.Works & Construction.Granary) != 0)
             { Begin(w, sid, Market, 0, CauseRel.None); return; }
-            // a village that fears its neighbours lays out a training ground (C1.5) - after water and a store, never while walls rise
-            if (s.Ground == 0 && Forge.Threatened(in s) && s.Wall != 1 && (s.Works & Construction.Granary) != 0)
-            { Begin(w, sid, Ground, s.WallEvent != 0 ? s.WallEvent : (s.FoeEvent != 0 ? s.FoeEvent : s.WatchEvent), CauseRel.InResponseTo); return; }
+            // a village that fears its neighbours lays out a training ground (C1.5) - after water and a store, never while walls rise; and one whose first
+            // household keeps sworn men, for them to practise at every day (C10.7b)
+            if (s.Ground == 0 && s.Wall != 1 && (s.Works & Construction.Granary) != 0)
+            {
+                if (Forge.Threatened(in s)) { Begin(w, sid, Ground, s.WallEvent != 0 ? s.WallEvent : (s.FoeEvent != 0 ? s.FoeEvent : s.WatchEvent), CauseRel.InResponseTo); return; }
+                if (Society.Retinue.Keeps(w, sid, out long sworn)) { Begin(w, sid, Ground, sworn, sworn != 0 ? CauseRel.InResponseTo : CauseRel.None); return; }
+            }
             // stone wanted and rock known within reach: a quarry opened at the rock (C1.3) - after water and a store, never while walls rise
             if (s.StoneWant > 0 && s.Quarry == 0 && s.StoneCell > 0 && s.Wall != 1 && (s.Works & Construction.Granary) != 0)
             {

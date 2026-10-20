@@ -128,9 +128,9 @@ set aside only where a way by sea joins the two landings and a plank boat can ca
 landing, or - none of its own free - the lord's, come for it (`Trade.BookTribute`: `ForTribute`, `ForTenth`; `Conflict.CarrySea`). Handed over at the
 tributary's landing, the dues are settled there (`Conflict.Settle`) and the grain is the lord's when its boat is home (`Conflict.Stored`). The
 survey that asked for the lord's boats: the tributaries across water had no plank boat at any of 444 harvests, their lords at 76. `--oldacross`. Not
-yet: people crossing water in boats - island woodcutters, a town on two shores (lived legs by boat, C9.5b). Found in the sweep for C9.5a: a COARSE
+yet: people crossing water in boats - island woodcutters, a town on two shores (lived legs by boat). Found in the sweep for C9.5a: a COARSE
 day's visits still cross water at once - the news they carry (`Conflict.News`) and the sickness they catch and the ways they wear (`Disease`) count
-every village within a day's walk as the crow flies, while a lived visitor goes only along a way (`World` visit targets): C9.5b's to settle.
+every village within a day's walk as the crow flies, while a lived visitor goes only along a way (`World` visit targets): settled by C9.5c (below).
 
 **C9.5b a boat to cross (D2-163)**: C9.5a's survey found boats made only for the sea's fish (`Boats.WantsKind`: a fisher's household, the
 catch worth it), so an archipelago never made one to reach its neighbours - seed 5's five island villages had no boat at year 300, and C9.5a cost
@@ -141,7 +141,19 @@ within a day's walk lies across the water** - no way on foot, a way by sea betwe
 plank boat where the village builds them). History tells why (`BoatToCross`, the cause of its `BoatBuilt`: "...: now they can cross the water to
 Y"). **A dugout carries a load across a short water** - 150 kg, six walkers' loads, to a village within a day's walk (`Boats.Carries`,
 `Trade.FreeLoadKg`): relief, grain given back, the lord's tenth and trade (a second voyage pass for dugouts, `VoyagesIn`). The record: logboats
-carried goods and stock on lakes, rivers and short crossings into the middle ages. `--oldcross`, `--crosstally`.
+carried goods and stock on lakes, rivers and short crossings into the middle ages. `--oldcross`, `--crosstally`. Seen (session 23, fourth
+context): a probe that lives a save as the game loads it (`voyages --load SAVE --days N`) found seed 2's lived crossings - all its lived voyages at year
+300 were dugouts - and real shots aimed at them (`s23n1`, `s23n2`) read at 45 m: the hull, two paddlers, a paddle in the water.
+
+**C9.5c people across water (D2-166)**: settled what C9.5a found - a COARSE day's visits (`Disease.Visits`: the sickness caught, the way worn) and the
+news they carry (`Conflict.News`) went to every village within 6 km as the crow flies. Measured first (`--visittally`, four worlds of main's rules):
+in the archipelago (seed 5) 65 % of a COARSE day's visits, 81 % of the news met and two thirds of the sickness caught on visits crossed water no lived
+visitor could cross; in the others 5-20 % of visits; and every world told of paths and roads "worn" between villages no way on foot joins (6-14 a
+world). Now a COARSE day's visitors go only to neighbours a way on foot joins (`Disease.Visited`), as a lived visitor walks one - with a lived day's odds:
+a lived visitor picks a neighbour among all within a day's walk by nearness and does not go where no way on foot leads (`World.PickNeighbour`), so
+the COARSE visits to such a village are not made, never spread over the rest (a first version spread them: 17.5 visits along a way against 9.6);
+across water villages meet as their boats' crews do - voyages, relief, grain given back and the tenth, at both resolutions. `--oldvisits`, `--visittally`. Not yet:
+visits by boat for themselves (a household rowing over to kin, an island's woodcutters) - wanted if the islands' news and kin ties show the loss.
 
 ## 6. Ports (C9)
 

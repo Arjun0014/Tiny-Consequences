@@ -557,6 +557,7 @@ namespace TC2.Core.Agents
                     {
                         int gid = Training.Ground(w, p.At);   // (practice at the training ground: C1.5)
                         if (gid != 0) Training.Practise(w, ref p, p.At, gid, hours);
+                        if (gid != 0 && TC2.Core.Society.Retinue.Tally != null && TC2.Core.Society.Retinue.SwornHere(w, in p)) TC2.Core.Society.Retinue.Tally[7] += hours;   // (tools: C10.7b)
                     }
                     break;
                 case ActivityKind.Smith:
@@ -1126,7 +1127,15 @@ namespace TC2.Core.Agents
                 if (u > best) { best = u; choice = 2; }
             }
             int ground = 0;
-            if (atHome && lsec >= 14 * SimTime.Hour && lsec < 17 * SimTime.Hour && Training.Willing(in p, now) && Training.Practising(w, in here, out ground) &&
+            bool sworn = TC2.Core.Society.Retinue.SwornHere(w, in p);
+            if (sworn && atHome && lsec >= 14 * SimTime.Hour && lsec < 17 * SimTime.Hour && Training.Willing(in p, now) && p.Act != ActivityKind.Train &&
+                (ground = Training.Ground(w, here.Id)) != 0)
+            {
+                // a man sworn to the village's first household practises at its ground every afternoon: it feeds him for that (C10.7b)
+                double u = 0.9 + 0.1 * rs.NextUnit();
+                if (u > best) { best = u; choice = 16; }
+            }
+            else if (!sworn && atHome && lsec >= 14 * SimTime.Hour && lsec < 17 * SimTime.Hour && Training.Willing(in p, now) && Training.Practising(w, in here, out ground) &&
                 Training.Day(p.Id, SimTime.FloorDiv(now + w.LocalOffsetOf(p.At), SimTime.Day)) && p.Act != ActivityKind.Train)
             {
                 // the village fears its neighbours: on their practice day the bold go to its training ground in the afternoon (C1.5)
@@ -2336,12 +2345,15 @@ namespace TC2.Core.Agents
                 }
                 prof?.End(10022);
                 if (build && hours > 0) { double used2 = Construction.Work(w, sid, p.Household, DMath.Min(hours, 7.0 * days), BuildRate(in p) * tools, p.Id); hours -= used2; if (Hours != null) Hours[4] += used2; }
-                if (hours > 0 && Training.Willing(in p, now) && Training.Practising(w, in s, out int gid))
+                bool sworn = TC2.Core.Society.Retinue.SwornHere(w, in p);
+                int gid = 0;
+                if (hours > 0 && Training.Willing(in p, now) && (sworn ? (gid = Training.Ground(w, sid)) != 0 : Training.Practising(w, in s, out gid)))
                 {
-                    // the bold practise at the village's training ground on their practice days, as a lived afternoon (C1.5)
-                    int n = Training.Days(p.Id, SimTime.FloorDiv(now + w.LocalOffsetOf(sid), SimTime.Day), days);
+                    // the bold practise at the village's training ground on their practice days, as a lived afternoon (C1.5); a man sworn to the
+                    // village's first household every day (C10.7b)
+                    int n = sworn ? days : Training.Days(p.Id, SimTime.FloorDiv(now + w.LocalOffsetOf(sid), SimTime.Day), days);
                     double h = DMath.Min(hours, Training.Session * n);
-                    if (h > 0) { Training.Practise(w, ref p, sid, gid, h); hours -= h; }
+                    if (h > 0) { Training.Practise(w, ref p, sid, gid, h); hours -= h; if (sworn && TC2.Core.Society.Retinue.Tally != null) TC2.Core.Society.Retinue.Tally[7] += h; }
                 }
                 if (hours > 0 && age >= 16 && age < 60 && p.Health > 0.6 && Stone.Wanted(w, in s, out int qid))
                 {
