@@ -128,7 +128,7 @@ namespace TC2.Tests.Core
             Console.WriteLine(HistoryText.Line(w, told[2]));
             StringAssert.Contains("swore to " + w.History.NameOf(EntityRef.Person(w.Settlements.Get(sid).Head)), HistoryText.Line(w, told[0]));
             string page = Gazetteer.All(w, sid);
-            StringAssert.Contains("3 men are sworn to the", page, "the settlement page");
+            StringAssert.Contains("3 men are sworn to " + w.History.NameOf(EntityRef.Person(w.Settlements.Get(sid).Head)) + ", fed from the", page, "the settlement page");
             string life = Biography.Work(w, sworn[0]);
             Console.WriteLine(life);
             StringAssert.Contains("sworn to " + w.History.NameOf(EntityRef.Person(w.Settlements.Get(sid).Head)), life, "his own page");
