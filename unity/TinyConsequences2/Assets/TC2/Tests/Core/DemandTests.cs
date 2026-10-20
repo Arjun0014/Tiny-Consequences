@@ -59,8 +59,26 @@ namespace TC2.Tests.Core
                 can.Add(res[i]);
             }
             if (can.Count < men) return false;
-            for (int i = 0; i < men; i++) w.People.Get(can[i]).Sworn = head;
+            ref var s = ref w.Settlements.Get(sid);
+            for (int i = 0; i < men; i++)
+            {
+                w.People.Get(can[i]).Sworn = head;
+                // (told as a harvest tells it: the asking's cause is the men the asker keeps)
+                w.Record(new HistoryEvent
+                {
+                    Kind = HistoryKind.Sworn, Time = w.Now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Person(can[i]), Object = EntityRef.Person(head), Other = EntityRef.Household(s.HeadHh),
+                    Magnitude = (float)Retinue.ManYear(w), ArgA = i + 1, RootKind = RootKind.People,
+                });
+            }
             return Retinue.Count(w, sid) == men;
+        }
+
+        /// <summary>A village's harvest brought in: `fu` into its store, as `Harvested` is given it.</summary>
+        static double Harvest(World w, int sid, double fu = 4000.0)
+        {
+            w.Settlements.Get(sid).Granary += fu;
+            w.Conflict.Harvested(sid, fu);
+            return fu;
         }
 
         static List<HistoryEvent> Since(World w, long mark, HistoryKind kind)
@@ -77,8 +95,7 @@ namespace TC2.Tests.Core
             Assume.That(w != null, "two villages a way on foot apart, the asker the stronger, with three sworn men");
             w.Settlements.Get(asked).Lore = KnownSites.Empty;   // (no good land known: they cannot go elsewhere)
             long mark = w.History.LastId;
-            double harvest = w.Settlements.Get(asked).Granary;
-            w.Conflict.Harvested(asked, harvest);
+            double harvest = Harvest(w, asked);
             ref var s = ref w.Settlements.Get(asked);
             Assert.AreEqual(asker, s.Lord, "it bows to the village that asked");
             var asked1 = Since(w, mark, HistoryKind.TributeDemanded);
@@ -108,7 +125,7 @@ namespace TC2.Tests.Core
                 Assume.That(w != null, "the premise");
                 w.Settlements.Get(asked).Lore = KnownSites.Empty;
                 long mark = w.History.LastId;
-                w.Conflict.Harvested(asked, w.Settlements.Get(asked).Granary);
+                Harvest(w, asked);
                 Assert.AreEqual(0, w.Settlements.Get(asked).Lord, "--olddemand: it pays nobody");
                 Assert.AreEqual(0, Since(w, mark, HistoryKind.TributeDemanded).Count, "--olddemand: nobody asks");
             }
@@ -125,8 +142,7 @@ namespace TC2.Tests.Core
             sa.Lore.Learn(sa.Cell == 0 ? 1 : 0, 0.9, w.Now);   // (good land known: they could go)
             long mark = w.History.LastId;
             double before = w.DeedBook.Grievance(asker, asked);
-            Assume.That(Conflict.TributeShare * w.Settlements.Get(asked).Granary >= Conflict.RaidFrom, "a tenth heavy enough to raise a band");
-            w.Conflict.Harvested(asked, w.Settlements.Get(asked).Granary);
+            Harvest(w, asked);
             Assert.AreEqual(0, w.Settlements.Get(asked).Lord, "it pays nobody");
             var asked1 = Since(w, mark, HistoryKind.TributeDemanded);
             Assert.AreEqual(1, asked1.Count, "asked once");
@@ -148,7 +164,7 @@ namespace TC2.Tests.Core
             Assume.That(w != null, "the premise with too few men");
             w.Settlements.Get(asked).Lore = KnownSites.Empty;
             long mark = w.History.LastId;
-            w.Conflict.Harvested(asked, w.Settlements.Get(asked).Granary);
+            Harvest(w, asked);
             Assert.AreEqual(0, Since(w, mark, HistoryKind.TributeDemanded).Count, "too few sworn men: nobody asks");
             // the weaker does not ask the stronger
             var w2 = Pair(out int a2, out int b2);
@@ -156,7 +172,7 @@ namespace TC2.Tests.Core
             Assume.That(Swear(w2, b2, Conflict.DemandMen) || Retinue.Count(w2, b2) >= Conflict.DemandMen, "the weaker keeping men too");
             w2.Settlements.Get(a2).Lore = KnownSites.Empty;
             long mark2 = w2.History.LastId;
-            w2.Conflict.Harvested(a2, w2.Settlements.Get(a2).Granary);
+            Harvest(w2, a2);
             Assert.AreEqual(0, w2.Settlements.Get(a2).Lord, "the stronger is not made to pay by the weaker");
             foreach (var e in Since(w2, mark2, HistoryKind.TributeDemanded)) Assert.AreNotEqual(b2, e.Subject.Id, "the weaker never asks the stronger");
             // a village that pays a lord already is not asked
@@ -168,7 +184,7 @@ namespace TC2.Tests.Core
             w3.Settlements.Get(b3).Lord = other; w3.Settlements.Get(b3).LordSince = w3.Now;
             w3.Settlements.Get(b3).Lore = KnownSites.Empty;
             long mark3 = w3.History.LastId;
-            w3.Conflict.Harvested(b3, w3.Settlements.Get(b3).Granary);
+            Harvest(w3, b3);
             Assert.AreEqual(0, Since(w3, mark3, HistoryKind.TributeDemanded).Count, "a tributary is not asked");
             // the asker's own lord is not asked by it
             var w4 = Pair(out int a4, out int b4);
@@ -176,7 +192,7 @@ namespace TC2.Tests.Core
             w4.Settlements.Get(a4).Lord = b4; w4.Settlements.Get(a4).LordSince = w4.Now;
             w4.Settlements.Get(b4).Lore = KnownSites.Empty;
             long mark4 = w4.History.LastId;
-            w4.Conflict.Harvested(b4, w4.Settlements.Get(b4).Granary);
+            Harvest(w4, b4);
             foreach (var e in Since(w4, mark4, HistoryKind.TributeDemanded)) Assert.AreNotEqual(a4, e.Subject.Id, "a tributary never asks its own lord");
         }
     }
