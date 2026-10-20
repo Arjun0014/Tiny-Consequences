@@ -75,7 +75,7 @@ namespace TC2.Core.History
         WallPlanned = 69,       // a village began a palisade (Magnitude its losses a year, FU; Cause1 the latest; D2-074)
         WallBuilt = 70,         // a village finished its palisade (ArgA its length, m)
         WallFallen = 71,        // a palisade rotted and fell
-        TributeAgreed = 72,     // a village bowed to its raiders and agreed to pay them tribute (Subject the payer, Object the lord; Magnitude the share; ArgA the lordship's size after; D2-075) - or (ArgB 1) to the neighbour whose famine grain it could not give back (C10.4, D2-157)
+        TributeAgreed = 72,     // a village bowed to its raiders and agreed to pay them tribute (Subject the payer, Object the lord; Magnitude the share; ArgA the lordship's size after; D2-075) - or (ArgB 1) to the neighbour whose famine grain it could not give back (C10.4, D2-157), or (ArgB 2) to a neighbour that asked it a tenth (C10.8)
         TributePaid = 73,       // a tributary paid its lord at harvest (Magnitude FU)
         TributeEnded = 74,      // a tributary paid no more (ArgA 1 the lord is gone, 0 grown too weak)
         HomesDrowned = 75,      // the sea rose over homes' lots (Settlement; ArgA homes lost; Cause1 the coast's change; D2-087)
@@ -88,6 +88,7 @@ namespace TC2.Core.History
         BoatBuilt = 85,         // a household made a boat (Subject the household, Object the boat, Other who led the making; C9.1)
         Sworn = 98,             // a man swore to the one first among his village's people, whose household feeds him from its grain (Subject the man, Object the lord, Other the household; Magnitude a year's food FU; ArgA the men sworn to the lord now; Cause1 the harvest, Cause2 the last tribute paid there; C10.7b)
         SwornReleased = 99,     // a sworn man was released (Subject the man, Object the lord; ArgA 1 the grain could keep no more, 2 another first among the people, 3 past forty, 4 he and the lord no longer of one village, 5 the lord died; C10.7b)
+        TributeDemanded = 100,  // a village whose first among the people keeps sworn men asked a tenth of a weaker neighbour at its harvest (Subject the asker, Object the asked; Magnitude the tenth FU; ArgA 1 it bowed, 0 it refused - a wrong the asker holds; C10.8)
         BoatToCross = 97,       // a household laid down a boat to reach a village across the water no way on foot leads to (Subject the household, Object the village across, Other the boat; ArgA its kind, ArgB why - 1 a trade, 2 grain owed there, 3 its lord's tenth; Magnitude the deal's gain or the FU owed; C9.5b)
         FieldsRested = 96,      // a village began to rest a share of its arable each year: its crops a hectare had fallen (Magnitude the share resting; ArgA what a sown hectare bears, % of a fresh field's crop; ArgB its arable ha; C3.6f)
         PartyJoined = 95,       // a party that set out to found a village found one standing at its place and made its home there (Subject the village it left, Object the village it joined, Other its first household; ArgA households, ArgB people; Cause1 its setting out; D2-137)
@@ -250,6 +251,7 @@ namespace TC2.Core.History
                 case HistoryKind.BoatToCross:
                 case HistoryKind.Sworn:
                 case HistoryKind.SwornReleased:
+                case HistoryKind.TributeDemanded:
                 case HistoryKind.BoatLost:
                 case HistoryKind.CartMade:
                 case HistoryKind.HeadmanRose:
@@ -348,6 +350,7 @@ namespace TC2.Core.History
                 case HistoryKind.BoatToCross: b = 3; break;
                 case HistoryKind.Sworn: b = 4; break;
                 case HistoryKind.SwornReleased: b = 2; break;
+                case HistoryKind.TributeDemanded: b = 8; break;
                 case HistoryKind.CartMade: b = 2; break;
                 case HistoryKind.HeadmanRose: b = 12; break;
                 case HistoryKind.FieldsWorkedHarder: b = 6; break;

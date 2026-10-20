@@ -1545,6 +1545,7 @@ namespace TC2.Core.Society
             var w = _w;
             long now = w.Now;
             if (!BreadOff && w.Settlements.Get(sid).Lord == 0) Indebted(sid);   // (the grain it cannot give back: C10.4)
+            if (!DemandOff && w.Settlements.Get(sid).Lord == 0) Demanded(sid, yield);   // (a neighbour's men to come for its tenth: C10.8)
             ref var s = ref w.Settlements.Get(sid);
             if (s.Lord == 0) return;
             int lord = s.Lord;
@@ -1844,6 +1845,75 @@ namespace TC2.Core.Society
             if (Places.Trade.AcrossTally != null && w.Routes.Get(w, sid, giver) == null) Places.Trade.AcrossTally[4] += 1;   // (tools: a bow across water)
             if (BreadTally != null) BreadTally[14]++;
             Diagnostics.ScaleTally.Pair(w, Diagnostics.ScaleTally.Tribute, sid, giver);
+        }
+
+        /// <summary>`--olddemand`: no village asks a tenth of another (C10.7b's rules) on the same binary.</summary>
+        public static bool DemandOff;
+        /// <summary>The sworn men a first household keeps before its village asks a neighbour's tenth: a band of its own to come for it (C10.8).</summary>
+        public const int DemandMen = BandAtLeast;
+        /// <summary>Tools (`--demandtally`): [0] free village-harvests weighed, [1] with an asker in reach, [2] asked and bowed, [3] asked and refused, [4] of
+        /// the asked, those its own first household's men could match (the asker's sworn men fewer than its own); null in the game.</summary>
+        public static double[] DemandTally;
+        public const int DemandTallyN = 5;
+
+        /// <summary>
+        /// The asking (C10.8, D2-168): at a free village's harvest (both resolutions; after it weighs bowing for bread), the nearest neighbour within a
+        /// day's walk that a way on foot joins, outside its own lordship, whose first among the people keeps sworn men (C10.7b: a band of its own to come
+        /// for the tenth) and which is the stronger by the odds of a bow (`TributeOdds`, `Might` with the men its call brings) asks it a tenth of its
+        /// harvest. Its people bow where they could neither stand against the asker's men nor go elsewhere (no good land known: D2-075's own reason) - a
+        /// bond for peace made at the asking (`TributeAgreed` ArgB 2), the tenth of this harvest paid at once; else they refuse, and the refusal is a wrong
+        /// the asker holds (D2-075's refusal deed): its bands may come over it (D2-073), and a raid that holds the field weighs D2-075's bow. Early medieval
+        /// lordship lived on tribute taken from weaker neighbours, which fed the lord's following (Reuter 1985) - and the following is what makes the asking.
+        /// </summary>
+        void Demanded(int sid, double yield)
+        {
+            var w = _w;
+            long now = w.Now;
+            ref var s = ref w.Settlements.Get(sid);
+            if (!s.Inhabited || s.Lord != 0) return;
+            if (DemandTally != null) DemandTally[0]++;
+            int asker = 0; double best = double.MaxValue;
+            for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
+            {
+                if (o == sid) continue;
+                ref var so = ref w.Settlements.Get(o);
+                if (!so.Inhabited || Root(o) == sid) continue;   // (not a village of its own lordship)
+                double d = Vec3d.ArcDistance(s.Anchor, so.Anchor, w.Planet.Radius);
+                if (d > BreadReach || d >= best) continue;      // (within a day's walk; the nearest asks)
+                if (Retinue.Count(w, o) < DemandMen) continue;
+                if (w.Routes.Get(w, o, sid) == null) continue;   // (its men walk to it)
+                if (Might(o, sid) < TributeOdds * Might(sid, o)) continue;
+                asker = o; best = d;
+            }
+            if (asker == 0) return;
+            if (DemandTally != null) { DemandTally[1]++; if (Retinue.Count(w, asker) < Retinue.Count(w, sid)) DemandTally[4]++; }
+            double tenth = TributeShare * DMath.Max(yield, s.LastHarvest);
+            s.Lore.Best(out float place);
+            bool bows = place < 0.6f;   // (no good land known to go to: flight is hard - D2-075)
+            Retinue.Keeps(w, asker, out long men);   // (the men it keeps make the asking: the swearing of one of them)
+            long ev = w.Record(new HistoryEvent
+            {
+                Kind = HistoryKind.TributeDemanded, Time = now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Settlement(asker), Object = EntityRef.Settlement(sid),
+                Cause1 = men, Rel1 = men != 0 ? CauseRel.EnabledBy : CauseRel.None, Magnitude = (float)tenth, ArgA = bows ? 1 : 0, RootKind = RootKind.People,
+            });
+            if (bows)
+            {
+                ref var s2 = ref w.Settlements.Get(sid);
+                s2.Lord = asker; s2.LordSince = now;
+                s2.LordEvent = w.Record(new HistoryEvent
+                {
+                    Kind = HistoryKind.TributeAgreed, Time = now, Cell = s2.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid), Object = EntityRef.Settlement(asker),
+                    Cause1 = ev, Rel1 = CauseRel.InResponseTo, Magnitude = (float)TributeShare, ArgA = PolitySize(Root(asker)), ArgB = 2, RootKind = RootKind.People,
+                });
+                w.Metrics.Tributes++;
+                if (DemandTally != null) DemandTally[2]++;
+                Diagnostics.ScaleTally.Pair(w, Diagnostics.ScaleTally.Tribute, sid, asker);
+                return;
+            }
+            int refusal = w.DeedBook.Record(DeedKind.Refusal, 0, sid, 0, asker, Places.Trade.Grain, 0.0, tenth, ev);
+            w.DeedBook.Learn(asker, refusal, KnownHow.Saw);
+            w.DeedBook.Learn(sid, refusal, KnownHow.Own);
+            if (DemandTally != null) DemandTally[3]++;
         }
 
         /// <summary>The village a village pays tribute to (0 none).</summary>

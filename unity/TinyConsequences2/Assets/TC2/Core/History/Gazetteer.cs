@@ -349,10 +349,12 @@ namespace TC2.Core.History
             if (s.TradeIn >= 1f) sb.Append("Traders come ").Append(F(s.TradeIn, "0")).Append(" times a year").Append(s.Market != 0 ? " to its market" : "").Append(".\n");
             if (s.Lord != 0)
             {
-                // why: its raiders' bands (D2-075), or the grain of its famines it could not give back (C10.4)
-                bool bread = s.LordEvent != 0 && w.History.TryGet(s.LordEvent, out var le) && le.Kind == HistoryKind.TributeAgreed && le.ArgB == 1;
+                // why: its raiders' bands (D2-075), the grain of its famines it could not give back (C10.4), or the lord's asking (C10.8)
+                int why = s.LordEvent != 0 && w.History.TryGet(s.LordEvent, out var le) && le.Kind == HistoryKind.TributeAgreed ? le.ArgB : 0;
                 sb.Append("It pays tribute to ").Append(Name(w, s.Lord)).Append(" since ").Append(Year(s.LordSince))
-                  .Append(bread ? ": its grain kept it through its famines, and it could not give it back.\n" : ": it could neither stand against its bands nor go elsewhere.\n");
+                  .Append(why == 1 ? ": its grain kept it through its famines, and it could not give it back.\n"
+                        : why == 2 ? ": when it asked a tenth, its people could neither stand against its men nor go elsewhere.\n"
+                        : ": it could neither stand against its bands nor go elsewhere.\n");
                 // (C9.5a) a way by sea between their landings, and a boat of planks of its own to row it over or of its lord's to come for it
                 bool seaWay = !Places.Trade.AcrossOff && !Places.Trade.NoSea && s.LandAt != 0 && w.Settlements.Exists(s.Lord) && w.Settlements.Get(s.Lord).LandAt != 0 && w.SeaRoutes.Get(w, sid, s.Lord) != null;
                 double farL = seaWay ? Vec3d.ArcDistance(s.Anchor, w.Settlements.Get(s.Lord).Anchor, w.Planet.Radius) : 0;   // (dugouts across a short water too: C9.5b)
