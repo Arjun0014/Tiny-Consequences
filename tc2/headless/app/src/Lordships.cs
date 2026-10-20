@@ -258,6 +258,7 @@ namespace TC2.Headless
             if (a.Has("might")) MightNow(w, name);
             if (a.Has("heads")) HeadsOver(w, bonds, name);
             if (a.Has("margins")) Margins(w, name);
+            if (a.Has("could")) Could(w, name);
             return 0;
         }
 
@@ -409,6 +410,38 @@ namespace TC2.Headless
                 TC2.Core.Society.Conflict.MightArmsOff = was;
             }
             Console.WriteLine("  bonds still paid " + bonds + ": the lord the stronger by heads " + byHeads + ", by lasting strength " + byLasting);
+        }
+
+        /// <summary>
+        /// (`lordships --could`, session 24: what limits the lordships - formation?) the bonds that could be: pairs of living villages within a day's walk
+        /// (6 km) of different realms, neither paying the other, where the one is the stronger by the odds of a bow (`TributeOdds` x1.2, `Might` with its
+        /// call) - a village that bowed to every such neighbour would; how many strong villages have such a weaker neighbour and how many weak villages such a
+        /// stronger one, whether a way on foot joins them, and whether the strong keep sworn men (C10.7b) or a lord's first household could feed them.
+        /// </summary>
+        static void Could(World w, Func<int, string> name)
+        {
+            var C = w.Conflict;
+            var live = new List<int>();
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid)) if (w.Settlements.Get(sid).Inhabited) live.Add(sid);
+            int pairs = 0, afoot = 0, freeWeak = 0, bound = 0;
+            var strong = new HashSet<int>(); var weak = new HashSet<int>(); var lordsCould = new HashSet<int>();
+            foreach (int a in live)
+                foreach (int b in live)
+                {
+                    if (a == b) continue;
+                    ref var sa = ref w.Settlements.Get(a); ref var sb = ref w.Settlements.Get(b);
+                    if (Vec3d.ArcDistance(sa.Anchor, sb.Anchor, w.Planet.Radius) > 6000) continue;
+                    if (C.Root(a) == C.Root(b)) { if (sb.Lord == a) bound++; continue; }
+                    double ma = C.Might(a, b), mb = C.Might(b, a);
+                    if (ma < TC2.Core.Society.Conflict.TributeOdds * mb) continue;
+                    pairs++; strong.Add(a); weak.Add(b);
+                    if (w.Routes.Get(w, a, b) != null) afoot++;
+                    if (sb.Lord == 0) freeWeak++;
+                    if (C.PolitySize(a) > 0 || TC2.Core.Society.Retinue.Count(w, a) > 0) lordsCould.Add(a);
+                }
+            Console.WriteLine("  could be (--could): " + live.Count + " villages; bonds now within a day's walk " + bound + "; pairs of different realms where one is the stronger by the odds " + pairs +
+                              " (a way on foot joins " + afoot + "; the weaker paying nobody " + freeWeak + "): " + strong.Count + " villages could make a neighbour bow, " + weak.Count +
+                              " could be made to; of the strong, lords or keepers of sworn men " + lordsCould.Count);
         }
 
         sealed class Bond { public int Payer, Lord, SizeAfter; public long Start, End; public bool Bread; public string How, Cause; }
