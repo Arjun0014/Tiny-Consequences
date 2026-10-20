@@ -259,6 +259,7 @@ namespace TC2.Headless
             if (a.Has("heads")) HeadsOver(w, bonds, name);
             if (a.Has("margins")) Margins(w, name);
             if (a.Has("could")) Could(w, name);
+            if (a.Has("wrongs")) Wrongs(w, name);
             return 0;
         }
 
@@ -442,6 +443,43 @@ namespace TC2.Headless
             Console.WriteLine("  could be (--could): " + live.Count + " villages; bonds now within a day's walk " + bound + "; pairs of different realms where one is the stronger by the odds " + pairs +
                               " (a way on foot joins " + afoot + "; the weaker paying nobody " + freeWeak + "): " + strong.Count + " villages could make a neighbour bow, " + weak.Count +
                               " could be made to; of the strong, lords or keepers of sworn men " + lordsCould.Count);
+        }
+
+        /// <summary>
+        /// (`lordships --wrongs`, session 24: the record's other road into lordship - protection) the wrongs held now: villages whose heaviest wrong
+        /// (`Settlement.FoeWorth`, D2-072) is heavy enough to raise a band (`RaidFrom`); the foe's might against theirs (could their own band answer it?);
+        /// and a third village within a day's walk, joined by a way on foot, of another realm than the foe's, stronger than the foe by the odds of a bow -
+        /// a neighbour it could commend itself to, whose bands would answer its wrongs (D2-108).
+        /// </summary>
+        static void Wrongs(World w, Func<int, string> name)
+        {
+            var C = w.Conflict;
+            int held = 0, heavy = 0, foeStronger = 0, protector = 0, commend = 0, paying = 0;
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                ref var s = ref w.Settlements.Get(sid);
+                if (!s.Inhabited || s.Foe == 0 || !w.Settlements.Exists(s.Foe) || !w.Settlements.Get(s.Foe).Inhabited) continue;
+                held++;
+                if (s.FoeWorth < TC2.Core.Society.Conflict.RaidFrom) continue;
+                heavy++;
+                if (s.Lord != 0) paying++;
+                int foe = s.Foe;
+                double r = C.Might(foe, sid) / Math.Max(1e-9, C.Might(sid, foe));
+                if (r >= 1.0) foeStronger++;
+                int by = 0;
+                for (int o = w.Settlements.First(); o != 0 && by == 0; o = w.Settlements.Next(o))
+                {
+                    if (o == sid || o == foe || !w.Settlements.Get(o).Inhabited || C.Root(o) == C.Root(foe)) continue;
+                    if (Vec3d.ArcDistance(s.Anchor, w.Settlements.Get(o).Anchor, w.Planet.Radius) > 6000 || w.Routes.Get(w, sid, o) == null) continue;
+                    if (C.Might(o, foe) >= TC2.Core.Society.Conflict.TributeOdds * C.Might(foe, o)) by = o;
+                }
+                if (by != 0) protector++;
+                if (by != 0 && r >= 1.0 && s.Lord == 0) commend++;
+                Console.WriteLine("    wrong " + name(sid) + (s.Lord != 0 ? " (pays " + name(s.Lord) + ")" : "") + " holds " + s.FoeWorth.ToString("0") + " FU against " + name(foe) +
+                                  ": the foe x" + r.ToString("0.00") + " its might" + (by != 0 ? "; " + name(by) + " is the foe's stronger by the odds" : "; no neighbour the foe's stronger"));
+            }
+            Console.WriteLine("  wrongs (--wrongs): villages holding a wrong " + held + ", heavy enough to raise a band " + heavy + " (paying a lord " + paying + "); the foe the stronger " +
+                              foeStronger + "; a neighbour within a day's walk the foe's stronger by the odds " + protector + "; free villages that could commend themselves (foe stronger, a protector) " + commend);
         }
 
         sealed class Bond { public int Payer, Lord, SizeAfter; public long Start, End; public bool Bread; public string How, Cause; }
