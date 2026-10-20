@@ -44,8 +44,8 @@ Shader "TC2/Terrain"
             float _TC2Year;   // the world's year (whole years since it began): which strips rest turns with it
             float _TC2SeaRadius;
 
-            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; half4 color : COLOR; float2 uv0 : TEXCOORD0; float2 uv1 : TEXCOORD1; float4 uv2 : TEXCOORD2; float4 uv3 : TEXCOORD3; float2 uv4 : TEXCOORD4; float4 uv5 : TEXCOORD5; };
-            struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; float3 normalWS : TEXCOORD1; half4 color : COLOR; float4 farm : TEXCOORD2; half4 wood : TEXCOORD3; half4 land : TEXCOORD4; half2 kind : TEXCOORD5; half4 realm : TEXCOORD6; };
+            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; half4 color : COLOR; float2 uv0 : TEXCOORD0; float2 uv1 : TEXCOORD1; float4 uv2 : TEXCOORD2; float4 uv3 : TEXCOORD3; float2 uv4 : TEXCOORD4; float4 uv5 : TEXCOORD5; float2 uv6 : TEXCOORD6; };
+            struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; float3 normalWS : TEXCOORD1; half4 color : COLOR; float4 farm : TEXCOORD2; half4 wood : TEXCOORD3; half4 land : TEXCOORD4; half2 kind : TEXCOORD5; half4 realm : TEXCOORD6; half realmS : TEXCOORD7; };
 
             Varyings vert(Attributes v)
             {
@@ -59,7 +59,8 @@ Shader "TC2/Terrain"
                 o.wood = v.uv2;
                 o.land = v.uv3;
                 o.kind = v.uv4;   // (W-FOREST: x how tropical, y how seasonally dry)
-                o.realm = v.uv5;  // (D2-167: the realms layer's wash, premultiplied - rgb x a, a; zero when it is off)
+                o.realm = v.uv5;  // (D2-167: the realms layer's map colour premultiplied by the land's weight - rgb x w, w; zero when it is off)
+                o.realmS = v.uv6.x;   // (and the fill's strength, premultiplied alike: the seat's stronger)
                 return o;
             }
 
@@ -328,18 +329,23 @@ Shader "TC2/Terrain"
                     float3 nb = abs(det) > 1e-8 ? normalize(abs(det) * n - grad) : n;
                     nl = normalize(lerp(n, nb, max(mask * (1.0h - fade), fade * saturate(dl * 3.0h))));
                 }
-                // the realms map layer (D2-167, RealmsView): the land a lordship's villages work - their fields and built ground - washed in the realm's
-                // colour, the lord's seat more strongly than its tributaries, the ground's own light and dark kept (its strips, its yards), and a line
-                // where the wash fades at the edge of that land; nothing where no realm's village works the land, or with the layer off (no branch:
-                // the derivative runs in uniform control flow on WebGPU)
+                // the realms map layer (D2-167, RealmsView): the land a lordship's villages work - their fields and built ground - filled with the realm's
+                // map colour, evenly (a little of the ground's light and dark kept, so a field of any crop reads as the realm's), the lord's seat more
+                // strongly than its tributaries, and a band of the colour some three pixels wide just inside the edge of that land (where its weight
+                // crosses 0.3: the pixels from that contour by the weight's own derivative, so the band keeps its width from the village view to orbit);
+                // fading out as the camera comes within a few hundred metres - there the standards and the carriers tell the bond; nothing where no
+                // realm's village works the land, or with the layer off (no branch: the derivative runs in uniform control flow on WebGPU)
                 {
-                    half ra = saturate(i.realm.a);
-                    half3 tint = i.realm.rgb / max(ra, 0.001h);
+                    half rw = saturate(i.realm.a);
+                    half3 tint = i.realm.rgb / max(rw, 0.001h);
+                    half strength = saturate(i.realmS / max(rw, 0.001h));
+                    half vis = smoothstep(450.0h, 1300.0h, (half)dist);
                     half lum = dot(albedo, half3(0.2126h, 0.7152h, 0.0722h));
-                    albedo = lerp(albedo, tint * (0.45h + 1.1h * lum), ra * 0.75h);
-                    float fwr = max(fwidth((float)ra), 1e-4);
-                    half edge = 1.0h - smoothstep(0.0h, (half)(1.6 * fwr), abs(ra - 0.30h));
-                    albedo = lerp(albedo, tint * 0.30h, edge * 0.85h);
+                    albedo = lerp(albedo, tint * (0.62h + 0.55h * lum), rw * strength * 0.72h * vis);
+                    float fwr = max(fwidth((float)rw), 1e-4);
+                    half px = (half)(((float)rw - 0.30) / fwr);
+                    half band = smoothstep(-0.6h, 0.4h, px) * (1.0h - smoothstep(2.4h, 3.4h, px));
+                    albedo = lerp(albedo, tint * 0.85h, band * 0.92h * vis);
                 }
                 float4 sc = TransformWorldToShadowCoord(i.positionWS);
                 Light l = GetMainLight(sc);
