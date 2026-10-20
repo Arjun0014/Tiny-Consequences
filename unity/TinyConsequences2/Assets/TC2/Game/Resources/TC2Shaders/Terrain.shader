@@ -341,7 +341,7 @@ Shader "TC2/Terrain"
                     half strength = saturate(i.realmS / max(rw, 0.001h));
                     half vis = smoothstep(450.0h, 1300.0h, (half)dist);
                     half lum = dot(albedo, half3(0.2126h, 0.7152h, 0.0722h));
-                    albedo = lerp(albedo, tint * (0.62h + 0.55h * lum), rw * strength * 0.55h * vis);
+                    albedo = lerp(albedo, tint * (0.62h + 0.55h * lum), rw * strength * 0.72h * vis);
                     float fwr = max(fwidth((float)rw), 1e-4);
                     half px = (half)(((float)rw - 0.30) / fwr);
                     half band = smoothstep(-0.6h, 0.4h, px) * (1.0h - smoothstep(2.4h, 3.4h, px));
