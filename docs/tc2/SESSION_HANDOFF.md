@@ -2,6 +2,18 @@
 
 ## Session 24, second context (21 Oct 2026, from 01:45 IST; Control Room run #73 session 2) - C10.7a, C10.7b, C9.5c LANDED on main; the job queue RUNNING
 
+### Update at ~05:25 - the browser OOM found and fixed (D2-169 draft, complete): the autosave's buffers
+- **Traced** (`0_i`, `0_j`; heap from `Module.HEAPU32`): the year-900 world's heap grew ~500 MB a minute with the realms layer off, held on or turned
+  alike - the autosave (60 s; 20 s at the fastest speeds): `SaveFile.Save` made ~460 MB of short-lived buffers a save (a 79 MB state grown by doubling,
+  copied, deflated through a growing stream, copied twice) and the wasm heap only grows. **Fixed on `wip/save-mem`** (ba8e108, merged on main 29e85f8):
+  `SaveFile.Scratch` buffers kept by `SimHost` and sized at each load (`Scratch.For(header)`), the store takes a length, the load inflates in place - the
+  same bytes. Checked: `SaveIntoKeptBuffersIsTheSameSaveAndReallocatesNothing`, Determinism 7, SaveLoad 8 (0 skipped), floatcheck, `cc --src`; **in the
+  browser** (Web build of 3344bf0, `0_m`): the year-900 world 858 MB loaded, 955 with the view, 1,053 after the first autosave and flat to 210 s (before:
+  -> 1,366 -> 1,820 -> OOM); the year-300 world flat at 513 MB; **Web test `s24web2` 6/6** (Mono = dotnet; the catch-up heap 247 -> 297 MB). `14` §7
+  records great worlds' heap and frame rates (still ~1.05 GB and ~8 fps at the region view for 9,500 people: a memory and frame pass of their own).
+- **DECISIONS order**: append D2-164..D2-167 (`append_decisions.py`) when `d2164.md`/`d2165.md` are filled (`8_a*`, `8_b*`), then D2-169
+  (`tc2/out/tools/s24/d2169.md`, complete) - D2-168 (C10.8) is appended when C10.8 lands, after it.
+
 ### Update at ~04:30 - the landing checks passed; the realms layer's dyes fixed twice from real shots; a browser OOM under investigation
 - **Landing checks (all passed)**: `0_a` bin_m5 (main e191331) floatcheck clean, `cc` ok, seed 2's `_m5` = `_i2` byte for byte (state hash 56fb1fe012804dd3);
   `0_b` **full suite 441 passed, 0 failed, 0 skipped**; `0_d` **Web `s24web1` 6/6** (built at e191331 in 22.5 min; Mono = dotnet hash parts; browser =
