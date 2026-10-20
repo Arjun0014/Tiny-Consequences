@@ -6,7 +6,8 @@
 // Usage: node tc2/scripts/realmsperf.mjs --save F.tc2 --lat DEG --lon DEG [--views region:6000,orbit:22000,village:1400] [--pairs 5]
 //        [--settle 2500] [--window 2500] [--toggles N] [--tag NAME] [--webgl2]
 // The wasm heap (MB; it only grows) is traced after the load, at each view and pair: --pairs 0 takes the views with the layer off only (what the
-// world and its views hold); --toggles N first turns the layer on and off N times at the first view (does turning it leak?).
+// world and its views hold); --toggles N first turns the layer on and off N times at the first view (does turning it leak?), --toggle-gap MS between
+// each turn (1000); --hold S first holds the first view S seconds with the layer off (--hold-on: on), the heap every 15 s (does time alone grow it?).
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -27,6 +28,9 @@ if (!savePath || !fs.existsSync(savePath) || !Number.isFinite(lat) || !Number.is
 const views = opt('--views', 'region:6000,orbit:22000,village:1400').split(',').map((v) => { const [n, d] = v.split(':'); return { name: n, dist: Number(d) }; });
 const pairs = Number(opt('--pairs', '5'));
 const toggles = Number(opt('--toggles', '0'));
+const toggleGap = Number(opt('--toggle-gap', '1000'));
+const hold = Number(opt('--hold', '0'));
+const holdOn = flag('--hold-on');
 const settle = Number(opt('--settle', '2500'));
 const windowMs = Number(opt('--window', '2500'));
 const tag = opt('--tag', 'realmsperf');
@@ -92,15 +96,29 @@ try {
   report.heap = [{ at: 'loaded', mb: await heapMb() }];
   const traceHeap = async (at) => { const mb = await heapMb(); report.heap.push({ at, mb }); console.log(`heap ${mb} MB (${at})${failed() ? ' - THE PAGE HAS FAILED' : ''}`); };
   await traceHeap('loaded');
+  if (hold > 0 && views.length > 0) {
+    // the first view held with the layer in one state: does the heap grow with time alone?
+    await cmd(`look ${lat} ${lon} ${views[0].dist}`);
+    await cmd(holdOn ? 'on realms' : 'off realms');
+    await page.waitForTimeout(settle * 2);
+    await traceHeap(`${views[0].name}, the layer ${holdOn ? 'on' : 'off'}, held 0 s`);
+    for (let s = 15; s <= hold; s += 15) {
+      await page.waitForTimeout(15000);
+      await traceHeap(`${views[0].name}, the layer ${holdOn ? 'on' : 'off'}, held ${s} s`);
+      if (failed()) throw new Error('the page failed while held (see console.txt)');
+    }
+    await cmd('off realms');
+  }
   if (toggles > 0 && views.length > 0) {
     // the layer turned on and off at the first view, as a player pressing R
     await cmd(`look ${lat} ${lon} ${views[0].dist}`);
     await page.waitForTimeout(settle * 2);
     await traceHeap(`${views[0].name}, before turning`);
     for (let i = 1; i <= toggles; i++) {
-      await cmd('on realms'); await page.waitForTimeout(1000);
-      await cmd('off realms'); await page.waitForTimeout(1000);
+      await cmd('on realms'); await page.waitForTimeout(toggleGap);
+      await cmd('off realms'); await page.waitForTimeout(toggleGap);
       if (i % 5 === 0 || i === toggles) await traceHeap(`${views[0].name}, turned on and off ${i} times`);
+      if (failed()) throw new Error('the page failed while turning (see console.txt)');
     }
   }
   // frames the browser draws in a window (the game renders on the animation frame)
