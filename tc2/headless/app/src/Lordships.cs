@@ -256,7 +256,100 @@ namespace TC2.Headless
                                       (b.Start / Y) + "-" + (b.End != 0 ? (b.End / Y).ToString() : "now") + " " + (b.How ?? "still paid"));
                 }
             if (a.Has("might")) MightNow(w, name);
+            if (a.Has("heads")) HeadsOver(w, bonds, name);
+            if (a.Has("margins")) Margins(w, name);
             return 0;
+        }
+
+        /// <summary>
+        /// (session 24, a lord's death and its tributaries measured first: `lordships --heads`) how the bonds lived through their lords' successions: for
+        /// each bond, the times the one first among its lord village's people changed while it held (`HeadmanRose` - a local event the ledger may compact,
+        /// so a lower bound; and, for the bonds still paid, the lord's present first person against the bond's start, which no compaction hides), those at
+        /// the one before's death and those where another household rose; and whether bonds end more often in the five years after such a change than in
+        /// their other years.
+        /// </summary>
+        static void HeadsOver(World w, List<Bond> bonds, Func<int, string> name)
+        {
+            long now = w.Now, Y = SimTime.Year, after = 5 * Y;
+            int changes = 0, atDeath = 0, otherHh = 0, bondsWith = 0, stillPaid = 0, stillNewHead = 0, ends = 0, endsAfter = 0;
+            double years = 0, yearsAfter = 0;
+            var per = new List<int>();
+            var times = new List<long>();
+            foreach (var b in bonds)
+            {
+                long end = b.End != 0 ? b.End : now;
+                if (end <= b.Start) continue;
+                years += (end - b.Start) / (double)Y;
+                times.Clear();
+                var pe = w.History.PlaceEventsOf(b.Lord);
+                if (pe != null)
+                    for (int i = 0; i < pe.Count; i++)
+                    {
+                        if (!w.History.TryGet(pe[i], out var e) || e.Kind != HistoryKind.HeadmanRose) continue;
+                        if (e.Time <= b.Start || e.Time >= end) continue;
+                        times.Add(e.Time); changes++;
+                        if (e.Cause1 != 0) atDeath++;
+                        if (e.ArgB == 2) otherHh++;
+                    }
+                per.Add(times.Count);
+                if (times.Count > 0) bondsWith++;
+                // the bond's years within five years after a change of its lord's first person (the windows merged)
+                long covered = 0, upTo = b.Start;
+                foreach (long t in times)
+                {
+                    long a0 = Math.Max(t, upTo), a1 = Math.Min(t + after, end);
+                    if (a1 > a0) { covered += a1 - a0; upTo = a1; }
+                }
+                yearsAfter += covered / (double)Y;
+                bool endedByLord = b.End != 0 && (b.How == "lord no stronger" || b.How == "lord gone");
+                if (endedByLord)
+                {
+                    ends++;
+                    foreach (long t in times) if (b.End > t && b.End - t <= after) { endsAfter++; break; }
+                }
+                if (b.End == 0)
+                {
+                    stillPaid++;
+                    if (w.Settlements.Exists(b.Lord) && w.Settlements.Get(b.Lord).HeadSince > b.Start) stillNewHead++;
+                }
+            }
+            per.Sort();
+            double rateAfter = yearsAfter > 0 ? endsAfter / yearsAfter : 0, rateOther = years - yearsAfter > 0 ? (ends - endsAfter) / (years - yearsAfter) : 0;
+            Console.WriteLine("  successions under the bonds (--heads): " + bonds.Count + " bonds, " + years.ToString("0") + " bond-years; the lord's first person changed " + changes +
+                              " times while a bond held (" + atDeath + " at a death, " + otherHh + " another household rising; a lower bound - the ledger compacts local events), in " +
+                              bondsWith + " bonds (per bond median " + (per.Count > 0 ? per[per.Count / 2] : 0) + ", most " + (per.Count > 0 ? per[per.Count - 1] : 0) + ")");
+            Console.WriteLine("    bonds still paid " + stillPaid + ": the lord's first person now came after the bond began in " + stillNewHead);
+            Console.WriteLine("    bonds ended by the lord (gone or no stronger) " + ends + ": within five years after a change of its first person " + endsAfter + " in " +
+                              yearsAfter.ToString("0") + " bond-years (" + (1000 * rateAfter).ToString("0.0") + " a thousand bond-years), in their other " + (years - yearsAfter).ToString("0") +
+                              " years " + (ends - endsAfter) + " (" + (1000 * rateOther).ToString("0.0") + ")");
+        }
+
+        /// <summary>
+        /// (`lordships --margins`) each bond still paid at the save's moment: the lord's might against the tributary over the tributary's own (C10.5; by
+        /// lasting strength, C10.7a). A bond is made only where the lord is the stronger by `TributeOdds` (1.2) and ends only when it is no longer the
+        /// stronger (below 1): how many bonds hold in between - bonds that would not be made today.
+        /// </summary>
+        static void Margins(World w, Func<int, string> name)
+        {
+            var C = w.Conflict;
+            int n = 0, below = 0, between = 0, above = 0, breadN = 0, breadBetween = 0;
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                ref var s = ref w.Settlements.Get(sid);
+                if (!s.Inhabited || s.Lord == 0 || !w.Settlements.Exists(s.Lord) || !w.Settlements.Get(s.Lord).Inhabited) continue;
+                double lm = C.Might(s.Lord, sid), om = C.Might(sid, s.Lord);
+                double r = lm / Math.Max(1e-9, om);
+                bool bread = s.LordEvent != 0 && w.History.TryGet(s.LordEvent, out var le) && le.ArgB == 1;
+                n++; if (bread) breadN++;
+                if (r < 1.0) below++;
+                else if (r < TC2.Core.Society.Conflict.TributeOdds) { between++; if (bread) breadBetween++; }
+                else above++;
+                ref var ls = ref w.Settlements.Get(s.Lord);
+                Console.WriteLine("    margin " + name(sid) + " -> " + name(s.Lord) + " (" + (bread ? "bread" : "peace") + ", since year " + (s.LordSince / SimTime.Year) + "): the lord " +
+                                  lm.ToString("0") + " against " + om.ToString("0") + " = x" + r.ToString("0.00") + "; the lord's first person since year " + (ls.HeadSince / SimTime.Year));
+            }
+            Console.WriteLine("  margins (--margins): " + n + " bonds still paid (" + breadN + " for bread): the lord below its tributary " + below + ", between x1 and x" +
+                              TC2.Core.Society.Conflict.TributeOdds.ToString("0.0") + " (held, not made) " + between + " (for bread " + breadBetween + "), the stronger by the odds " + above);
         }
 
         /// <summary>
