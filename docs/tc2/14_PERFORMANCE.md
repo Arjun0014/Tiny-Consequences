@@ -75,3 +75,22 @@ Depth before numbers: build quality at tier A (~100-500 people), then B (~1,000)
 years a second, cost per person-day, relationships, economy, military, structures, history size, rendering, memory and the Web build.
 Structures never get a per-frame or per-day update of their own (decay is read from time; upkeep and damage are works and events); a
 force marches as scheduled movement; new per-day work is indexed per settlement and profiled at 30 settlements.
+
+## 7. Great worlds in the Web build (session 24, D2-169)
+
+Measured with `tc2/scripts/realmsperf.mjs` (a headless save put into the game's store as saved a moment ago, paused; frames counted by
+requestAnimationFrame; the wasm heap read from `Module.HEAPU32` - the framework does not export `HEAPU8`, so earlier heap traces read -1) on seed 2's
+worlds of the integrated rules (sim 90), on a machine loaded by other work:
+
+| World | Saved / state | Heap loaded | With the view | Through autosaves | Frame rate (region / village) |
+|---|---|---|---|---|---|
+| year 300, 5,991 people, 28 villages | 8.7 / 35.5 MB | 513 MB | 513 MB | 513 MB, flat | 8-11 / 5-7 fps |
+| year 900, 9,532 people, 32 villages | 20.9 / 79.0 MB | 858 MB | 955 MB | 1,053 MB after the first, then flat | 8 / 6 fps |
+
+- **The autosave's buffers** (D2-169): each save of the year-900 world made ~460 MB of short-lived buffers and the heap - which only grows - reached
+  the 2 GB ceiling after three autosaves (a minute apart; 20 s at the fastest speeds, 30 s in a catch-up). Saves now go into buffers the host keeps,
+  sized at each load for the world the save holds: the heap is flat through autosaves.
+- **Open**: a 9,500-person world holds ~1.05 GB (past the 1 GB budget; ~3.6x its headless managed heap of 238 MB) and draws a region view at ~8 fps -
+  the same machine's Web test of a 145-person world draws the region at ~30 fps (51-62 on a quiet machine, `s23web2`-`s23web4`), and a 569-person world
+  after a day away 19-24 fps at the village view on a quiet machine. Great worlds want a memory and frame pass of their own (what holds the heap: the
+  world's state, the history ledger, the views' meshes; what bounds the frame: draw submission, as D2-109 found, against the people and buildings drawn).
