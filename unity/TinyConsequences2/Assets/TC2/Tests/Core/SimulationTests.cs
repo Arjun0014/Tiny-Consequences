@@ -244,6 +244,14 @@ namespace TC2.Tests.Core
             var b = SaveFile.Load(Slice(scratch.Out.Buffer, n3), out var hdr);
             Assert.AreEqual(a.StateHash(), b.StateHash(), "the loaded world");
             Assert.AreEqual(a.Now, hdr.WorldTime);
+            // buffers sized for the world a save holds (the game, at each load): its first save grows none of them
+            var sized = SaveFile.Scratch.For(hdr);
+            byte[] bodyS = sized.Body.Buffer, outS = sized.Out.Buffer, defS = sized.Deflated.GetBuffer();
+            int n4 = SaveFile.Save(a, sized, 2_000_000, OfflineMode.Paused, 0, 0, "");
+            CollectionAssert.AreEqual(plain3, Slice(sized.Out.Buffer, n4), "sized for the save: the same bytes");
+            Assert.AreSame(bodyS, sized.Body.Buffer, "sized: the state's buffer never grew");
+            Assert.AreSame(outS, sized.Out.Buffer, "sized: the save's buffer never grew");
+            Assert.AreSame(defS, sized.Deflated.GetBuffer(), "sized: the deflated buffer never grew");
         }
 
         static byte[] Slice(byte[] b, int n) { var r = new byte[n]; Array.Copy(b, r, n); return r; }

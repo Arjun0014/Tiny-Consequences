@@ -46,9 +46,23 @@ namespace TC2.Core.Persistence
         /// </summary>
         public sealed class Scratch
         {
-            public readonly BinWriter Body = new BinWriter(1 << 20);
-            public readonly MemoryStream Deflated = new MemoryStream();
-            public readonly BinWriter Out = new BinWriter(1 << 16);
+            public readonly BinWriter Body;
+            public readonly MemoryStream Deflated;
+            public readonly BinWriter Out;
+
+            public Scratch() : this(1 << 20, 1 << 16) { }
+
+            /// <summary>Buffers sized for a world already known (a loaded save's lengths, an eighth more): its first save grows nothing by doubling -
+            /// which alone made ~255 MB of short-lived buffers for a 79 MB state.</summary>
+            public Scratch(int stateBytes, int saveBytes)
+            {
+                Body = new BinWriter(Math.Max(1 << 16, stateBytes + stateBytes / 8));
+                Deflated = new MemoryStream(Math.Max(1 << 16, saveBytes + saveBytes / 8));
+                Out = new BinWriter(Math.Max(1 << 16, saveBytes + saveBytes / 8 + 4096));
+            }
+
+            /// <summary>For the world a save holds (its header's lengths).</summary>
+            public static Scratch For(in SaveHeader h) => new Scratch(h.UncompressedLength, h.PayloadLength);
         }
 
         public static byte[] Save(World w, long realUtcMs, OfflineMode mode, long catchUpTarget = 0, long catchUpStartedUtcMs = 0, string headline = null, bool compress = true)
