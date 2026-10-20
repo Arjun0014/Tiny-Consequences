@@ -320,6 +320,33 @@ Built on C3.3 (D2-126: household grain, loans recorded as debts, gifts). `Core/S
 - **Tools**: `--oldsworn` (nobody sworn, on the same binary), `--sworntally` (the `sworn:` line: men sworn and released by reason, food given, their
   practice, bands with sworn men, the most sworn to one household, sworn now and in how many villages).
 
+## 12k. The asking: a neighbour whose first household keeps sworn men asks a village a tenth at its harvest (C10.8, D2-168)
+- **Measured first** (session 24, `lordships --heads --margins --could --wrongs` on the ten C9.5b worlds at year 300). The candidates the roadmap named
+  - a lord's death and its tributaries, rising together - would change little: bonds outlive their lords (25 of the 26 still paid had outlived the person
+  they were made with) but hold by strength (25 of 26 lords still stronger by the odds of a first bow); and lordships of one to four villages leave
+  nothing to rise against. **What limits the lordships is formation**: 514 pairs of villages within a day's walk of different realms where one is the
+  stronger by the odds of a bow (a way on foot joins 435; the weaker pays nobody in 408) against 26 bonds - 142 of 179 villages could make a neighbour
+  bow - while a village bows only after a raid over a wrong held the field and it is hemmed in (D2-075), or for famine grain (C10.4): nobody asks. And
+  since C10.7b the instrument exists - men kept by great households (499 in 80 villages at year 300, against 28 lords) - with nothing to do but practise.
+- **The record**: early medieval lordship lived on tribute taken from weaker neighbours by expeditions that also fed and rewarded the lord's following
+  (Reuter, "Plunder and tribute in the Carolingian empire", 1985); overkings' tribute in Bede, Irish kings' tribute and hostages. A neighbour asked who
+  could neither resist nor leave paid; one that could, refused - and the asker's men came.
+- **The rule** (`Conflict.Demanded`, at a free village's harvest after it weighs bowing for bread; both resolutions): its nearest neighbour within a
+  day's walk (6 km) joined by a way on foot, outside its own lordship, whose first among the people keeps at least three sworn men (`DemandMen`: a band
+  of its own to come for the tenth) and which is the stronger by the odds of a bow (`TributeOdds`, `Might` with its call), asks it a tenth of its
+  harvest. Its people bow where they could neither stand against the asker's men nor go elsewhere (no good land known - D2-075's own reason): a bond
+  for peace made at the asking (`TributeAgreed` ArgB 2, its cause the asking), this harvest's tenth paid at once. Else they refuse, and the refusal is a
+  wrong the asker holds (D2-075's refusal deed, worth the tenth): its bands may come over it (D2-073), and a raid that holds the field weighs D2-075's bow
+  - which a village that knows good land elsewhere still refuses: it may leave instead. Once a year at most (its harvest), one asker (the nearest).
+- **Tells**: history ("Methdal, whose first household keeps sworn men, asked Stohope a tenth of its harvest (400 days' grain): its people could neither
+  stand against them nor go elsewhere, and bowed" / "...would not pay - a refusal Methdal holds against them"; the bond "...when it asked: they could
+  neither stand against its men nor go elsewhere"), the settlement page ("It pays tribute to X since year Y: when it asked a tenth, its people could
+  neither stand against its men nor go elsewhere").
+- **What it changes in the world picture**: realms grow outward from the villages that keep men (the realms map layer, D2-167); bands on the roads after
+  a refusal; the tenth carried to more lords (C10.6).
+- **Tools**: `--olddemand` (nobody asks, on the same binary), `--demandtally` (the `demands:` line: free village-harvests weighed, asked, bowed, refused,
+  asked by a village keeping fewer men than the asked's own).
+
 ## 13. Civilisation depth (D2-089)
 
 Force, fortification, war and sieges are designed in `23_MILITARY_AND_WAR.md` (fighters as persistent people, arms as goods, training,

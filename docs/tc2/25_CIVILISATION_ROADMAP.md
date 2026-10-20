@@ -76,8 +76,12 @@ and loads moved) and cargo boats, coastal trade at the sea's cost ratio; **C9.5a
 ~~C10.6 tribute carried to the lord's store~~ (D2-161: its labour on the ways after each harvest; a fifth of the tribute has no way on foot to its lord - by boat since C9.5a, D2-162); ~~C10.7a a
 lordship's might by lasting strength~~ (D2-164: villages weigh each other's people of fighting age by their years, tools and arms and fighting skill, not
 by heads); ~~C10.7b sworn men~~ (D2-165: the one first among a village's people, whose household's grain runs years beyond its needs, keeps young men of the
-village sworn to them, fed from that grain - a lord's from its tribute; they practise every day and go with every band; retainers, `23` §3); next by evidence: a lord's death and its
-tributaries (succession in a lordship), rebellion by those who rise together, a polity map layer (the standards do not read beyond the close view).
+village sworn to them, fed from that grain - a lord's from its tribute; they practise every day and go with every band; retainers, `23` §3); C10.8 the asking
+(D2-168, `10` §12k: a free village is asked a tenth at its harvest by its nearest stronger neighbour whose first household keeps sworn men - it bows where its
+people could neither stand against them nor go elsewhere, else the refusal is a wrong the asker holds; chosen by measuring first: bonds outlive their lords but
+hold by strength, so succession at a death changes little - what limits the lordships is that they rarely form, 514 pairs where one could make the other bow
+against 26 bonds); then by evidence: commendation (a wronged village that cannot answer its foe puts itself under a protector: 24 such at year 300 in ten
+worlds), a lord's death and its tributaries once realms are held by the margin, rising together once realms are large; the realms map layer (D2-167).
 
 ### C5 mining and metallurgy, by slices (D2-100): ~~C5.1 copper ore bodies, the mine, depletion~~ (done); ~~C5.2a charcoal~~ (done, D2-101); ~~C5.2b
 iron~~ (done, D2-102: bog ore, bloomery, iron's use a head); ~~C5.3a places by their ore~~ (done, D2-103); ~~C5.3b iron traded~~
