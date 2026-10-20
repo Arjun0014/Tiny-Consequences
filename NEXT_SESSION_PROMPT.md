@@ -10,14 +10,29 @@ evidence and keep going; context handoffs are a continuation mechanism, not a st
 answers "what changes in the world picture?" and is judged in real game shots.
 
 ## Read first (this order), then work autonomously
-1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the standing prompt (architecture, rules, every direction; "Where we are (session 23, fourth context)").
-2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 23, fourth context"**: exact state, the running job queue, "Next, in order".
+1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the standing prompt (architecture, rules, every direction; "Where we are (session 23, fifth context)").
+2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 23, fifth context"**: exact state, the STOPPED job queue and how to restart it, the realms
+   layer's steps, "Next, in order" (the fourth context's block below it has the slices' details).
 3. `docs/tc2/DECISIONS.md` newest: D2-163 (C9.5b, its checks now complete). The three drafts to land: `tc2/out/tools/s23/d2164.md` (C10.7a),
-   `d2165.md` (C10.7b, the personal oath), `d2166.md` (C9.5c) - their FILL marks are what the queue still owes.
+   `d2165.md` (C10.7b, the personal oath), `d2166.md` (C9.5c, complete) - the FILL marks are what the queue still owes.
 4. Design: `docs/tc2/10_CONFLICT_AND_POLITICS.md` §12i-§12j and `24_TRANSPORT_AND_MARITIME.md` §5 **on the landing branch** (`C:/Game Dev/tc-int2`);
    `tc2/out/tools/s23/c107_design.md` (C10.7b's design, last section), `c95c_design.md` (C9.5c's survey).
 5. `docs/tc2/PROGRESS.md` CURRENT STATE (the session 23, fourth context entry first).
 6. `git status`, `git log --oneline -12`, `git worktree list`, and the queue: `cat $Q/runq.log` (path below).
+
+## Session 23, fifth context (20 Oct 2026, 05:06-~05:45 IST) - Arjun stopped the session; the job queue is STOPPED
+- **On main (f0e2dd4 + the handoff; sim 87)**: only a tool - `unity.mjs cc --src DIR` compiles a worktree's Unity sources against main's generated csproj
+  files (a worktree has no Library), so a branch's Game code is checked before it lands.
+- **The landing branch `wip/s23b-int`** (C10.7a + C10.7b + C9.5c, sim 90; tip ca25d71): its diff reviewed (no fault found) and its Unity C# compiles
+  (bb2ec81; ca25d71 adds only a test's wording). C10.7b's tip is 71bb313 (the same test fix).
+  **C9.5c evaluated** (control identical; ten seeds at par in the vital rates; sickness x0.64, epidemics x0.81, palisades x0.95 (the mechanism); hunger deaths x1.06 (t 2.2) with all deaths a person-year at par - to explain before landing; `d2166.md` complete). **C10.7b's SwornTests retest**: 5/5 after a stale assertion on the settlement page's wording was fixed (tc-sworn 71bb313, tc-int2 ca25d71).
+- **The queue stopped** after `6_9_d3_stop` (`$Q/stop` exists): the landing branch's full suite `6_9_d`, C10.7b's control and ten seeds `6_9_e..g`, D2-161's
+  attribution `6_a_g2_*`/`6_b`, the 900-year checks `6_c_*` (C10.7a) and `6_d_*` (C10.7b), the profile `6_e` wait in `$Q/todo` (about three hours).
+  **Restart it first**: `rm "$Q/stop"`, then `bash tc2/out/tools/s23/runq.sh` in the background (one heavy job at a time, each gated).
+- **Started: the realms map layer** (`wip/realms`, `C:/Game Dev/tc-realms`; presentation only, D2-167 when it lands): `Game/View/RealmsView.cs` - each
+  realm village's land washed in its colour (the seat stronger), chevrons from each tributary toward its lord along the way its tenth is carried, a legend.
+  Written and compile-checked (committed 7d418d3, it compiles (`cc --src`)), not wired: Bootstrap, TerrainLod's per-vertex wash (uv5), Terrain.shader, the HUD toggle (R) and
+  legend, ShotRunner `-tc2realms`, then real shots - the steps in SESSION_HANDOFF.
 
 ## Session 23, fourth context (20 Oct 2026, 02:54-05:10 IST) - three slices in evaluation; the job queue is running
 - **On main (0947e14 + this handoff; sim 87)**: C9.5b's checks complete (Web `s23web4` 6/6, three runtimes bit-identical; aimed real shots `s23n1`,
@@ -43,14 +58,17 @@ answers "what changes in the world picture?" and is judged in real game shots.
   three hours. `$Q/hold` keeps the first C10.7b version's unrun jobs (superseded; do not requeue).
 
 ## Do next, in order
-1. Read the queue's results as they land and fill the drafts: `d2166.md` (C9.5c control and ten seeds), `d2165.md` (C10.7b retest, control, ten
-   seeds, 900 years, profile - and decide the open question), `d2164.md` (C10.7a's 900 years); `6_9_d`'s full suite must be 0 failed, 0 skipped.
+1. Restart the queue (`rm "$Q/stop"`; `bash tc2/out/tools/s23/runq.sh` in the background) and read its results as they land. Explain C9.5c's one lean
+   first (hunger deaths x1.06, t 2.2, with all deaths at par: per seed, and a placebo - `d2166.md`). Then `d2165.md` (C10.7b control,
+   ten seeds, 900 years, profile - and decide the open question), `d2164.md` (C10.7a's 900 years); `6_9_d`'s full suite must be 0 failed, 0 skipped.
 2. If the three are at par and the full suite passes: on main `git merge --no-ff wip/s23b-int`; DECISIONS D2-164, D2-165, D2-166 from the drafts;
    PROGRESS; queue `tc2/out/tools/s23/7_a_land_checks.sh` (bin_m5, floatcheck, `unity.mjs cc`, a v90 seed-2 world `_m5`), `7_b_shots_sworn.sh`
    (`s23p`: a lord's sworn men at practice, `act:Train:sworn`), `7_c_web.sh` (`s23web5`) - judge the shots (do the sworn men read at the lord's
    ground?). If one slice is not at par, land the others (rebuild the landing branch without it; sim versions renumber).
-3. Then by evidence: rising together (tributaries of one lord weighing together against it) if lordships snowball; a lord's death and its
-   tributaries; a polity map layer (the standards read only up close).
+3. The realms map layer on `wip/realms` (it need not wait for the landing: presentation only) - wire it, `cc --src`, merge, real shots of a world with
+   lordships (region, village, orbit): do realms read from afar? Then the Web build.
+4. Then by evidence: rising together (tributaries of one lord weighing together against it) if lordships snowball; a lord's death and its
+   tributaries.
 
 ## Rules that bite
 - Commits `[tc2] ...` ending with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`; stage only TC2 files; never force-push; push only when asked
@@ -77,3 +95,7 @@ answers "what changes in the world picture?" and is judged in real game shots.
 - Run tags in `tc2/out/civ` are reused across sessions (`k1`, `w1`, `v3` held older runs): check `ls tc2/out/civ | grep _TAG` before queuing a new tag.
 - To shoot something rare, find it first: `voyages --load SAVE --days N` (and probes like it) live the save as the game loads it - the same world, the
   same minute - then `unity.mjs shots --village V --days D --hour H` frames it (D2-163).
+- A branch's Unity (Game) code compiles before it lands with `node tc2/scripts/unity.mjs cc --src "C:/Game Dev/tc-<slice>/unity/TinyConsequences2"` (run from
+  the main checkout: its generated csproj files and Library are the references) - queue it like any build.
+- The queue runner exits while `$Q/stop` exists: delete it before restarting `runq.sh`; a job that touches it (`6_9_d3_stop.sh`) stops the runner at a
+  chosen point in the order (names sort: `_` sorts after digits and before letters).

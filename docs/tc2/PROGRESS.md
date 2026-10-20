@@ -4,6 +4,18 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 23, fifth context (20 Oct 2026, 05:06-~05:45 IST; Control Room run #63 session 5) - Arjun stopped the session**: nothing landed on main but
+  tools; the queue was stopped after C9.5c's evaluation and C10.7b's SwornTests retest (the rest - the landing branch's full suite, C10.7b's seeds, the
+  900-year checks, the profile - waits in `$Q/todo`: SESSION_HANDOFF "Session 23, fifth context"). (1) **The landing branch reviewed** (its diff read
+  before landing; no fault found: the sworn men's release order and reasons, bands with sworn men, might weighed only at the three harvest weighings, the
+  oath saved and hashed only when set, lived and COARSE practice at par per day, C9.5c's kept odds in both the visits and the news, failed routes cached).
+  (2) **The landing branch's Unity C# compiles** - its Game code checked before landing for the first time, by a new tool: `unity.mjs cc --src DIR`
+  (f0e2dd4) compiles a worktree's sources against main's generated csproj files. (3) **C9.5c evaluated**: tests pass on the rebuilt binary (VisitsTests:
+  along a way 9.6 visits as before, across water 0; news 8 and 0), control `--oldvisits` = `_y1` (state hash 78635b5066ea574c), ten seeds `_pv1`:
+  at par in the vital rates; sickness x0.64, epidemics x0.81, palisades x0.95 (the mechanism); hunger deaths x1.06 (t 2.2) with all deaths a person-year at par - to explain before landing. (4) **C10.7b's SwornTests retest**: 5/5 after a stale assertion on the settlement page's wording was fixed (tc-sworn 71bb313, tc-int2 ca25d71). (5) **Started: the realms map layer** (`wip/realms`, worktree `tc-realms`,
+  presentation only; D2-167 when it lands): `RealmsView` - each realm village's land washed in its realm's colour (the seat stronger), chevrons from each
+  tributary toward its lord along the way its tenth is carried, a legend; committed 7d418d3, it compiles (`cc --src`); not wired into the game yet - the steps are in
+  SESSION_HANDOFF.
 - **Session 23, fourth context (20 Oct 2026, 02:54-05:10 IST; Control Room run #63 session 4; the same job queue)** - context handoff with the queue
   running; nothing of C10.7a, C10.7b or C9.5c landed on main yet (the landing branch `wip/s23b-int` waits for the queue's evaluations). (1) **Main
   re-checked** (the handoff's stale milestones): main's code was bc99679's (cc66770 changed docs only); full suite 433/433, 0 skipped

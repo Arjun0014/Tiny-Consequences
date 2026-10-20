@@ -1,5 +1,63 @@
 # TC2 Session handoff
 
+## Session 23, fifth context (20 Oct 2026, 05:06 - ~05:45 IST; Control Room run #63 session 5) - Arjun stopped the session; the queue stopped after C9.5c's evaluation and C10.7b's retest; nothing new on main but tools
+
+### Exact state at the stop (every worktree committed; the queue runner stopped - nothing left running)
+- **main** = f0e2dd4 (+ this handoff's docs commit): sim 87 - code as at bc99679 plus tools. New here: `unity.mjs cc --src DIR` (f0e2dd4) compiles another
+  checkout's Unity sources (a worktree has no Library) against main's generated csproj files. `.claude/launch.json` (modified) and `Assets/Resources.meta`
+  (untracked) are not ours - leave them.
+- **Reviewed before landing** (a reading of the landing branch's diff, `git diff main...wip/s23b-int`; no fault found): `Retinue.Harvest` (release order and
+  reasons, the oath to the person, the year's food between bins of one store; the lord's own sons may be sworn - fed from their own bin, no transfer:
+  harmless), band formation with sworn men (`BandAtMost` still counts the unsworn, the band at most 36 + 12 < 255), `Might`/`Lasting` called only at the
+  three harvest-time weighings (no daily cost), `Person.Sworn` saved and hashed only when set, the practice parity (the test's lived 34 h are six days, its
+  COARSE 26.5 h five days and an evening: 0.94 against 0.88 sessions a man-day - at par), C9.5c's `Disease.Visited` keeps the lived odds in both
+  `Disease.Visits` and `Conflict.News` (the denominators count every village within 6 km), a route that cannot be found is cached (`RouteCache._unreachable`:
+  no search repeated daily).
+- **The landing branch's Unity C# compiles** (`6_9_a2`: `cc --src` on tc-int2 bb2ec81 - Core, Game, Editor, Tests): its Game code (the shot view
+  `act:<Activity>:sworn`) compiled for the first time before landing.
+- **C9.5c's evaluation** (`bin_c1` = 8a270c4 rebuilt; D2-166 draft filled): tests pass, 0 skipped (VisitsTests: thirty COARSE days - visits along a way 9.6,
+  across water 0.0, news 8 and 0; `--oldvisits` 9.6 and 24.8, news 8 and 18; Cross 14, Disease 7, Trade 7, Determinism 6, SaveLoad 8); **control
+  `--oldvisits` seed 4 = `_y1`** (annals byte-identical, state hash 78635b5066ea574c); **ten seeds `_pv1`** against `_y1`: at par in the vital rates (people x0.996, t -0.10; years 200-299 x0.994; births x0.987; deaths x0.989; deaths a person-year x0.996); the mechanism shows - sickness x0.640 (t -2.01), epidemics x0.814 (t -2.35), sickness deaths x0.31 (seed 5, the archipelago: sickness 566 -> 1), palisades x0.946 (t -2.48: the news of deeds no longer crosses water), relief by sea x1.35 (t 1.89); **one lean to explain before landing: hunger deaths x1.064 (t 2.17; a person-year x1.071, t 2.25)** while all deaths a person-year stay at par - likely the deaths sickness no longer takes, taken by hunger instead, but unconfirmed (seeds 4 and 11 diverged early: people at the end x0.90 and x0.74; seed 4's hunger +907 with its sickness unchanged): check per seed and with a placebo (`results/cmp_y1_pv1.txt`, `d2166.md`).
+- **C10.7b's SwornTests retest** (`6_9_d2`, bin_s2 rebuilt from tc-sworn 3e570e3): its first run failed one assertion - the settlement page's old wording ("3 men are sworn to the"; the page names the lord since the personal oath); fixed on both branches (tc-sworn 71bb313, tc-int2 ca25d71) and rerun directly after the queue stopped: **SwornTests 5/5**, with Training 4, Might 6, Lordship 4, Leaders 8, Defence 8, Taking 18, Determinism 6, SaveLoad 8 - all 0 skipped; `s2_ok` set (the 900-year jobs `6_d_*` are gated on it).
+- **The queue** (task bc2qpqxfq) ran `6_9_a..c`, `6_9_d2` and stopped at `6_9_d3_stop` (`$Q/stop` exists). **Left in `$Q/todo`** (copies in
+  `tc2/out/tools/s23/`): `6_9_d_int_fullsuite` (the landing branch's full suite: build `bin_i2`, `fs_i2_ok`), `6_9_e_ctl_sx0_s2` (C10.7b control `_sx0` =
+  `_a7`), `6_9_f_sx1_01..10` (ten seeds `_sx1`), `6_9_g_cmp_sx1` (`results/cmp_a7_sx1.txt`), `6_a_g2_05..10` + `6_b_cmp_g2` (D2-161's attribution), `6_c_1..3`
+  (C10.7a's 900 years on `bin_a9`: `_l9k0` from the control world `s2_k0`, `_l9a7` from `s2_a7` and `s4_a7` -> `results/lordships_s*_l9*_y600.txt`; the file
+  names say `l9k1`, the tags inside `l9a7`), `6_d_1..2` (C10.7b's 900 years `_l9sx1` on `bin_s2`, gated on `s2_ok`), `6_e_profile_sx1` - about three hours. **To restart**: `rm $Q/stop`, then `bash tc2/out/tools/s23/runq.sh` in the background. `Q` =
+  `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/db1b5af7-2c1c-4e6f-a5ff-c8b25b1a81c2/scratchpad/q`; the binaries (`bin_a8`,
+  `bin_s2`, `bin_c1`, `bin_m4`, ...) live in its parent. **If that scratchpad is gone**: rebuild each binary from its worktree (the `build` lines at the top
+  of `6_8_x_rebuild_s2.sh`, `6_8_z_rebuild_c1.sh`, `6_9_d_int_fullsuite.sh` in `tc2/out/tools/s23/`), set `S`/`N`/`Q` in `lib.sh` and `runq.sh`, and
+  requeue the jobs above - never the superseded first C10.7b version's copies there (`6_8_b_w1_*`, `6_d_*_l9w1_*`, `6_e_profile_sw1`: kept in `$Q/hold`). The saves the jobs read (`tc2/out/civ/s*_y1/`, `s*_a7/`) are in the repo's ignored `tc2/out`, not the scratchpad.
+- **Worktrees live**: `tc-arms` (wip/c107a-arms 44808e5, C10.7a), `tc-sworn` (wip/c107b-sworn 71bb313, C10.7b), `tc-visits` (wip/c95c-visits 8a270c4,
+  C9.5c), `tc-int2` (**wip/s23b-int ca25d71 - the landing branch: main a8ca460 + all three, sim 90**; ca25d71 = bb2ec81 + the SwornTests fix), `tc-realms` (wip/realms, below). Merged and
+  removable: `tc-across`, `tc-bread`, `tc-carry`, `tc-cross`, `tc-dry`, `tc-fetch`, `tc-int`, `tc-might`, `tc-routes`, `tc-s23`, `tc-stubble`, `tc-tribute`,
+  `tc-voy` (and older: `tc-g2`, `tc-g4`, `tc-merge20`, `tc-muck`, `tc-thresh`, `tc-wild` - check `git branch --merged main` before removing).
+- **Started, work in progress: the realms map layer** (branch `wip/realms`, worktree `C:/Game Dev/tc-realms`, from main f0e2dd4; D2-167 when it lands;
+  presentation only, no sim version): `Game/View/RealmsView.cs` (+ .meta) - the layer's state (`RealmsView.On`, `Version`), each realm village's wash
+  (`WashOf`: its realm's colour, the seat 0.85, a tributary 0.62), the legend (each head of a lordship: villages, people), and chevrons in the realm's colour
+  from each tributary toward its own lord along the way its tenth is carried (`Routes.Get` + `WayLines.Of`, Chaikin twice; straight over water), sized by
+  the camera's distance (~16 px), spaced in steps of two, drifting toward the lord, none nearer than 450 m. Committed 7d418d3; it compiles (`6_9_a3`: `cc --src`, Core, Game, Editor, Tests). **Not wired yet** - to do,
+  in order: (1) `Bootstrap`: add the component (Host, Rig); (2) `TerrainLod`: a `Realm` (Vector4) per vertex in `Colourise` - the field owner's wash
+  (`owner`, weighted by the vertex's field share `farm`, smoothstepped) and a village's built ground (the `_near` loop's `clear`) by `RealmsView.WashOf`,
+  premultiplied (rgb x a, a); zero when the layer is off; `SetUVs(5, p.Realm)` beside uv0-uv4 in the build and in `RecolourSome`; recolour every shown
+  patch when `RealmsView.Version` changes; (3) `Terrain.shader`: `float4 uv5 : TEXCOORD5` in, `half4 realm : TEXCOORD6` out; after the woods, before the
+  light: tint = rgb / max(a, 0.001), wash `albedo = lerp(albedo, tint * (0.45 + 1.1 lum), a * 0.75)`, an edge line where a crosses ~0.35 (`fwidth`; no
+  branches - WebGPU's uniform control flow); (4) `Hud`: a "Realms" toggle (key R; the toggles' rect wider) and the legend (a swatch, the head's name,
+  villages, people); (5) `ShotRunner`: `-tc2realms` sets `On` (and `unity.mjs shots --realms`); (6) `cc --src`, merge to main, real shots on a world with
+  lordships (`--village lord`, views region, village, orbit), judge: do realms read from the village and region views? Then the Web build (60 fps?).
+
+### Next, in order
+1. Restart the queue (above) and read it: the landing branch's full suite must be 0 failed, 0 skipped; C10.7b's control, ten seeds (vital rates, raids,
+   how many villages keep men - the open question: seed 4 had sworn men in 9 of 29 villages at year 300, only 2 of them lords), its 900 years and profile;
+   C10.7a's 900 years; `_g2`. **C9.5c's hunger lean** (hunger deaths x1.06, t 2.2, all deaths at par): per seed, sickness deaths against hunger deaths,
+   and a placebo (D2-155's: the same rules apart only by the first lived day) for the spread between twin worlds. Fill `d2164.md`, `d2165.md` (`d2166.md` is complete: filled with the ten seeds; its one lean - hunger deaths x1.06, t 2.2, with all deaths at par - to explain before landing).
+2. If at par: on main `git merge --no-ff wip/s23b-int`; DECISIONS D2-164, D2-165, D2-166 from the drafts; PROGRESS; queue `7_a_land_checks.sh`,
+   `7_b_shots_sworn.sh`, `7_c_web.sh` (s23web5) and judge the shots. If one slice is not at par, land the others (rebuild the landing branch without it;
+   sim versions renumber).
+3. The realms map layer (`wip/realms`, the steps above) - it does not wait for the landing (presentation only; its shots want a world with lordships:
+   `_y1` saves are sim 87 = main now; after the landing use `_m5` from `7_a`).
+4. Then by evidence: rising together (tributaries of one lord weighing together against it) if lordships snowball; a lord's death and its tributaries.
+
 ## Session 23, fourth context (20 Oct 2026, 02:54 - ~05:05 IST; Control Room run #63 session 4) - C9.5b checked; C10.7a, C10.7b, C9.5c built and in evaluation; context handoff with the queue running
 
 ### Exact state at the handoff (05:10; every worktree committed and clean)

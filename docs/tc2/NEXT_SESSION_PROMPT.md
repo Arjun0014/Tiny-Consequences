@@ -327,6 +327,14 @@ draft); **C9.5c** a COARSE day's visits, their sickness, news and the ways' wear
 (`wip/c95c-visits`; D2-166 draft). The landing branch `wip/s23b-int` (all three, sim 90) waits for the queue's evaluations, its full suite and the
 900-year checks - SESSION_HANDOFF "Session 23, fourth context" has the queue and the steps.
 
+**Where we are (session 23, fifth context, 20 Oct 2026, 05:06-~05:45 IST; Arjun stopped the session)**: nothing new on main but a tool (`unity.mjs cc
+--src DIR`: a worktree's Unity sources compiled against main's references). The landing branch `wip/s23b-int` (C10.7a, C10.7b, C9.5c; sim 90) was reviewed
+(no fault found) and its Unity C# compiles; C9.5c is evaluated (control identical; ten seeds at par in the vital rates; sickness x0.64, epidemics x0.81, palisades x0.95 (the mechanism); hunger deaths x1.06 (t 2.2) with all deaths a person-year at par - to explain before landing); C10.7b's SwornTests retest 5/5 after a stale assertion on the settlement page's wording was fixed (tc-sworn 71bb313, tc-int2 ca25d71).
+The job queue was stopped: the landing branch's full suite, C10.7b's control and ten seeds, the 900-year checks of C10.7a and C10.7b and the profile wait
+in `$Q/todo` - restart it first (SESSION_HANDOFF "Session 23, fifth context"). Started: **the realms map layer** (`wip/realms`, presentation only) - the
+land of each realm's villages washed in its colour, chevrons from tributary to lord, a legend; `RealmsView` written, not wired yet (the steps in the
+handoff).
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.
