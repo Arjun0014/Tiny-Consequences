@@ -627,19 +627,26 @@ namespace TC2.Game
         static readonly Color[] Heraldry =
         {
             // (C10.6: no green nor teal - a standard is read over green fields and the woods; azure and rose in their places)
-            new Color(0.70f, 0.10f, 0.10f), new Color(0.12f, 0.24f, 0.62f), new Color(0.30f, 0.62f, 0.95f), new Color(0.85f, 0.65f, 0.10f),
+            // (D2-167, the year-900 shots s24t: the sky blue's realm read as lakes and lagoons on the land - magenta in its place)
+            new Color(0.70f, 0.10f, 0.10f), new Color(0.12f, 0.24f, 0.62f), new Color(0.78f, 0.12f, 0.70f), new Color(0.85f, 0.65f, 0.10f),
             new Color(0.45f, 0.15f, 0.50f), new Color(0.92f, 0.90f, 0.84f), new Color(0.10f, 0.10f, 0.12f), new Color(0.85f, 0.40f, 0.10f),
             new Color(0.88f, 0.35f, 0.62f), new Color(0.55f, 0.08f, 0.25f),
         };
 
         /// <summary>The same dyes as the realms map layer draws them on the ground (D2-167): brighter and fuller, so that a realm's land reads as its
-        /// colour over fields of any crop and does not pass for ripe grain or bare earth; one for one with `Heraldry`.</summary>
+        /// colour over fields of any crop and does not pass for ripe grain or bare earth - nor for water (azure drawn blue-violet: a royal blue wash
+        /// reads as a lake); one for one with `Heraldry`. Argent and sable are never a realm's (`MapSafe`).</summary>
         static readonly Color[] HeraldryMap =
         {
-            new Color(0.95f, 0.18f, 0.15f), new Color(0.22f, 0.40f, 1.00f), new Color(0.30f, 0.82f, 1.00f), new Color(1.00f, 0.84f, 0.08f),
+            new Color(0.95f, 0.18f, 0.15f), new Color(0.36f, 0.28f, 1.00f), new Color(1.00f, 0.20f, 0.95f), new Color(1.00f, 0.84f, 0.08f),
             new Color(0.74f, 0.30f, 0.95f), new Color(0.97f, 0.97f, 0.95f), new Color(0.12f, 0.12f, 0.16f), new Color(1.00f, 0.52f, 0.08f),
             new Color(1.00f, 0.42f, 0.78f), new Color(0.86f, 0.12f, 0.42f),
         };
+
+        /// <summary>The dyes a realm may take (D2-167): all but argent and sable, which washed over the land pass for snow or salt and for burnt ground
+        /// (the year-900 shots s24t: a white realm read as a salt flat beside its lake). A village in no realm still flies them on its standard - it is
+        /// not drawn on the map.</summary>
+        static bool MapSafe(int k) => k != 5 && k != 6;
 
         /// <summary>A village's polity's colour: its lordship's head's (its own when it pays nobody) - the head's own dye by its number, unless an
         /// older realm flies it (D2-167: two realms in one colour read as one - from orbit a whole hemisphere is seen at once).</summary>
@@ -666,8 +673,9 @@ namespace TC2.Game
         /// <summary>
         /// The realms' dyes (D2-167): the heads of the realms now - villages whose own lord is nobody (or gone) that some village pays - in the order their
         /// realms began (the oldest bond still held in each, then the head's number); each takes its own dye by its number unless a realm before it has
-        /// it, then the next of its dyes (in steps of three, through all ten) none of those has; past ten realms, the dye whose nearest older bearer is
-        /// farthest away. A realm's colour changes only when an older realm of its colour ends; a village in no realm flies its own.
+        /// it or it does not read on the ground (`MapSafe`), then the next of its dyes (in steps of three, through all ten) none of those has; past eight
+        /// realms (the dyes that read on the ground), the dye whose nearest older bearer is farthest away. A realm's colour changes only when an older
+        /// realm of its colour ends; a village in no realm flies its own.
         /// </summary>
         static void RefreshDyes(TC2.Core.Simulation.World w)
         {
@@ -701,6 +709,7 @@ namespace TC2.Game
                 for (int t = 0; t < Heraldry.Length && pick < 0; t++)
                 {
                     int k = (own + 3 * t) % Heraldry.Length;
+                    if (!MapSafe(k)) continue;   // (argent and sable: snow and burnt ground on the map)
                     bool taken = false;
                     for (int j = 0; j < i && !taken; j++) if (_dye[_realmHeads[j].sid] == k) taken = true;
                     if (!taken) pick = k;
@@ -712,6 +721,7 @@ namespace TC2.Game
                     for (int t = 0; t < Heraldry.Length; t++)
                     {
                         int k = (own + 3 * t) % Heraldry.Length;
+                        if (!MapSafe(k)) continue;
                         double near = double.MaxValue;
                         for (int j = 0; j < i; j++)
                             if (_dye[_realmHeads[j].sid] == k) near = System.Math.Min(near, Vec3d.ArcDistance(at, w.Settlements.Get(_realmHeads[j].sid).Anchor, P.Radius));
