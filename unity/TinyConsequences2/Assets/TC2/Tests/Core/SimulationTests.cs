@@ -213,6 +213,41 @@ namespace TC2.Tests.Core
             }
         }
 
+        /// <summary>
+        /// A save into the buffers a host keeps (the game's autosave, a minute apart) is the same save, byte for byte, and once they have grown to the
+        /// world's size a save into them reallocates nothing (session 24: a year-900 world's ~460 MB of short-lived buffers a save took the browser's
+        /// heap, which only grows, to its 2 GB ceiling after three autosaves). The load from them gives the world saved.
+        /// </summary>
+        [Test]
+        public void SaveIntoKeptBuffersIsTheSameSaveAndReallocatesNothing()
+        {
+            var a = TestWorlds.Make(8);
+            a.AdvanceTo(SimTime.Days(1.3));
+            var scratch = new SaveFile.Scratch();
+            byte[] plain = SaveFile.Save(a, 1_000_000, OfflineMode.Living, 0, 0, "a headline");
+            int n = SaveFile.Save(a, scratch, 1_000_000, OfflineMode.Living, 0, 0, "a headline");
+            Assert.AreEqual(plain.Length, n, "the same length");
+            CollectionAssert.AreEqual(plain, Slice(scratch.Out.Buffer, n), "the same bytes");
+            // saved again into the same buffers: nothing reallocated, the same bytes
+            byte[] body = scratch.Body.Buffer, outBuf = scratch.Out.Buffer, deflated = scratch.Deflated.GetBuffer();
+            int n2 = SaveFile.Save(a, scratch, 1_000_000, OfflineMode.Living, 0, 0, "a headline");
+            Assert.AreEqual(n, n2);
+            Assert.AreSame(body, scratch.Body.Buffer, "the state's buffer kept");
+            Assert.AreSame(outBuf, scratch.Out.Buffer, "the save's buffer kept");
+            Assert.AreSame(deflated, scratch.Deflated.GetBuffer(), "the deflated buffer kept");
+            CollectionAssert.AreEqual(plain, Slice(scratch.Out.Buffer, n2), "the same bytes again");
+            // the world lived on, saved both ways again: the same bytes; and the load gives the world saved
+            a.AdvanceTo(SimTime.Days(2.1));
+            byte[] plain3 = SaveFile.Save(a, 2_000_000, OfflineMode.Paused, 0, 0, "");
+            int n3 = SaveFile.Save(a, scratch, 2_000_000, OfflineMode.Paused, 0, 0, "");
+            CollectionAssert.AreEqual(plain3, Slice(scratch.Out.Buffer, n3), "the same bytes after the world lived on");
+            var b = SaveFile.Load(Slice(scratch.Out.Buffer, n3), out var hdr);
+            Assert.AreEqual(a.StateHash(), b.StateHash(), "the loaded world");
+            Assert.AreEqual(a.Now, hdr.WorldTime);
+        }
+
+        static byte[] Slice(byte[] b, int n) { var r = new byte[n]; Array.Copy(b, r, n); return r; }
+
         [Test]
         public void InvariantsHoldOverAMonth()
         {

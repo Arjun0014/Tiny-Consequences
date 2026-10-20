@@ -250,14 +250,17 @@ namespace TC2.Game
             if (World == null) return;
             var sw = Stopwatch.StartNew();
             long now = Browser.NowUtcMs();
-            byte[] bytes = SaveFile.Save(World, now, Offline, CatchingUp ? CatchUpTarget : 0, CatchingUp ? CatchUpRealStartMs : 0, Feed.Count > 0 ? Feed[Feed.Count - 1] : "");
+            // (into buffers kept from save to save: a great world's save otherwise made ~460 MB of short-lived buffers a minute, and the browser's heap
+            // only grows - SaveFile.Scratch)
+            int length = SaveFile.Save(World, _saveScratch, now, Offline, CatchingUp ? CatchUpTarget : 0, CatchingUp ? CatchUpRealStartMs : 0, Feed.Count > 0 ? Feed[Feed.Count - 1] : "");
             _lastSaveRealMs = now;
-            LastSaveBytes = bytes.Length;
+            LastSaveBytes = length;
             LastSaveMs = (float)sw.Elapsed.TotalMilliseconds;
-            Store.Save("world", bytes, ok => { LastSaveOk = ok; done?.Invoke(ok); });
+            Store.Save("world", _saveScratch.Out.Buffer, length, ok => { LastSaveOk = ok; done?.Invoke(ok); });
         }
 
         public int LastSaveBytes; public float LastSaveMs; public bool LastSaveOk;
+        readonly SaveFile.Scratch _saveScratch = new SaveFile.Scratch();
 
         /// <summary>Reloads the saved world as if returning after <paramref name="absenceMs"/> (debug and tests).</summary>
         public void ReloadAsIfAway(long absenceMs)
