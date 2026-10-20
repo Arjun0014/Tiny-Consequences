@@ -4,6 +4,29 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 24 (20 Oct 21:56 - 21 Oct ~01:25 IST; Control Room run #73 session 1) - context handoff with the job queue running; nothing of C10.7a,
+  C10.7b or C9.5c landed yet** (SESSION_HANDOFF "Session 24" has the queue and the steps). (1) **The stopped queue restarted** in a new scratchpad (the
+  old one was gone: every binary rebuilt from its worktree, each checked against its own earlier runs). (2) **The landing branch's full suite**
+  (`wip/s23b-int` ca25d71): 441 passed, 0 failed, 0 skipped; floatcheck clean. C10.7b's and C9.5c's binaries rebuilt and their test classes again 0
+  skipped. (3) **C9.5c's hunger lean examined** (`d2166.md`): C9.5c acts late (twins identical until years 205-290), the hunger change is not the sickness
+  change (r +0.08), seed 4's +907 is two crash famines of a world at its land's ceiling; a **matched placebo** (`_pvm`: the old rules nudged by one FU at
+  each world's own parting year) spreads hunger as widely (sd 0.100 against 0.097) and itself leans past |t| 2 (relief by sea x1.22, t 2.09); against
+  its placebo twin hunger x1.08 (t 1.6), palisades x0.99, epidemics x0.86 (t -1.95). A **replication** on seeds 9-19 did not repeat the hunger lean (x1.03,
+  t 1.33) but leaned in people (x0.96 over years 200-299 in its six diverging seeds) - pooled over 15 diverging seeds people x0.979 (t -2.6), hunger a
+  person-year x1.067 (t 2.7), deaths and births a person-year at par; no mechanism found; a third set (seeds 20-29) is in the queue to decide before
+  landing. (4) **C10.7b's ten seeds** (`_sx1`; control `--oldsworn` = `_a7` byte for byte): births and deaths a person-year at par; 499 sworn men in 80
+  villages against 28 lords at year 300 (great households keep men - kept); people over 100-199 x0.924 (t -2.64) against `_a7`, x0.939 (t -1.46) against
+  its matched placebo twin (`_sxp`), whose spread is large; the mechanism against the twin: tributes x2.0, loot x3.7, raids x2.4, wounds a person-year
+  x1.38 - war more frequent and more costly. (5) **The next governance slice measured first** (new tools `lordships --heads --margins --could --wrongs`
+  on main's ten worlds at year 300): bonds outlive their lords (25 of the 26 still paid had outlived the person they were made with) but hold by strength
+  (25 of 26 lords still stronger by the odds of a first bow) - succession at a lord's death would change little; **formation limits the lordships**: 514
+  pairs within a day's walk where one could make the other bow, against 26 bonds. **C10.8 the asking** built on `wip/c108-demand` (sim 91: a free village
+  is asked a tenth at its harvest by its nearest stronger neighbour whose first household keeps sworn men; it bows where its people could neither stand
+  against them nor go elsewhere, else the refusal is a wrong the asker holds); DemandTests 4/4 and seven neighbour classes 0 skipped; its control and ten
+  seeds queued. (6) **The realms map layer on main** (D2-167 draft; merges 4d40607, 12321eb, ae89777): the HUD's Realms (R) washes each lordship's land in
+  its colour with a band at its edge, chevrons from tributary to lord along the way its tenth goes, a legend; real shots in two rounds (`s24r3`/`s24r8`
+  found gold as ripe grain, dark dyes as earth, a faint edge, a mustard village up close, two realms in one colour; `s24s3`/`s24s8` read at the region and
+  orbit views after map dyes, a 3-px band, a fade up close); dyes kept distinct planet-wide; the Web test's frame cost waits for the landing's Web build.
 - **Session 23, fifth context (20 Oct 2026, 05:06-~05:45 IST; Control Room run #63 session 5) - Arjun stopped the session**: nothing landed on main but
   tools; the queue was stopped after C9.5c's evaluation and C10.7b's SwornTests retest (the rest - the landing branch's full suite, C10.7b's seeds, the
   900-year checks, the profile - waits in `$Q/todo`: SESSION_HANDOFF "Session 23, fifth context"). (1) **The landing branch reviewed** (its diff read

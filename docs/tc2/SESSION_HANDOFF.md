@@ -1,52 +1,76 @@
 # TC2 Session handoff
 
-## Session 24 (20 Oct 2026, from 21:56 IST) - the queue restarted in a new scratchpad; the landing branch's full suite passes; the realms map layer on main; C9.5c's lean being explained
+## Session 24 (20 Oct 21:56 - 21 Oct ~01:25 IST; Control Room run #73 session 1) - context handoff with the job queue RUNNING; nothing of C10.7a/C10.7b/C9.5c landed yet; the realms map layer on main; C10.8 the asking built on a branch
 
-### Exact state (checkpoint 22:52; the queue RUNNING)
-- **The old scratchpad (db1b5af7) was gone**: every binary is rebuilt by the queue from its worktree. `tc2/out/tools/s23/lib.sh` and `runq.sh` now point at
-  this session's scratchpad `S` = `N` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad`
-  (`Q` = `$S/q`; backups `lib.sh.bak_s23`, `runq.sh.bak_s23`). The session's jobs are in `tc2/out/tools/s24/` (copies of the documented s23 jobs under
-  new sortable names, and new ones); results go to `tc2/out/tools/s23/results/`. **RUNNING**: `bash tc2/out/tools/s23/runq.sh` (background), from 22:04.
-- **Done in the queue**: `1_a` the landing branch `wip/s23b-int` (ca25d71) built (`bin_i2`), floatcheck clean, **full suite 441 passed, 0 failed, 0
-  skipped** (`results/fullsuite_i2.txt`; `fs_i2_ok`); `1_b` C10.7b rebuilt (`bin_s2`, tc-sworn 71bb313): Sworn 5, Training 4, Might 6, Lordship 4,
-  Leaders 8, Defence 8, Taking 18, Determinism 6, SaveLoad 8 - all 0 skipped (`s2_ok`); `1_c` C9.5c rebuilt (`bin_c1`, tc-visits 8a270c4): Visits 1
-  (along a way 9.6, across water 0; news 8 and 0 - as documented), Cross 14, Disease 7, Trade 7, Determinism 6, SaveLoad 8 (`c1_ok`); the realms
-  layer's three compile checks (`1_a2`, `1_a4`, `1_a6`: `cc --src` tc-realms, Core/Game/Editor/Tests) and two rounds of real shots (`1_a3`, `1_a5`).
-- **In the queue, in order** (`ls $Q/todo`): `2_a_pvm_*` C9.5c's **matched placebo** (C9.5b's rules on `bin_c1 --oldvisits`, one FU more in the first
-  village's store at the year each C9.5c world first parted from `_y1`: 4:220 5:70 1:290 6:220 11:210 2:230 3:250 7:270 8:220 42:210 - tag `_pvm`); `3_a`
-  C10.7b control `_sx0` (= `_a7`), `3_b_*` its ten seeds `_sx1`, `3_c` `results/cmp_a7_sx1.txt` + `might_s*_sx1.txt`; `4_a_pw_*` **C9.5c's replication**
-  on ten new seeds 9,10,12-19 (`_pw0` old rules, `_pw1` C9.5c), `4_b` `results/cmp_y1_pvm.txt`, `cmp_pvm_pv1.txt`, `cmp_pw0_pw1.txt`; `5_a` C10.7a rebuilt
-  (`bin_a9`, tc-arms 44808e5; its tests and seed 5 must reproduce `_a7` -> `a9_ok`), `5_b..d` C10.7a's 900 years (`_l9k0` seed 2, `_l9a7` seeds 2, 4);
-  `6_a..b` C10.7b's 900 years (`_l9sx1` seeds 2, 4), `6_c` the profile; `8_a` the tools branch `wip/s24-tools` (worktree `C:/Game Dev/tc-s24tools`,
-  from the landing branch: `lordships --heads --margins`, ff2b14e) built to `bin_lt` (its hash probe must equal `bin_i2`'s), `8_b` the integrated rules'
-  seeds 2 and 4 (`_i2`, sim 90, saved at year 300), `8_c` their 900 years (`_l9i2`), `8_d` `results/lordships_s{2,4}_i2_y{300,600,900}.txt` (the evidence
-  for the next governance slice); `9_a` `bin_m2` rebuilt in a worktree `C:/Game Dev/tc-m2` at 0b4540f (seed 4 must reproduce `_g2` -> `m2_ok`), `9_b`
-  D2-161's attribution on tag `_gq` (the `_g2` files of seeds 11, 2, 3, 7, 8, 42 were an older run's, 11 Oct), `9_c` `results/cmp_z1_gq.txt`, `cmp_gq_g1.txt`.
-- **C9.5c's hunger lean, per seed** (`tc2/out/tools/s24/lean.py y1 pv1 ...`: hunger, sickness and all deaths over years 100-299, the year each pair of worlds first
-  differs): C9.5c acts late - the twin worlds are identical until years 205-290 (seed 5 from 62; seed 8 never) - and **the hunger change is not the
-  sickness change** (correlation across seeds +0.08): seed 4's whole +907 falls in years 284-297 - both twins at their land's ceiling (~10,000 people),
-  the C9.5c twin a little larger after a milder epidemic at year 220, crashing harder in two famines (years 284-286: 643 against 165; year 297: 1,036
-  against 619); seeds 3 and 2 lost 244 and 98 fewer to sickness with hunger -27 and -74; all deaths a person-year x0.996. The matched placebo and the
-  replication decide (`4_b`).
-- **The realms map layer is on main** (merges 4d40607, 12321eb, ae89777 of `wip/realms`; presentation only; D2-167 draft `tc2/out/tools/s24/d2167.md`):
-  wired (TerrainLod uv5/uv6 per vertex, Terrain.shader, Bootstrap, HUD "Realms"/R and legend, shots `--realms`, the Web bridge `on realms`, webtest
-  `3b_region_realms`). Real shots: the first round (`tc2/out/shots/s24r3`, `s24r8`) found gold reading as ripe grain, dark dyes as earth, a faint edge, a
-  mustard village up close and two realms 4.5 km apart in one colour; the second look (`s24s3`, `s24s8`: map dyes, an even fill 0.72/0.43, a ~3 px band
-  inside the land's edge, a fade within 450-1,300 m, dyes apart) reads at the region and orbit views; then dyes made distinct planet-wide (fdd2572). Left:
-  the Web test's frame rate with the layer (after the landing's Web build) and D2-167 into DECISIONS.
-- **Next governance slice prepared** (not built): `tc2/out/tools/s24/c108_design.md` - C10.8 a lord's death and its tributaries (bonds personal to the
-  lord's first person, renewed at a succession by the odds of a first bow or by the debt; else the heir is refused), against rising together; chosen by
-  `8_d`'s evidence.
-- Not ours: `.claude/launch.json` (modified), `Assets/Resources.meta` (untracked). Unity's batch editor logs an `ArgumentOutOfRangeException` from its own
-  search indexer at start-up (`UnityEditor.Search.SearchDatabase`) in every shots run since 19 Oct - not our code.
+### Exact state at the handoff (21 Oct 01:25)
+- **main** = cd4f054 (+ this handoff's docs commit), sim 87: the realms map layer merged (4d40607, 12321eb, ae89777 of `wip/realms` fdd2572 - Game code
+  only: `RealmsView`, `TerrainLod` uv5/uv6, `Terrain.shader`, `WorldObjectsView` map dyes and realm dyes kept apart, HUD Realms/R + legend, ShotRunner
+  `-tc2realms`, `unity.mjs shots --realms`, WebBridge `on realms`, webtest `3b_region_realms`). Not ours: `.claude/launch.json` (modified),
+  `Assets/Resources.meta` (untracked) - leave them.
+- **RUNNING: the job queue** - `bash tc2/out/tools/s23/runq.sh` (background task **bcbn62z2b**, started 22:04; one low-priority job at a time, each gated
+  RAM < 86 %, CPU < 85 %). `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`
+  (`runq.log`; `log/<job>.log`; `todo`, `done`; `touch $Q/stop` ends it after the current job). `lib.sh`/`runq.sh` point at that scratchpad (`S` = `N` = its
+  parent; backups `*.bak_s23`). Job copies: `tc2/out/tools/s24/`; results: `tc2/out/tools/s23/results/`. A monitor (task b2hef5r43) reports failed jobs only.
+  **Left in `$Q/todo` at 01:25, in order (~3 h)**: `4_e_b_i2_s2/s4` (the integrated rules - the landing branch, `bin_i2`, sim 90 - seeds 2 and 4, saved at
+  year 300; s2 running), `4_e_c_l9i2_s2/s4` (their 900 years, `_l9i2`), `4_e_d_lords_l9i2` (`lordships --heads --margins --could --wrongs` at years 300/600/900
+  -> `results/lordships_s{2,4}_i2_y*.txt`, on `bin_lt` = `wip/s24-tools`, its hash probe equal to `bin_i2`'s); `4_f_pw_*` (C9.5c's third seed set, 20-29,
+  `_pw0`/`_pw1`) + `4_g_pool_pw`; `5_a` (C10.7a rebuilt as `bin_a9`; its tests and seed 5 must reproduce `_a7` -> `a9_ok`), `5_b..d` (C10.7a's 900 years:
+  `_l9k0` seed 2, `_l9a7` seeds 2 and 4 -> `results/lordships_s*_l9*_y600.txt`); `6_a..b` (C10.7b's 900 years `_l9sx1`), `6_c` (the profile, `--oldsworn
+  --oldmightarms` against as built); `7_a_i2_*` (the integrated rules' other eight seeds, `_i2`), `7_b` (C10.8's control: `bin_dm1 --olddemand` seed 4 =
+  `_i2`), `7_c_dm1_*` (C10.8's ten seeds `_dm1`), `7_d` (`results/cmp_i2_dm1.txt`); `9_a` (`bin_m2` rebuilt in a new worktree `C:/Game Dev/tc-m2` at
+  0b4540f; seed 4 must reproduce `_g2` -> `m2_ok`), `9_b_gq_*`, `9_c` (D2-161's attribution on tag `_gq` -> `results/cmp_z1_gq.txt`, `cmp_gq_g1.txt`).
+- **Done in the queue (verified)**: the landing branch (`wip/s23b-int` ca25d71, `bin_i2`) **full suite 441 passed, 0 failed, 0 skipped**
+  (`results/fullsuite_i2.txt`), floatcheck clean; C10.7b rebuilt (`bin_s2`, tc-sworn 71bb313) - Sworn 5, Training 4, Might 6, Lordship 4, Leaders 8,
+  Defence 8, Taking 18, Determinism 6, SaveLoad 8, all 0 skipped; C9.5c rebuilt (`bin_c1`, tc-visits 8a270c4) - Visits 1 (9.6/0.0, news 8/0, as
+  documented), Cross 14, Disease 7, Trade 7, Determinism 6, SaveLoad 8; **C10.7b's control** `--oldsworn` seed 2 = `_a7` byte for byte (`_sx0`); **C10.7b's
+  ten seeds** `_sx1` (`results/cmp_a7_sx1.txt`) and its matched placebo `_sxp` (`cmp_a7_sxp.txt`, `cmp_sxp_sx1.txt`); **C9.5c's matched placebo** `_pvm`
+  (`cmp_y1_pvm.txt`, `cmp_pvm_pv1.txt`) and replication on seeds 9-19 `_pw0`/`_pw1` (`cmp_pw0_pw1.txt`); the measurements for the next slice on main's ten
+  worlds (`results/lordships_s*_y1_hm.txt`, `could_s*_y1.txt`, `wrongs_s*_y1.txt`, built from the measure-only worktree `C:/Game Dev/tc-s24m`, branch
+  `wip/s24-tools87` - never to be merged: main's copy of the tool lands with `wip/s24-tools`); C10.8's build and tests (`bin_dm1`, db7e92e): **DemandTests
+  4/4**, Lordship 4, Bread 5, Sworn 5, Might 6, Defence 8, Determinism 6, SaveLoad 8, all 0 skipped, floatcheck clean (`dm1_ok`); the realms layer's three
+  `cc --src` compiles and two rounds of real shots.
+
+### What the evidence says (written into the drafts)
+- **C9.5c** (`tc2/out/tools/s23/d2166.md`, FILL: the third set): the hunger lean (x1.064, t 2.17 against `_y1`) is chaos at a land's ceiling - C9.5c acts late
+  (twins identical until years 205-290), the hunger change is not the sickness change (r +0.08), seed 4's +907 is two crash famines in its last 15 years;
+  the matched placebo spreads hunger as widely (sd 0.100 vs 0.097) and itself leans past |t| 2 (relief by sea x1.22); **against its placebo twin hunger x1.08
+  (t 1.6), palisades x0.99**, epidemics x0.86 (t -1.95), sickness deaths x0.64 (t -2.02); seed 5's lost epidemic was chance. **The replication (9-19)**:
+  hunger x1.03 (t 1.33, n.s.) but people over 200-299 x0.958 in the six diverging seeds (t -3.0) and deaths a person-year x1.015 (t 3.4, 6/6 up) - while
+  the first ten showed x0.993 and x0.995. Pooled (15 diverging): people x0.979 (t -2.6), hunger a person-year x1.067 (t 2.7), deaths x1.003, births x0.995.
+  No mechanism found (C9.5c removes false visits, news and wear across water; one candidate: island villages losing low-level exposure to sickness meet
+  rarer, larger epidemics - seed 12's twin +1,643 sickness deaths). **The third set (20-29, `4_f`/`4_g`; then `python tc2/out/tools/s24/lean_pool.py`
+  pools all three) decides**: if the population lean holds its sign and grows in t, investigate (sickness by set, immunity) before landing C9.5c - land
+  C10.7a and C10.7b without it if need be (the handoff below, step 2); if it fades, land all three, the leans recorded.
+- **C10.7b** (`d2165.md`, FILL: 900 years, profile): ten seeds at par in births and deaths a person-year; the open question answered (499 men in 80
+  villages against 28 lords at year 300 - great households keep men: kept); people over 100-199 x0.924 (t -2.64) against `_a7` but **x0.939 (t -1.46)
+  against its matched placebo twin**, whose own spread is large (one FU at year 30 made seed 7's twin found 23 villages and reach 6,441 people against
+  ~2,000); the mechanism stronger against the twin - tributes x2.04, tribute agreed x1.77, loot x3.7, raids x2.4, wounds a person-year x1.38; the wall clock
+  x1.11 was the machine's (the placebo on the same binary x1.27).
+- **C10.7a** (`d2164.md`, FILL: the 900-year check `5_b..d`).
+- **The next slice** (`tc2/out/tools/s24/c108_design.md`): measured on main's ten worlds, bonds outlive their lords (25 of 26) but hold by strength (25 of
+  26 lords still stronger by the odds of a first bow) - succession at a death would change little; **formation is what limits the lordships**: 514 pairs
+  within a day's walk where one could make the other bow, against 26 bonds; 24 free villages could commend themselves to a protector. **C10.8 the
+  asking** chosen and built on `wip/c108-demand` (worktree `C:/Game Dev/tc-demand`, from the landing branch's tip; 3480b5e: rule `Conflict.Demanded`,
+  `TributeDemanded` = 100, `TributeAgreed` ArgB 2, the page's reason, `--olddemand`, `--demandtally`, sim 91, DemandTests 4, docs `10` §12k and `25`);
+  draft decision `tc2/out/tools/s24/d2168.md`; its control and ten seeds are queued (`7_b`..`7_d`) against the integrated rules' ten seeds `_i2`.
+- **The realms layer** (`tc2/out/tools/s24/d2167.md`, FILL: the Web test's frame rates): first shots `tc2/out/shots/s24r3`, `s24r8` (and without the
+  layer `s24r3n`, `s24r8n`) found gold read as ripe grain, dark dyes as earth, a faint edge, a mustard village up close, two realms 4.5 km apart in one
+  colour; the second look `s24s3`, `s24s8` (map dyes, an even fill 0.72/0.43, a ~3 px band at the land's edge by the weight's derivative, a fade within
+  450-1,300 m) reads at the region and orbit views; then realms' dyes made distinct planet-wide (fdd2572: orbit shows a hemisphere).
 
 ### Next, in order
-1. Read the queue as it lands: the placebo and replication (`4_b`) -> D2-166's last line; C10.7b's seeds (`3_c`) -> D2-165 and the open question (how
-   many villages keep men, raids, vital rates); the 900-year checks (`5_*`, `6_*`, `8_c`) -> D2-164, D2-165; the profile; `_gq` -> D2-161.
-2. If at par: on main `git merge --no-ff wip/s23b-int`; DECISIONS D2-164, D2-165, D2-166 (drafts `tc2/out/tools/s23/d2164.md`, `d2165.md`, `d2166.md`) and
-   D2-167; PROGRESS; queue `tc2/out/tools/s23/7_a_land_checks.sh`, `7_b_shots_sworn.sh` (add realms views on the `_m5` world), `7_c_web.sh` (`s23web5`:
-   also the realms layer's frame cost) - copy them into `$Q/todo` under names that sort after what is there.
-3. The next slice by `8_d`'s evidence (C10.8 or rising together) - design `tc2/out/tools/s24/c108_design.md`.
+1. Read the queue as it lands (`cat $Q/runq.log`; each job's log). `4_e_d` -> the integrated rules' 900 years (snowball? margins? formation?) - record in
+   `c108_design.md` and D2-168's context; `4_g` + `lean_pool.py` -> C9.5c's decision; `5_*`, `6_*` -> D2-164's and D2-165's 900-year lines; `6_c` -> the
+   profile line; `7_d` -> C10.8's ten seeds (judge by the vital rates, raids, wounds, bonds; then its own placebo and 900 years); `9_c` -> a line in D2-161.
+2. **Land** (when the drafts have no FILL left): on main `git merge --no-ff wip/s23b-int` (C10.7a, C10.7b, C9.5c, sim 90) and `git merge --no-ff
+   wip/s24-tools` (the lordships tools; it is the landing branch plus tools - merge after); fill the FILLs; `python tc2/out/tools/s24/append_decisions.py`
+   (D2-164..D2-167, refuses any FILL); PROGRESS (draft `tc2/out/tools/s24/progress_s24.md`), `25` (C10.7a/b done strikes are on the branch), `18` §9 a
+   paragraph for D2-167, `10` §12h "(done: D2-167)"; then queue `tc2/out/tools/s24/0_a_land_checks.sh` (bin_m5, floatcheck, `unity.mjs cc`, a v90 seed-2
+   world `_m5`), `0_b_fullsuite_m5.sh`, `0_c_shots_m5.sh` (`s24p` sworn men at practice, `s24q` realms on the v90 world), `0_d_web.sh` (`s24web1`: also the
+   realms layer's frame cost, `3b_region_realms` against `2_region`) - names starting `0_` jump the queue. If C9.5c is held back: build a landing branch of
+   main + C10.7a + C10.7b (`wip/c107a-arms`, `wip/c107b-sworn`; sim versions renumber) - or land `wip/s23b-int` and revert C9.5c's commits on it.
+3. **C10.8** after the landing: rebase or merge `wip/c108-demand` onto main (it already contains the landing branch), its ten seeds (`7_c`) against `_i2`,
+   a matched placebo if a lean needs one, its 900 years (snowball?), real shots (realms growing; `--realms` on a `_dm1` world), full suite, D2-168, Web.
 
 ## Session 23, fifth context (20 Oct 2026, 05:06 - ~05:45 IST; Control Room run #63 session 5) - Arjun stopped the session; the queue stopped after C9.5c's evaluation and C10.7b's retest; nothing new on main but tools
 

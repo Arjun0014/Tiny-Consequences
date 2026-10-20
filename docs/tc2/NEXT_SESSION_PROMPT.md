@@ -335,6 +335,17 @@ in `$Q/todo` - restart it first (SESSION_HANDOFF "Session 23, fifth context"). S
 land of each realm's villages washed in its colour, chevrons from tributary to lord, a legend; `RealmsView` written, not wired yet (the steps in the
 handoff).
 
+**Where we are (session 24, 20-21 Oct 2026, 21:56-~01:25 IST; context handoff with the job queue running)**: nothing of C10.7a, C10.7b or C9.5c is
+on main yet. The stopped queue was restarted in a new scratchpad (every binary rebuilt and checked); **the landing branch's full suite passes (441/441,
+0 skipped)**; C10.7b's ten seeds are at par in the per-person rates (its mid-run people dip inside the noise against a matched placebo twin; the mechanism
+is war - raids, loot, tribute up); C9.5c's hunger lean is chaos at a land's ceiling by its matched placebo, but a replication on new seeds leaned in
+people (x0.96) - a third seed set in the queue decides whether C9.5c lands with the others. **The realms map layer is on main** (D2-167 draft:
+each lordship's land in its colour with a band at its edge, chevrons to the lord, a legend; two rounds of real shots). **The next governance slice was
+measured first**: bonds outlive their lords but hold by strength, so succession changes little; what limits lordships is that they rarely form (514
+pairs where one could make the other bow, against 26 bonds) - **C10.8 the asking** is built on `wip/c108-demand` (DemandTests 4/4; its seeds queued).
+SESSION_HANDOFF "Session 24" has the queue and the steps; the drafts are `tc2/out/tools/s23/d2164.md`-`d2166.md`, `tc2/out/tools/s24/d2167.md`,
+`d2168.md`, `c108_design.md`.
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.

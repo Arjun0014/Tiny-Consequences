@@ -10,65 +10,40 @@ evidence and keep going; context handoffs are a continuation mechanism, not a st
 answers "what changes in the world picture?" and is judged in real game shots.
 
 ## Read first (this order), then work autonomously
-1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the standing prompt (architecture, rules, every direction; "Where we are (session 23, fifth context)").
-2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 23, fifth context"**: exact state, the STOPPED job queue and how to restart it, the realms
-   layer's steps, "Next, in order" (the fourth context's block below it has the slices' details).
-3. `docs/tc2/DECISIONS.md` newest: D2-163 (C9.5b, its checks now complete). The three drafts to land: `tc2/out/tools/s23/d2164.md` (C10.7a),
-   `d2165.md` (C10.7b, the personal oath), `d2166.md` (C9.5c, complete) - the FILL marks are what the queue still owes.
-4. Design: `docs/tc2/10_CONFLICT_AND_POLITICS.md` §12i-§12j and `24_TRANSPORT_AND_MARITIME.md` §5 **on the landing branch** (`C:/Game Dev/tc-int2`);
-   `tc2/out/tools/s23/c107_design.md` (C10.7b's design, last section), `c95c_design.md` (C9.5c's survey).
-5. `docs/tc2/PROGRESS.md` CURRENT STATE (the session 23, fourth context entry first).
-6. `git status`, `git log --oneline -12`, `git worktree list`, and the queue: `cat $Q/runq.log` (path below).
+1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the standing prompt (architecture, rules, every direction; "Where we are (session 24)").
+2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 24"**: the exact state, the RUNNING job queue (where it is, what is left in it), what the evidence
+   says, "Next, in order".
+3. The drafts to land, each with its FILL marks (what the queue still owes): `tc2/out/tools/s23/d2164.md` (C10.7a), `d2165.md` (C10.7b), `d2166.md` (C9.5c),
+   `tc2/out/tools/s24/d2167.md` (the realms map layer), `d2168.md` (C10.8 the asking); the next slice's design and measurements
+   `tc2/out/tools/s24/c108_design.md`; the PROGRESS draft for the landing `tc2/out/tools/s24/progress_s24.md`.
+4. `docs/tc2/DECISIONS.md` newest (D2-163), `docs/tc2/PROGRESS.md` CURRENT STATE (the session 24 entry first), `docs/tc2/10_CONFLICT_AND_POLITICS.md`
+   §12i-§12k **on the branches** (`C:/Game Dev/tc-int2` has §12i-j; `C:/Game Dev/tc-demand` has §12k).
+5. `git status`, `git log --oneline -12`, `git worktree list`, and the queue: `cat $Q/runq.log` (path below) - which jobs ended, with what.
 
-## Session 23, fifth context (20 Oct 2026, 05:06-~05:45 IST) - Arjun stopped the session; the job queue is STOPPED
-- **On main (f0e2dd4 + the handoff; sim 87)**: only a tool - `unity.mjs cc --src DIR` compiles a worktree's Unity sources against main's generated csproj
-  files (a worktree has no Library), so a branch's Game code is checked before it lands.
-- **The landing branch `wip/s23b-int`** (C10.7a + C10.7b + C9.5c, sim 90; tip ca25d71): its diff reviewed (no fault found) and its Unity C# compiles
-  (bb2ec81; ca25d71 adds only a test's wording). C10.7b's tip is 71bb313 (the same test fix).
-  **C9.5c evaluated** (control identical; ten seeds at par in the vital rates; sickness x0.64, epidemics x0.81, palisades x0.95 (the mechanism); hunger deaths x1.06 (t 2.2) with all deaths a person-year at par - to explain before landing; `d2166.md` complete). **C10.7b's SwornTests retest**: 5/5 after a stale assertion on the settlement page's wording was fixed (tc-sworn 71bb313, tc-int2 ca25d71).
-- **The queue stopped** after `6_9_d3_stop` (`$Q/stop` exists): the landing branch's full suite `6_9_d`, C10.7b's control and ten seeds `6_9_e..g`, D2-161's
-  attribution `6_a_g2_*`/`6_b`, the 900-year checks `6_c_*` (C10.7a) and `6_d_*` (C10.7b), the profile `6_e` wait in `$Q/todo` (about three hours).
-  **Restart it first**: `rm "$Q/stop"`, then `bash tc2/out/tools/s23/runq.sh` in the background (one heavy job at a time, each gated).
-- **Started: the realms map layer** (`wip/realms`, `C:/Game Dev/tc-realms`; presentation only, D2-167 when it lands): `Game/View/RealmsView.cs` - each
-  realm village's land washed in its colour (the seat stronger), chevrons from each tributary toward its lord along the way its tenth is carried, a legend.
-  Written and compile-checked (committed 7d418d3, it compiles (`cc --src`)), not wired: Bootstrap, TerrainLod's per-vertex wash (uv5), Terrain.shader, the HUD toggle (R) and
-  legend, ShotRunner `-tc2realms`, then real shots - the steps in SESSION_HANDOFF.
-
-## Session 23, fourth context (20 Oct 2026, 02:54-05:10 IST) - three slices in evaluation; the job queue is running
-- **On main (0947e14 + this handoff; sim 87)**: C9.5b's checks complete (Web `s23web4` 6/6, three runtimes bit-identical; aimed real shots `s23n1`,
-  `s23n2` show dugouts crossing at 45 m; lived and COARSE crossings agree). Tools merged: `voyages --load SAVE --days N [--dugouts]` (a save lived as the
-  game loads it, every voyage logged with its village's day and hour - find a rare thing, then shoot it), voyage views `dugout`/`voyageclose`,
-  `--visittally`. Main's code since bc99679 is tools-only (its four survey worlds reproduce `_y1` byte for byte); the full suite last ran on bc99679.
-- **Built, tested, in evaluation - NOT on main**:
-  - **C10.7a** might by lasting strength (`wip/c107a-arms`, `C:/Game Dev/tc-arms`, sim 88): control = `_y1`; **ten seeds `_a7` at par** (people x1.018;
-    tribute agreed x1.20 t 1.78); 900-year check queued (`6_c_*`).
-  - **C10.7b** sworn men (`wip/c107b-sworn`, `C:/Game Dev/tc-sworn`, tip 3e570e3, sim 89): **the oath is to the person** first among the people
-    (1557053; the household-id first version churned - seed 4 released 2,956 men as "gone"). Eight neighbour classes pass on `bin_s2`; SwornTests
-    (wording fixed) retest `6_9_d2` sets `s2_ok`; then control `_sx0`, ten seeds `_sx1`, `results/cmp_a7_sx1.txt`, 900 years `_l9sx1`, a profile.
-    **Open question**: seed 4 had sworn men in 9 of 29 villages at year 300, only 2 of them lords (any first household with grain keeps men) - the
-    seeds and the 900-year check decide whether that stands or a lordship/size condition is wanted.
-  - **C9.5c** people across water (`wip/c95c-visits`, `C:/Game Dev/tc-visits`, tip 8a270c4): COARSE visits only where a way on foot leads, keeping a
-    lived day's odds (VisitsTests: along a way 9.6 as before, across water 0); control `_pv0`, ten seeds `_pv1`, `results/cmp_y1_pv1.txt` queued.
-  - **The landing branch** `wip/s23b-int` (`C:/Game Dev/tc-int2`, tip bb2ec81): main + all three, sim 90, docs; its full suite `6_9_d` is queued.
-- **RUNNING: the job queue** - `bash tc2/out/tools/s23/runq.sh` (task bc2qpqxfq; one heavy job at a time, each gated). `Q` =
-  `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/db1b5af7-2c1c-4e6f-a5ff-c8b25b1a81c2/scratchpad/q` (`runq.log`,
-  `log/<job>.log`, `todo`, `done`, `hold`; `touch $Q/stop` ends it after the current job; copies of every job in `tc2/out/tools/s23/`). Order from 05:05:
-  `6_8_z` (C9.5c rebuild and tests) -> `6_9_a..c` (C9.5c) -> `6_9_d2` (SwornTests) -> `6_9_d` (the landing branch's full suite) -> `6_9_e..g`
-  (C10.7b) -> `6_a_g2_*`, `6_b` (D2-161's attribution) -> `6_c_*` (C10.7a 900 years) -> `6_d_*` (C10.7b 900 years) -> `6_e_profile_sx1` - about
-  three hours. `$Q/hold` keeps the first C10.7b version's unrun jobs (superseded; do not requeue).
+## Session 24 (20 Oct 21:56 - 21 Oct ~01:25 IST) - context handoff; the job queue is RUNNING
+- **The queue**: `bash tc2/out/tools/s23/runq.sh`, background task **bcbn62z2b** (started 22:04 in session 24; it keeps running across the context clear).
+  `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`; binaries in its parent
+  (`bin_i2` the landing branch, `bin_s2` C10.7b, `bin_c1` C9.5c, `bin_dm1` C10.8, `bin_lt` the tools branch, `bin_lm` the measure-only tools; `bin_a9`,
+  `bin_m2` to be rebuilt by queued jobs). Left at 01:25 (~3 h): the integrated rules' seeds 2 and 4 and their 900 years with the lordship measures
+  (`4_e_*`), C9.5c's third seed set (`4_f_*`, `4_g`), C10.7a's 900 years (`5_*`), C10.7b's 900 years and the profile (`6_*`), the integrated rules' other
+  eight seeds and C10.8's control and ten seeds (`7_*`), D2-161's attribution (`9_*`). A monitor (task b2hef5r43) reports failed jobs; re-arm one if needed.
+- **On main (cd4f054 + the handoff docs; sim 87)**: the realms map layer (merges of `wip/realms`, presentation only) - judged in two rounds of real shots
+  (`tc2/out/shots/s24r3`, `s24r8`, then `s24s3`, `s24s8`); its Web frame cost waits for the landing's Web build.
+- **Verified, not landed**: the landing branch `wip/s23b-int` (C10.7a + C10.7b + C9.5c, sim 90): full suite 441/441, 0 skipped; C10.7b's ten seeds at par
+  in the per-person rates (its people dip inside the noise against a matched placebo twin; more war); C9.5c's hunger lean explained by a matched placebo -
+  but a replication leaned in people (x0.96): **the third seed set decides** (`python tc2/out/tools/s24/lean_pool.py` pools all three).
+- **Built on a branch**: C10.8 the asking (`wip/c108-demand`, `C:/Game Dev/tc-demand`, from the landing branch; sim 91; DemandTests 4/4) - chosen by
+  measuring first (bonds hold by strength, so succession changes little; formation limits lordships: 514 pairs where one could make the other bow, 26 bonds).
 
 ## Do next, in order
-1. Restart the queue (`rm "$Q/stop"`; `bash tc2/out/tools/s23/runq.sh` in the background) and read its results as they land. Explain C9.5c's one lean
-   first (hunger deaths x1.06, t 2.2, with all deaths at par: per seed, and a placebo - `d2166.md`). Then `d2165.md` (C10.7b control,
-   ten seeds, 900 years, profile - and decide the open question), `d2164.md` (C10.7a's 900 years); `6_9_d`'s full suite must be 0 failed, 0 skipped.
-2. If the three are at par and the full suite passes: on main `git merge --no-ff wip/s23b-int`; DECISIONS D2-164, D2-165, D2-166 from the drafts;
-   PROGRESS; queue `tc2/out/tools/s23/7_a_land_checks.sh` (bin_m5, floatcheck, `unity.mjs cc`, a v90 seed-2 world `_m5`), `7_b_shots_sworn.sh`
-   (`s23p`: a lord's sworn men at practice, `act:Train:sworn`), `7_c_web.sh` (`s23web5`) - judge the shots (do the sworn men read at the lord's
-   ground?). If one slice is not at par, land the others (rebuild the landing branch without it; sim versions renumber).
-3. The realms map layer on `wip/realms` (it need not wait for the landing: presentation only) - wire it, `cc --src`, merge, real shots of a world with
-   lordships (region, village, orbit): do realms read from afar? Then the Web build.
-4. Then by evidence: rising together (tributaries of one lord weighing together against it) if lordships snowball; a lord's death and its
-   tributaries.
+1. Read the queue's results as they land and fill the drafts (SESSION_HANDOFF "Session 24", "Next, in order", step 1).
+2. Land: `git merge --no-ff wip/s23b-int`, then `git merge --no-ff wip/s24-tools`; FILLs; `python tc2/out/tools/s24/append_decisions.py` (D2-164-D2-167);
+   PROGRESS, `25`, `18` §9, `10` §12h; queue `tc2/out/tools/s24/0_a_land_checks.sh`, `0_b_fullsuite_m5.sh`, `0_c_shots_m5.sh`, `0_d_web.sh`; judge the shots
+   (sworn men at practice; realms on a v90 world) and the Web test (`s24web1`: realms frame cost). If C9.5c's lean holds in the third set, land C10.7a and
+   C10.7b without it (SESSION_HANDOFF step 2) and investigate first.
+3. C10.8 the asking on the landed main: its ten seeds against `_i2` (queued), a placebo if a lean needs one, its 900 years (does the world partition into
+   realms, how fast, how violently?), real shots of realms growing (`--realms` on a `_dm1` world), full suite, D2-168, Web. Then by evidence: commendation
+   (24 wronged villages could put themselves under a protector), a lord's death once realms are held by the margin, rising together once realms are large.
 
 ## Rules that bite
 - Commits `[tc2] ...` ending with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`; stage only TC2 files; never force-push; push only when asked
@@ -76,26 +51,36 @@ answers "what changes in the world picture?" and is judged in real game shots.
 - **Resource rule (Arjun D-1/D-2)**: one low-priority heavy job at a time while RAM < 86 % and CPU < 85 % - the job queue (`tc2/out/tools/s23/runq.sh`,
   `lib.sh`: `gate`, `low`, `world`); never kill processes you did not start (the user's Chrome and other Claude sessions share the machine). A queued
   build compiles the worktree's working tree: do not edit a worktree between its job's start and the copy of its binary.
+- **The scratchpad can vanish between sessions** (session 24 found session 23's gone): `S`/`N` in `tc2/out/tools/s23/lib.sh` and `Q` in `runq.sh` are
+  hard-coded - point them at the live scratchpad, rebuild each binary from its worktree (the build lines at the top of the rebuild jobs) and check each
+  against one of its own earlier runs (annals and state hash) before using it. The saves the jobs read live in `tc2/out/civ` (ignored, persistent).
 - Develop in a worktree per slice (`git worktree add -b wip/<slice> "C:/Game Dev/tc-<slice>" main`); keep the main checkout on main for the Unity editor
   jobs (`unity.mjs cc`, shots, the Web build run in the main checkout). New test files need a `.meta` (fileFormatVersion 2, a new guid).
 - Core is pure C#, deterministic, no float arithmetic (floatcheck). A derived cache must give the same answer whenever it is filled (`03` §4). Judge
   simulation changes by ten seeds against a control on the same binary (a `--old...` switch reproducing the previous runs byte-identically - annals AND
-  the state hash); wall-clock time on this shared machine is not evidence.
+  the state hash); **wall-clock time is not evidence** (a placebo on one binary ran x1.27 slower, t 5.5).
+- **A lean past |t| 2 is judged against a matched placebo**: the old rules with `--nudge Y` (one FU in the first village's store) at the year each world
+  first parts from its twin under the new rule (`tc2/out/tools/s24/lean.py A B seeds...` prints that year, per seed), then the new rule against its
+  placebo twin. Twins that part late spread little; twins that part early spread widely (one FU at year 30 made a world found 23 villages instead of 4).
+  Among sixty measures one or two pass |t| 2 by chance (a placebo did). Then replicate on new seeds (9-19, 20-29).
 - **A test premise that changes the ground by hand** (sinks or raises cells outside the plates' turn) leaves the running world's waters drained for the old
   ground: **load it once** (`SaveFile.Load(SaveFile.Save(w, ...))`) before testing anything a save must continue (D2-162's finding).
 - The queue's test gate requires `0 skipped` (an `Assume` that fails is not a pass). `--filter CrossTests` also runs AcrossTests (substring match).
+  Test premises that set state directly must also tell it as the game would (C10.8's first test run: men sworn without a `Sworn` event left the asking
+  causeless) and give a village a real harvest (a young test world's store is small).
 - Bash heredocs pass through a layer that collapses `\\`: write patch scripts or text with backslashes with the Write tool.
-- Saves carry a sim version; a save loads only in a binary of the same version (main is 87; the `_x2` saves are 86, `_y1` 87).
+- Saves carry a sim version; a save loads only in a binary of the same version (main is 87; the landing branch 90; C10.8 91; `_y1` saves 87, `_i2` 90).
 - Test worlds (`TestWorlds.Make`) have not lived their first ticks: a premise that sinks or raises ground must `AdvanceTo(w.Now + SimTime.Hour)` first.
-- The headless build does not compile Game code (`Game/`, the view, `ShotRunner`): after any Game edit run `node tc2/scripts/unity.mjs cc`.
+- The headless build does not compile Game code (`Game/`, the view, `ShotRunner`): after any Game edit run `node tc2/scripts/unity.mjs cc` (or `cc --src
+  "C:/Game Dev/tc-<slice>/unity/TinyConsequences2"` for a branch, from the main checkout). The shader compiles only in the editor (the shots' log).
+- Unity's batch editor logs an `ArgumentOutOfRangeException` from its own search indexer at start-up (`UnityEditor.Search.SearchDatabase`) in every shots
+  run - not our code.
 - On the 6 km planet 5 km is ~48 degrees of longitude: villages a day's walk apart keep local times ~3 hours apart - shoot a village's activity in its own
   hours.
-- `Commands.cs`'s report is one long method: give a new tally's local a long, unique name (two builds broke on `at` and `vt`, CS0128/CS0136), and build
-  the headless app after merging tools into main - `unity.mjs cc` does not compile it (main's headless build was broken for an hour by db4b8ba).
-- Run tags in `tc2/out/civ` are reused across sessions (`k1`, `w1`, `v3` held older runs): check `ls tc2/out/civ | grep _TAG` before queuing a new tag.
+- `Commands.cs`'s report is one long method: give a new tally's local a long, unique name (CS0128/CS0136), and build the headless app after merging tools.
+  A tool copied from one branch to another can bring functions that need that branch's API (the measure-only copy on main broke on `MightNow`).
+- Run tags in `tc2/out/civ` are reused across sessions (`k1`, `w1`, `v3`, `g2`, `g3`, `t1` held older runs): check `ls tc2/out/civ | grep _TAG` first.
 - To shoot something rare, find it first: `voyages --load SAVE --days N` (and probes like it) live the save as the game loads it - the same world, the
-  same minute - then `unity.mjs shots --village V --days D --hour H` frames it (D2-163).
-- A branch's Unity (Game) code compiles before it lands with `node tc2/scripts/unity.mjs cc --src "C:/Game Dev/tc-<slice>/unity/TinyConsequences2"` (run from
-  the main checkout: its generated csproj files and Library are the references) - queue it like any build.
-- The queue runner exits while `$Q/stop` exists: delete it before restarting `runq.sh`; a job that touches it (`6_9_d3_stop.sh`) stops the runner at a
-  chosen point in the order (names sort: `_` sorts after digits and before letters).
+  same minute - then `unity.mjs shots --village V --days D --hour H` frames it (D2-163). The realms layer: `unity.mjs shots --realms --village lord`.
+- The queue runner exits while `$Q/stop` exists: delete it before restarting `runq.sh`; jobs run in name order (digits before `_` before letters), so a job
+  named `0_...` runs next.
