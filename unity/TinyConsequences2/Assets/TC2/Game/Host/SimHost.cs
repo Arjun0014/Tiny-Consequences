@@ -75,6 +75,7 @@ namespace TC2.Game
                 try
                 {
                     var w = SaveFile.Load(data, out var hdr);
+                    _saveScratch = SaveFile.Scratch.For(hdr);
                     SetWorld(w);
                     Offline = hdr.Offline == OfflineMode.Paused && hdr.SavedRealUtcMs == 0 ? OfflineMode.Living : hdr.Offline;
                     long now = Browser.NowUtcMs();
@@ -124,6 +125,7 @@ namespace TC2.Game
             if (radius > 0) cfg.Radius = radius;   // (tools and ?radius=: the planet's size, D2-085)
             var w = WorldGenerator.Create(cfg);
             CatchingUp = false; // a new world owes no absence
+            _saveScratch = new SaveFile.Scratch();
             SetWorld(w);
             Debug.Log("[TC2] new world seed " + seed + " generated in " + sw.ElapsedMilliseconds + " ms: " + w.LivingPeople() + " people in " + w.InhabitedSettlements() + " places");
             SaveNow();
@@ -132,7 +134,8 @@ namespace TC2.Game
         /// <summary>Tools (shots of one world at several ages): a saved world, as it was saved - no absence to catch up.</summary>
         public void LoadWorld(byte[] data)
         {
-            var w = SaveFile.Load(data, out _);
+            var w = SaveFile.Load(data, out var hdr);
+            _saveScratch = SaveFile.Scratch.For(hdr);
             CatchingUp = false;
             // (a world saved by a COARSE or DEEP run goes back to lived days at its next midnight, as a catch-up ends)
             long next = SimTime.StartOfDay(w.Now) + SimTime.Day;
@@ -250,14 +253,17 @@ namespace TC2.Game
             if (World == null) return;
             var sw = Stopwatch.StartNew();
             long now = Browser.NowUtcMs();
-            byte[] bytes = SaveFile.Save(World, now, Offline, CatchingUp ? CatchUpTarget : 0, CatchingUp ? CatchUpRealStartMs : 0, Feed.Count > 0 ? Feed[Feed.Count - 1] : "");
+            // (into buffers kept from save to save: a great world's save otherwise made ~460 MB of short-lived buffers a minute, and the browser's heap
+            // only grows - SaveFile.Scratch)
+            int length = SaveFile.Save(World, _saveScratch, now, Offline, CatchingUp ? CatchUpTarget : 0, CatchingUp ? CatchUpRealStartMs : 0, Feed.Count > 0 ? Feed[Feed.Count - 1] : "");
             _lastSaveRealMs = now;
-            LastSaveBytes = bytes.Length;
+            LastSaveBytes = length;
             LastSaveMs = (float)sw.Elapsed.TotalMilliseconds;
-            Store.Save("world", bytes, ok => { LastSaveOk = ok; done?.Invoke(ok); });
+            Store.Save("world", _saveScratch.Out.Buffer, length, ok => { LastSaveOk = ok; done?.Invoke(ok); });
         }
 
         public int LastSaveBytes; public float LastSaveMs; public bool LastSaveOk;
+        SaveFile.Scratch _saveScratch = new SaveFile.Scratch();   // (sized for the world at each load: its first save grows nothing by doubling)
 
         /// <summary>Reloads the saved world as if returning after <paramref name="absenceMs"/> (debug and tests).</summary>
         public void ReloadAsIfAway(long absenceMs)
@@ -267,7 +273,7 @@ namespace TC2.Game
                 Store.Load("world", data =>
                 {
                     if (data == null) return;
-                    var w = SaveFile.Load(data, out var hdr);
+                    var w = SaveFile.Load(data, out _);   // (the world just saved: the save buffers already fit it)
                     SetWorld(w);
                     long target = w.Now + OfflineProgress.WorldSecondsFor(absenceMs, Offline);
                     if (target > w.Now) BeginCatchUp(target);
