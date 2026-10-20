@@ -46,6 +46,11 @@ namespace TC2.Game
         /// <summary>The realms (for the HUD's legend): each head of a lordship, its colour, the villages that pay it (directly or through their
         /// lords) and the people of them all, largest first.</summary>
         public static readonly List<(int sid, Color c, int villages, int people)> Legend = new List<(int, Color, int, int)>();
+        /// <summary>Tools (the shots' log): the bonds read at the last refresh, those drawn along a way on foot (else straight over the water), the
+        /// villages washed, and the chevrons drawn this frame.</summary>
+        public static int Bonds, BondsAfoot, Washed, ChevronsDrawn;
+        /// <summary>Tools: the realms whose heads lie within 9 km of each other and fly the same colour ("" none).</summary>
+        public static string SameColour = "";
 
         /// <summary>A village's wash on the ground: its realm's colour and how strongly (false where it belongs to no realm, or the layer is off).</summary>
         public static bool WashOf(int sid, out Color c)
@@ -107,7 +112,7 @@ namespace TC2.Game
             }
             bool changed = sig != _sig;
             _sig = sig;
-            _wash.Clear(); _bonds.Clear(); Legend.Clear();
+            _wash.Clear(); _bonds.Clear(); Legend.Clear(); BondsAfoot = 0;
             var P = w.Planet;
             for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
             {
@@ -162,8 +167,20 @@ namespace TC2.Game
                 for (int k = 1; k < b.Pts.Length; k++) b.S[k] = b.S[k - 1] + Vec3d.ArcDistance(b.Pts[k - 1], b.Pts[k], P.Radius);
                 b.Len = b.S[b.S.Length - 1];
                 _bonds.Add(b);
+                if (r != null && r.Pts != null && r.Pts.Length >= 2) BondsAfoot++;
             }
             Legend.Sort((x, y) => x.villages != y.villages ? y.villages.CompareTo(x.villages) : x.people != y.people ? y.people.CompareTo(x.people) : x.sid.CompareTo(y.sid));
+            Bonds = _bonds.Count; Washed = _wash.Count;
+            // (tools: realms flying the same colour within 9 km of each other - would the map read them as one?)
+            SameColour = "";
+            for (int i = 0; i < Legend.Count; i++)
+                for (int j = i + 1; j < Legend.Count; j++)
+                {
+                    if (Legend[i].c.r != Legend[j].c.r || Legend[i].c.g != Legend[j].c.g || Legend[i].c.b != Legend[j].c.b) continue;
+                    double km = Vec3d.ArcDistance(w.Settlements.Get(Legend[i].sid).Anchor, w.Settlements.Get(Legend[j].sid).Anchor, P.Radius) / 1000.0;
+                    if (km < 9.0) SameColour += (SameColour.Length > 0 ? "; " : "") + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(Legend[i].sid)) + " and " +
+                                                w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(Legend[j].sid)) + " " + km.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " km";
+                }
             if (changed) Version++;
         }
 
@@ -179,6 +196,7 @@ namespace TC2.Game
         void DrawChevrons(TC2.Core.Simulation.World w)
         {
             _chevrons.Clear();
+            ChevronsDrawn = 0;
             if (Rig == null || Rig.Cam == null || _bonds.Count == 0) return;
             var P = w.Planet;
             Vector3 cam = Rig.Cam.transform.position;
@@ -210,6 +228,7 @@ namespace TC2.Game
                     if (fwd.sqrMagnitude < 1e-8f) continue;
                     Matrix4x4 m = Matrix4x4.TRS(pos + up * (0.18f * size), Quaternion.LookRotation(fwd.normalized, up), new Vector3(size, size, size));
                     _chevrons.Add(0, b.C, m, 0.55f);
+                    ChevronsDrawn++;
                 }
             }
             _chevrons.Draw(Rig.Cam);

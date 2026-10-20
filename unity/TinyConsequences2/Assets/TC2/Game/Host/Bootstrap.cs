@@ -66,6 +66,8 @@ namespace TC2.Game
             stock.Host = host; stock.Rig = rig;
             var sea = views.AddComponent<SeaLifeView>();
             sea.Host = host; sea.Rig = rig;
+            var realms = views.AddComponent<RealmsView>();   // (the realms map layer, D2-167: off until the HUD's Realms or R)
+            realms.Host = host; realms.Rig = rig;
 
             var hud = gameObject.AddComponent<Hud>();
             hud.Host = host; hud.Rig = rig; hud.Objects = objects;
