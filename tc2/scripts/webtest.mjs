@@ -108,6 +108,8 @@ try {
   await cmd('village 0 22000'); await shot('1_orbit', 2500);
   await cmd('village 0 6000'); await shot('2_region', 2500);
   await cmd('village 0 1400'); await shot('3_village', 4500);   // (past the first second of a new view: its meshes and shaders come up)
+  // the realms map layer (D2-167) on at the region view: its legend in the HUD, the frame's cost with it (a new world has no lordship yet)
+  await cmd('on realms'); await cmd('village 0 6000'); await shot('3b_region_realms', 3000); await cmd('off realms');
   await cmd('village 0 380'); await shot('4_close', 4500);
   await cmd('village 0 95'); await shot('4b_low', 4500);
   await cmd('view forest'); await shot('4c_forest', 4500);   // (the woods near the camera: D2-079)

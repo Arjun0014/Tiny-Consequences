@@ -225,6 +225,7 @@ namespace TC2.Game
             // seals live on a shore anywhere on the planet: when only they are shot, the world goes on to the same hour at the
             // shore they haul out on now (a daylight shot)
             if (Arg("-tc2ground") != null) WorldObjectsView.ShowGround = true;   // (C13.3 tools: the simulation's ground under each home)
+            if (Arg("-tc2realms") != null) RealmsView.On = true;   // (D2-167: the realms map layer on, as the player's R)
             string viewsArg = Arg("-tc2views") ?? "";
             if (viewsArg.Length > 0 && System.Array.TrueForAll(viewsArg.Split(','), v => v.StartsWith("seals")))
             {
@@ -420,6 +421,7 @@ namespace TC2.Game
             File.WriteAllBytes(Path.Combine(_out ?? _dir, name + ".png"), tex.EncodeToPNG());
             Destroy(tex); rt.Release(); Destroy(rt);
             Debug.Log("[TC2] shot " + name);
+            if (RealmsView.On) Debug.Log("[TC2] realms: " + RealmsView.Legend.Count + " realms, " + RealmsView.Bonds + " bonds (" + RealmsView.BondsAfoot + " along a way on foot), " + RealmsView.Washed + " villages washed, " + RealmsView.ChevronsDrawn + " chevrons drawn" + (RealmsView.SameColour.Length > 0 ? "; the same colour within 9 km: " + RealmsView.SameColour : ""));
             var sea = FindAnyObjectByType<SeaLifeView>();
             if (sea != null) Debug.Log("[TC2] sea life: shoals " + sea.Shoals + " drawn " + sea.Drawn + " seals " + sea.SealsDrawn + " | " + sea.Why);
             var wild = FindAnyObjectByType<WildlifeView>();

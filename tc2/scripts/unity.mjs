@@ -133,6 +133,7 @@ switch (cmd) {
     const extra = ['-executeMethod', 'TC2.EditorTools.BatchTools.PlayShots', '-tc2shots', dir];
     for (const [f, a] of [['--seed', '-tc2seed'], ['--hour', '-tc2hour'], ['--days', '-tc2days'], ['--views', '-tc2views'], ['--size', '-tc2size'], ['--erupt', '-tc2erupt'], ['--quake', '-tc2quake'], ['--storm', '-tc2storm'], ['--abandon', '-tc2abandon'], ['--hungry', '-tc2hungry'], ['--wall', '-tc2wall'], ['--load', '-tc2load'], ['--radius', '-tc2radius'], ['--village', '-tc2village'], ['--doy', '-tc2doy'], ['--after', '-tc2after']]) if (opt(f)) extra.push(a, opt(f));   // (--doy D: the framed village's own day D of its year; --after tribute: the morning after its tenth is set aside, C10.6)
     if (args.includes('--ground')) extra.push('-tc2ground', '1');   // (C13.3: the simulation's ground under each home)
+    if (args.includes('--realms')) extra.push('-tc2realms', '1');   // (D2-167: the realms map layer on)
     status = run(extra, { quit: false });
     tail(log, /error CS|\[TC2\]|Exception/);
     console.log('shots in ' + dir);
