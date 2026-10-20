@@ -41,6 +41,10 @@ namespace TC2.Game
             public Vector2[] Kind;    // the kind of wood (W-FOREST): x how tropical (warmth), y how seasonally dry among the tropical
             public Vector4[] Land;    // the land's own (D2-081): x dryness of the climate, y meadow (grass where no wood), z bare earth or rock, w beach
             public float[] Fell;      // the woods' felled share not grown back (W-FELL: where their stumps stand; read by the trees' placing only)
+            public Vector4[] Realm;   // the realms map layer (D2-167, RealmsView): the realm's map colour premultiplied by how much of the land here is its village's (rgb x w, w); zero off
+            public Vector2[] RealmS;  // and how strongly it fills (the seat 1, a tributary less), premultiplied alike (x: strength x w)
+            public int[] RealmSid; public float[] RealmW;   // the village whose land this is (its fields, else its built ground) and how much - the wash's source
+            public int RealmVersion = int.MinValue;          // the RealmsView.Version the wash was last filled for
             public Vector3[] Pos, Nrm; // the vertices as drawn and their normals (where the woods' trees and the ground cover stand)
             public Matrix4x4[] Trees; public byte[] TreeKind; public ushort[] TreeGroup; public int TreeCount;   // the woods' trees (finest level)
             public Matrix4x4[] Tufts; public byte[] TuftKind, TuftGroup; public int TuftCount; // ground cover (finest level)
@@ -216,6 +220,7 @@ namespace TC2.Game
             Select(w);
             BuildSome(w);
             Show();
+            RefreshRealms();   // (the realms layer's wash on the shown ground, when it moved: D2-167)
             if (NeedGather())
             {
                 GeometryUtility.CalculateFrustumPlanes(Rig.Cam, _planes);
@@ -400,7 +405,7 @@ namespace TC2.Game
             int count = V * V + 4 * V;
             var pos = new Vector3[count];
             var nrm = new Vector3[count];
-            if (p.Dirs == null || p.Dirs.Length != count) { p.Dirs = new Vector3[count]; p.Cells = new int[count]; p.Rel = new float[count]; p.Slope = new float[count]; p.Colours = new Color[count]; p.Plots = new Vector2[count]; p.Farm = new Vector2[count]; p.Wood = new Vector4[count]; p.Kind = new Vector2[count]; p.Land = new Vector4[count]; p.Fell = new float[count]; }
+            if (p.Dirs == null || p.Dirs.Length != count) { p.Dirs = new Vector3[count]; p.Cells = new int[count]; p.Rel = new float[count]; p.Slope = new float[count]; p.Colours = new Color[count]; p.Plots = new Vector2[count]; p.Farm = new Vector2[count]; p.Wood = new Vector4[count]; p.Kind = new Vector2[count]; p.Land = new Vector4[count]; p.Fell = new float[count]; p.Realm = new Vector4[count]; p.RealmS = new Vector2[count]; p.RealmSid = new int[count]; p.RealmW = new float[count]; }
             for (int j = 0; j < V; j++)
                 for (int i = 0; i < V; i++)
                 {
@@ -450,6 +455,8 @@ namespace TC2.Game
             m.SetUVs(2, p.Wood);
             m.SetUVs(3, p.Land);
             m.SetUVs(4, p.Kind);
+            m.SetUVs(5, p.Realm);
+            m.SetUVs(6, p.RealmS);
             m.triangles = FixWinding(p.Face, pos, nrm);
             m.RecalculateBounds();
             p.Built = true;
@@ -960,6 +967,8 @@ namespace TC2.Game
                 p.Mesh.SetUVs(2, p.Wood);
                 p.Mesh.SetUVs(3, p.Land);
                 p.Mesh.SetUVs(4, p.Kind);
+                p.Mesh.SetUVs(5, p.Realm);
+                p.Mesh.SetUVs(6, p.RealmS);
                 long today = SimTime.FloorDiv(w.Now, SimTime.Day);
                 if (p.Level >= MaxLevel && p.Pos != null && p.Nrm != null && p.PlacedDay != today)
                 {
@@ -1298,6 +1307,7 @@ namespace TC2.Game
                 p.Fell[o] = 0f;   // (W-FELL: none in the sea - a pooled patch kept its last land's stumps, and since the stumps are placed where no wood
                                   // stands, they would have stood in the water)
                 float graveHere = 0f;   // (the burial ground's share here: no plots drawn - D2-154)
+                p.RealmSid[o] = 0; p.RealmW[o] = 0f;   // (the realms layer: no village's land in the sea)
                 if (rel < 0)
                 {
                     // the sea floor as seen through the water: sand in the shallows, dark below
@@ -1364,6 +1374,8 @@ namespace TC2.Game
                         p.Farm[o] = site > 0.4f ? Vector2.zero : new Vector2(used, (float)st.Crop + (float)System.Math.Min(0.99, st.CropGrowth));   // (no plots on a quarry's ground)
                         Color crop = CropColour(st);
                         col = Color.Lerp(col, crop, Mathf.SmoothStep(0f, 1f, farm));
+                        // (the realms layer: the fields this village works are its land - D2-167)
+                        p.RealmSid[o] = owner; p.RealmW[o] = Mathf.SmoothStep(0f, 1f, farm);
                     }
                     float bare = 0f;   // (packed earth: the square, yards, paths and roads)
                     for (int q = 0; q < _near.Count; q++)
@@ -1374,7 +1386,9 @@ namespace TC2.Game
                         st.SphereToLocal(d, P.Radius, out double vx, out double vy);
                         col = VillageGround(_ground[q], vx, vy, col, out float earth);
                         bare = Mathf.Max(bare, earth);
-                        clear = Mathf.Max(clear, 1f - Edge(95f, 150f, (float)System.Math.Sqrt(vx * vx + vy * vy)));   // (no wood in the village)
+                        float built = 1f - Edge(95f, 150f, (float)System.Math.Sqrt(vx * vx + vy * vy));
+                        clear = Mathf.Max(clear, built);   // (no wood in the village)
+                        if (built > p.RealmW[o]) { p.RealmSid[o] = _near[q]; p.RealmW[o] = built; }   // (the realms layer: its built ground, where more than a field's)
                         VillageVerts++;
                     }
                     if (beaten > 0f) { col = Color.Lerp(col, Beaten, beaten * 0.85f); bare = Mathf.Max(bare, beaten); clear = Mathf.Max(clear, beaten); }
@@ -1465,6 +1479,51 @@ namespace TC2.Game
                 var lin = col.linear;
                 lin.a = rel < 0 || p.Farm[o].x <= 0 ? 0f : Mathf.Clamp01(FarmWeight(P, d, c) * CoreMask(p.Plots[o]) * (1f - graveHere));
                 cols[o] = lin;
+            }
+            FillRealm(p);
+        }
+
+        /// <summary>
+        /// The realms map layer's wash on a patch (D2-167): each vertex's village (its fields, else its built ground, as `Colourise` found it) in its
+        /// realm's map colour by `RealmsView.WashOf` - premultiplied by how much of the land here is that village's (linear rgb x w, w), and its strength
+        /// alike (the seat's fill stronger than a tributary's; the shader's border band follows w alone) - zero where no realm's village works the land or
+        /// the layer is off. Cheap (no ground read): `Update` fills the shown patches again whenever `RealmsView.Version` moves.
+        /// </summary>
+        static void FillRealm(Patch p)
+        {
+            var rs = p.RealmSid; var rw = p.RealmW; var r = p.Realm; var st = p.RealmS;
+            int last = -1; bool has = false; Vector4 lc = Vector4.zero;
+            for (int o = 0; o < r.Length; o++)
+            {
+                int sid = rs[o];
+                if (sid == 0 || rw[o] <= 0f) { r[o] = Vector4.zero; st[o] = Vector2.zero; continue; }
+                if (sid != last)
+                {
+                    last = sid;
+                    has = RealmsView.WashOf(sid, out Color c);
+                    if (has) { Color lin = c.linear; lc = new Vector4(lin.r, lin.g, lin.b, c.a); }
+                }
+                if (!has) { r[o] = Vector4.zero; st[o] = Vector2.zero; continue; }
+                float wt = rw[o];
+                r[o] = new Vector4(lc.x * wt, lc.y * wt, lc.z * wt, wt);
+                st[o] = new Vector2(lc.w * wt, 0f);
+            }
+            p.RealmVersion = RealmsView.Version;
+        }
+
+        /// <summary>The realms layer moved (turned on or off, a bond made or ended): the shown patches' washes filled again, a few dozen a frame (the
+        /// rest as they are shown); a patch built or recoloured meanwhile fills its own.</summary>
+        void RefreshRealms()
+        {
+            int budget = 64;
+            for (int i = 0; i < _shownLast.Count && budget > 0; i++)
+            {
+                var p = _shownLast[i];
+                if (!p.Built || p.Mesh == null || p.Realm == null || p.RealmVersion == RealmsView.Version) continue;
+                FillRealm(p);
+                p.Mesh.SetUVs(5, p.Realm);
+                p.Mesh.SetUVs(6, p.RealmS);
+                budget--;
             }
         }
 

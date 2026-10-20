@@ -201,3 +201,15 @@ orbit, region, village and street views across ages.
 **Building variety (D2-114, standing).** Settlements read by their buildings: homes differ by household, means, material, age, history and
 tradition; works are recognisable by silhouette; places get denser and more substantial as they grow richer and older (`13` §13). Judged at the
 close, village and region views and across ages - the core of an old town and its newer edges should read differently.
+
+**Polities on the map (D2-167, the realms map layer).** The bonds between villages (C10.4-C10.7) are real and consequential but read only up close:
+a tributary flies its lord's standard by its first household's door (D2-152) - a speck from the village view, even enlarged. The HUD's **Realms**
+(key R; shots `unity.mjs shots --realms`; the Web bridge's `on realms`) washes the land each village of a lordship works - its fields and built
+ground - in its realm's colour (the seat 0.72, a tributary 0.43, the ground's light and dark kept), with a band of that colour about three pixels wide
+just inside the land's edge at every view (measured by the weight's own derivative), fading out within ~450-1,300 m of the camera, where the
+standards and the carriers tell the bond; chevrons in the realm's colour run from each tributary toward its own lord along the way its tenth is
+carried (straight over water); a legend lists each head of a lordship with the villages that pay it and their people. The map's dyes are the
+standards', drawn brighter (`WorldObjectsView.HeraldryMap`: over fields the standards' gold read as ripe grain and the dark dyes as bare earth), and
+no two realms fly one colour while there are dyes for all. Every mark is real state - the land worked, who pays whom, the way the tenth goes; no
+border is drawn where no bond is. Judged in two rounds of real shots (`s24r3`/`s24r8` found the first look's faults; `s24s3`/`s24s8` read at the
+region and orbit views).

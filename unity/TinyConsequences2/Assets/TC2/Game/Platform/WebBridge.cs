@@ -115,6 +115,7 @@ namespace TC2.Game
                 return;
             }
             if (what == "tilt") { TiltShiftFeature.Off = !on; return; }
+            if (what == "realms") { RealmsView.On = on; return; }   // (the realms map layer, D2-167: as the player's R)
             if (what == "cover") { TerrainLod.CoverOff = !on; return; }   // (the ground cover near the camera: D2-081)
             if (what == "covershadow") { TerrainLod.CoverShadows = on; return; }   // (shrubs' and boulders' shadows)
             int part = what == "trees" ? 1 : what == "people" ? 2 : what == "buildings" ? 4 : 0;

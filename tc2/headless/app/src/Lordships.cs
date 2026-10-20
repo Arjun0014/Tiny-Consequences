@@ -256,7 +256,102 @@ namespace TC2.Headless
                                       (b.Start / Y) + "-" + (b.End != 0 ? (b.End / Y).ToString() : "now") + " " + (b.How ?? "still paid"));
                 }
             if (a.Has("might")) MightNow(w, name);
+            if (a.Has("heads")) HeadsOver(w, bonds, name);
+            if (a.Has("margins")) Margins(w, name);
+            if (a.Has("could")) Could(w, name);
+            if (a.Has("wrongs")) Wrongs(w, name);
             return 0;
+        }
+
+        /// <summary>
+        /// (session 24, a lord's death and its tributaries measured first: `lordships --heads`) how the bonds lived through their lords' successions: for
+        /// each bond, the times the one first among its lord village's people changed while it held (`HeadmanRose` - a local event the ledger may compact,
+        /// so a lower bound; and, for the bonds still paid, the lord's present first person against the bond's start, which no compaction hides), those at
+        /// the one before's death and those where another household rose; and whether bonds end more often in the five years after such a change than in
+        /// their other years.
+        /// </summary>
+        static void HeadsOver(World w, List<Bond> bonds, Func<int, string> name)
+        {
+            long now = w.Now, Y = SimTime.Year, after = 5 * Y;
+            int changes = 0, atDeath = 0, otherHh = 0, bondsWith = 0, stillPaid = 0, stillNewHead = 0, ends = 0, endsAfter = 0;
+            double years = 0, yearsAfter = 0;
+            var per = new List<int>();
+            var times = new List<long>();
+            foreach (var b in bonds)
+            {
+                long end = b.End != 0 ? b.End : now;
+                if (end <= b.Start) continue;
+                years += (end - b.Start) / (double)Y;
+                times.Clear();
+                var pe = w.History.PlaceEventsOf(b.Lord);
+                if (pe != null)
+                    for (int i = 0; i < pe.Count; i++)
+                    {
+                        if (!w.History.TryGet(pe[i], out var e) || e.Kind != HistoryKind.HeadmanRose) continue;
+                        if (e.Time <= b.Start || e.Time >= end) continue;
+                        times.Add(e.Time); changes++;
+                        if (e.Cause1 != 0) atDeath++;
+                        if (e.ArgB == 2) otherHh++;
+                    }
+                per.Add(times.Count);
+                if (times.Count > 0) bondsWith++;
+                // the bond's years within five years after a change of its lord's first person (the windows merged)
+                long covered = 0, upTo = b.Start;
+                foreach (long t in times)
+                {
+                    long a0 = Math.Max(t, upTo), a1 = Math.Min(t + after, end);
+                    if (a1 > a0) { covered += a1 - a0; upTo = a1; }
+                }
+                yearsAfter += covered / (double)Y;
+                bool endedByLord = b.End != 0 && (b.How == "lord no stronger" || b.How == "lord gone");
+                if (endedByLord)
+                {
+                    ends++;
+                    foreach (long t in times) if (b.End > t && b.End - t <= after) { endsAfter++; break; }
+                }
+                if (b.End == 0)
+                {
+                    stillPaid++;
+                    if (w.Settlements.Exists(b.Lord) && w.Settlements.Get(b.Lord).HeadSince > b.Start) stillNewHead++;
+                }
+            }
+            per.Sort();
+            double rateAfter = yearsAfter > 0 ? endsAfter / yearsAfter : 0, rateOther = years - yearsAfter > 0 ? (ends - endsAfter) / (years - yearsAfter) : 0;
+            Console.WriteLine("  successions under the bonds (--heads): " + bonds.Count + " bonds, " + years.ToString("0") + " bond-years; the lord's first person changed " + changes +
+                              " times while a bond held (" + atDeath + " at a death, " + otherHh + " another household rising; a lower bound - the ledger compacts local events), in " +
+                              bondsWith + " bonds (per bond median " + (per.Count > 0 ? per[per.Count / 2] : 0) + ", most " + (per.Count > 0 ? per[per.Count - 1] : 0) + ")");
+            Console.WriteLine("    bonds still paid " + stillPaid + ": the lord's first person now came after the bond began in " + stillNewHead);
+            Console.WriteLine("    bonds ended by the lord (gone or no stronger) " + ends + ": within five years after a change of its first person " + endsAfter + " in " +
+                              yearsAfter.ToString("0") + " bond-years (" + (1000 * rateAfter).ToString("0.0") + " a thousand bond-years), in their other " + (years - yearsAfter).ToString("0") +
+                              " years " + (ends - endsAfter) + " (" + (1000 * rateOther).ToString("0.0") + ")");
+        }
+
+        /// <summary>
+        /// (`lordships --margins`) each bond still paid at the save's moment: the lord's might against the tributary over the tributary's own (C10.5; by
+        /// lasting strength, C10.7a). A bond is made only where the lord is the stronger by `TributeOdds` (1.2) and ends only when it is no longer the
+        /// stronger (below 1): how many bonds hold in between - bonds that would not be made today.
+        /// </summary>
+        static void Margins(World w, Func<int, string> name)
+        {
+            var C = w.Conflict;
+            int n = 0, below = 0, between = 0, above = 0, breadN = 0, breadBetween = 0;
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                ref var s = ref w.Settlements.Get(sid);
+                if (!s.Inhabited || s.Lord == 0 || !w.Settlements.Exists(s.Lord) || !w.Settlements.Get(s.Lord).Inhabited) continue;
+                double lm = C.Might(s.Lord, sid), om = C.Might(sid, s.Lord);
+                double r = lm / Math.Max(1e-9, om);
+                bool bread = s.LordEvent != 0 && w.History.TryGet(s.LordEvent, out var le) && le.ArgB == 1;
+                n++; if (bread) breadN++;
+                if (r < 1.0) below++;
+                else if (r < TC2.Core.Society.Conflict.TributeOdds) { between++; if (bread) breadBetween++; }
+                else above++;
+                ref var ls = ref w.Settlements.Get(s.Lord);
+                Console.WriteLine("    margin " + name(sid) + " -> " + name(s.Lord) + " (" + (bread ? "bread" : "peace") + ", since year " + (s.LordSince / SimTime.Year) + "): the lord " +
+                                  lm.ToString("0") + " against " + om.ToString("0") + " = x" + r.ToString("0.00") + "; the lord's first person since year " + (ls.HeadSince / SimTime.Year));
+            }
+            Console.WriteLine("  margins (--margins): " + n + " bonds still paid (" + breadN + " for bread): the lord below its tributary " + below + ", between x1 and x" +
+                              TC2.Core.Society.Conflict.TributeOdds.ToString("0.0") + " (held, not made) " + between + " (for bread " + breadBetween + "), the stronger by the odds " + above);
         }
 
         /// <summary>
@@ -316,6 +411,75 @@ namespace TC2.Headless
                 TC2.Core.Society.Conflict.MightArmsOff = was;
             }
             Console.WriteLine("  bonds still paid " + bonds + ": the lord the stronger by heads " + byHeads + ", by lasting strength " + byLasting);
+        }
+
+        /// <summary>
+        /// (`lordships --could`, session 24: what limits the lordships - formation?) the bonds that could be: pairs of living villages within a day's walk
+        /// (6 km) of different realms, neither paying the other, where the one is the stronger by the odds of a bow (`TributeOdds` x1.2, `Might` with its
+        /// call) - a village that bowed to every such neighbour would; how many strong villages have such a weaker neighbour and how many weak villages such a
+        /// stronger one, whether a way on foot joins them, and whether the strong keep sworn men (C10.7b) or a lord's first household could feed them.
+        /// </summary>
+        static void Could(World w, Func<int, string> name)
+        {
+            var C = w.Conflict;
+            var live = new List<int>();
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid)) if (w.Settlements.Get(sid).Inhabited) live.Add(sid);
+            int pairs = 0, afoot = 0, freeWeak = 0, bound = 0;
+            var strong = new HashSet<int>(); var weak = new HashSet<int>(); var lordsCould = new HashSet<int>();
+            foreach (int a in live)
+                foreach (int b in live)
+                {
+                    if (a == b) continue;
+                    ref var sa = ref w.Settlements.Get(a); ref var sb = ref w.Settlements.Get(b);
+                    if (Vec3d.ArcDistance(sa.Anchor, sb.Anchor, w.Planet.Radius) > 6000) continue;
+                    if (C.Root(a) == C.Root(b)) { if (sb.Lord == a) bound++; continue; }
+                    double ma = C.Might(a, b), mb = C.Might(b, a);
+                    if (ma < TC2.Core.Society.Conflict.TributeOdds * mb) continue;
+                    pairs++; strong.Add(a); weak.Add(b);
+                    if (w.Routes.Get(w, a, b) != null) afoot++;
+                    if (sb.Lord == 0) freeWeak++;
+                    if (C.PolitySize(a) > 0 || TC2.Core.Society.Retinue.Count(w, a) > 0) lordsCould.Add(a);
+                }
+            Console.WriteLine("  could be (--could): " + live.Count + " villages; bonds now within a day's walk " + bound + "; pairs of different realms where one is the stronger by the odds " + pairs +
+                              " (a way on foot joins " + afoot + "; the weaker paying nobody " + freeWeak + "): " + strong.Count + " villages could make a neighbour bow, " + weak.Count +
+                              " could be made to; of the strong, lords or keepers of sworn men " + lordsCould.Count);
+        }
+
+        /// <summary>
+        /// (`lordships --wrongs`, session 24: the record's other road into lordship - protection) the wrongs held now: villages whose heaviest wrong
+        /// (`Settlement.FoeWorth`, D2-072) is heavy enough to raise a band (`RaidFrom`); the foe's might against theirs (could their own band answer it?);
+        /// and a third village within a day's walk, joined by a way on foot, of another realm than the foe's, stronger than the foe by the odds of a bow -
+        /// a neighbour it could commend itself to, whose bands would answer its wrongs (D2-108).
+        /// </summary>
+        static void Wrongs(World w, Func<int, string> name)
+        {
+            var C = w.Conflict;
+            int held = 0, heavy = 0, foeStronger = 0, protector = 0, commend = 0, paying = 0;
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                ref var s = ref w.Settlements.Get(sid);
+                if (!s.Inhabited || s.Foe == 0 || !w.Settlements.Exists(s.Foe) || !w.Settlements.Get(s.Foe).Inhabited) continue;
+                held++;
+                if (s.FoeWorth < TC2.Core.Society.Conflict.RaidFrom) continue;
+                heavy++;
+                if (s.Lord != 0) paying++;
+                int foe = s.Foe;
+                double r = C.Might(foe, sid) / Math.Max(1e-9, C.Might(sid, foe));
+                if (r >= 1.0) foeStronger++;
+                int by = 0;
+                for (int o = w.Settlements.First(); o != 0 && by == 0; o = w.Settlements.Next(o))
+                {
+                    if (o == sid || o == foe || !w.Settlements.Get(o).Inhabited || C.Root(o) == C.Root(foe)) continue;
+                    if (Vec3d.ArcDistance(s.Anchor, w.Settlements.Get(o).Anchor, w.Planet.Radius) > 6000 || w.Routes.Get(w, sid, o) == null) continue;
+                    if (C.Might(o, foe) >= TC2.Core.Society.Conflict.TributeOdds * C.Might(foe, o)) by = o;
+                }
+                if (by != 0) protector++;
+                if (by != 0 && r >= 1.0 && s.Lord == 0) commend++;
+                Console.WriteLine("    wrong " + name(sid) + (s.Lord != 0 ? " (pays " + name(s.Lord) + ")" : "") + " holds " + s.FoeWorth.ToString("0") + " FU against " + name(foe) +
+                                  ": the foe x" + r.ToString("0.00") + " its might" + (by != 0 ? "; " + name(by) + " is the foe's stronger by the odds" : "; no neighbour the foe's stronger"));
+            }
+            Console.WriteLine("  wrongs (--wrongs): villages holding a wrong " + held + ", heavy enough to raise a band " + heavy + " (paying a lord " + paying + "); the foe the stronger " +
+                              foeStronger + "; a neighbour within a day's walk the foe's stronger by the odds " + protector + "; free villages that could commend themselves (foe stronger, a protector) " + commend);
         }
 
         sealed class Bond { public int Payer, Lord, SizeAfter; public long Start, End; public bool Bread; public string How, Cause; }

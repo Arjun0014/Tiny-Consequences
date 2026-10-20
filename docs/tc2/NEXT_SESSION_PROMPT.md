@@ -317,6 +317,35 @@ queue at the handoff. The 900-year check of the tribute code: no snowball. **Nex
 skill; drafted, NOT built, on `wip/c107a-arms`, worktree `C:/Game Dev/tc-arms`; design `tc2/out/tools/s23/c107_design.md`), then C10.7b sworn men fed
 from the tribute, C9.5c people across water. SESSION_HANDOFF "Session 23, third context" has the queue and the steps.
 
+**Where we are (session 23, fourth context, 20 Oct 2026, 02:54-05:10 IST)**: **C9.5b's checks completed** - Web `s23web4` 6/6 (three runtimes
+bit-identical), and real shots aimed by a new probe (`voyages --load SAVE --days N`: a save lived as the game loads it, every voyage with its village's
+day and hour) show dugouts crossing at 45 m (`s23n1`, `s23n2`); lived and COARSE dugout crossings agree. **Three slices built, in evaluation, not on
+main**: **C10.7a** might by lasting strength (years, tools and arms, fighting skill; `wip/c107a-arms`, sim 88; ten seeds at par, D2-164 draft);
+**C10.7b** sworn men - the one first among a village's people keeps young men sworn to them, fed from their household's grain (a lord's from its
+tribute), practising daily and going with every band; the oath is personal (a household-id first version churned) (`wip/c107b-sworn`, sim 89; D2-165
+draft); **C9.5c** a COARSE day's visits, their sickness, news and the ways' wear go only where a way on foot leads, keeping a lived day's odds
+(`wip/c95c-visits`; D2-166 draft). The landing branch `wip/s23b-int` (all three, sim 90) waits for the queue's evaluations, its full suite and the
+900-year checks - SESSION_HANDOFF "Session 23, fourth context" has the queue and the steps.
+
+**Where we are (session 23, fifth context, 20 Oct 2026, 05:06-~05:45 IST; Arjun stopped the session)**: nothing new on main but a tool (`unity.mjs cc
+--src DIR`: a worktree's Unity sources compiled against main's references). The landing branch `wip/s23b-int` (C10.7a, C10.7b, C9.5c; sim 90) was reviewed
+(no fault found) and its Unity C# compiles; C9.5c is evaluated (control identical; ten seeds at par in the vital rates; sickness x0.64, epidemics x0.81, palisades x0.95 (the mechanism); hunger deaths x1.06 (t 2.2) with all deaths a person-year at par - to explain before landing); C10.7b's SwornTests retest 5/5 after a stale assertion on the settlement page's wording was fixed (tc-sworn 71bb313, tc-int2 ca25d71).
+The job queue was stopped: the landing branch's full suite, C10.7b's control and ten seeds, the 900-year checks of C10.7a and C10.7b and the profile wait
+in `$Q/todo` - restart it first (SESSION_HANDOFF "Session 23, fifth context"). Started: **the realms map layer** (`wip/realms`, presentation only) - the
+land of each realm's villages washed in its colour, chevrons from tributary to lord, a legend; `RealmsView` written, not wired yet (the steps in the
+handoff).
+
+**Where we are (session 24, 20-21 Oct 2026, 21:56-~01:25 IST; context handoff with the job queue running)**: nothing of C10.7a, C10.7b or C9.5c is
+on main yet. The stopped queue was restarted in a new scratchpad (every binary rebuilt and checked); **the landing branch's full suite passes (441/441,
+0 skipped)**; C10.7b's ten seeds are at par in the per-person rates (its mid-run people dip inside the noise against a matched placebo twin; the mechanism
+is war - raids, loot, tribute up); C9.5c's hunger lean is chaos at a land's ceiling by its matched placebo, but a replication on new seeds leaned in
+people (x0.96) - a third seed set in the queue decides whether C9.5c lands with the others. **The realms map layer is on main** (D2-167 draft:
+each lordship's land in its colour with a band at its edge, chevrons to the lord, a legend; two rounds of real shots). **The next governance slice was
+measured first**: bonds outlive their lords but hold by strength, so succession changes little; what limits lordships is that they rarely form (514
+pairs where one could make the other bow, against 26 bonds) - **C10.8 the asking** is built on `wip/c108-demand` (DemandTests 4/4; its seeds queued).
+SESSION_HANDOFF "Session 24" has the queue and the steps; the drafts are `tc2/out/tools/s23/d2164.md`-`d2166.md`, `tc2/out/tools/s24/d2167.md`,
+`d2168.md`, `c108_design.md`.
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.

@@ -4,29 +4,87 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
-- **Session 23, fourth context (20 Oct 2026, from 02:54 IST; Control Room run #63 session 4; the same job queue)** - IN PROGRESS. (1) **Main
-  re-checked** (the handoff's stale milestones): main's code is bc99679's (cc66770 changed docs only); **full suite 433/433, 0 skipped**
-  (`results/fullsuite_m4.txt`, 02:53), `unity.mjs cc` clean on bc99679 (covers `ShotRunner.cs`), D2-159-D2-163 in DECISIONS as drafted.
-  (2) **C10.7a measured first** (`lordships --might` on the ten `_y1` year-300 worlds, the draft's binary `bin_a7`; `results/might_s*_y1.txt`): a
-  village's people of fighting age by their lasting strength (tools, arms, iron, fighting skill) against heads - the median village x1.00 (seed 5: no
-  arms, nobody trained) to x2.03 (seed 7); seeds 2, 4 and 7 arm nearly everywhere (median x1.85-2.03), the others little (x1.00-1.15); grown people
-  with fighting skill over 0.1: 0 of 617 (seed 5) to 2,429 of 5,297 (seed 4); **the 26 bonds still paid at year 300 hold by either weighing**.
-  (3) **C9.5b's real shots** (`s23m5` seed 5, `s23m4` seed 4, `_y1` year 300; views `voyage`, `voyagenear`, `voyagestay`, `region`): **no dugout
-  framed** - seed 5's archipelago showed no voyage at all in 36 lived days (its dugouts cross about twice a year: 152 COARSE crossings in 300 years),
-  seed 4's views found Heimvahope's plank boat rowing 500 kg of pots and jars to Leigreldby at dusk (20:44; a boat with its crew reads at 90 m, dark).
-  A probe now finds the lived crossings first (`voyages --load SAVE --days N`, worktree `tc-voy`, branch `wip/s23-voyshots`) and the voyage views take
-  `dugout` and `voyageclose`, so a shot can be aimed at a real one (merged db4b8ba). Lived 96 days, each `_y1` year-300 world: **seed 2 made 19 voyages,
-  all in dugouts** (Lesgristholm fetching the grain Nemskundby owes it 17 times; pots to Diththorpe and Kaestead); **seeds 3, 4, 5, 11 made 20, 18, 0, 64,
-  all plank boats** - seed 3 booked no dugout at all, though its COARSE history crossed by dugout ~4 times a year. **Compared with COARSE at the same
-  moment** (the same saves two years on at COARSE, `--crosstally`): seeds 3 and 11 cross by dugout 0 times either way, seed 2 9 trade crossings COARSE
-  against 5 lived (with 14 fetches) - lived and COARSE agree; those worlds' crossings belong to earlier centuries. **Aimed real shots** (`s23n1`, `s23n2`, seed 2): the
-  views found the probe's crossings at the predicted minute - Tholdkeistmere's dugout paddled to Diththorpe with pots, Lesgristholm's to Grosstead with
-  iron; **at 45 m a dugout crossing reads** (hull, two paddlers, a paddle, the shore behind); at 90 m a speck; ashore at the far landing it does not stand
-  out. C9.5b's checks are complete. (4) **Web `s23web4` on main with C9.5b: 6/6**, browser = headless dotnet = editor Mono, every part bit for bit (D2-163). (5) **C10.7a
-  built** (`wip/c107a-arms`; sim 88): all nine neighbouring test classes pass, 0 skipped; control, ten seeds and 900 years queued (D2-164 draft).
-  (6) **C10.7b sworn men built** (`wip/c107b-sworn`, sim 89; D2-165 draft): first build and tests queued. (7) **C9.5c measured first**: a COARSE day's
-  visits reach every village within 6 km, across water too - wearing "ways" history tells as paths where no way on foot exists, carrying sickness and
-  news nobody could carry lived; `--visittally` survey queued (`c95c_design.md`).
+- **Session 24, second context (21 Oct 2026, from 01:45 IST; Control Room run #73 session 2; the same job queue) - C10.7a, C10.7b and C9.5c landed
+  on main (3b236ee, sim version 90) with the lordships tools (3bf3d44)**. (1) **C9.5c's third seed set** (20-29) decided the landing: pooled over the 21
+  worlds that part, hunger a person-year x0.994 (t -0.16) - the first ten's lean was chance, as its matched placebo said; births and deaths a person-year
+  at par; people over years 200-299 x0.982 (t -2.64), carried by seeds 9-19 and not repeated in 20-29 (x0.991, t -0.77; three worlds lower, three higher)
+  - a level of the size twins spread by, not a rate; in 20-29 the C9.5c twins met larger epidemics and starved fewer (r -0.88): an island meets its
+  neighbours' sickness by boat, later and larger or never. (2) **The integrated rules' 900 years** (seeds 2 and 4 lived from year 300; `lordships
+  --heads --margins --could --wrongs` at years 300, 600, 900): realms grow, nothing snowballs - seed 2 built an overkingship (Lounstead took Grothstead,
+  lord of five, after a raid in year 601 and Taildvehope, lord of three, for famine grain in 794: 13 of 32 villages in three tiers from year 800, unchanged
+  at 900), seed 4 holds seven lordships of one to four; every bond still paid is the stronger by the odds of a first bow; successions change nothing (bond
+  ends by the lord 5.0 a thousand bond-years within five years after its first person changed, 4.9 otherwise); formation still limits (80 and 135 pairs
+  where one could make the other bow, against 16 and 14 bonds) - C10.8 the asking kept as the next slice. (3) A second reading of the landing branch's
+  save format and hash, `Retinue`, bands and might, and of C10.8's `Conflict.Demanded`: no fault. (4) Docs: `18` §9 polities on the map (D2-167), `10`
+  §12h done. Queued to run next: main's build `bin_m5` (floatcheck, hashtest, `unity.mjs cc`, a v90 seed-2 world `_m5`), the full suite, real shots (`s24p`
+  sworn men at practice, `s24q` realms on `_m5`, `s24t` the year-900 overkingship), the Web build and test `s24web1`; then C10.8's control and ten seeds;
+  then C10.7a's and C10.7b's own 900 years (renamed `8_*`). DECISIONS D2-164-D2-167 wait for their last FILLs (the per-slice 900 years and the profile,
+  the Web frame cost).
+- **Session 24 (20 Oct 21:56 - 21 Oct ~01:25 IST; Control Room run #73 session 1) - context handoff with the job queue running; nothing of C10.7a,
+  C10.7b or C9.5c landed yet** (SESSION_HANDOFF "Session 24" has the queue and the steps). (1) **The stopped queue restarted** in a new scratchpad (the
+  old one was gone: every binary rebuilt from its worktree, each checked against its own earlier runs). (2) **The landing branch's full suite**
+  (`wip/s23b-int` ca25d71): 441 passed, 0 failed, 0 skipped; floatcheck clean. C10.7b's and C9.5c's binaries rebuilt and their test classes again 0
+  skipped. (3) **C9.5c's hunger lean examined** (`d2166.md`): C9.5c acts late (twins identical until years 205-290), the hunger change is not the sickness
+  change (r +0.08), seed 4's +907 is two crash famines of a world at its land's ceiling; a **matched placebo** (`_pvm`: the old rules nudged by one FU at
+  each world's own parting year) spreads hunger as widely (sd 0.100 against 0.097) and itself leans past |t| 2 (relief by sea x1.22, t 2.09); against
+  its placebo twin hunger x1.08 (t 1.6), palisades x0.99, epidemics x0.86 (t -1.95). A **replication** on seeds 9-19 did not repeat the hunger lean (x1.03,
+  t 1.33) but leaned in people (x0.96 over years 200-299 in its six diverging seeds) - pooled over 15 diverging seeds people x0.979 (t -2.6), hunger a
+  person-year x1.067 (t 2.7), deaths and births a person-year at par; no mechanism found; a third set (seeds 20-29) is in the queue to decide before
+  landing. (4) **C10.7b's ten seeds** (`_sx1`; control `--oldsworn` = `_a7` byte for byte): births and deaths a person-year at par; 499 sworn men in 80
+  villages against 28 lords at year 300 (great households keep men - kept); people over 100-199 x0.924 (t -2.64) against `_a7`, x0.939 (t -1.46) against
+  its matched placebo twin (`_sxp`), whose spread is large; the mechanism against the twin: tributes x2.0, loot x3.7, raids x2.4, wounds a person-year
+  x1.38 - war more frequent and more costly. (5) **The next governance slice measured first** (new tools `lordships --heads --margins --could --wrongs`
+  on main's ten worlds at year 300): bonds outlive their lords (25 of the 26 still paid had outlived the person they were made with) but hold by strength
+  (25 of 26 lords still stronger by the odds of a first bow) - succession at a lord's death would change little; **formation limits the lordships**: 514
+  pairs within a day's walk where one could make the other bow, against 26 bonds. **C10.8 the asking** built on `wip/c108-demand` (sim 91: a free village
+  is asked a tenth at its harvest by its nearest stronger neighbour whose first household keeps sworn men; it bows where its people could neither stand
+  against them nor go elsewhere, else the refusal is a wrong the asker holds); DemandTests 4/4 and seven neighbour classes 0 skipped; its control and ten
+  seeds queued. (6) **The realms map layer on main** (D2-167 draft; merges 4d40607, 12321eb, ae89777): the HUD's Realms (R) washes each lordship's land in
+  its colour with a band at its edge, chevrons from tributary to lord along the way its tenth goes, a legend; real shots in two rounds (`s24r3`/`s24r8`
+  found gold as ripe grain, dark dyes as earth, a faint edge, a mustard village up close, two realms in one colour; `s24s3`/`s24s8` read at the region and
+  orbit views after map dyes, a 3-px band, a fade up close); dyes kept distinct planet-wide; the Web test's frame cost waits for the landing's Web build.
+- **Session 23, fifth context (20 Oct 2026, 05:06-~05:45 IST; Control Room run #63 session 5) - Arjun stopped the session**: nothing landed on main but
+  tools; the queue was stopped after C9.5c's evaluation and C10.7b's SwornTests retest (the rest - the landing branch's full suite, C10.7b's seeds, the
+  900-year checks, the profile - waits in `$Q/todo`: SESSION_HANDOFF "Session 23, fifth context"). (1) **The landing branch reviewed** (its diff read
+  before landing; no fault found: the sworn men's release order and reasons, bands with sworn men, might weighed only at the three harvest weighings, the
+  oath saved and hashed only when set, lived and COARSE practice at par per day, C9.5c's kept odds in both the visits and the news, failed routes cached).
+  (2) **The landing branch's Unity C# compiles** - its Game code checked before landing for the first time, by a new tool: `unity.mjs cc --src DIR`
+  (f0e2dd4) compiles a worktree's sources against main's generated csproj files. (3) **C9.5c evaluated**: tests pass on the rebuilt binary (VisitsTests:
+  along a way 9.6 visits as before, across water 0; news 8 and 0), control `--oldvisits` = `_y1` (state hash 78635b5066ea574c), ten seeds `_pv1`:
+  at par in the vital rates; sickness x0.64, epidemics x0.81, palisades x0.95 (the mechanism); hunger deaths x1.06 (t 2.2) with all deaths a person-year at par - to explain before landing. (4) **C10.7b's SwornTests retest**: 5/5 after a stale assertion on the settlement page's wording was fixed (tc-sworn 71bb313, tc-int2 ca25d71). (5) **Started: the realms map layer** (`wip/realms`, worktree `tc-realms`,
+  presentation only; D2-167 when it lands): `RealmsView` - each realm village's land washed in its realm's colour (the seat stronger), chevrons from each
+  tributary toward its lord along the way its tenth is carried, a legend; committed 7d418d3, it compiles (`cc --src`); not wired into the game yet - the steps are in
+  SESSION_HANDOFF.
+- **Session 23, fourth context (20 Oct 2026, 02:54-05:10 IST; Control Room run #63 session 4; the same job queue)** - context handoff with the queue
+  running; nothing of C10.7a, C10.7b or C9.5c landed on main yet (the landing branch `wip/s23b-int` waits for the queue's evaluations). (1) **Main
+  re-checked** (the handoff's stale milestones): main's code was bc99679's (cc66770 changed docs only); full suite 433/433, 0 skipped
+  (`results/fullsuite_m4.txt`), `unity.mjs cc` clean on bc99679, D2-159-D2-163 in DECISIONS as drafted. (2) **C9.5b's checks completed** (D2-163): Web
+  `s23web4` 6/6 with C9.5b, browser = headless dotnet = editor Mono bit for bit; the first real shots (`s23m5`, `s23m4`) framed no dugout - a new probe
+  (`voyages --load SAVE --days N [--dugouts]`: a save lived as the game loads it, every voyage logged with its village's day and hour; dugout bookings
+  followed to their fate) found seed 2's lived crossings (19 voyages in 96 days, all dugouts) and aimed shots (`s23n1`, `s23n2`; views `voyagedugout...`,
+  `voyageclose` at 45 m) framed them at the predicted minute: a dugout crossing reads at 45 m. Seeds 3, 4, 5, 11 crossed by dugout neither lived nor at
+  COARSE over two years from year 300 - lived and COARSE agree; their crossings are earlier history. Tools merged into main (db4b8ba, a8ca460; db4b8ba
+  broke the headless build with a local-name clash for an hour - fixed). (3) **C10.7a a lordship's might by lasting strength** (`wip/c107a-arms`,
+  sim 88; D2-164 draft `tc2/out/tools/s23/d2164.md`): might weighs each person of fighting age by their years, their village's tools, arms and iron and
+  their fighting skill (`Conflict.Lasting`, `LastingOf`, `Kit`, `Years`), not by heads; `--oldmightarms`, `--armstally`. Nine test classes pass (0
+  skipped); control = `_y1` (annals and state hash); **ten seeds `_a7` at par** (people x1.018 t 1.24, births x1.003, deaths x1.000, hunger x0.993;
+  tribute agreed x1.20 t 1.78, bonds for bread x1.22 t 1.82); the two weighings disagree 17 times in 2,479 over the ten worlds; armed worlds (seeds 2,
+  4, 7) bow more to the armed. 900-year check queued. (4) **C10.7b sworn men** (`wip/c107b-sworn`, sim 89; D2-165 draft `d2165.md`): the one first
+  among a village's people, whose household's grain runs beyond its own next year and three more, keeps young men of the village sworn to them (the
+  landless and land-short first, then the boldest), a year's food each at the harvest from the household's bin into theirs; they practise every day
+  (a ground laid out for them), go with every band beyond its twelve, and weigh in its might by their skill (C10.7a). Control (first version) = `_a7`.
+  **Its first seeds found churn**: the oath was to a household id, and seed 4 released 2,956 men in 300 years as their oath household merged into
+  another (the old gone to live with a child) and re-swore them the same harvest - **the oath is now to the person** (1557053; released at the lord's
+  death, another's rising, a move, the man's fortieth year). Eight neighbour classes pass on the rebuilt binary; SwornTests' wording fixed (3e570e3) and
+  retested in the queue. Open: seed 4 had sworn men in 9 of 29 villages at year 300, only 2 of them lords (any first household with grain keeps men -
+  emergent thegns): judge by the seeds and the 900-year check. (5) **C9.5c people across water** (`wip/c95c-visits`, sim 88 on main's line; D2-166
+  draft `d2166.md`): measured first (`--visittally`, four worlds byte-identical to `_y1`): in the archipelago 65 % of a COARSE day's visits, 81 % of the
+  news and two thirds of the sickness caught on visits crossed water no lived visitor could cross; every world told of paths "worn" where no way on
+  foot runs (6-14). Now a COARSE day's visits, their sickness, news and wear go only where a way on foot leads, with a lived day's odds - the visits to
+  a village no way reaches are lost, as `World.PickNeighbour` loses them (a first version spread them over the rest: found in review, fixed 8a270c4;
+  VisitsTests: visits along a way 9.6 as before, across water 0). Tests passing; control and ten seeds queued. (6) **The landing branch**
+  `wip/s23b-int` (main + all three, sim 90 = 88 C10.7a, 89 C10.7b, 90 C9.5c; docs `10` §12i-j, `24` §5, `25`, `23` §3; shot view
+  `act:<Activity>:sworn`): its full suite is queued (`6_9_d`). SESSION_HANDOFF "Session 23, fourth context" has the queue and the next steps.
 - **Session 23, third context (20 Oct 2026, from 00:04 IST; Control Room run #63 session 3; the same job queue)** - **landed on main (c8f6f5d):
   C9.5a grain across water goes by boat; DECISIONS D2-162; sim version 86.** (1) **The 900-year check of the code as landed** (seed 2, `_l9g1`): no
   snowball (6-7 lords among 28-32 villages, the largest 2-4, depth 1-2); the tenth carried every year (1,334,050 FU in 18,940 loads, 70 % on carts,

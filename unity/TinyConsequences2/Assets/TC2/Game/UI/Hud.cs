@@ -60,6 +60,7 @@ namespace TC2.Game
             if (Input.GetKeyDown(KeyCode.B)) _book = !_book;
             if (Input.GetKeyDown(KeyCode.Space)) Host.SpeedIndex = Host.SpeedIndex == 0 ? 3 : 0;
             if (Input.GetKeyDown(KeyCode.H)) _hidden = !_hidden;
+            if (Input.GetKeyDown(KeyCode.R)) RealmsView.On = !RealmsView.On;   // (the realms map layer, D2-167)
             if (Host.Feed.Count != _newsCount) { _newsCount = Host.Feed.Count; _news = _newsCount > 0 ? Host.Feed[_newsCount - 1] : ""; _newsAge = 0f; }
             _newsAge += Time.unscaledDeltaTime;
             for (int i = 0; i < SimHost.Speeds.Length && i < 8; i++) if (Input.GetKeyDown(KeyCode.Alpha1 + i)) { Host.SpeedIndex = i; Host.MaxSpeed = false; }
@@ -153,7 +154,7 @@ namespace TC2.Game
 
             if (_hidden) { PointerOverUi = false; return; }
             // top-left: a slim bar - the date and the speeds
-            _left = new Rect(10, 10, Mathf.Min(sw - 270, 900), 40);
+            _left = new Rect(10, 10, Mathf.Min(sw - 390, 900), 40);
             GUILayout.BeginArea(_left, _box);
             GUILayout.BeginHorizontal();
             GUILayout.Label(SimTime.Format(w.Now), _title, GUILayout.Width(318));
@@ -167,13 +168,14 @@ namespace TC2.Game
             GUILayout.EndArea();
 
             // top-right: toggles for the panels
-            _toggles = new Rect(sw - 310, 10, 300, 40);
+            _toggles = new Rect(sw - 380, 10, 370, 40);
             GUILayout.BeginArea(_toggles, _box);
             GUILayout.BeginHorizontal();
             _info = GUILayout.Toggle(_info, "Info", _btn);
             _history = GUILayout.Toggle(_history, "History", _btn);
             _book = GUILayout.Toggle(_book, "Book", _btn);
             _worldPanel = GUILayout.Toggle(_worldPanel, "World", _btn);
+            RealmsView.On = GUILayout.Toggle(RealmsView.On, "Realms", _btn);
             GUILayout.EndHorizontal();
             GUILayout.EndArea();
 
@@ -209,7 +211,10 @@ namespace TC2.Game
                 if (GUILayout.Button("Offline: " + Host.Offline, _btn)) Host.Offline = (OfflineMode)(((int)Host.Offline + 1) % 3);
                 GUILayout.EndHorizontal();
                 GUILayout.EndArea();
+                ry += 102;
             }
+            Rect realmsRect = Rect.zero;
+            if (RealmsView.On) realmsRect = RealmsLegend(sw, ry, w);
 
             // what happened lately: the full feed behind a toggle, else a one-line ticker that fades
             _bottom = Rect.zero; _ticker = Rect.zero;
@@ -246,7 +251,46 @@ namespace TC2.Game
             else if (_personPage && _selected != 0 && w.People.Exists(_selected)) { float pw = Mathf.Min(600, sw - 430); _pageRect = new Rect(Mathf.Max(10, sw - 410 - pw), 60, pw, sh - 130); PersonPage(_pageRect, w); }
             else if (_building != 0 && w.Buildings.Exists(_building)) { showInsp = true; BuildingPage(insp, w); }
             Vector2 m = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y) / _scale;
-            PointerOverUi = _left.Contains(m) || _toggles.Contains(m) || _right.Contains(m) || worldRect.Contains(m) || _bottom.Contains(m) || _ticker.Contains(m) || (showInsp && insp.Contains(m)) || _bookRect.Contains(m) || _pageRect.Contains(m);
+            PointerOverUi = _left.Contains(m) || _toggles.Contains(m) || _right.Contains(m) || worldRect.Contains(m) || realmsRect.Contains(m) || _bottom.Contains(m) || _ticker.Contains(m) || (showInsp && insp.Contains(m)) || _bookRect.Contains(m) || _pageRect.Contains(m);
+        }
+
+        /// <summary>
+        /// The realms map layer's legend (D2-167): each realm - a lordship's head and the villages that pay it, directly or through their lords - in its
+        /// colour on the ground, largest first, with its villages and people; and how many villages pay a lord and how many pay none. Read from the
+        /// world (`RealmsView.Legend`, refreshed each second). "Alone": in no realm - paying nobody and paid by nobody.
+        /// </summary>
+        Rect RealmsLegend(float sw, float ry, TC2.Core.Simulation.World w)
+        {
+            var legend = RealmsView.Legend;
+            int shown = Mathf.Min(legend.Count, 8);
+            int paying = 0, free = 0;
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                ref var s = ref w.Settlements.Get(sid);
+                if (!s.Inhabited) continue;
+                if (s.Lord != 0 && w.Settlements.Exists(s.Lord) && w.Settlements.Get(s.Lord).Inhabited) paying++;   // (as RealmsView reads a bond)
+                else if (w.Conflict.PolitySize(sid) == 0) free++;
+            }
+            var r = new Rect(sw - 340, ry, 330, 52 + 20 * Mathf.Max(1, shown) + (legend.Count > shown ? 18 : 0));
+            GUILayout.BeginArea(r, _box);
+            GUILayout.Label("<b>Realms</b>   " + paying + (paying == 1 ? " village pays" : " villages pay") + " a lord, " + free + " stand" + (free == 1 ? "s" : "") + " alone", _label);
+            if (legend.Count == 0) GUILayout.Label("No village pays tribute to another now.", _small);
+            var old = GUI.color;
+            for (int i = 0; i < shown; i++)
+            {
+                var e = legend[i];
+                GUILayout.BeginHorizontal();
+                Rect sq = GUILayoutUtility.GetRect(14, 14, GUILayout.Width(14), GUILayout.Height(14));
+                sq.y += 3;
+                GUI.color = new Color(e.c.r, e.c.g, e.c.b, 1f);
+                GUI.DrawTexture(sq, Texture2D.whiteTexture);
+                GUI.color = old;
+                GUILayout.Label(w.History.NameOf(EntityRef.Settlement(e.sid)) + " - " + e.villages + " villages, " + e.people + " people", _small);
+                GUILayout.EndHorizontal();
+            }
+            if (legend.Count > shown) GUILayout.Label("and " + (legend.Count - shown) + " more", _small);
+            GUILayout.EndArea();
+            return r;
         }
 
         void Inspector(Rect r, TC2.Core.Simulation.World w)

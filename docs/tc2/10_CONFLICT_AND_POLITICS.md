@@ -262,7 +262,8 @@ Built on C3.3 (D2-126: household grain, loans recorded as debts, gifts). `Core/S
   day's loads (lived carriers carry: seed 2's year-300 world lived 20 days brought 19 loads, 1,647 FU, most on carts). The standards (real state)
   enlarge with the camera's distance up to 4x - but real shots (`s23c`-`s23h`) show a standard reads up close and from the low view, not from the
   village view, where a village spans a few hundred pixels (even 8x was a speck; reverted): a polity at the village and region views wants a map
-  layer (the UI pass). The polities' colours have no green nor teal (a standard is read over green fields). The way between a tributary and its
+  layer (the UI pass) - done: the realms map layer (D2-167, `18` §9: each lordship's land in its colour with a band at its edge, chevrons from
+  tributary to lord, a legend). The polities' colours have no green nor teal (a standard is read over green fields). The way between a tributary and its
   lord is walked two times a load - but measured (ten worlds at year 300): every pair of villages within a day's walk is already worn to a path or a
   road by its own traffic (the bound pairs 4 roads and 19 paths, the 599 others 89 roads, 500 paths, 10 tracks), so the ways of a lordship do not
   stand out from the others' - the hope that they would converge visibly on the lord was not borne out.
