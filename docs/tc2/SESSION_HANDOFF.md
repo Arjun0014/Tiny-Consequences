@@ -1,5 +1,37 @@
 # TC2 Session handoff
 
+## Session 24, second context (21 Oct 2026, from 01:45 IST; Control Room run #73 session 2) - C10.7a, C10.7b, C9.5c LANDED on main; the job queue RUNNING
+
+### Exact state (21 Oct ~02:55)
+- **main** = 0e84d21: the landing merge 3b236ee (`wip/s23b-int` ca25d71: C10.7a, C10.7b, C9.5c; **sim version 90**), the tools merge 3bf3d44
+  (`wip/s24-tools` 8bf5141: `lordships --heads --margins --could --wrongs`), docs `18` §9 (D2-167) and `10` §12h. Not ours: `.claude/launch.json`
+  (modified), `Assets/Resources.meta` (untracked) - leave them. **DECISIONS D2-164-D2-167 are NOT appended yet**: `append_decisions.py` refuses FILLs, and
+  `d2164.md` (C10.7a's own 900 years), `d2165.md` (C10.7b's own 900 years and the profile) and `s24/d2167.md` (the Web frame cost) still have one each;
+  `d2166.md` is complete.
+- **Why landed before the per-slice 900-year checks**: the integrated rules' 900 years (`4_e_d`) answered the snowball question for what lands (realms
+  grow, nothing snowballs - `c108_design.md` top, `d2165.md`); the per-slice runs only attribute it.
+- **The queue** (task bcbn62z2b, the same runner and `Q` as below): at 02:55 `5_a_rebuild_a9` (C10.7a's binary) running; then, in order: `0_a_land_checks`
+  (bin_m5 from main, floatcheck, hashtest, `unity.mjs cc` -> `cc_main9.txt`, seed 2's v90 world `_m5` saved at year 300), `0_b_fullsuite_m5` (`fs_m5_ok`
+  only with 0 failed, 0 skipped; `results/fullsuite_m5.txt`), `0_c2_shots_realm900` (`s24t`/`s24tn`: the year-900 overkingship of `_l9i2` with the realms
+  layer at orbit, region, village; the region without it), `0_c_shots_m5` (`s24p` sworn men at practice, `s24q` realms on `_m5`), `0_d_web` (`s24web1`:
+  Web build, Mono = dotnet hash parts, webtest with `3b_region_realms`), `6_c_profile_sx1`, `7_a_i2_*` (the integrated rules' other eight seeds), `7_b`
+  (C10.8's control `--olddemand` = `_i2` seed 4 -> `dm_ctl_ok`), `7_c_dm1_*` (C10.8's ten seeds), `7_d` (`results/cmp_i2_dm1.txt`), **`8_a1..3`** (C10.7a's
+  900 years: renamed from `5_b..d`), **`8_b1..2`** (C10.7b's: from `6_a..b`), `9_*` (D2-161's attribution).
+- **C9.5c decided** (`d2166.md` complete): the third set leaned the other way in hunger (x0.895) with more sickness (x2.07, r -0.88); pooled over 21
+  worlds that part hunger x0.994, births and deaths a person-year at par; people over 200-299 x0.982 (t -2.64) not repeated in 20-29 (t -0.77). Tools:
+  `tc2/out/tools/s24/lean_pool.py` (three sets pooled), `lean_why.py` (per seed by cause from each pair's parting year; the placebo set too).
+
+### Next, in order
+1. Judge each landing check as it ends: `0_a` (build, cc, `_m5`), `0_b` (the full suite must be 0 failed, 0 skipped), the shots `s24t`/`s24tn`, `s24p`,
+   `s24q` (open the PNGs in `tc2/out/shots/<tag>/`: does a three-tier realm read? sworn men at practice?), `0_d` (Web: 6/6, the realms frame cost
+   `3b_region_realms` against `2_region` -> `s24/d2167.md`'s FILL).
+2. When `8_a*`/`8_b*` and `6_c` are in: fill `d2164.md`, `d2165.md`; then `python tc2/out/tools/s24/append_decisions.py` (D2-164..D2-167); `25` needs no
+   edit (C10.8's merge rewrites its C10 line).
+3. C10.8 (`7_d`): judge the ten seeds against `_i2` (vital rates; raids, wounds; bonds, lordships; the askings: `demands:` lines); a matched placebo if a
+   lean needs one; then merge main into `wip/c108-demand` (worktree `C:/Game Dev/tc-demand`; it gains the tools and the realms layer, no sim change),
+   rebuild (`bin_dm2`; must reproduce `_dm1`), its 900 years (seeds 2, 4 from `s*_dm1/world_y300.tc2`) with the lordships measures (the greatest realm's
+   share and tiers, not only the count of lords), land it (sim 91, D2-168), real shots of realms grown (`--realms`), full suite, Web.
+
 ## Session 24 (20 Oct 21:56 - 21 Oct ~01:25 IST; Control Room run #73 session 1) - context handoff with the job queue RUNNING; nothing of C10.7a/C10.7b/C9.5c landed yet; the realms map layer on main; C10.8 the asking built on a branch
 
 ### Exact state at the handoff (21 Oct 01:25)

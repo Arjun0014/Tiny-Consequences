@@ -4,6 +4,22 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 24, second context (21 Oct 2026, from 01:45 IST; Control Room run #73 session 2; the same job queue) - C10.7a, C10.7b and C9.5c landed
+  on main (3b236ee, sim version 90) with the lordships tools (3bf3d44)**. (1) **C9.5c's third seed set** (20-29) decided the landing: pooled over the 21
+  worlds that part, hunger a person-year x0.994 (t -0.16) - the first ten's lean was chance, as its matched placebo said; births and deaths a person-year
+  at par; people over years 200-299 x0.982 (t -2.64), carried by seeds 9-19 and not repeated in 20-29 (x0.991, t -0.77; three worlds lower, three higher)
+  - a level of the size twins spread by, not a rate; in 20-29 the C9.5c twins met larger epidemics and starved fewer (r -0.88): an island meets its
+  neighbours' sickness by boat, later and larger or never. (2) **The integrated rules' 900 years** (seeds 2 and 4 lived from year 300; `lordships
+  --heads --margins --could --wrongs` at years 300, 600, 900): realms grow, nothing snowballs - seed 2 built an overkingship (Lounstead took Grothstead,
+  lord of five, after a raid in year 601 and Taildvehope, lord of three, for famine grain in 794: 13 of 32 villages in three tiers from year 800, unchanged
+  at 900), seed 4 holds seven lordships of one to four; every bond still paid is the stronger by the odds of a first bow; successions change nothing (bond
+  ends by the lord 5.0 a thousand bond-years within five years after its first person changed, 4.9 otherwise); formation still limits (80 and 135 pairs
+  where one could make the other bow, against 16 and 14 bonds) - C10.8 the asking kept as the next slice. (3) A second reading of the landing branch's
+  save format and hash, `Retinue`, bands and might, and of C10.8's `Conflict.Demanded`: no fault. (4) Docs: `18` §9 polities on the map (D2-167), `10`
+  §12h done. Queued to run next: main's build `bin_m5` (floatcheck, hashtest, `unity.mjs cc`, a v90 seed-2 world `_m5`), the full suite, real shots (`s24p`
+  sworn men at practice, `s24q` realms on `_m5`, `s24t` the year-900 overkingship), the Web build and test `s24web1`; then C10.8's control and ten seeds;
+  then C10.7a's and C10.7b's own 900 years (renamed `8_*`). DECISIONS D2-164-D2-167 wait for their last FILLs (the per-slice 900 years and the profile,
+  the Web frame cost).
 - **Session 24 (20 Oct 21:56 - 21 Oct ~01:25 IST; Control Room run #73 session 1) - context handoff with the job queue running; nothing of C10.7a,
   C10.7b or C9.5c landed yet** (SESSION_HANDOFF "Session 24" has the queue and the steps). (1) **The stopped queue restarted** in a new scratchpad (the
   old one was gone: every binary rebuilt from its worktree, each checked against its own earlier runs). (2) **The landing branch's full suite**

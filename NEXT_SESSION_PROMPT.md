@@ -20,6 +20,11 @@ answers "what changes in the world picture?" and is judged in real game shots.
    §12i-§12k **on the branches** (`C:/Game Dev/tc-int2` has §12i-j; `C:/Game Dev/tc-demand` has §12k).
 5. `git status`, `git log --oneline -12`, `git worktree list`, and the queue: `cat $Q/runq.log` (path below) - which jobs ended, with what.
 
+## UPDATE - session 24, second context (21 Oct, from 01:45 IST): C10.7a, C10.7b and C9.5c are LANDED on main (3b236ee, sim 90; tools 3bf3d44)
+C9.5c's third seed set decided it (pooled hunger x0.994; the people lean not repeated). The landing checks (main's build, full suite, shots `s24t`/`s24p`/
+`s24q`, Web `s24web1`) are queued first, then C10.8's seeds, then C10.7a's/C10.7b's own 900 years (renamed `8_*`); DECISIONS D2-164-D2-167 wait for their
+last FILLs. **SESSION_HANDOFF "Session 24, second context" supersedes the session-24 lines below.**
+
 ## Session 24 (20 Oct 21:56 - 21 Oct ~01:25 IST) - context handoff; the job queue is RUNNING
 - **The queue**: `bash tc2/out/tools/s23/runq.sh`, background task **bcbn62z2b** (started 22:04 in session 24; it keeps running across the context clear).
   `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`; binaries in its parent
