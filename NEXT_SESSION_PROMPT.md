@@ -26,7 +26,9 @@ answers "what changes in the world picture?" and is judged in real game shots.
   (`bin_i2` the landing branch, `bin_s2` C10.7b, `bin_c1` C9.5c, `bin_dm1` C10.8, `bin_lt` the tools branch, `bin_lm` the measure-only tools; `bin_a9`,
   `bin_m2` to be rebuilt by queued jobs). Left at 01:25 (~3 h): the integrated rules' seeds 2 and 4 and their 900 years with the lordship measures
   (`4_e_*`), C9.5c's third seed set (`4_f_*`, `4_g`), C10.7a's 900 years (`5_*`), C10.7b's 900 years and the profile (`6_*`), the integrated rules' other
-  eight seeds and C10.8's control and ten seeds (`7_*`), D2-161's attribution (`9_*`). A monitor (task b2hef5r43) reports failed jobs; re-arm one if needed.
+  eight seeds and C10.8's control and ten seeds (`7_*`), D2-161's attribution (`9_*`). The failure monitor (task b2hef5r43) expired at ~01:25 with no
+  failure; at 01:27 `4_e_b_i2_s2` had ended rc=0 and `4_e_b_i2_s4` was running, 52 jobs left (the log's two rc=1 lines, `1_d` and `1_e`, were superseded by
+  `1_d2` and `1_e2`, both rc=0). No monitor is armed now: arm one (`tail -F $Q/runq.log | grep -E "rc=[1-9]|runner stopped"`) or read `runq.log`.
 - **On main (cd4f054 + the handoff docs; sim 87)**: the realms map layer (merges of `wip/realms`, presentation only) - judged in two rounds of real shots
   (`tc2/out/shots/s24r3`, `s24r8`, then `s24s3`, `s24s8`); its Web frame cost waits for the landing's Web build.
 - **Verified, not landed**: the landing branch `wip/s23b-int` (C10.7a + C10.7b + C9.5c, sim 90): full suite 441/441, 0 skipped; C10.7b's ten seeds at par
