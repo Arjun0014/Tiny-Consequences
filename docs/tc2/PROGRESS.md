@@ -4,8 +4,13 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
-- **Session 24, second context (21 Oct 2026, from 01:45 IST; Control Room run #73 session 2; the same job queue) - C10.7a, C10.7b and C9.5c landed
-  on main (3b236ee, sim version 90) with the lordships tools (3bf3d44)**. (1) **C9.5c's third seed set** (20-29) decided the landing: pooled over the 21
+- **Session 24, second context (21 Oct 2026, 01:45-~06:05 IST; Control Room run #73 session 2; stopped at Arjun's word) - C10.7a, C10.7b and C9.5c
+  landed on main (3b236ee, sim version 90) with the lordships tools (3bf3d44); the realms map layer finished from real shots (D2-167); a browser OOM
+  of great worlds found and fixed (D2-169); DECISIONS D2-164-D2-167 and D2-169 appended; C10.8 the asking in evaluation** (SESSION_HANDOFF "Session
+  24, second context - END": the queue stopping, what is left, the next steps). (9) **C10.8's evaluation so far**: control `--olddemand` = `_i2` byte for
+  byte; ten seeds - per-person rates at par, people over 100-199 x0.908 (t -2.85; twins part at years 6-30: a matched placebo is queued), bonds agreed
+  x12, the greatest realm x4.2 (8-16 villages at year 300), bonds ended x21, raids x6, wounds a person-year x2.75; seed 2 over 900 years: 279 bonds made,
+  250 ended, Mestskouford 18 of 31 villages at year 900, the vital rates at par - the churn and its war to judge before landing. (1) **C9.5c's third seed set** (20-29) decided the landing: pooled over the 21
   worlds that part, hunger a person-year x0.994 (t -0.16) - the first ten's lean was chance, as its matched placebo said; births and deaths a person-year
   at par; people over years 200-299 x0.982 (t -2.64), carried by seeds 9-19 and not repeated in 20-29 (x0.991, t -0.77; three worlds lower, three higher)
   - a level of the size twins spread by, not a rate; in 20-29 the C9.5c twins met larger epidemics and starved fewer (r -0.88): an island meets its

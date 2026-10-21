@@ -1,5 +1,46 @@
 # TC2 Session handoff
 
+## Session 24, second context - END (21 Oct 2026, ~06:05 IST; stopped at Arjun's word) - landed and validated; C10.8 in evaluation; the queue stopping
+
+### Exact state at the end
+- **main** (this commit and its parents since 88f04a6): the landing 3b236ee (C10.7a, C10.7b, C9.5c; **sim 90**), the lordships tools 3bf3d44, the realms
+  layer's dyes for the land e210eca + 9d7c796 (D2-167), saves into kept buffers 29e85f8 (D2-169: the browser OOM), tools (`tc2/scripts/realmsperf.mjs`,
+  webtest's heap from `Module.HEAPU32`), docs (`18` §9, `10` §12h, `14` §7, `25` C10), **DECISIONS D2-164, D2-165, D2-166, D2-167 and D2-169 appended**
+  (D2-164/D2-165 say honestly that their own per-slice 900-year checks were not run - attribution, not a condition; D2-168, C10.8, is recorded when
+  it lands). Not ours: `.claude/launch.json` (modified), `Assets/Resources.meta` (untracked) - leave them.
+- **Validated**: the full suite **441/441, 0 skipped** on main e191331 (the landing; before the dye and save changes - those ran their own: the new
+  `SaveIntoKeptBuffersIsTheSameSaveAndReallocatesNothing`, Determinism 7, SaveLoad 8, `cc` of every Game change); Web **`s24web1` 6/6** (e191331) and
+  **`s24web2` 6/6** (3344bf0, with the save fix; Mono = dotnet; browser = headless); the year-900 world's heap flat at 1,053 MB through autosaves
+  (was OOM); real shots `s24p` (sworn men at practice), `s24q`, `s24t` -> `s24u` -> `s24v` (realms; two faults fixed). **First thing next: the full
+  suite on main's tip** (it has not run since the save fix and the dyes; ~18 min: build main's headless, `tc2.dll test`, 0 failed and 0 skipped).
+- **The queue** (task bcbn62z2b; `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`;
+  `touch $Q/stop` done at 06:01: the runner exits after the job running then): **`7_f_l9dm1_s4`** (C10.8's 900 years, seed 4) was at year 360 of 900 at
+  06:01 (done ~06:15 if this session's background task lived; if `tc2/out/civ/s4_l9dm1.txt` has no `simulated` line it was cut: requeue
+  `tc2/out/tools/s24/7_f_l9dm1_s4.sh`). **Left in `$Q/todo`**: `7_g_lords_l9dm1` (C10.8's lordships at years 300/600/900 -> `results/lordships_s{2,4}_dm1_y*.txt`),
+  `7_h_dmp_01..10` + `7_i_cmp_dmp` (**C10.8's matched placebo** `_dmp`: `bin_dm1 --olddemand --nudge Y` at each seed's parting year 4:14 5:11 1:8 6:21
+  11:30 2:13 3:11 7:6 8:7 42:7 -> `results/cmp_i2_dmp.txt`, `cmp_dmp_dm1.txt`), `8_a1..3` (C10.7a's own 900 years), `8_b1..2` (C10.7b's), `9_a..c` (D2-161's
+  attribution). **To restart**: `rm $Q/stop`, then `bash tc2/out/tools/s23/runq.sh` in the background. Binaries in `$Q/..`: `bin_dm1`, `bin_dm2` (C10.8 +
+  tools; = `bin_dm1`'s rules, `_dm1` reproduced), `bin_i2`, `bin_lt`, `bin_s2`, `bin_a9`, `bin_m5`, `bin_sm1`. **If that scratchpad is gone**: point `S`/`N` in
+  `tc2/out/tools/s23/lib.sh` and `Q` in `runq.sh` at a live one and rebuild each binary a job needs from its worktree (`7_e_build_dm2.sh` for `bin_dm2`/`bin_dm1`'s
+  rules; `5_a_rebuild_a9.sh`, `1_b_rebuild_s2.sh`; the saves the jobs read stay in `tc2/out/civ`).
+- **C10.8 the asking** (`wip/c108-demand`, worktree `C:/Game Dev/tc-demand` at dc36cd9 + main merged again at this end - see below; sim 91; D2-168 draft
+  `tc2/out/tools/s24/d2168.md`): control `--olddemand` = `_i2` byte for byte; **ten seeds**: per-person rates at par (births x1.008, deaths x0.982 a
+  person-year), one lean - people over years 100-199 x0.908 (t -2.85; the twins part at years 6-30: the placebo decides); the mechanism strong - bonds
+  agreed x12, the greatest realm x4.2 (8-16 villages by year 300; seed 8's Skaldton 12 of 14 places), **bonds ended x21** and **raids x6, wounds a
+  person-year x2.75** (each end is a refusal the lord holds); **900 years, seed 2**: 279 bonds made, 250 ended; at year 900 two lords, Mestskouford 18
+  of 31 villages (depth 3); people 9,254 against 9,532, the per-person rates at par. Open: is the churn of bonds (and its war) the record's lapse at a
+  lord's death, or a margin that wants a counterweight before landing?
+
+### Next, in order
+1. The full suite on main's tip (above). 2. Restart the queue; judge `7_f` seed 4, `7_g` (the bonds' lives and ends: why most end - the lord dead,
+   weaker by the call's cascade, or the margin; do realms rise and fall?), `7_i` (the placebo: is x0.908 within twins' spread?). 3. Decide C10.8: land it
+   as it is (the war is the record's - heirs winning back tributaries) or with a counterweight first (rising together; renewal at succession) - then
+   merge main into `wip/c108-demand` (clean), land (sim 91), D2-168, the full suite, real shots of realms grown (`unity.mjs shots --realms` on a
+   `_dm1`/`_l9dm1` world; `--village lord`), Web. 4. When `8_*` run: an addendum line in D2-164/D2-165 (attribution). 5. Great worlds in the browser
+   (`14` §7): ~1.05 GB heap and ~8 fps at the region view for 9,500 people - a memory and frame pass of their own.
+- Worktrees merged and removable when convenient: `tc-int2`, `tc-s24tools`, `tc-realms`, `tc-savemem`, `tc-arms`, `tc-sworn`, `tc-visits` (and the
+  older list below); `tc-s24m` must never be merged; `tc-demand` is live.
+
 ## Session 24, second context (21 Oct 2026, from 01:45 IST; Control Room run #73 session 2) - C10.7a, C10.7b, C9.5c LANDED on main; the job queue RUNNING
 
 ### Update at ~05:25 - the browser OOM found and fixed (D2-169 draft, complete): the autosave's buffers

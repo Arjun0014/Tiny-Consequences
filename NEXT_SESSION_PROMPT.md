@@ -10,22 +10,35 @@ evidence and keep going; context handoffs are a continuation mechanism, not a st
 answers "what changes in the world picture?" and is judged in real game shots.
 
 ## Read first (this order), then work autonomously
-1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the standing prompt (architecture, rules, every direction; "Where we are (session 24)").
-2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 24"**: the exact state, the RUNNING job queue (where it is, what is left in it), what the evidence
-   says, "Next, in order".
-3. The drafts to land, each with its FILL marks (what the queue still owes): `tc2/out/tools/s23/d2164.md` (C10.7a), `d2165.md` (C10.7b), `d2166.md` (C9.5c),
-   `tc2/out/tools/s24/d2167.md` (the realms map layer), `d2168.md` (C10.8 the asking); the next slice's design and measurements
-   `tc2/out/tools/s24/c108_design.md`; the PROGRESS draft for the landing `tc2/out/tools/s24/progress_s24.md`.
-4. `docs/tc2/DECISIONS.md` newest (D2-163), `docs/tc2/PROGRESS.md` CURRENT STATE (the session 24 entry first), `docs/tc2/10_CONFLICT_AND_POLITICS.md`
-   §12i-§12k **on the branches** (`C:/Game Dev/tc-int2` has §12i-j; `C:/Game Dev/tc-demand` has §12k).
-5. `git status`, `git log --oneline -12`, `git worktree list`, and the queue: `cat $Q/runq.log` (path below) - which jobs ended, with what.
+1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the standing prompt (architecture, rules, every direction; "Where we are (session 24, second context)").
+2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 24, second context - END"**: the exact state, the job queue (stopped after one job; what is left,
+   how to restart it), what the evidence says, "Next, in order".
+3. `docs/tc2/DECISIONS.md` newest (D2-164-D2-167, D2-169); the C10.8 draft `tc2/out/tools/s24/d2168.md` (its FILL: what its evaluation still owes) and
+   design `tc2/out/tools/s24/c108_design.md`; `docs/tc2/PROGRESS.md` CURRENT STATE (the session 24 entries); `docs/tc2/10_CONFLICT_AND_POLITICS.md`
+   §12i-§12j (main) and §12k (on `C:/Game Dev/tc-demand`); `docs/tc2/14_PERFORMANCE.md` §7 (great worlds in the Web build).
+4. `git status`, `git log --oneline -15`, `git worktree list`, and the queue: `cat $Q/runq.log` (`Q` in SESSION_HANDOFF) - which jobs ended, with what.
 
-## UPDATE - session 24, second context (21 Oct, from 01:45 IST): C10.7a, C10.7b and C9.5c are LANDED on main (3b236ee, sim 90; tools 3bf3d44)
-C9.5c's third seed set decided it (pooled hunger x0.994; the people lean not repeated). The landing checks (main's build, full suite, shots `s24t`/`s24p`/
-`s24q`, Web `s24web1`) are queued first, then C10.8's seeds, then C10.7a's/C10.7b's own 900 years (renamed `8_*`); DECISIONS D2-164-D2-167 wait for their
-last FILLs. **SESSION_HANDOFF "Session 24, second context" supersedes the session-24 lines below.**
+## Session 24, second context (21 Oct 2026, 01:45-~06:05 IST) - ENDED at Arjun's word; landed and validated; C10.8 in evaluation
+- **On main**: C10.7a might by lasting strength, C10.7b sworn men, C9.5c people across water (3b236ee, **sim 90**; D2-164-D2-166), the lordships tools,
+  the realms map layer finished from real shots (D2-167: ground-safe dyes, realms seen together 60 delta E apart), saves into kept buffers (D2-169: a
+  great world's autosave had made ~460 MB of short-lived buffers and the browser hit its 2 GB ceiling), `tc2/scripts/realmsperf.mjs`. Validated: full
+  suite 441/441 at the landing, Web `s24web1` and `s24web2` 6/6, shots `s24p`/`s24q`/`s24v`. **Not yet**: the full suite on main's tip since the save fix
+  and the dyes (run it first).
+- **The queue** (`tc2/out/tools/s23/runq.sh`; `$Q/stop` set): `7_f_l9dm1_s4` was the last job (C10.8's 900 years, seed 4); left in `$Q/todo`: C10.8's
+  lordships (`7_g`) and matched placebo (`7_h`, `7_i`), C10.7a's and C10.7b's own 900 years (`8_*`), D2-161's attribution (`9_*`). Restart: `rm $Q/stop`,
+  `bash tc2/out/tools/s23/runq.sh` in the background (the scratchpad may be gone: SESSION_HANDOFF says how to rebuild the binaries).
+- **C10.8 the asking** (`wip/c108-demand`, `C:/Game Dev/tc-demand`, sim 91; D2-168 draft): control byte-identical; ten seeds at par in the per-person
+  rates with one lean (people over 100-199 x0.908, t -2.85 - the placebo decides); realms of 8-16 villages by year 300, but bonds churn (ended x21) and
+  war rises (raids x6, wounds x2.75); seed 2's 900 years: Mestskouford 18 of 31 villages, rates at par. Decide: land it as it is or with a counterweight.
 
-## Session 24 (20 Oct 21:56 - 21 Oct ~01:25 IST) - context handoff; the job queue is RUNNING
+## Do next, in order
+1. The full suite on main's tip; restart the queue and read it (`7_f` seed 4, `7_g` the bonds' lives and ends, `7_i` the placebo).
+2. Decide and land C10.8 (merge main into `wip/c108-demand` first; D2-168; full suite; real shots of realms grown with `--realms`; Web) - or build its
+   counterweight first if the churn is a margin rather than the record's lapse at a lord's death (rising together; renewal at succession).
+3. Then by evidence: commendation, rising together, a lord's death and its tributaries (`25` C10); and great worlds in the browser (`14` §7: ~1 GB heap,
+   ~8 fps at the region view for 9,500 people) - a memory and frame pass.
+
+## (Superseded - history) Session 24, first context (20 Oct 21:56 - 21 Oct ~01:25 IST)
 - **The queue**: `bash tc2/out/tools/s23/runq.sh`, background task **bcbn62z2b** (started 22:04 in session 24; it keeps running across the context clear).
   `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`; binaries in its parent
   (`bin_i2` the landing branch, `bin_s2` C10.7b, `bin_c1` C9.5c, `bin_dm1` C10.8, `bin_lt` the tools branch, `bin_lm` the measure-only tools; `bin_a9`,
@@ -42,7 +55,7 @@ last FILLs. **SESSION_HANDOFF "Session 24, second context" supersedes the sessio
 - **Built on a branch**: C10.8 the asking (`wip/c108-demand`, `C:/Game Dev/tc-demand`, from the landing branch; sim 91; DemandTests 4/4) - chosen by
   measuring first (bonds hold by strength, so succession changes little; formation limits lordships: 514 pairs where one could make the other bow, 26 bonds).
 
-## Do next, in order
+## (Superseded - history) Do next, as at 01:25
 1. Read the queue's results as they land and fill the drafts (SESSION_HANDOFF "Session 24", "Next, in order", step 1).
 2. Land: `git merge --no-ff wip/s23b-int`, then `git merge --no-ff wip/s24-tools`; FILLs; `python tc2/out/tools/s24/append_decisions.py` (D2-164-D2-167);
    PROGRESS, `25`, `18` §9, `10` §12h; queue `tc2/out/tools/s24/0_a_land_checks.sh`, `0_b_fullsuite_m5.sh`, `0_c_shots_m5.sh`, `0_d_web.sh`; judge the shots
@@ -53,6 +66,14 @@ last FILLs. **SESSION_HANDOFF "Session 24, second context" supersedes the sessio
    (24 wronged villages could put themselves under a protector), a lord's death once realms are held by the margin, rising together once realms are large.
 
 ## Rules that bite
+- **The browser's wasm heap** is read from `window.__TC2_INSTANCE.Module.HEAPU32.buffer.byteLength` (the framework exports `HEAPU32`, not `HEAPU8`); it
+  only grows. To put a headless save into the Web build use `tc2/scripts/realmsperf.mjs` (it patches the header - saved now, paused - and stores it from a
+  page of the same origin before the game starts: the game saves on pagehide). On this shared machine frame rates are the load's: compare paired
+  off/on counts in one page, never two runs' absolute rates.
+- Real shots must cover every dye and every age a presentation layer can meet: the realms layer passed two rounds on gold and red realms, then a
+  year-900 world showed sky-blue realms as lakes and white as salt flats. `tc2/out/tools/s24/dye_preview.py` previews a colour washed over a real screenshot.
+- Hold a queued build job (`mv $Q/todo/J $Q/hold/`) before editing the worktree it builds; a job named `0_...` runs next, so a fix's checks can jump the
+  queue - and the runner starts the next job the moment one ends.
 - Commits `[tc2] ...` ending with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`; stage only TC2 files; never force-push; push only when asked
   (as Arjun0014, per the global CLAUDE.md).
 - **Resource rule (Arjun D-1/D-2)**: one low-priority heavy job at a time while RAM < 86 % and CPU < 85 % - the job queue (`tc2/out/tools/s23/runq.sh`,

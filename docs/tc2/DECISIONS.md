@@ -4784,3 +4784,285 @@ only): found at the minute the probe gave - "a crew of Tholdkeistmere: paddling 
 pots and jars to trade" (mid-spring, 8.5 h), and Lesgristholm's crossing to Grosstead with iron (midsummer dawn); **at 45 m (`voyageclose`) a dugout
 crossing reads** - the hollowed hull, two paddlers, a paddle in the water, the shore behind; at 90 m it is a speck by the far shore, and from the far
 landing (110 m) the boat drawn up does not stand out from the landing's frames.
+
+## D2-164 — 2026-10-20 — A lordship's might by lasting strength: villages weigh each other's people of fighting age by their years, their tools and arms and their fighting skill, not by heads (C10.7a)
+
+**Context.** C10.5 (D2-159) weighs a village by its people of fighting age - heads of 16 to 60, so that a day's wounds, sickness and hunger do not
+swing a bond - and a lord with the men its call brings. But a fight (`Conflict.Strength`, D2-071 and since) weighs each body by its years, its
+village's tools, arms and iron (C1.4, C5.2b) and its own fighting skill (C1.5): a village that forged spears and axes of iron and trained its people
+at a ground (the villages that fear their neighbours do: D2-093, D2-094) beats one of as many heads with none. So bonds were weighed by a count the
+fights themselves did not keep: a lord's smiths and training ground made its bands win, never its bonds hold. Measured first (`lordships --might` on
+the ten C9.5b worlds at year 300, the draft's binary; `results/might_s*_y1.txt`): a village's people by their lasting strength against heads - the
+median village x1.00 (seed 5: no arms, nobody trained) to x2.03 (seed 7); seeds 2, 4 and 7 arm nearly everywhere (median x1.85-2.03), the others
+little (x1.00-1.15); grown people with fighting skill over 0.1: none of 617 (seed 5) to 2,429 of 5,297 (seed 4); the 26 bonds still paid at year 300
+hold by either weighing.
+
+**Decision.** Might counts each person of fighting age **by their lasting strength** (`Conflict.Lasting`, `LastingOf`): `Strength` with what lasts and
+without what passes - their years (`Conflict.Years`: 0.8 under 18 and from 45, as a fight weighs them), their village's kit a head (`Conflict.Kit`:
+x (1 + 0.3 tools) (1 + 0.3 arms) (1 + 0.15 iron), the share of its people its arms would arm) and their own fighting skill (x (1 + 0.6 skill)); the
+day's health and wounds stay out (C10.5's reason). An untrained grown person in their prime with no arms counts one; a trained one with a spear or an
+axe of iron a little more than two. A lord's call is weighed so too: each man its tributaries owe (a quarter of the meek, more of the bold) by his
+own lasting strength. Used wherever might is: a beaten village bowing to its raiders, a village bowing for bread, a tributary that would pay no more.
+`--oldmightarms` counts heads (C10.5) on the same binary; sim version 88.
+
+**The record.** Early medieval armies were small and their strength lay in the quality of their arms and men more than in numbers - the lord's
+household warriors with their war gear against a levy of free men with spear and shield (Halsall, *Warfare and Society in the Barbarian West
+450-900*, 2003; Abels, *Lordship and Military Obligation in Anglo-Saxon England*, 1988): a neighbour judging whether to bow judged what its enemy
+could field, not how many lived there.
+
+**Tells.** The weighing kept with each tribute and its end (`TributePaid` ArgA/ArgB, `TributeEnded` Magnitude/ArgB) is now a strength: the settlement
+page says "At its last harvest X could bring a strength of N against it - its own people and those its call brings, each by their years, arms and
+fighting skill (an untrained grown person in their prime with no arms counts one); its own came to M"; history says why a tributary paid no more
+("... it could bring a strength of N against them (...), and theirs came to M"). Under `--oldmightarms` the texts are C10.5's.
+
+**Evidence.** MightTests 6/6 (the might of a lord with its call by lasting strength; a bond holds through the lord's bad season - the day's wounds
+leave lasting strength unchanged - and ends when its people are gone; **arms and skill decide a bow heads would not**: two villages alike by heads,
+the giver arms (a spear or an axe of iron a head) and trains its people (skill 0.8) - the indebted village bows to it, and under `--oldmightarms`
+does not; **a tributary that out-arms its lord pays no more**, and by heads pays on), BreadTests 5, DefenceTests 8, LeadersTests 8, LordshipTests 4,
+TributeCarriedTests 9, AcrossTests 8, DeterminismTests 6, SaveLoad 8 (`bin_a8`, 0 skipped); floatcheck clean. In the bow test the giver had 11 heads against 10 - by lasting strength 10.8 unarmed, 23.9 armed and trained (kit x1.50) against 10.0; the tributary that out-armed its lord had 6 heads against 10 and a strength of 13.3 against 10.0. Control: `--oldmightarms` (with `--armstally`) seed 2 = C9.5b's `_y1` - annals byte-identical, state hash 7354e64f798fe019 both; its tally (C10.5's world, weighed both ways): of 345 weighings in 300 years the two disagree three times - bowing to raiders 3 (by heads 3, by lasting strength 3), for bread 29 (4, 3), a lord no longer the stronger 313 (1, 3).
+**Ten seeds** (`_a7` against C9.5b's `_y1`, `results/cmp_y1_a7.txt`): the vital rates at par - people at the end x1.018 (t 1.24), over years 200-299
+x0.999, births and deaths a person-year x1.004 and x1.001, hunger x0.993, famines x0.986; the bonds lean where villages arm - tribute agreed x1.20 (t 1.78),
+bonds for bread x1.22 (t 1.82), raids x1.09 (t 1.23), lords at year 300 x0.99, the greatest lordship x1.09, depth unchanged (none of some sixty measures
+past |t| 2 but the wall clock, x0.978 - a busy machine's). **Each weighing by heads and by lasting strength** (`--armstally`, the ten worlds' 300 years):
+of 2,479 weighings the two disagree 17 times - a beaten village bowing to its raiders 125 weighed (by heads 17, by lasting strength 18; 1 by lasting
+strength alone), bowing for bread 100 (17 and 21; 5 by lasting strength alone, 1 by heads alone), a lord no longer the stronger 2,254 (9 and 9; 5 and 5
+alone). The worlds that arm (seeds 2, 4, 7: the median village's people x1.73-1.85 a head by lasting strength at year 300) bow more to the armed: seed 4
+four bonds for bread against two, two bonds heads would have ended kept. Where few arm the factor is about one a head (x0.95-1.10: the years' 0.8 of
+the youngest and the ageing balance the little kit and skill), and the weighing is the head count's.
+**The 900-year check**: of the rules as landed with C10.7b and C9.5c (`_l9i2`, seeds 2 and 4: D2-165) - realms grow (a three-tier overkingship of
+13 of 32 villages in seed 2 from year 800; seven lordships of one to four in seed 4), nothing snowballs, every bond still paid is the stronger by the
+odds. C10.7a's own 900 years (`_l9a7` against `_l9k0`, seeds 2 and 4: queue jobs `8_a1..3`, `tc2/out/tools/s24/5_b..d`) were not run when this was
+recorded (session 24, second context, stopped at Arjun's word) - an attribution of the growth to its slices, not a condition of the landing.
+
+## D2-165 — 2026-10-20 — Sworn men: a first household whose grain runs years beyond its needs keeps young men of its village sworn to it - fed from its grain, they practise arms every day and go with every band (C10.7b)
+
+**Context.** The tribute had no use: carried to the lord's store (C10.6) it went into its first household's bin (C10.2) and waited - ten worlds at
+year 300 had lords' first households holding 0.3-24 years of their own need (median ~8), the greatest at year 900 30 years (D2-161's 900-year line) -
+opened only to the village's hungry in hard times. A dead end in the causal chain: tribute -> grain that waits. And since C10.7a (D2-164) a village's
+might weighs its people's fighting skill: what a lord's grain could buy - men who train - now counts in its bonds.
+
+**Decision.** At each harvest of its village a first household (`Leaders.First`) weighs how many men its grain beyond its own next year and three more
+(`Retinue.KeepYears`) would feed for those years (`Retinue.Keepable`: a man's year is 48 FU), and the one first among the village's people keeps that
+many sworn to them (`Person.Sworn`, `Society.Retinue`): the willing men of the village - 18 to 40, fit, bold (`Training.BoldFrom`), of its households,
+not the lord - the landless and land-short first (C3.6: least land a hand, those with least to lose at home), then the boldest; the grain short, the
+most landed and least bold are released first; and the household gives each a year's food from its bin into his household's (one store: nothing is
+carried). **The oath is to the person**: it holds while the lord is first among the people - through their household's going into another (the old
+to live with a child, C3.6e, D2-138) - and ends at the lord's death, another's rising, the lord's or the man's moving to another village, or his
+fortieth year; the new first may swear the men anew. (A first version swore the men to a household id: seed 4 released 2,956 men in 300 years as
+"gone", their oath household merged into another, and swore them again the same harvest.) The men keep their own homes, land and work. They practise
+arms at the village's ground every day (two hours, as a practice day's session; lived in the afternoon, COARSE a session a day of the step) - a village
+whose lord keeps men lays a ground out for them, threatened or not; they go with every band their village raises (beyond its own count of twelve, up to
+the call's 36); trained, they weigh in its might by their lasting strength (C10.7a). Emergent, no lordship flag: a lord keeps men by its tribute, any
+first household by its own grain. `--oldsworn` (nobody sworn) on the same binary; sim version 89 (`Person.Sworn` saved; hashed only when set, so a
+world with nobody sworn hashes as before).
+
+**The record.** A lord's following ate at its board: the hearth-troop (*heorthwerod*), the gesiths landed and landless of Ine's laws (c. 694: up to seven
+men thieves, seven to thirty-five a band, more an army), the king's *geneat*; gifts of food and arms to companions - the ring-giver's hall - and, the
+other way, men who served for their keep. Younger sons with no land to wait for served. (Kept small and grounded in grain, not glory: the comitatus
+is partly a literary trope.)
+
+**Tells.** History: "X swore to Y, first among the people of L: the Zs' grain feeds him, a year's food at each harvest, and he practises arms at its
+ground every day and goes with its bands" (cause: the harvest; the last tribute paid there), and each release with its reason ("...: Y died", "...:
+another is first among the people of L now"). The settlement page: "N men are sworn to Y, fed from the Zs' grain - the tribute of the villages that pay
+it: they practise arms at its ground every day and go with its bands." The person page: "Known for: sworn to Y, first among the people of L, whose
+household feeds him". Seen practising: "practising arms at L's training ground: sworn to Y, first among its people, whose household feeds them for it". **What it changes in the world picture**: men at the lord's ground every
+afternoon (Train is drawn) where a ground may not have stood before; larger bands.
+
+**Evidence.** SwornTests 5/5 (a first household with grain beyond its needs swears the willing men of its village - the landless first, then the
+boldest - a year's food each from its bin into his household's, nothing leaving the store; history, the settlement page, his page; `--oldsworn` none;
+its grain short, the most landed and least bold go home, and a new first household's rise releases the old one's men; sworn men practise every day at
+both resolutions - lived 34 h in six days, COARSE 26.5 h, nobody else - and the village's might rises with their skill; every sworn man goes with his
+village's band (three of three); a save with sworn men continues identically); TrainingTests 4, MightTests 6, LordshipTests 4, LeadersTests 8,
+DefenceTests 8, TakingTests 18, BreadTests 5, DeterminismTests 6, SaveLoad 8 - all 0 skipped; floatcheck clean (the personal oath's binary
+`bin_s2`, 71bb313, retested in session 24 - every class again 0 skipped). Control: `--oldsworn` (with `--sworntally`) seed 2 = C10.7a's `_a7` - annals
+byte-identical, state hash 5722d8aefc02fef7 both (and again on the session-24 rebuild, `_sx0`). **Ten seeds** (`_sx1` against `_a7`,
+`results/cmp_a7_sx1.txt`): the per-person rates at par - births and deaths a thousand person-years x1.002 and x1.003 (t 0.22, 0.25), people at the end
+x0.966 (t -0.54), over years 200-299 x0.994 (t -0.33); **the mechanism shows in the bands** - raids x1.56 (t 2.83), loot x2.68 (t 3.84), wounds a
+person-year x1.30 (t 3.81; deaths of wounds x1.26 - tens in a world over 200 years), tribute agreed x1.52 (t 2.38), tributes paid x1.81, lords at year 300
+x1.18 and the greatest lordship x1.27 (depth unchanged): the men a great household keeps make its bands larger and bolder (BandDares weighs their skill),
+they win more often, and more beaten villages bow. **The open question answered**: at year 300 the ten worlds keep 499 sworn men in 80 villages against
+28 lords (the most to one lord 51, most villages a handful) - a great household keeps men whether or not it is a lord (the record's thegns and their
+followings, Ine's seven): kept so; over 300 years 4,640 (seed 4) to 794 (seed 5) men were sworn, released mostly when lord and man came to live in two
+villages (the land-short households sworn first are those C3.6d sends to new land: 40-46 % of releases in seeds 2, 3 and 4), at the lord's death, when
+another rose first among the people, when the grain could keep them no longer, at forty. **One lean to explain**: people over years 100-199 x0.924
+(t -2.64; per seed 0.79-1.05, temporary - seed 4 at 0.72 of its twin in years 150-199 and 1.07 by 250-299) while every per-person rate is at par and the
+twins part in years 11-45: no food goes (the keep moves within one store; the tenth is ~0.04 % of a world's food; the practice ~50 h a man-year). Other
+early-parting comparisons lean as far (people over 100-199 x1.087 t 2.13 in C3.7d's ten seeds, x1.060 t 2.10 in `cmp_n1_u4`). **A matched placebo**
+(`_sxp`: C10.7a's rules on the same binary, `--oldsworn`, apart only by one FU more in the first village's store at the year each C10.7b world first
+parted from `_a7` - 4:50 5:20 1:20 6:30 11:20 2:20 3:50 7:30 8:20 42:50; `results/cmp_a7_sxp.txt`) shows how far twin worlds parting this early spread:
+people at the end x1.09, conflict counts 20-40 % (tribute agreed x0.75, t -1.97), seed 7's twin founding 23 villages against 4 and ending with 6,441
+people against ~2,000 - and the wall clock x1.27 (t 5.5) on the same binary: C10.7b's x1.11 was the machine's, not the rule's. **Against its placebo
+twin** (`_sxp` -> `_sx1`, `cmp_sxp_sx1.txt`): people over years 100-199 x0.939 (t -1.46), at the end x0.88 (t -0.98) - inside the noise; births and
+deaths a person-year x1.002, x1.021; and the mechanism stronger than against `_a7` - tributes x2.04 (t 3.34), tribute agreed x1.77 (t 2.39), loot x3.7
+(t 2.42), raids x2.4 (t 1.64), wounds a person-year x1.38 (t 1.72), hunger a person-year x1.14 (t 1.70): the men a great household keeps make war more
+frequent and more costly - the raided lose grain and blood - which may be part of the lean. **The 900-year check** - does the feedback (tribute -> sworn
+men -> skill -> might -> bonds -> tribute) snowball? **The integrated rules** (C10.7a, C10.7b and C9.5c together, `_l9i2`: seeds 2 and 4 lived from year
+300 to 900; `lordships --heads --margins --could` at years 300, 600 and 900, `results/lordships_s{2,4}_i2_y*.txt`): realms grow, nothing snowballs. Seed 2
+grew an overkingship - Lounstead took Grothstead, itself lord of five, as its tributary after a raid (year 601) and Taildvehope, lord of three, for famine
+grain (year 794): 13 of its 32 villages in three tiers from year 800, unchanged at 900, beside two lordships of one and two; seed 4 holds seven lordships
+of one to four villages (17 villages paying at year 600, 14 at 900). The earlier rules' 900-year worlds held lordships of one to four (`_l9g1`, `_l9z1`,
+`_l9y3`) - single worlds, chaos-sized, but lords bowing to lords is new. Every bond still paid at year 900 is the stronger by the odds of a first bow (none
+held in the band between x1 and x1.2); bonds ended by their lord within five years after its first person changed, 5.0 a thousand bond-years, against 4.9
+in their other years: successions change nothing; raids 963 and 681 in the 600 years (the earlier rules' 597-654 and 492-603); the most men sworn to one
+lord 87 and 83. Formation still limits: at year 900 80 and 135 pairs within a day's walk where one could make the other bow, against 16 and 14 bonds.
+**The cost** (`--profile`, 30 COARSE years from seed 2's year-300 world of `_sx1`, the same binary back to back; `results/prof_sx1_.txt`,
+`prof_sx1_old.txt`): 40.4 s as built against 40.0 s with `--oldsworn --oldmightarms` (x1.008); the village-day's conflict (the weighings, the bands, the
+sworn men's part in them) 131 against 130 us (5.2 % against 5.0 % of the run); the harvest's swearing and the might by lasting strength fall at three
+weighings a village-year - no part of the profile moves. C10.7b's own 900 years (`_l9sx1` against `_l9a7`: queue jobs `8_b1..2`,
+`tc2/out/tools/s24/6_a..b`) were not run when this was recorded (session 24, second context, stopped at Arjun's word) - an attribution, not a condition
+of the landing.
+
+## D2-166 — 2026-10-20 — People across water: a COARSE day's visits, the sickness and news they carry and the ways they wear go only to neighbours a way on foot joins (C9.5c)
+
+**Context.** C9.5a (D2-162) found, sweeping every "within a day's walk" rule, that a COARSE day's visits still crossed water at once: the village's
+healthy grown people visit neighbours at the lived rate (`Disease.Visits`) - catching the sickness of a stricken neighbour, wearing the way between
+them (`Ways.Walk`) - and the same visits carry the news of deeds (`Conflict.News`, `DeedBook.Meet`), to every inhabited village within 6 km as the crow
+flies, across a strait as readily as along a road, while a lived visitor walks a route on foot and goes nowhere none leads. Measured first
+(`--visittally`, main's rules, each world's annals and state hash equal to `_y1`'s): in the archipelago (seed 5) 158,862 of 243,070 COARSE visits
+(65 %), 36,338 of 45,073 news met (81 %) and 14 of 21 infections caught on visits crossed water; seeds 11, 3 and 2 20 %, 16 % and 5 % of their
+visits; and every world told of paths and roads "worn" between villages no way on foot joins - 13, 14, 12 and 6 `WayWorn` events.
+
+**Decision.** A COARSE day's visitors go only to neighbours within a day's walk that a way on foot joins (`Disease.Visited`: the route cache, as a
+lived visitor's), for the visits' sickness, the way's wear and the news alike - with a lived day's odds: a lived visitor picks a neighbour among all
+within a day's walk by nearness and does not go where no way on foot leads (`World.PickNeighbour` returns none), so the COARSE visits to such a village
+are not made, never spread over the reachable ones (found reviewing the first version, which spread them - 17.5 visits along a way against the old
+rule's 9.6 in the test's thirty days); across water villages meet as their boats' crews do - voyages, relief,
+grain given back, the tenth - at both resolutions (already so). `--oldvisits` restores the old reach on the same binary; sim version 90 (on main's
+line 88: renumbered at the integration with C10.7a, C10.7b).
+
+**The record.** Neighbours across water met when someone crossed: a boat's crew, a ferry, a trader - not on an afternoon's walk.
+
+**Tells.** History no longer tells of paths worn across the sea; an island's sickness comes by its boats.
+
+**Evidence.** VisitsTests 1 (two villages within a day's walk, water between them: thirty COARSE days - no visit across the water, no news met across
+it, no way worn across it; visits along a way as many as before (within 30 %)): on the rebuilt binary (`bin_c1`, 8a270c4) **visits along a way 9.6,
+across water 0.0; news met 8 and 0** - under `--oldvisits` 9.6 and 24.8, news 8 and 18: the visits along the way are the old rule's to the tenth, those
+across the water are lost, not spread; CrossTests 14 (with AcrossTests), DiseaseTests 7, TradeTests 7, DeterminismTests 6, SaveLoad 8 - all 0 skipped;
+floatcheck clean. Control: `--oldvisits` seed 4 = C9.5b's `_y1` - annals byte-identical, state hash 78635b5066ea574c both. **Ten seeds** (`_pv1`
+against `_y1`, `results/cmp_y1_pv1.txt`): no COARSE visit, news met or worn way across water in any world (the visits: line, every seed); the vital rates
+at par - people at the end x0.996 (t -0.10), over years 200-299 x0.994, births x0.987, deaths x0.989, deaths a person-year x0.996 (t -0.63); against
+`_y1` sickness x0.640 (t -2.01), epidemics x0.814 (t -2.35), sickness deaths x0.31, palisades x0.946 (t -2.48), relief by sea x1.35 (t 1.89) and
+**hunger deaths x1.064 (t 2.17; a person-year x1.071, t 2.25)** with all deaths a person-year at par. **The lean explained (session 24)**, per seed
+(`tc2/out/tools/s24/lean.py`: the year each pair of worlds first differs; hunger, sickness and all deaths over the same years 100-299) and with a
+matched placebo: C9.5c acts late - the twin worlds are identical until years 205-290 in eight worlds (seed 5 from year 62, seed 8 never), so most of
+each world's history is shared and the spread between twins is small - and **the hunger change is not the sickness change** (correlation across seeds
++0.08; seeds 3 and 2 lost 244 and 98 fewer to sickness and 27 and 74 fewer to hunger): seed 4's whole +907 falls in years 284-297, both twins at their
+land's ceiling (~10,000 people), the C9.5c twin a little larger after a milder epidemic at year 220, crashing harder in two famines (years 284-286: 643
+against 165 hunger deaths; year 297: 1,036 against 619). **The matched placebo** (`_pvm`: C9.5b's rules on the same binary, `--oldvisits`, apart only by
+one FU more in the first village's store at the year each C9.5c world first parted from `_y1` - 4:220 5:70 1:290 6:220 11:210 2:230 3:250 7:270 8:220
+42:210; `results/cmp_y1_pvm.txt`): hunger a person-year x0.990 (t -0.31) with **the same spread between twins** (sd of the log ratio 0.100, C9.5c's
+0.097) - single seeds moved by -512 (4), -511 (2) and +601 (42) hunger deaths, the famines' timing in the last decades of worlds at their ceiling;
+and the placebo itself leans past |t| 2 by chance (relief by sea x1.22, t 2.09). **Against its placebo twin** (`_pvm` -> `_pv1`, both parting from
+`_y1` at the same years; `results/cmp_pvm_pv1.txt`): hunger a person-year x1.082 (t 1.60) - inside the noise; palisades x0.989 (t -0.40) - the lean
+against `_y1` was not C9.5c's (the placebo too had x0.957); the sickness the visits no longer carry across water remains, more modestly than against
+`_y1` - epidemics x0.862 (t -1.95), sickness deaths x0.641 (t -2.02), sickness x0.663 (t -1.64); seed 5's lost epidemic (566 -> 1) was chance (its
+placebo twin lost it too, 564 -> 0). **Replicated on twenty new seeds** (C9.5b's rules on the same binary, `--oldvisits`, `_pw0`, against
+`_pw1`; seeds 9-19 and 20-29, `results/cmp_pw0_pw1.txt`, `cmp_pw0_pw1_20.txt`, `lean_pw_20.txt`; eight of the twenty worlds never part - no visit across
+water changes their history). **Seeds 9-19**: people at the end x0.934 (t -2.65; lower in all six that part, at years 92-218), over years 200-299 x0.974
+(t -2.38), births x0.976 (t -2.25) with births a person-year at par (x0.998) and deaths a person-year x1.009 (t 2.55); hunger a person-year x1.03 (t 1.33);
+palisades x0.930 (t -2.72). **Seeds 20-29**: people at the end x0.984 (t -0.38), over years 200-299 x0.994 (t -0.78), and the opposite lean in hunger - a
+person-year x0.895 (t -2.02) - with sickness x2.07 (t 1.86): seeds 26 and 27's C9.5c twins met great epidemics (381 -> 6,104 and 464 -> 2,817 sickness
+deaths from their parting years) and starved fewer (7,685 -> 5,278; 5,457 -> 3,461); across these seeds the hunger change runs against the sickness change
+(r -0.88), all deaths a person-year at par (x1.002). **Pooled over the 21 worlds that part** (`tc2/out/tools/s24/lean_pool.py`): hunger a person-year
+x0.994 (t -0.16) - the first ten's lean was chance, as its matched placebo said; deaths and births a person-year x1.003 and x0.996 (t 0.53, -1.08); people
+over years 200-299 x0.982 (t -2.64), carried by seeds 9-19 (x0.958) and not repeated in 20-29 (x0.991, t -0.77; three worlds lower and three higher in
+person-years from their parting) - a level, not a rate, of the size twins spread by (the first ten against their matched placebo twins x0.996, t -0.93).
+What every set shows is the mechanism: no COARSE visit, news met or worn way across water in any world; palisades x0.93-0.99 (the news of deeds no longer
+crosses the water); and the timing of epidemics - an island no longer catches its neighbours' sickness on an afternoon's walk across the sea, and meets
+it later and larger or not at all (sickness x0.64 in the first ten, x2.07 in 20-29), the hunger it spares or takes moving the other way in the same
+worlds (drownings x1.14 and x1.49 in the first two sets, x0.92 in the third: no lean).
+
+## D2-167 — 2026-10-20 — The realms map layer: each lordship's land washed in its colour with a band at its edge, chevrons from tributary to lord, a legend (presentation)
+
+**Context.** Since C10.4-C10.7 the polities are real and consequential (bonds for bread and for peace, the tenth carried, might by lasting strength,
+sworn men), but they read only up close: a tributary flies its lord's standard by its first household's door (D2-152), and real shots (`s23c`-`s23h`,
+`10` §12h) showed a standard - even enlarged 4x-8x with distance - is a speck at the village view, where a village spans a few hundred pixels; nothing
+at the region or orbit views said which villages belong together ("a polity at the village and region views wants a map layer": D2-161's shots).
+
+**Decision.** A map layer the player turns on and off - the HUD's **Realms** (key R; shots `-tc2realms`, `unity.mjs shots --realms`; the Web bridge's
+`on realms`) - reading the world only (`Game/View/RealmsView.cs`; `TerrainLod`, `Terrain.shader`, `Hud`):
+- **The land**: the fields each village of a lordship works (`PlanetState.FieldOwner`, by the vertex's field share) and its built ground are filled on
+  the terrain with its realm's colour - the lord's seat more strongly (0.72) than its tributaries (0.43), a little of the ground's light and dark kept -
+  with a band of that colour some three pixels wide just inside the edge of the land (where its weight crosses 0.3, measured in pixels by the weight's
+  own derivative: the same band from the village view to orbit). It fades out as the camera comes within ~450-1,300 m (there the standards and the
+  carriers tell the bond). Villages in no realm are left as they are. Per vertex the patch keeps its village and weight (`Patch.RealmSid`, `RealmW`, from
+  `Colourise`), so turning the layer on or a bond made or ended refills only two UV channels (uv5: the colour premultiplied by the weight; uv6 the
+  strength) on the shown patches, a few dozen a frame (`TerrainLod.RefreshRealms`, by `RealmsView.Version`).
+- **The bonds**: chevrons in the realm's colour from each tributary toward its own lord along the way on foot its tenth is carried (C10.6: `Routes.Get` +
+  `WayLines.Of`, smoothed as the roads are drawn), straight where no way on foot runs (over water, C9.5a); ~16 px at any distance, spaced in steps of two
+  so they do not swim as the camera moves, drifting toward the lord, none within 450 m of the camera.
+- **The legend**: each head of a lordship - its swatch, name, the villages that pay it (directly or through their lords) and their people, largest first
+  - and how many villages pay a lord and how many stand alone.
+- **The colours** (from the first real shots): the map draws each heraldic dye brighter and fuller (`WorldObjectsView.HeraldryMap`, one for one with
+  D2-152's `Heraldry`): over fields of any crop the standard's own gold read as ripe grain and its dark dyes as bare earth. A realm takes only the
+  dyes that read as a realm on the land (`MapSafe`): never argent or sable (washed over the land they pass for snow or salt and for burnt ground); the
+  sky blue gave way to magenta (standards and map) and azure is drawn blue-violet on the map (a sky or royal blue wash reads as a lake) - eight dyes
+  for realms, while a village in no realm (not drawn on the map) still flies any of the ten on its standard. And no two realms fly one colour while
+  there are dyes for all (eight): the realms in the order they began (the oldest bond still held in each) each take their own dye by their head's number
+  unless an older realm has it, then the next of their dyes none has; past eight realms the dye whose nearest older bearer is farthest away
+  (`RefreshDyes`, checked every thirty frames against a signature of every village's lord) - for the standards (and the heads' cloth) as for the map,
+  so the two agree; a realm's colour changes only when an older realm of its colour ends (from orbit a whole hemisphere is seen at once: a first rule of
+  9 km left two yellow realms side by side in one view). Presentation only: no sim version, no saved state.
+
+**Why so** (`18` §1, D2-084): every mark is real state - the land a village works, who pays whom, the way the tenth goes - and none is invented: no
+border is drawn between villages that are not there, no realm where no bond is.
+
+**Evidence.** The second look (`tc2/out/shots/s24s3`, `s24s8`, the same worlds and moments): at the region view the seat's land is a clear yellow
+territory with a bright band along its coast and inland edge (stepped where the worked cells end - the land as worked), the island tributary paler
+inside its own band, the chevrons over the water between them; at orbit each realm is a coloured patch with its band, chevrons along the ways; at the
+village view the fill covers the land with the strips showing through; at the close view the wash is gone near the camera (the village and its
+fields as without the layer) and grows only toward the horizon; no two realms of one colour within 9 km in either world (the first rule; then
+planet-wide, fdd2572). **On the landed rules** (sim 90; session 24, second context): seed 2's year-300 world (`s24q`: Vaildwick's orange realm, its
+tributaries' chevrons converging along the road to the seat) reads at the region view; the integrated rules' year-900 overkingship (`s24t`: Lounstead's
+thirteen villages in three tiers - Grothstead's five and Taildvehope's three under it -, 3 realms, 16 bonds, 19 villages washed) showed that the sky
+blue's realm read as lakes and lagoons all over the land at the region and orbit views, beside the real lakes, and argent's as a salt flat by its lake
+(the first shots had met only gold and red realms): hence `MapSafe`, magenta and the blue-violet azure (a preview of every dye washed by the shader's
+formula over that ground, `dye_preview.py`: sky blue as water, argent as haze or snow, sable as burnt ground or a hole; the other six and the new two
+read as overlays). Re-shot (`s24u`): Lounstead's realm magenta reads as a realm at every view - but its neighbour Vaildwick, moved off argent
+to rose, read with it as one pink realm and its paler tributaries (a tributary's land is its realm's colour, lighter; magenta and rose lie 40 apart
+in CIE76 delta E). Hence realms seen together (heads within 12 km) keep at least 60 apart (`DyeDelta` of the map colours, `DyesApart`): each, oldest
+first, keeps its own dye unless taken or too like an older neighbour's, else the next that is neither, failing that the one farthest in colour from
+its nearest. Re-shot again (`s24v`): magenta (Lounstead), orange (Mestskouford) and crimson (Vaildwick: 62 and 74 apart from them - the best of the
+eight beside those two) read as three realms at the region and orbit views. **Its frame cost** (`tc2/scripts/realmsperf.mjs`, new: a headless save
+put into the Web build's store as saved a moment ago, paused, so the game loads it as it was; frames counted by requestAnimationFrame with the layer off
+and on in alternating pairs, five at each view, so the machine's load falls on both alike): seed 2's year-300 world (5,991 people, three realms) region
+x0.998, orbit x1.003, village x1.038; the year-900 overkingship (9,532 people) region x0.981 and x0.992, orbit x1.010 and x1.013 - no measurable cost.
+The Web test `s24web1` passed 6/6 (its `3b_region_realms` is a new world with no realm yet). The absolute rates of such great worlds are low on this
+loaded machine (region 8-11 fps, village 5-7 fps; `s23web4`'s 569-person world 24 fps at the village view) - a gap older than the layer. And measuring
+found a browser OOM that is not the layer's: the year-900 world's heap grew ~500 MB at each autosave, held with the layer off or on or turned every five
+seconds alike (D2-169).
+First real shots (`tc2/out/shots/s24r3`, `s24r8`; the same moments without the layer `s24r3n`, `s24r8n`; seed 3's year-300 world: five realms, six bonds,
+eleven villages washed; seed 8's: Taimmere's four villages): the chevrons read at every view - over the water from an island tributary, along the road
+to the seat; the wash read as regions at the region and orbit views, but gold over fields as ripe grain and a dark dye as bare earth, a red realm over
+green fields as brown, the edge line faint at orbit, the whole village a flat mustard up close, and two realms 4.5 km apart (Lostton and Drakothmere)
+in one colour - the second look above answers each.
+
+## D2-169 — 2026-10-21 — Saves into kept buffers: a great world's autosave no longer grows the browser's heap toward its ceiling
+
+**Context.** Measuring the realms layer's frame cost in the Web build on worlds that have realms (session 24, `tc2/scripts/realmsperf.mjs`: a headless
+save put into the game's store as saved a moment ago) found the year-900 world of the integrated rules (9,532 people in 32 villages; 21 MB saved,
+79 MB of state; 238 MB of managed heap headless) aborting on OOM (`abortOnCannotGrowMemory`: the wasm heap's 2 GB ceiling; `02` budgets 1 GB) a few
+minutes after loading. Traced with the heap read from `Module.HEAPU32` (the framework does not export `HEAPU8`: webtest's `--export` heap trace had read
+-1 all along): loaded 744 MB, 841 MB with the views - then +509 and +454 MB at 60 s steps whether the layer was off, held on, or turned every five
+seconds (`0_j`): the autosave (`SimHost`, every 60 s; 20 s at the fastest speeds, 30 s during a catch-up). `SaveFile.Save` grew a 1 MB writer by doubling
+to the state's 79 MB (~255 MB allocated), copied it out (79 MB), deflated it through a growing stream (~64 MB) and copied the result twice (3 x 21 MB):
+~460 MB of short-lived buffers a save, and a browser's heap only grows - three autosaves took a great world to the ceiling. A pre-existing fault, not
+the layer's nor C10.7's: any world large enough would meet it within minutes of play.
+
+**Decision.** A save writes into buffers the host keeps (`SaveFile.Scratch`: the state's writer, the deflated stream, the save's writer), cleared and
+reused at each save - hashed and deflated from the state's buffer in place, the header and payload written into the kept output, the store given a
+length (`ISaveStore.Save(key, data, length, done)`); the game sizes them at each load for the world the save holds (`Scratch.For(header)`: its lengths
+and an eighth more), so even the first save grows nothing by doubling; a new world starts them small. The load inflates from the save in place (no copy
+of the payload). The bytes are the same as before - the save format, the sim version and every hash unchanged; the headless and the tests keep
+`SaveFile.Save(world, ...) -> byte[]` (a fresh scratch).
+
+**Evidence.** `DeterminismTests.SaveIntoKeptBuffersIsTheSameSaveAndReallocatesNothing` (a save into kept buffers is the plain save byte for byte, twice
+into the same buffers reallocates none of them, after the world lives on the same bytes again, the load gives the world saved, and buffers sized from a
+save's header grow nothing at their first save); the save and determinism classes and floatcheck (`0_k`, `bin_sm1`); the Unity C# of the branch
+(`cc --src`). **In the browser** (the Web build of main 3344bf0, `0_m`): the year-900 world held 210 s at the region view - loaded 858 MB (the
+buffers sized at the load: ~114 MB more than before), 955 MB with the view, 1,053 MB after its first autosave and the same through every autosave after
+(before: 841 -> 1,366 -> 1,820 MB -> OOM); seed 2's year-300 world (5,991 people) 513 MB from the load to the end, autosaves and all. The Web test
+`s24web2` 6/6 (Mono = dotnet hash parts; browser = headless), its catch-up heap now traced (247 -> 297 MB over a day away). A year-900 world of
+9,500 people still holds ~1.05 GB, a little past `14`'s 1 GB budget - what holds it (the world's own state at ~3.6x its headless managed size, the
+views' meshes) is a question for a memory pass of great worlds, with their frame rate (`14` §7).
+(D2-168 - C10.8 the asking, drafted before this - is recorded when it lands.)

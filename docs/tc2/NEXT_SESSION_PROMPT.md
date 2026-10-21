@@ -346,6 +346,18 @@ pairs where one could make the other bow, against 26 bonds) - **C10.8 the asking
 SESSION_HANDOFF "Session 24" has the queue and the steps; the drafts are `tc2/out/tools/s23/d2164.md`-`d2166.md`, `tc2/out/tools/s24/d2167.md`,
 `d2168.md`, `c108_design.md`.
 
+**Where we are (session 24, second context, 21 Oct 2026, 01:45-~06:05 IST; stopped at Arjun's word)**: **C10.7a, C10.7b and C9.5c are on main**
+(3b236ee, sim 90; D2-164-D2-166) - C9.5c's third seed set decided it (pooled hunger x0.994; the people lean not repeated); the integrated rules' 900
+years grow realms (a three-tier overkingship of 13 villages) without a snowball; full suite 441/441, Web 6/6. **The realms map layer is finished**
+(D2-167): real shots of the year-900 overkingship found sky-blue realms reading as lakes and white ones as salt flats, then magenta beside rose reading as
+one realm - realms now take only ground-safe dyes, kept at least 60 delta E apart when seen together; its frame cost is unmeasurable (new
+`tc2/scripts/realmsperf.mjs`: a headless save put into the browser's store, paired off/on frame counts). Measuring found **a browser OOM of great worlds**
+(D2-169): each autosave made ~460 MB of short-lived buffers and the wasm heap only grows - saves now go into buffers kept and sized at each load (the same
+bytes): flat through autosaves, Web 6/6. Great worlds still hold ~1 GB and draw ~8 fps at the region view (`14` §7). **C10.8 the asking**
+(`wip/c108-demand`, sim 91, D2-168 draft) is in evaluation: per-person rates at par, realms of 8-16 villages by year 300, but bonds churn (ended x21) with
+war (raids x6) - its matched placebo, seed 4's 900 years and the bonds' lives decide whether it lands as it is or with a counterweight (rising together,
+renewal at succession). SESSION_HANDOFF "Session 24, second context - END" has the queue (stopping; how to restart) and the steps.
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.

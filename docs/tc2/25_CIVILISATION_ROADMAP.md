@@ -77,7 +77,7 @@ and loads moved) and cargo boats, coastal trade at the sea's cost ratio; **C9.5a
 lordship's might by lasting strength~~ (D2-164: villages weigh each other's people of fighting age by their years, tools and arms and fighting skill, not
 by heads); ~~C10.7b sworn men~~ (D2-165: the one first among a village's people, whose household's grain runs years beyond its needs, keeps young men of the
 village sworn to them, fed from that grain - a lord's from its tribute; they practise every day and go with every band; retainers, `23` §3); next by evidence: a lord's death and its
-tributaries (succession in a lordship), rebellion by those who rise together, a polity map layer (the standards do not read beyond the close view).
+tributaries (succession in a lordship), rebellion by those who rise together; ~~a polity map layer~~ (D2-167: the realms map layer - each lordship's land in its colour, chevrons from tributary to lord, a legend; HUD R). C10.8 the asking is built and in evaluation on `wip/c108-demand` (D2-168 draft).
 
 ### C5 mining and metallurgy, by slices (D2-100): ~~C5.1 copper ore bodies, the mine, depletion~~ (done); ~~C5.2a charcoal~~ (done, D2-101); ~~C5.2b
 iron~~ (done, D2-102: bog ore, bloomery, iron's use a head); ~~C5.3a places by their ore~~ (done, D2-103); ~~C5.3b iron traded~~
