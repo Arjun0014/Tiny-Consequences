@@ -355,8 +355,9 @@ one realm - realms now take only ground-safe dyes, kept at least 60 delta E apar
 (D2-169): each autosave made ~460 MB of short-lived buffers and the wasm heap only grows - saves now go into buffers kept and sized at each load (the same
 bytes): flat through autosaves, Web 6/6. Great worlds still hold ~1 GB and draw ~8 fps at the region view (`14` §7). **C10.8 the asking**
 (`wip/c108-demand`, sim 91, D2-168 draft) is in evaluation: per-person rates at par, realms of 8-16 villages by year 300, but bonds churn (ended x21) with
-war (raids x6) - its matched placebo, seed 4's 900 years and the bonds' lives decide whether it lands as it is or with a counterweight (rising together,
-renewal at succession). SESSION_HANDOFF "Session 24, second context - END" has the queue (stopping; how to restart) and the steps.
+war (raids x6), and over 900 years one realm comes to hold most of each world (seed 2: 18 of 31 villages; seed 4: 24 of 35, depth 4) - its matched
+placebo and the bonds' lives (queued) decide whether it lands as it is or, as this leans, with a counterweight first (rising together, renewal at
+succession). SESSION_HANDOFF "Session 24, second context - END" has the queue (stopping; how to restart) and the steps.
 
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at

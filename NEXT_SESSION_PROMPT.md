@@ -24,12 +24,14 @@ answers "what changes in the world picture?" and is judged in real game shots.
   great world's autosave had made ~460 MB of short-lived buffers and the browser hit its 2 GB ceiling), `tc2/scripts/realmsperf.mjs`. Validated: full
   suite 441/441 at the landing, Web `s24web1` and `s24web2` 6/6, shots `s24p`/`s24q`/`s24v`. **Not yet**: the full suite on main's tip since the save fix
   and the dyes (run it first).
-- **The queue** (`tc2/out/tools/s23/runq.sh`; `$Q/stop` set): `7_f_l9dm1_s4` was the last job (C10.8's 900 years, seed 4); left in `$Q/todo`: C10.8's
+- **The queue** (`tc2/out/tools/s23/runq.sh`; `$Q/stop` set): its last job, `7_f_l9dm1_s4` (C10.8's 900 years, seed 4), finished and the runner
+  stopped cleanly at 06:18 - nothing is running; left in `$Q/todo`: C10.8's
   lordships (`7_g`) and matched placebo (`7_h`, `7_i`), C10.7a's and C10.7b's own 900 years (`8_*`), D2-161's attribution (`9_*`). Restart: `rm $Q/stop`,
   `bash tc2/out/tools/s23/runq.sh` in the background (the scratchpad may be gone: SESSION_HANDOFF says how to rebuild the binaries).
 - **C10.8 the asking** (`wip/c108-demand`, `C:/Game Dev/tc-demand`, sim 91; D2-168 draft): control byte-identical; ten seeds at par in the per-person
   rates with one lean (people over 100-199 x0.908, t -2.85 - the placebo decides); realms of 8-16 villages by year 300, but bonds churn (ended x21) and
-  war rises (raids x6, wounds x2.75); seed 2's 900 years: Mestskouford 18 of 31 villages, rates at par. Decide: land it as it is or with a counterweight.
+  war rises (raids x6, wounds x2.75); over 900 years one realm comes to hold most of each world (seed 2: Mestskouford 18 of 31, depth 3; seed 4:
+  Krailddal 24 of 35, depth 4, raids x2.1, people x0.90). Decide: land it as it is or - as this evidence leans - with a counterweight first.
 
 ## Do next, in order
 1. The full suite on main's tip; restart the queue and read it (`7_f` seed 4, `7_g` the bonds' lives and ends, `7_i` the placebo).
