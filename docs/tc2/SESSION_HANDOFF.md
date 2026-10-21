@@ -15,8 +15,8 @@
   suite on main's tip** (it has not run since the save fix and the dyes; ~18 min: build main's headless, `tc2.dll test`, 0 failed and 0 skipped).
 - **The queue** (task bcbn62z2b; `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`;
   `touch $Q/stop` done at 06:01: the runner exits after the job running then): **`7_f_l9dm1_s4`** (C10.8's 900 years, seed 4) was at year 360 of 900 at
-  06:01 (done ~06:15 if this session's background task lived; if `tc2/out/civ/s4_l9dm1.txt` has no `simulated` line it was cut: requeue
-  `tc2/out/tools/s24/7_f_l9dm1_s4.sh`). **Left in `$Q/todo`**: `7_g_lords_l9dm1` (C10.8's lordships at years 300/600/900 -> `results/lordships_s{2,4}_dm1_y*.txt`),
+  06:01 - **it finished (06:18, rc 0) and the runner stopped cleanly** (`runner stopped 06:18:57`): seed 4 at year 900 - Krailddal 24 of 35
+  villages paying, depth 4; 198 bonds made, 166 ended; raids 1,415 (the integrated rules' 681); 10,873 people (12,071) - in `d2168.md`. **Left in `$Q/todo`**: `7_g_lords_l9dm1` (C10.8's lordships at years 300/600/900 -> `results/lordships_s{2,4}_dm1_y*.txt`),
   `7_h_dmp_01..10` + `7_i_cmp_dmp` (**C10.8's matched placebo** `_dmp`: `bin_dm1 --olddemand --nudge Y` at each seed's parting year 4:14 5:11 1:8 6:21
   11:30 2:13 3:11 7:6 8:7 42:7 -> `results/cmp_i2_dmp.txt`, `cmp_dmp_dm1.txt`), `8_a1..3` (C10.7a's own 900 years), `8_b1..2` (C10.7b's), `9_a..c` (D2-161's
   attribution). **To restart**: `rm $Q/stop`, then `bash tc2/out/tools/s23/runq.sh` in the background. Binaries in `$Q/..`: `bin_dm1`, `bin_dm2` (C10.8 +
@@ -28,7 +28,8 @@
   person-year), one lean - people over years 100-199 x0.908 (t -2.85; the twins part at years 6-30: the placebo decides); the mechanism strong - bonds
   agreed x12, the greatest realm x4.2 (8-16 villages by year 300; seed 8's Skaldton 12 of 14 places), **bonds ended x21** and **raids x6, wounds a
   person-year x2.75** (each end is a refusal the lord holds); **900 years, seed 2**: 279 bonds made, 250 ended; at year 900 two lords, Mestskouford 18
-  of 31 villages (depth 3); people 9,254 against 9,532, the per-person rates at par. Open: is the churn of bonds (and its war) the record's lapse at a
+  of 31 villages (depth 3); people 9,254 against 9,532, the per-person rates at par; **seed 4**: Krailddal 24 of 35 (depth 4), raids x2.1, people
+  x0.90 - one realm comes to hold most of each world. Open: is the churn of bonds (and its war) the record's lapse at a
   lord's death, or a margin that wants a counterweight before landing?
 
 ### Next, in order
