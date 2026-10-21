@@ -23,7 +23,7 @@
   tools; = `bin_dm1`'s rules, `_dm1` reproduced), `bin_i2`, `bin_lt`, `bin_s2`, `bin_a9`, `bin_m5`, `bin_sm1`. **If that scratchpad is gone**: point `S`/`N` in
   `tc2/out/tools/s23/lib.sh` and `Q` in `runq.sh` at a live one and rebuild each binary a job needs from its worktree (`7_e_build_dm2.sh` for `bin_dm2`/`bin_dm1`'s
   rules; `5_a_rebuild_a9.sh`, `1_b_rebuild_s2.sh`; the saves the jobs read stay in `tc2/out/civ`).
-- **C10.8 the asking** (`wip/c108-demand`, worktree `C:/Game Dev/tc-demand` at dc36cd9 + main merged again at this end - see below; sim 91; D2-168 draft
+- **C10.8 the asking** (`wip/c108-demand`, worktree `C:/Game Dev/tc-demand` at ae63c5b = main 776980f + C10.8, merged clean - `bin_dm2` is dc36cd9's, the same rules; sim 91; D2-168 draft
   `tc2/out/tools/s24/d2168.md`): control `--olddemand` = `_i2` byte for byte; **ten seeds**: per-person rates at par (births x1.008, deaths x0.982 a
   person-year), one lean - people over years 100-199 x0.908 (t -2.85; the twins part at years 6-30: the placebo decides); the mechanism strong - bonds
   agreed x12, the greatest realm x4.2 (8-16 villages by year 300; seed 8's Skaldton 12 of 14 places), **bonds ended x21** and **raids x6, wounds a
@@ -35,7 +35,7 @@
 1. The full suite on main's tip (above). 2. Restart the queue; judge `7_f` seed 4, `7_g` (the bonds' lives and ends: why most end - the lord dead,
    weaker by the call's cascade, or the margin; do realms rise and fall?), `7_i` (the placebo: is x0.908 within twins' spread?). 3. Decide C10.8: land it
    as it is (the war is the record's - heirs winning back tributaries) or with a counterweight first (rising together; renewal at succession) - then
-   merge main into `wip/c108-demand` (clean), land (sim 91), D2-168, the full suite, real shots of realms grown (`unity.mjs shots --realms` on a
+   merge main into `wip/c108-demand` again if main moved (it is current at 776980f), land (sim 91), D2-168, the full suite, real shots of realms grown (`unity.mjs shots --realms` on a
    `_dm1`/`_l9dm1` world; `--village lord`), Web. 4. When `8_*` run: an addendum line in D2-164/D2-165 (attribution). 5. Great worlds in the browser
    (`14` §7): ~1.05 GB heap and ~8 fps at the region view for 9,500 people - a memory and frame pass of their own.
 - Worktrees merged and removable when convenient: `tc-int2`, `tc-s24tools`, `tc-realms`, `tc-savemem`, `tc-arms`, `tc-sworn`, `tc-visits` (and the
