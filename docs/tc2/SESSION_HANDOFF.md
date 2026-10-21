@@ -1,6 +1,79 @@
 # TC2 Session handoff
 
+## Session 24, second context - END (21 Oct 2026, ~06:05 IST; stopped at Arjun's word) - landed and validated; C10.8 in evaluation; the queue stopping
+
+### Exact state at the end
+- **main** (this commit and its parents since 88f04a6): the landing 3b236ee (C10.7a, C10.7b, C9.5c; **sim 90**), the lordships tools 3bf3d44, the realms
+  layer's dyes for the land e210eca + 9d7c796 (D2-167), saves into kept buffers 29e85f8 (D2-169: the browser OOM), tools (`tc2/scripts/realmsperf.mjs`,
+  webtest's heap from `Module.HEAPU32`), docs (`18` §9, `10` §12h, `14` §7, `25` C10), **DECISIONS D2-164, D2-165, D2-166, D2-167 and D2-169 appended**
+  (D2-164/D2-165 say honestly that their own per-slice 900-year checks were not run - attribution, not a condition; D2-168, C10.8, is recorded when
+  it lands). Not ours: `.claude/launch.json` (modified), `Assets/Resources.meta` (untracked) - leave them.
+- **Validated**: the full suite **441/441, 0 skipped** on main e191331 (the landing; before the dye and save changes - those ran their own: the new
+  `SaveIntoKeptBuffersIsTheSameSaveAndReallocatesNothing`, Determinism 7, SaveLoad 8, `cc` of every Game change); Web **`s24web1` 6/6** (e191331) and
+  **`s24web2` 6/6** (3344bf0, with the save fix; Mono = dotnet; browser = headless); the year-900 world's heap flat at 1,053 MB through autosaves
+  (was OOM); real shots `s24p` (sworn men at practice), `s24q`, `s24t` -> `s24u` -> `s24v` (realms; two faults fixed). **First thing next: the full
+  suite on main's tip** (it has not run since the save fix and the dyes; ~18 min: build main's headless, `tc2.dll test`, 0 failed and 0 skipped).
+- **The queue** (task bcbn62z2b; `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`;
+  `touch $Q/stop` done at 06:01: the runner exits after the job running then): **`7_f_l9dm1_s4`** (C10.8's 900 years, seed 4) was at year 360 of 900 at
+  06:01 (done ~06:15 if this session's background task lived; if `tc2/out/civ/s4_l9dm1.txt` has no `simulated` line it was cut: requeue
+  `tc2/out/tools/s24/7_f_l9dm1_s4.sh`). **Left in `$Q/todo`**: `7_g_lords_l9dm1` (C10.8's lordships at years 300/600/900 -> `results/lordships_s{2,4}_dm1_y*.txt`),
+  `7_h_dmp_01..10` + `7_i_cmp_dmp` (**C10.8's matched placebo** `_dmp`: `bin_dm1 --olddemand --nudge Y` at each seed's parting year 4:14 5:11 1:8 6:21
+  11:30 2:13 3:11 7:6 8:7 42:7 -> `results/cmp_i2_dmp.txt`, `cmp_dmp_dm1.txt`), `8_a1..3` (C10.7a's own 900 years), `8_b1..2` (C10.7b's), `9_a..c` (D2-161's
+  attribution). **To restart**: `rm $Q/stop`, then `bash tc2/out/tools/s23/runq.sh` in the background. Binaries in `$Q/..`: `bin_dm1`, `bin_dm2` (C10.8 +
+  tools; = `bin_dm1`'s rules, `_dm1` reproduced), `bin_i2`, `bin_lt`, `bin_s2`, `bin_a9`, `bin_m5`, `bin_sm1`. **If that scratchpad is gone**: point `S`/`N` in
+  `tc2/out/tools/s23/lib.sh` and `Q` in `runq.sh` at a live one and rebuild each binary a job needs from its worktree (`7_e_build_dm2.sh` for `bin_dm2`/`bin_dm1`'s
+  rules; `5_a_rebuild_a9.sh`, `1_b_rebuild_s2.sh`; the saves the jobs read stay in `tc2/out/civ`).
+- **C10.8 the asking** (`wip/c108-demand`, worktree `C:/Game Dev/tc-demand` at dc36cd9 + main merged again at this end - see below; sim 91; D2-168 draft
+  `tc2/out/tools/s24/d2168.md`): control `--olddemand` = `_i2` byte for byte; **ten seeds**: per-person rates at par (births x1.008, deaths x0.982 a
+  person-year), one lean - people over years 100-199 x0.908 (t -2.85; the twins part at years 6-30: the placebo decides); the mechanism strong - bonds
+  agreed x12, the greatest realm x4.2 (8-16 villages by year 300; seed 8's Skaldton 12 of 14 places), **bonds ended x21** and **raids x6, wounds a
+  person-year x2.75** (each end is a refusal the lord holds); **900 years, seed 2**: 279 bonds made, 250 ended; at year 900 two lords, Mestskouford 18
+  of 31 villages (depth 3); people 9,254 against 9,532, the per-person rates at par. Open: is the churn of bonds (and its war) the record's lapse at a
+  lord's death, or a margin that wants a counterweight before landing?
+
+### Next, in order
+1. The full suite on main's tip (above). 2. Restart the queue; judge `7_f` seed 4, `7_g` (the bonds' lives and ends: why most end - the lord dead,
+   weaker by the call's cascade, or the margin; do realms rise and fall?), `7_i` (the placebo: is x0.908 within twins' spread?). 3. Decide C10.8: land it
+   as it is (the war is the record's - heirs winning back tributaries) or with a counterweight first (rising together; renewal at succession) - then
+   merge main into `wip/c108-demand` (clean), land (sim 91), D2-168, the full suite, real shots of realms grown (`unity.mjs shots --realms` on a
+   `_dm1`/`_l9dm1` world; `--village lord`), Web. 4. When `8_*` run: an addendum line in D2-164/D2-165 (attribution). 5. Great worlds in the browser
+   (`14` §7): ~1.05 GB heap and ~8 fps at the region view for 9,500 people - a memory and frame pass of their own.
+- Worktrees merged and removable when convenient: `tc-int2`, `tc-s24tools`, `tc-realms`, `tc-savemem`, `tc-arms`, `tc-sworn`, `tc-visits` (and the
+  older list below); `tc-s24m` must never be merged; `tc-demand` is live.
+
 ## Session 24, second context (21 Oct 2026, from 01:45 IST; Control Room run #73 session 2) - C10.7a, C10.7b, C9.5c LANDED on main; the job queue RUNNING
+
+### Update at ~05:25 - the browser OOM found and fixed (D2-169 draft, complete): the autosave's buffers
+- **Traced** (`0_i`, `0_j`; heap from `Module.HEAPU32`): the year-900 world's heap grew ~500 MB a minute with the realms layer off, held on or turned
+  alike - the autosave (60 s; 20 s at the fastest speeds): `SaveFile.Save` made ~460 MB of short-lived buffers a save (a 79 MB state grown by doubling,
+  copied, deflated through a growing stream, copied twice) and the wasm heap only grows. **Fixed on `wip/save-mem`** (ba8e108, merged on main 29e85f8):
+  `SaveFile.Scratch` buffers kept by `SimHost` and sized at each load (`Scratch.For(header)`), the store takes a length, the load inflates in place - the
+  same bytes. Checked: `SaveIntoKeptBuffersIsTheSameSaveAndReallocatesNothing`, Determinism 7, SaveLoad 8 (0 skipped), floatcheck, `cc --src`; **in the
+  browser** (Web build of 3344bf0, `0_m`): the year-900 world 858 MB loaded, 955 with the view, 1,053 after the first autosave and flat to 210 s (before:
+  -> 1,366 -> 1,820 -> OOM); the year-300 world flat at 513 MB; **Web test `s24web2` 6/6** (Mono = dotnet; the catch-up heap 247 -> 297 MB). `14` §7
+  records great worlds' heap and frame rates (still ~1.05 GB and ~8 fps at the region view for 9,500 people: a memory and frame pass of their own).
+- **DECISIONS order**: append D2-164..D2-167 (`append_decisions.py`) when `d2164.md`/`d2165.md` are filled (`8_a*`, `8_b*`), then D2-169
+  (`tc2/out/tools/s24/d2169.md`, complete) - D2-168 (C10.8) is appended when C10.8 lands, after it.
+
+### Update at ~04:30 - the landing checks passed; the realms layer's dyes fixed twice from real shots; a browser OOM under investigation
+- **Landing checks (all passed)**: `0_a` bin_m5 (main e191331) floatcheck clean, `cc` ok, seed 2's `_m5` = `_i2` byte for byte (state hash 56fb1fe012804dd3);
+  `0_b` **full suite 441 passed, 0 failed, 0 skipped**; `0_d` **Web `s24web1` 6/6** (built at e191331 in 22.5 min; Mono = dotnet hash parts; browser =
+  headless; reload continues; a day away catches up 96 years) - its frame rates are about half of `s23web4`'s in every view (orbit 56 against 120), the
+  machine loaded by other sessions (CPU 65 %): not evidence of a regression.
+- **Shots judged**: `s24p` sworn men at practice at Vaildwick's ground (nine drilling, its afternoon) - reads; `s24q` Vaildwick's orange realm at year 300 -
+  reads; **`s24t` (the year-900 overkingship) found the sky-blue realm reading as lakes and lagoons, the white one as a salt flat** -> realms take only
+  ground-safe dyes (`MapSafe`: never argent/sable; magenta for the sky blue; azure blue-violet on the map: wip/realms ed74cb0, main e210eca); **`s24u`
+  then found magenta beside rose reading as one realm** -> realms seen together at least 60 delta E apart (`DyeDelta`, `DyesApart`: c806b27, main
+  9d7c796); `s24v`: magenta, orange, crimson read as three realms. Preview tool `tc2/out/tools/s24/dye_preview.py` (the shader's wash on a screenshot).
+- **The realms layer's frame cost** (new tool `tc2/scripts/realmsperf.mjs`: a headless save injected into the game's IndexedDB as saved now, paused;
+  paired off/on frame counts by requestAnimationFrame): year 300 (5,991 people) region x0.998, orbit x1.003, village x1.038; year 900 region x0.981, orbit
+  x1.010 - **no measurable cost**. But absolute rates of great worlds are low (region 8-11 fps, village 5-7 fps on the loaded machine; `s23web4`'s 569-person
+  world 24 fps at the village view): a performance gap of mature worlds in the browser, older than this session.
+- **A browser OOM** (`s24perf900`): the year-900 world (9,532 people, 21 MB save, managed heap 238 MB headless) aborted on OOM (`abortOnCannotGrowMemory`,
+  the 2 GB ceiling; `02` budgets 1 GB) at the village view after ~30 toggles of the layer across three views; with no toggling (`0_h` a) every view including
+  close survived, and 30 toggles at one view (`0_h` b) too - but `0_h` read the heap as -1 (the framework exports `Module.HEAPU32`, not `HEAPU8`; webtest's
+  `--export` trace was blind the same way - both fixed). `0_i_heap2` (queued) traces the heap for the views and for the sequence that aborted.
+- **The profile** (`6_c`): sworn men and might by lasting strength cost nothing measurable (40.4 s against 40.0 s for 30 COARSE years; in `d2165.md`).
 
 ### Exact state (21 Oct ~02:55)
 - **main** = 0e84d21: the landing merge 3b236ee (`wip/s23b-int` ca25d71: C10.7a, C10.7b, C9.5c; **sim version 90**), the tools merge 3bf3d44

@@ -38,24 +38,69 @@ namespace TC2.Core.Persistence
     /// </summary>
     public static class SaveFile
     {
+        /// <summary>
+        /// The buffers a host keeps from one save to the next (the game's autosave, a minute apart): a save into them allocates nothing large once
+        /// they have grown to the world's size. Without them a great world's save made ~460 MB of short-lived buffers (its 79 MB state grown by
+        /// doubling, copied, deflated through a growing stream, copied twice more), and the browser's heap - which only grows - reached its 2 GB
+        /// ceiling after three autosaves of a year-900 world (session 24, `realmsperf`). One save at a time; the save is `Out.Buffer[0..length)`.
+        /// </summary>
+        public sealed class Scratch
+        {
+            public readonly BinWriter Body;
+            public readonly MemoryStream Deflated;
+            public readonly BinWriter Out;
+
+            public Scratch() : this(1 << 20, 1 << 16) { }
+
+            /// <summary>Buffers sized for a world already known (a loaded save's lengths, an eighth more): its first save grows nothing by doubling -
+            /// which alone made ~255 MB of short-lived buffers for a 79 MB state.</summary>
+            public Scratch(int stateBytes, int saveBytes)
+            {
+                Body = new BinWriter(Math.Max(1 << 16, stateBytes + stateBytes / 8));
+                Deflated = new MemoryStream(Math.Max(1 << 16, saveBytes + saveBytes / 8));
+                Out = new BinWriter(Math.Max(1 << 16, saveBytes + saveBytes / 8 + 4096));
+            }
+
+            /// <summary>For the world a save holds (its header's lengths).</summary>
+            public static Scratch For(in SaveHeader h) => new Scratch(h.UncompressedLength, h.PayloadLength);
+        }
+
         public static byte[] Save(World w, long realUtcMs, OfflineMode mode, long catchUpTarget = 0, long catchUpStartedUtcMs = 0, string headline = null, bool compress = true)
         {
-            var body = new BinWriter(1 << 20);
+            var s = new Scratch();
+            Save(w, s, realUtcMs, mode, catchUpTarget, catchUpStartedUtcMs, headline, compress);
+            return s.Out.ToArray();
+        }
+
+        /// <summary>A save into the host's buffers (the same bytes as `Save`); returns its length - the save is `scratch.Out.Buffer[0..length)`.</summary>
+        public static int Save(World w, Scratch scratch, long realUtcMs, OfflineMode mode, long catchUpTarget = 0, long catchUpStartedUtcMs = 0, string headline = null, bool compress = true)
+        {
+            var body = scratch.Body;
+            body.Clear();
             w.WriteState(body);
-            byte[] raw = body.ToArray();
-            byte[] payload = compress ? Deflate(raw) : raw;
+            byte[] raw = body.Buffer;
+            int rawLen = body.Length;
+            byte[] payload = raw;
+            int payloadLen = rawLen;
+            if (compress)
+            {
+                Deflate(raw, rawLen, scratch.Deflated);
+                payload = scratch.Deflated.GetBuffer();
+                payloadLen = (int)scratch.Deflated.Length;
+            }
             var h = new SaveHeader
             {
                 FormatVersion = SaveHeader.Format, SimVersion = World.FormatSimVersion, Seed = w.Seed, WorldTime = w.Now,
                 SavedRealUtcMs = realUtcMs, Offline = mode, CatchUpTarget = catchUpTarget, CatchUpStartedUtcMs = catchUpStartedUtcMs,
                 Population = w.LivingPeople(), Settlements = w.InhabitedSettlements(), Headline = headline ?? "",
-                Compression = (byte)(compress ? 1 : 0), PayloadLength = payload.Length, UncompressedLength = raw.Length,
-                PayloadHash = HashBytes(raw), StateHash = w.StateHash(),
+                Compression = (byte)(compress ? 1 : 0), PayloadLength = payloadLen, UncompressedLength = rawLen,
+                PayloadHash = HashBytes(raw, rawLen), StateHash = w.StateHash(),
             };
-            var outw = new BinWriter(payload.Length + 256);
+            var outw = scratch.Out;
+            outw.Clear();
             WriteHeader(outw, h);
-            outw.Bytes(payload, 0, payload.Length);
-            return outw.ToArray();
+            outw.Bytes(payload, 0, payloadLen);
+            return outw.Length;
         }
 
         public static void WriteHeader(BinWriter w, in SaveHeader h)
@@ -85,9 +130,9 @@ namespace TC2.Core.Persistence
             var r = new BinReader(data);
             header = ReadHeader(r);
             if (header.SimVersion != World.FormatSimVersion) throw new FormatException("the save is from another model of the world (" + header.SimVersion + ", this game " + World.FormatSimVersion + ")");
-            byte[] payload = new byte[header.PayloadLength];
-            Buffer.BlockCopy(data, r.Position, payload, 0, header.PayloadLength);
-            byte[] raw = header.Compression == 1 ? Inflate(payload, header.UncompressedLength) : payload;
+            byte[] raw;
+            if (header.Compression == 1) raw = Inflate(data, r.Position, header.PayloadLength, header.UncompressedLength);   // (from the save in place: no copy of the payload)
+            else { raw = new byte[header.PayloadLength]; Buffer.BlockCopy(data, r.Position, raw, 0, header.PayloadLength); }
             if (verify && HashBytes(raw) != header.PayloadHash) throw new InvalidDataException("save payload is corrupt (hash mismatch)");
             var w = World.ReadState(new BinReader(raw));
             if (verify)
@@ -98,12 +143,15 @@ namespace TC2.Core.Persistence
             return w;
         }
 
-        public static ulong HashBytes(byte[] b)
+        public static ulong HashBytes(byte[] b) => HashBytes(b, b.Length);
+
+        /// <summary>The hash of the first `length` bytes of `b`.</summary>
+        public static ulong HashBytes(byte[] b, int length)
         {
             var h = StateHasher.Create();
             int i = 0;
-            for (; i + 8 <= b.Length; i += 8) h.Add(BitConverter.ToUInt64(b, i));
-            for (; i < b.Length; i++) h.Add(b[i]);
+            for (; i + 8 <= length; i += 8) h.Add(BitConverter.ToUInt64(b, i));
+            for (; i < length; i++) h.Add(b[i]);
             return h.Value;
         }
 
@@ -111,15 +159,26 @@ namespace TC2.Core.Persistence
         {
             using (var ms = new MemoryStream())
             {
-                using (var ds = new DeflateStream(ms, CompressionLevel.Fastest, true)) ds.Write(raw, 0, raw.Length);
+                Deflate(raw, raw.Length, ms);
                 return ms.ToArray();
             }
         }
 
-        public static byte[] Inflate(byte[] comp, int expected)
+        /// <summary>The first `length` bytes of `raw` deflated into `into` (emptied first; it keeps the capacity it has grown to).</summary>
+        public static void Deflate(byte[] raw, int length, MemoryStream into)
+        {
+            into.SetLength(0);
+            into.Position = 0;
+            using (var ds = new DeflateStream(into, CompressionLevel.Fastest, true)) ds.Write(raw, 0, length);
+        }
+
+        public static byte[] Inflate(byte[] comp, int expected) => Inflate(comp, 0, comp.Length, expected);
+
+        /// <summary>`count` deflated bytes of `comp` from `offset` inflated to `expected` bytes.</summary>
+        public static byte[] Inflate(byte[] comp, int offset, int count, int expected)
         {
             var outBuf = new byte[expected];
-            using (var ms = new MemoryStream(comp))
+            using (var ms = new MemoryStream(comp, offset, count))
             using (var ds = new DeflateStream(ms, CompressionMode.Decompress))
             {
                 int off = 0;

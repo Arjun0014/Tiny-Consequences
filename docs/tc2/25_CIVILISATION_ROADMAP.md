@@ -81,7 +81,8 @@ village sworn to them, fed from that grain - a lord's from its tribute; they pra
 people could neither stand against them nor go elsewhere, else the refusal is a wrong the asker holds; chosen by measuring first: bonds outlive their lords but
 hold by strength, so succession at a death changes little - what limits the lordships is that they rarely form, 514 pairs where one could make the other bow
 against 26 bonds); then by evidence: commendation (a wronged village that cannot answer its foe puts itself under a protector: 24 such at year 300 in ten
-worlds), a lord's death and its tributaries once realms are held by the margin, rising together once realms are large; the realms map layer (D2-167).
+worlds), a lord's death and its tributaries once realms are held by the margin, rising together once realms are large. Done meanwhile: ~~a polity map layer~~ (D2-167: the realms map layer - each lordship's land in its
+colour, chevrons from tributary to lord, a legend; HUD R).
 
 ### C5 mining and metallurgy, by slices (D2-100): ~~C5.1 copper ore bodies, the mine, depletion~~ (done); ~~C5.2a charcoal~~ (done, D2-101); ~~C5.2b
 iron~~ (done, D2-102: bog ore, bloomery, iron's use a head); ~~C5.3a places by their ore~~ (done, D2-103); ~~C5.3b iron traded~~

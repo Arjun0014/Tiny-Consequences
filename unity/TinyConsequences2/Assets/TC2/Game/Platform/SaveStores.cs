@@ -10,7 +10,8 @@ namespace TC2.Game
     public interface ISaveStore
     {
         string Name { get; }
-        void Save(string key, byte[] data, Action<bool> done);
+        /// <summary>Saves `data[0..length)` (the host's save buffer, reused from save to save: the store copies what it keeps before it returns).</summary>
+        void Save(string key, byte[] data, int length, Action<bool> done);
         void Load(string key, Action<byte[]> done);
         void Delete(string key);
     }
@@ -36,12 +37,12 @@ namespace TC2.Game
 
         string PathOf(string key) => Path.Combine(_dir, key + ".tc2");
 
-        public void Save(string key, byte[] data, Action<bool> done)
+        public void Save(string key, byte[] data, int length, Action<bool> done)
         {
             try
             {
                 string p = PathOf(key), tmp = p + ".tmp";
-                File.WriteAllBytes(tmp, data);
+                using (var f = new FileStream(tmp, FileMode.Create, FileAccess.Write)) f.Write(data, 0, length);
                 if (File.Exists(p)) File.Copy(p, p + ".bak", true);
                 if (File.Exists(p)) File.Delete(p);
                 File.Move(tmp, p);
@@ -78,11 +79,11 @@ namespace TC2.Game
         static void TC2_IdbDelete(string key) { }
 #endif
 
-        public void Save(string key, byte[] data, Action<bool> done)
+        public void Save(string key, byte[] data, int length, Action<bool> done)
         {
             _saving[key] = done;
             var h = GCHandle.Alloc(data, GCHandleType.Pinned);
-            try { TC2_IdbSave(key, h.AddrOfPinnedObject(), data.Length); }
+            try { TC2_IdbSave(key, h.AddrOfPinnedObject(), length); }
             finally { h.Free(); } // the jslib copies the bytes synchronously (HEAPU8.slice)
         }
 

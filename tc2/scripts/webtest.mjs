@@ -69,7 +69,7 @@ async function exportSave(name) {
   console.log('exported ' + name + '.tc2 (' + Math.round(b64.length * 0.75 / 1024) + ' KB)');
 }
 // the wasm heap's size in MB (Unity's instance), or -1
-async function heapMb() { return page.evaluate(() => { try { const M = window.__TC2_INSTANCE && window.__TC2_INSTANCE.Module; const b = M && (M.HEAPU8 || M.HEAP8); return b ? Math.round(b.buffer.byteLength / 1048576) : -1; } catch (e) { return -1; } }); }
+async function heapMb() { return page.evaluate(() => { try { const M = window.__TC2_INSTANCE && window.__TC2_INSTANCE.Module; const b = M && (M.HEAPU8 || M.HEAP8 || M.HEAPU32 || M.HEAP32 || M.HEAPF32); return b ? Math.round(b.buffer.byteLength / 1048576) : -1; } catch (e) { return -1; } }); }
 async function cmd(c) { await page.evaluate((x) => { (window.__TC2_CMDS = window.__TC2_CMDS || []).push(x); }, c); }
 async function waitFor(fn, arg, timeout = 180000) { return page.waitForFunction(fn, arg, { timeout, polling: 200 }); }
 async function shot(name, settle = 1500) {

@@ -4,8 +4,13 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
-- **Session 24, second context (21 Oct 2026, from 01:45 IST; Control Room run #73 session 2; the same job queue) - C10.7a, C10.7b and C9.5c landed
-  on main (3b236ee, sim version 90) with the lordships tools (3bf3d44)**. (1) **C9.5c's third seed set** (20-29) decided the landing: pooled over the 21
+- **Session 24, second context (21 Oct 2026, 01:45-~06:05 IST; Control Room run #73 session 2; stopped at Arjun's word) - C10.7a, C10.7b and C9.5c
+  landed on main (3b236ee, sim version 90) with the lordships tools (3bf3d44); the realms map layer finished from real shots (D2-167); a browser OOM
+  of great worlds found and fixed (D2-169); DECISIONS D2-164-D2-167 and D2-169 appended; C10.8 the asking in evaluation** (SESSION_HANDOFF "Session
+  24, second context - END": the queue stopping, what is left, the next steps). (9) **C10.8's evaluation so far**: control `--olddemand` = `_i2` byte for
+  byte; ten seeds - per-person rates at par, people over 100-199 x0.908 (t -2.85; twins part at years 6-30: a matched placebo is queued), bonds agreed
+  x12, the greatest realm x4.2 (8-16 villages at year 300), bonds ended x21, raids x6, wounds a person-year x2.75; seed 2 over 900 years: 279 bonds made,
+  250 ended, Mestskouford 18 of 31 villages at year 900, the vital rates at par - the churn and its war to judge before landing. (1) **C9.5c's third seed set** (20-29) decided the landing: pooled over the 21
   worlds that part, hunger a person-year x0.994 (t -0.16) - the first ten's lean was chance, as its matched placebo said; births and deaths a person-year
   at par; people over years 200-299 x0.982 (t -2.64), carried by seeds 9-19 and not repeated in 20-29 (x0.991, t -0.77; three worlds lower, three higher)
   - a level of the size twins spread by, not a rate; in 20-29 the C9.5c twins met larger epidemics and starved fewer (r -0.88): an island meets its
@@ -16,10 +21,16 @@
   ends by the lord 5.0 a thousand bond-years within five years after its first person changed, 4.9 otherwise); formation still limits (80 and 135 pairs
   where one could make the other bow, against 16 and 14 bonds) - C10.8 the asking kept as the next slice. (3) A second reading of the landing branch's
   save format and hash, `Retinue`, bands and might, and of C10.8's `Conflict.Demanded`: no fault. (4) Docs: `18` §9 polities on the map (D2-167), `10`
-  §12h done. Queued to run next: main's build `bin_m5` (floatcheck, hashtest, `unity.mjs cc`, a v90 seed-2 world `_m5`), the full suite, real shots (`s24p`
-  sworn men at practice, `s24q` realms on `_m5`, `s24t` the year-900 overkingship), the Web build and test `s24web1`; then C10.8's control and ten seeds;
-  then C10.7a's and C10.7b's own 900 years (renamed `8_*`). DECISIONS D2-164-D2-167 wait for their last FILLs (the per-slice 900 years and the profile,
-  the Web frame cost).
+  §12h done. (5) **The landing checked**: main = the landing branch byte for byte (seed 2, state hash 56fb1fe012804dd3), **full suite 441 passed, 0
+  failed, 0 skipped**, Unity C# compiles, **Web `s24web1` 6/6**; real shots - sworn men at practice (`s24p`), Vaildwick's realm at year 300 (`s24q`). (6)
+  **The realms layer from real shots of the year-900 overkingship** (`s24t`): a sky-blue realm read as lakes, a white one as a salt flat -> realms take
+  only ground-safe dyes (no argent, sable, sky blue; azure blue-violet on the map); then magenta beside rose read as one realm (`s24u`) -> realms seen
+  together at least 60 delta E apart (`s24v`: three realms read apart); **its frame cost unmeasurable** (new `realmsperf.mjs`: paired off/on frame
+  counts on worlds with realms, x0.98-1.04). (7) **A browser OOM found and fixed (D2-169)**: measuring, the year-900 world (9,532 people) aborted at the
+  2 GB ceiling - its heap grew ~500 MB at each autosave (~460 MB of short-lived save buffers a minute; the wasm heap only grows); saves now go into
+  buffers kept and sized at each load (the same bytes): flat at 1,053 MB (year 900) and 513 MB (year 300) through autosaves; Web `s24web2` 6/6. Great
+  worlds still hold ~1 GB and draw ~8 fps at the region view (`14` §7). (8) The profile: sworn men and lasting strength cost nothing measurable.
+  DECISIONS D2-164-D2-167 and D2-169 wait for the per-slice 900-year lines (`8_*`); C10.8's ten seeds run.
 - **Session 24 (20 Oct 21:56 - 21 Oct ~01:25 IST; Control Room run #73 session 1) - context handoff with the job queue running; nothing of C10.7a,
   C10.7b or C9.5c landed yet** (SESSION_HANDOFF "Session 24" has the queue and the steps). (1) **The stopped queue restarted** in a new scratchpad (the
   old one was gone: every binary rebuilt from its worktree, each checked against its own earlier runs). (2) **The landing branch's full suite**

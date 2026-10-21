@@ -627,22 +627,59 @@ namespace TC2.Game
         static readonly Color[] Heraldry =
         {
             // (C10.6: no green nor teal - a standard is read over green fields and the woods; azure and rose in their places)
-            new Color(0.70f, 0.10f, 0.10f), new Color(0.12f, 0.24f, 0.62f), new Color(0.30f, 0.62f, 0.95f), new Color(0.85f, 0.65f, 0.10f),
+            // (D2-167, the year-900 shots s24t: the sky blue's realm read as lakes and lagoons on the land - magenta in its place)
+            new Color(0.70f, 0.10f, 0.10f), new Color(0.12f, 0.24f, 0.62f), new Color(0.78f, 0.12f, 0.70f), new Color(0.85f, 0.65f, 0.10f),
             new Color(0.45f, 0.15f, 0.50f), new Color(0.92f, 0.90f, 0.84f), new Color(0.10f, 0.10f, 0.12f), new Color(0.85f, 0.40f, 0.10f),
             new Color(0.88f, 0.35f, 0.62f), new Color(0.55f, 0.08f, 0.25f),
         };
 
         /// <summary>The same dyes as the realms map layer draws them on the ground (D2-167): brighter and fuller, so that a realm's land reads as its
-        /// colour over fields of any crop and does not pass for ripe grain or bare earth; one for one with `Heraldry`.</summary>
+        /// colour over fields of any crop and does not pass for ripe grain or bare earth - nor for water (azure drawn blue-violet: a royal blue wash
+        /// reads as a lake); one for one with `Heraldry`. Argent and sable are never a realm's (`MapSafe`).</summary>
         static readonly Color[] HeraldryMap =
         {
-            new Color(0.95f, 0.18f, 0.15f), new Color(0.22f, 0.40f, 1.00f), new Color(0.30f, 0.82f, 1.00f), new Color(1.00f, 0.84f, 0.08f),
+            new Color(0.95f, 0.18f, 0.15f), new Color(0.36f, 0.28f, 1.00f), new Color(1.00f, 0.20f, 0.95f), new Color(1.00f, 0.84f, 0.08f),
             new Color(0.74f, 0.30f, 0.95f), new Color(0.97f, 0.97f, 0.95f), new Color(0.12f, 0.12f, 0.16f), new Color(1.00f, 0.52f, 0.08f),
             new Color(1.00f, 0.42f, 0.78f), new Color(0.86f, 0.12f, 0.42f),
         };
 
-        /// <summary>A village's polity's colour: its lordship's head's (its own when it pays nobody) - the head's own dye by its number, unless an
-        /// older realm flies it (D2-167: two realms in one colour read as one - from orbit a whole hemisphere is seen at once).</summary>
+        /// <summary>The dyes a realm may take (D2-167): all but argent and sable, which washed over the land pass for snow or salt and for burnt ground
+        /// (the year-900 shots s24t: a white realm read as a salt flat beside its lake). A village in no realm still flies them on its standard - it is
+        /// not drawn on the map.</summary>
+        static bool MapSafe(int k) => k != 5 && k != 6;
+
+        /// <summary>How unlike two dyes look on the map (CIE76 delta E of their map colours, as sRGB; the eight a realm may take lie 25-188 apart).</summary>
+        static readonly float[,] DyeDelta = DyeDistances();
+        /// <summary>The least difference between the map colours of realms seen together (delta E): in the year-900 shots (s24u) magenta beside rose
+        /// (40 apart) read as one realm with its paler tributaries - a tributary's land is its realm's colour, lighter.</summary>
+        const float DyesApart = 60f;
+        /// <summary>Realms whose heads lie within this arc are seen together (m; most of a hemisphere of the 6 km planet, and their lands round them).</summary>
+        const double DyesSeenTogether = 12000.0;
+
+        static float[,] DyeDistances()
+        {
+            int n = HeraldryMap.Length;
+            var lab = new Vector3[n];
+            for (int i = 0; i < n; i++) lab[i] = Lab(HeraldryMap[i]);
+            var d = new float[n, n];
+            for (int i = 0; i < n; i++) for (int j = 0; j < n; j++) d[i, j] = Vector3.Distance(lab[i], lab[j]);
+            return d;
+        }
+
+        /// <summary>A colour (sRGB) in CIE L*a*b* (D65).</summary>
+        static Vector3 Lab(Color c)
+        {
+            float Lin(float v) => v <= 0.04045f ? v / 12.92f : Mathf.Pow((v + 0.055f) / 1.055f, 2.4f);
+            float F(float t) => t > 0.008856f ? Mathf.Pow(t, 1f / 3f) : 7.787f * t + 16f / 116f;
+            float r = Lin(c.r), g = Lin(c.g), b = Lin(c.b);
+            float fx = F((0.4124f * r + 0.3576f * g + 0.1805f * b) / 0.95047f), fy = F(0.2126f * r + 0.7152f * g + 0.0722f * b);
+            float fz = F((0.0193f * r + 0.1192f * g + 0.9505f * b) / 1.08883f);
+            return new Vector3(116f * fy - 16f, 500f * (fx - fy), 200f * (fy - fz));
+        }
+
+        /// <summary>A village's polity's colour: its lordship's head's (its own when it pays nobody) - the head's own dye by its number, unless it is an
+        /// older realm's or looks too like that of an older realm seen with it (D2-167: two realms in one colour, or in two near ones, read as one - from
+        /// orbit a whole hemisphere is seen at once).</summary>
         public static Color PolityColour(TC2.Core.Simulation.World w, int sid) => Heraldry[Dye(w, w.Conflict.Root(sid))];
 
         /// <summary>The polity's colour as the realms map layer draws it on the ground (D2-167).</summary>
@@ -665,9 +702,11 @@ namespace TC2.Game
 
         /// <summary>
         /// The realms' dyes (D2-167): the heads of the realms now - villages whose own lord is nobody (or gone) that some village pays - in the order their
-        /// realms began (the oldest bond still held in each, then the head's number); each takes its own dye by its number unless a realm before it has
-        /// it, then the next of its dyes (in steps of three, through all ten) none of those has; past ten realms, the dye whose nearest older bearer is
-        /// farthest away. A realm's colour changes only when an older realm of its colour ends; a village in no realm flies its own.
+        /// realms began (the oldest bond still held in each, then the head's number); each takes its own dye by its number unless it does not read on the
+        /// ground (`MapSafe`), a realm before it has it, or it looks too like the dye of a realm before it seen with it (`DyesApart` within
+        /// `DyesSeenTogether`) - then the next of its dyes (in steps of three, through all ten) that does neither; when none is far enough in colour, the
+        /// untaken dye farthest from its nearest in colour; past eight realms (the dyes that read on the ground), the dye whose nearest older bearer is
+        /// farthest away. A realm's colour changes only when a realm older than it ends or changes; a village in no realm flies its own.
         /// </summary>
         static void RefreshDyes(TC2.Core.Simulation.World w)
         {
@@ -696,29 +735,29 @@ namespace TC2.Game
             var P = w.Planet;
             for (int i = 0; i < _realmHeads.Count; i++)
             {
-                int h = _realmHeads[i].sid, own = OwnDye(h), pick = -1;
+                int h = _realmHeads[i].sid, own = OwnDye(h), pick = -1, fall = -1;
                 var at = w.Settlements.Get(h).Anchor;
+                bool fallUntaken = false; double fallBy = -1.0;
                 for (int t = 0; t < Heraldry.Length && pick < 0; t++)
                 {
                     int k = (own + 3 * t) % Heraldry.Length;
-                    bool taken = false;
-                    for (int j = 0; j < i && !taken; j++) if (_dye[_realmHeads[j].sid] == k) taken = true;
-                    if (!taken) pick = k;
-                }
-                if (pick < 0)
-                {
-                    // (more realms than dyes: the dye whose nearest older bearer is farthest away)
-                    double best = -1.0;
-                    for (int t = 0; t < Heraldry.Length; t++)
+                    if (!MapSafe(k)) continue;   // (argent and sable: snow and burnt ground on the map)
+                    // its nearest older bearer anywhere, and how unlike it looks from the dyes of the older realms seen with it
+                    double bearer = double.MaxValue; float unlike = float.MaxValue;
+                    for (int j = 0; j < i; j++)
                     {
-                        int k = (own + 3 * t) % Heraldry.Length;
-                        double near = double.MaxValue;
-                        for (int j = 0; j < i; j++)
-                            if (_dye[_realmHeads[j].sid] == k) near = System.Math.Min(near, Vec3d.ArcDistance(at, w.Settlements.Get(_realmHeads[j].sid).Anchor, P.Radius));
-                        if (near > best) { best = near; pick = k; }
+                        int kj = _dye[_realmHeads[j].sid];
+                        double d = Vec3d.ArcDistance(at, w.Settlements.Get(_realmHeads[j].sid).Anchor, P.Radius);
+                        if (kj == k) bearer = System.Math.Min(bearer, d);
+                        else if (d <= DyesSeenTogether) unlike = Mathf.Min(unlike, DyeDelta[k, kj]);
                     }
+                    bool untaken = bearer == double.MaxValue;
+                    if (untaken && unlike >= DyesApart) { pick = k; break; }
+                    // (none yet far enough: the untaken first, the farthest in colour from its nearest; then the taken, by their farthest bearer)
+                    double by = untaken ? unlike : bearer;
+                    if ((untaken && !fallUntaken) || (untaken == fallUntaken && by > fallBy)) { fall = k; fallUntaken = untaken; fallBy = by; }
                 }
-                _dye[h] = pick;
+                _dye[h] = pick >= 0 ? pick : fall;
             }
         }
 
