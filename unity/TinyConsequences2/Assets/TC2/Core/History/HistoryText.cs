@@ -206,6 +206,7 @@ namespace TC2.Core.History
                 case HistoryKind.TributePaid: return subj + " paid " + obj + " its tribute (" + F(e.Magnitude, "0") + " days' grain).";
                 case HistoryKind.TributeEnded:
                     if (e.ArgA == 1) return subj + " pays tribute no more: " + obj + " is gone.";
+                    if (e.ArgA == 2) return subj + " pays " + obj + " tribute no more: the one first among its people died, and " + subj + " owes the heir nothing until it has won it again.";   // (C10.9)
                     return subj + " would pay " + obj + " tribute no more: " + obj + " is no longer the stronger" +
                            (e.Magnitude <= 0f ? "." : TC2.Core.Society.Conflict.MightArmsOff
                                ? " - it could bring " + F(e.Magnitude, "0") + " against them (its own people and those its call brings), and they have " + e.ArgB + " of fighting age."   // (C10.5)
