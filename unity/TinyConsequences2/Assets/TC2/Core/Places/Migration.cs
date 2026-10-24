@@ -484,6 +484,18 @@ namespace TC2.Core.Places
             }
         }
 
+        /// <summary>The tongue a new village's people speak (C11.1): its founders', from the village they came from, a sound changed now and then
+        /// (`Names.DriftTongue`); a village whose founders came from no village of the world (none known) its own.</summary>
+        public static long TongueAt(World w, int sid, int origin)
+        {
+            if (TonguesOff) return 0;
+            if (origin != 0 && w.Settlements.Exists(origin) && w.Settlements.Get(origin).Tongue != 0) return Worldgen.Names.DriftTongue(w.Seed, sid, w.Settlements.Get(origin).Tongue);
+            return Worldgen.Names.NewTongue(w.Seed, sid);
+        }
+
+        /// <summary>`--oldnames`: every name from the one speech of before (D2-114's names), on the same binary.</summary>
+        public static bool TonguesOff;
+
         /// <summary>A village is founded at a place (at a party's arrival): its frame, its ground, no houses or works yet.</summary>
         public int FoundAt(int cell, long cause, int origin)
         {
@@ -517,9 +529,10 @@ namespace TC2.Core.Places
             s.WoodX = (float)(wx / wl * 210); s.WoodY = (float)(wy / wl * 210);
             s.WellX = 8f; s.WellY = -6f;
             s.Tradition = Architecture.TraditionAt(w, sid, origin);   // (how its founders build: the tradition they bring, D2-114)
+            s.Tongue = TongueAt(w, sid, origin);   // (and how they speak: C11.1)
             w.Settlements.Add(sid, s);
             w.IndexSettlementCells(sid);
-            w.History.Register(EntityRef.Settlement(sid), Worldgen.Names.Place(w.Seed, sid), w.Now);
+            w.History.Register(EntityRef.Settlement(sid), Worldgen.Names.Place(w.Seed, sid, s.Tongue), w.Now);
             ref var sr = ref w.Settlements.Get(sid);
             sr.FoundedEvent = w.Record(new HistoryEvent
             {

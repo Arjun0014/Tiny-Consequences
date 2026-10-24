@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using TC2.Core.Foundation;
 using TC2.Core.History;
@@ -53,6 +54,7 @@ namespace TC2.Headless
             if (a.Has("still")) { StillAudit(w, a); return 0; }
             if (a.Has("heads")) { Heads(w); return 0; }
             if (a.Has("marriage")) { Marriage(w); return 0; }
+            if (a.Has("ways")) { PeoplesWays(w); return 0; }
             if (a.Has("heirs")) { Heirs(w); return 0; }
             if (a.Has("crofts")) { Crofts(w, a.Int("cell", 2)); return 0; }
             if (a.Has("seasons"))
@@ -590,6 +592,65 @@ namespace TC2.Headless
         /// <summary>`place --load SAVE --marriage` (household formation): the living women by age - the share who ever married (a Marriage event of
         /// theirs in the ledger, kept while they live), their age at first marriage; the marriages of the last 50 years by the days after their village's
         /// harvest; and the women 18-36 unmarried now.</summary>
+        /// <summary>
+        /// (C11.1 measured first, `place --ways`) a people's ways as the world holds them: each living village's building tradition (D2-114: its roof form,
+        /// its shade, its line - the first village it descends from, carried by founders with a change now and then), how alike neighbours are (pairs
+        /// within a day's walk) against all pairs, how many lines live and how far each spreads, and whether the houses stand as their village's way
+        /// (their recorded roof form against the tradition's).
+        /// </summary>
+        static void PeoplesWays(World w)
+        {
+            var ids = new List<int>();
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid)) if (w.Settlements.Get(sid).Inhabited) ids.Add(sid);
+            int[] near = new int[4], all = new int[4];   // pairs: same line, same roof, same shade, same roof and shade
+            int nearN = 0, allN = 0;
+            for (int i = 0; i < ids.Count; i++)
+                for (int j = i + 1; j < ids.Count; j++)
+                {
+                    int ta = w.Settlements.Get(ids[i]).Tradition, tb = w.Settlements.Get(ids[j]).Tradition;
+                    bool line = TC2.Core.Places.Architecture.Line(ta) == TC2.Core.Places.Architecture.Line(tb);
+                    bool roof = TC2.Core.Places.Architecture.TraditionRoof(ta) == TC2.Core.Places.Architecture.TraditionRoof(tb);
+                    bool shade = TC2.Core.Places.Architecture.TraditionPalette(ta) == TC2.Core.Places.Architecture.TraditionPalette(tb);
+                    double d = Vec3d.ArcDistance(w.Settlements.Get(ids[i]).Anchor, w.Settlements.Get(ids[j]).Anchor, w.Planet.Radius);
+                    var into = d <= 6000 ? near : null;
+                    allN++; if (line) all[0]++; if (roof) all[1]++; if (shade) all[2]++; if (roof && shade) all[3]++;
+                    if (into != null) { nearN++; if (line) near[0]++; if (roof) near[1]++; if (shade) near[2]++; if (roof && shade) near[3]++; }
+                }
+            string P(int k, int n) => n == 0 ? "-" : (100.0 * k / n).ToString("0") + " %";
+            Console.WriteLine("ways: " + ids.Count + " villages; pairs within a day's walk " + nearN + " - the same line " + P(near[0], nearN) + ", roof form " + P(near[1], nearN) + ", shade " + P(near[2], nearN) +
+                              ", both " + P(near[3], nearN) + "; all pairs " + allN + " - " + P(all[0], allN) + ", " + P(all[1], allN) + ", " + P(all[2], allN) + ", " + P(all[3], allN));
+            var lines = new SortedDictionary<int, List<int>>();
+            foreach (int sid in ids) { int l = TC2.Core.Places.Architecture.Line(w.Settlements.Get(sid).Tradition); if (!lines.TryGetValue(l, out var ll)) lines[l] = ll = new List<int>(); ll.Add(sid); }
+            var order = new List<int>(lines.Keys);
+            order.Sort((x, y) => lines[y].Count != lines[x].Count ? lines[y].Count.CompareTo(lines[x].Count) : x.CompareTo(y));
+            foreach (int l in order)
+            {
+                var ll = lines[l];
+                double far = 0;
+                for (int i = 0; i < ll.Count; i++) for (int j = i + 1; j < ll.Count; j++) far = Math.Max(far, Vec3d.ArcDistance(w.Settlements.Get(ll[i]).Anchor, w.Settlements.Get(ll[j]).Anchor, w.Planet.Radius));
+                var forms = new SortedDictionary<int, int>();
+                foreach (int sid in ll) { int t = w.Settlements.Get(sid).Tradition; int k = TC2.Core.Places.Architecture.TraditionRoof(t) * 10 + TC2.Core.Places.Architecture.TraditionPalette(t); forms.TryGetValue(k, out int c); forms[k] = c + 1; }
+                Console.WriteLine("  line of " + w.History.NameOf(EntityRef.Settlement(l)) + " (" + l + "): " + ll.Count + " villages, spread " + (far / 1000.0).ToString("0.0") + " km; ways (roof x10 + shade): " +
+                                  string.Join(" ", new List<string>(System.Linq.Enumerable.Select(forms, kv => kv.Key + ":" + kv.Value)).ToArray()));
+                var names = new List<string>();
+                foreach (int sid in ll) if (names.Count < 14) names.Add(w.History.NameOf(EntityRef.Settlement(sid)) + (w.Settlements.Get(sid).Tongue != 0 ? "[" + TC2.Core.Worldgen.Names.Apart(w.Settlements.Get(sid).Tongue, w.Settlements.Get(ll[0]).Tongue) + "]" : ""));
+                Console.WriteLine("    names (in [] how far each speaks from the first listed): " + string.Join(", ", names.ToArray()));
+            }
+            // the houses: do they stand as their village's way?
+            int houses = 0, asWay = 0, shadeWay = 0;
+            for (int b = w.Buildings.First(); b != 0; b = w.Buildings.Next(b))
+            {
+                ref var bb = ref w.Buildings.Get(b);
+                if (!TC2.Core.Places.Architecture.Has(bb.Form) || bb.Settlement == 0 || !w.Settlements.Exists(bb.Settlement)) continue;
+                int t = w.Settlements.Get(bb.Settlement).Tradition;
+                houses++;
+                if (TC2.Core.Places.Architecture.RoofOf(bb.Form) == TC2.Core.Places.Architecture.TraditionRoof(t)) asWay++;
+                int pal = TC2.Core.Places.Architecture.PaletteOf(bb.Form), tp = TC2.Core.Places.Architecture.TraditionPalette(t);
+                if (pal == tp || pal == (tp + 1) % 8 || pal == (tp + 2) % 8) shadeWay++;
+            }
+            Console.WriteLine("  buildings with a recorded form " + houses + ": the roof form their village's way " + P(asWay, houses) + ", the shade within its way's three " + P(shadeWay, houses));
+        }
+
         static void Marriage(World w)
         {
             var H = w.History;

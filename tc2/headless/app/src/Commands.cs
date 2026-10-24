@@ -234,6 +234,7 @@ namespace TC2.Headless
             if (a.Has("olddemand")) TC2.Core.Society.Conflict.DemandOff = true;   // (C10.8 off: no village asks a tenth of another)
             if (a.Has("oldlapse")) TC2.Core.Society.Conflict.LapseOff = true;     // (C10.9 off: bonds for peace outlive their lord's death)
             if (a.Has("lapsetally")) TC2.Core.Society.Conflict.LapseTally = new double[TC2.Core.Society.Conflict.LapseTallyN];
+            if (a.Has("oldnames")) TC2.Core.Places.Migration.TonguesOff = true;   // (C11.1 off: every name from the one speech of before)
             if (a.Has("demandtally")) TC2.Core.Society.Conflict.DemandTally = new double[TC2.Core.Society.Conflict.DemandTallyN];   // (C10.8: the askings and their answers)
             if (a.Has("raidtally")) TC2.Core.Society.Conflict.RaidTally = new double[TC2.Core.Society.Conflict.RaidTallyN];   // (C8.1 measured first: bands weighed over a wrong)
             if (a.Has("oldpeace")) TC2.Core.Society.Conflict.PeaceOff = true;   // (C10.10 off: villages of one realm feud as free villages do)

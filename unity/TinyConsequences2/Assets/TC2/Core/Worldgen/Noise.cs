@@ -94,5 +94,144 @@ namespace TC2.Core.Worldgen
             s += PlaceEnds[r.NextBelow(PlaceEnds.Length)];
             return Cap(s);
         }
+
+        // ---- a people's tongue (C11.1): the sounds its names are made of, as a code - which onsets (beyond none), vowels, codas (beyond none) and
+        // place-name endings it uses, its women's names' ending and how long its given names run. Carried by founders, a sound at a time changed
+        // (`DriftTongue`): neighbours founded from one another speak alike, a line's far daughters differently, a first people's own tongue apart.
+        const int OnsetBit = 0, VowelBit = 22, CodaBit = 34, EndBit = 45, FemBit = 55, LenBit = 57;
+        const int OnsetN = 22, VowelN = 12, CodaN = 11, EndN = 10;   // (Onsets[1..22], Vowels[0..11], Codas[3..13], PlaceEnds[0..9])
+        const int CodaEmpty = 3;                                      // (the empty codas: Codas[0..2] - most syllables end open)
+        const int OnsetMin = 5, VowelMin = 3, CodaMin = 2, EndMin = 1;
+
+        static int Count(long t, int bit, int n) { int c = 0; for (int i = 0; i < n; i++) if (((t >> (bit + i)) & 1L) != 0) c++; return c; }
+        static int Nth(long t, int bit, int n, int k) { for (int i = 0; i < n; i++) if (((t >> (bit + i)) & 1L) != 0 && k-- == 0) return i; return 0; }
+
+        /// <summary>A first people's own tongue: about ten onsets, six vowels, five codas, two or three endings of its places.</summary>
+        public static long NewTongue(ulong seed, int key)
+        {
+            var r = new RandomSequence(KeyedRng.Hash(seed, RngStream.Names, (ulong)key, 11));
+            long t = 0;
+            t |= Pick(ref r, OnsetBit, OnsetN, 9 + r.NextBelow(5));
+            t |= Pick(ref r, VowelBit, VowelN, 5 + r.NextBelow(4));
+            t |= Pick(ref r, CodaBit, CodaN, 4 + r.NextBelow(4));
+            t |= Pick(ref r, EndBit, EndN, 2 + r.NextBelow(2));
+            t |= (long)r.NextBelow(4) << FemBit;
+            t |= (long)r.NextBelow(3) << LenBit;
+            return t;
+        }
+
+        static long Pick(ref RandomSequence r, int bit, int n, int want)
+        {
+            long m = 0;
+            int have = 0;
+            while (have < want && have < n)
+            {
+                int i = r.NextBelow(n);
+                if (((m >> i) & 1L) != 0) continue;
+                m |= 1L << i; have++;
+            }
+            return m << bit;
+        }
+
+        /// <summary>
+        /// The tongue a village's founders bring from the one they came from: as a few people carry a speech somewhere new, now and then (half the
+        /// foundings) one thing about it changes - a sound taken up or let go, a place-name ending, the ending of women's names, the length of names -
+        /// never below what a tongue needs.
+        /// </summary>
+        public static long DriftTongue(ulong seed, int key, long t)
+        {
+            var r = new RandomSequence(KeyedRng.Hash(seed, RngStream.Names, (ulong)key, 12));
+            if (!r.Chance(TongueDrift)) return t;
+            double u = r.NextUnit();
+            if (u < 0.40) return Flip(ref r, t, OnsetBit, OnsetN, OnsetMin);
+            if (u < 0.55) return Flip(ref r, t, VowelBit, VowelN, VowelMin);
+            if (u < 0.75) return Flip(ref r, t, CodaBit, CodaN, CodaMin);
+            if (u < 0.90) return Flip(ref r, t, EndBit, EndN, EndMin);
+            if (u < 0.95) return (t & ~(3L << FemBit)) | ((long)r.NextBelow(4) << FemBit);
+            return (t & ~(3L << LenBit)) | ((long)r.NextBelow(3) << LenBit);
+        }
+
+        /// <summary>The chance a founding's speech changes one thing.</summary>
+        public const double TongueDrift = 0.5;
+
+        static long Flip(ref RandomSequence r, long t, int bit, int n, int min)
+        {
+            int i = r.NextBelow(n);
+            bool on = ((t >> (bit + i)) & 1L) != 0;
+            if (on && Count(t, bit, n) <= min)
+            {
+                // (it cannot lose a sound it needs: it takes one up instead)
+                for (int k = 0; k < n; k++) { int j = (i + k) % n; if (((t >> (bit + j)) & 1L) == 0) return t | (1L << (bit + j)); }
+                return t;
+            }
+            return t ^ (1L << (bit + i));
+        }
+
+        static string Syllable(ref RandomSequence r, long t)
+        {
+            int no = Count(t, OnsetBit, OnsetN), nv = Count(t, VowelBit, VowelN), nc = Count(t, CodaBit, CodaN);
+            int o = r.NextBelow(no + 1);   // (or none)
+            string on = o == no ? "" : Onsets[1 + Nth(t, OnsetBit, OnsetN, o)];
+            string vo = Vowels[Nth(t, VowelBit, VowelN, r.NextBelow(System.Math.Max(1, nv)))];
+            int c = r.NextBelow(nc + CodaEmpty);
+            string co = c >= nc ? "" : Codas[CodaEmpty + Nth(t, CodaBit, CodaN, c)];
+            return on + vo + co;
+        }
+
+        /// <summary>A person's given name in their people's tongue.</summary>
+        public static string Person(ulong seed, int id, bool female, long tongue)
+        {
+            if (tongue == 0) return Person(seed, id, female);
+            var r = new RandomSequence(KeyedRng.Hash(seed, RngStream.Names, (ulong)id, 1));
+            int len = (int)((tongue >> LenBit) & 3L);
+            int n = len == 1 ? (r.Chance(0.75) ? 1 : 2) : len == 2 ? (r.Chance(0.75) ? 2 : 1) : 1 + r.NextBelow(2);
+            string s = "";
+            for (int i = 0; i < n; i++) s += Syllable(ref r, tongue);
+            if (s.Length < 3) s += Syllable(ref r, tongue);
+            if (female && r.Chance(0.6))
+            {
+                int fem = (int)((tongue >> FemBit) & 3L);
+                s += fem == 0 ? "a" : fem == 1 ? "e" : fem == 2 ? "i" : (r.Chance(0.5) ? "a" : "e");
+            }
+            return Cap(s);
+        }
+
+        /// <summary>A family's name in its first people's tongue.</summary>
+        public static string Family(ulong seed, int householdKey, long tongue)
+        {
+            if (tongue == 0) return Family(seed, householdKey);
+            var r = new RandomSequence(KeyedRng.Hash(seed, RngStream.Names, (ulong)householdKey, 2));
+            return Cap(Syllable(ref r, tongue) + Syllable(ref r, tongue));
+        }
+
+        /// <summary>A place's name in its founders' tongue: one or two syllables and one of its endings.</summary>
+        public static string Place(ulong seed, int key, long tongue)
+        {
+            if (tongue == 0) return Place(seed, key);
+            var r = new RandomSequence(KeyedRng.Hash(seed, RngStream.Names, (ulong)key, 3));
+            string s = Syllable(ref r, tongue);
+            if (r.Chance(0.5)) s += Syllable(ref r, tongue);
+            s += PlaceEnds[Nth(tongue, EndBit, EndN, r.NextBelow(System.Math.Max(1, Count(tongue, EndBit, EndN))))];
+            return Cap(s);
+        }
+
+        /// <summary>The endings a tongue gives its places (tests, tools).</summary>
+        public static string[] EndsOf(long tongue)
+        {
+            var l = new System.Collections.Generic.List<string>();
+            for (int i = 0; i < EndN; i++) if (((tongue >> (EndBit + i)) & 1L) != 0) l.Add(PlaceEnds[i]);
+            return l.ToArray();
+        }
+
+        /// <summary>How many of the things a tongue is made of two tongues differ in (tools: how far apart two peoples speak).</summary>
+        public static int Apart(long a, long b)
+        {
+            long x = (a ^ b) & ((1L << FemBit) - 1);
+            int d = 0;
+            for (int i = 0; i < FemBit; i++) if (((x >> i) & 1L) != 0) d++;
+            if (((a >> FemBit) & 3L) != ((b >> FemBit) & 3L)) d++;
+            if (((a >> LenBit) & 3L) != ((b >> LenBit) & 3L)) d++;
+            return d;
+        }
     }
 }

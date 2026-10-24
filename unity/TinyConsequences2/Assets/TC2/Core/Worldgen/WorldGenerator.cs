@@ -308,9 +308,10 @@ namespace TC2.Core.Worldgen
             s.WellX = (float)rs.Range(-12, 12); s.WellY = (float)rs.Range(-12, 12);
             s.SquareX = 0; s.SquareY = 0;
             s.Tradition = Architecture.TraditionAt(w, sid, 0);   // (each first people its own way of building: D2-114)
+            s.Tongue = Migration.TongueAt(w, sid, 0);   // (and its own tongue: C11.1)
             w.Settlements.Add(sid, s);
             w.IndexSettlementCells(sid);
-            string name = Names.Place(seed, sid);
+            string name = Names.Place(seed, sid, s.Tongue);
             w.History.Register(EntityRef.Settlement(sid), name, w.Now);
             long arrived = w.Record(new HistoryEvent { Kind = HistoryKind.PeopleArrived, Time = w.Now, Cell = cell, Settlement = sid, Subject = EntityRef.Settlement(sid), RootKind = RootKind.People });
             ref var sr = ref w.Settlements.Get(sid);
@@ -330,7 +331,7 @@ namespace TC2.Core.Worldgen
                 var hh = new Household { Id = hid, Settlement = sid, Formed = w.Now, FamilyName = hid, HomeX = hx, HomeY = hy, Larder = 6, Shelter = Construction.House, Water = 30f, Indoor = (float)Hearth.Comfort };
                 w.Households.Add(hid, hh);
                 w.HouseholdsOf(sid).InsertSorted(hid);
-                w.History.Register(EntityRef.Household(hid), Names.Family(seed, hid), w.Now);
+                w.History.Register(EntityRef.Household(hid), Names.Family(seed, hid, w.Settlements.Get(sid).Tongue), w.Now);
                 double motherAge = rs.Range(19, 40);
                 double fatherAge = motherAge + rs.Range(-2, 7);
                 int mother = MakeFounder(w, Sex.Female, motherAge, 0, 0, hid, sid, ref rs);
