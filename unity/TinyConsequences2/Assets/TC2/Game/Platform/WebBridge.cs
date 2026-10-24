@@ -119,11 +119,12 @@ namespace TC2.Game
             }
             if (what == "tilt") { TiltShiftFeature.Off = !on; return; }
             if (what == "realms") { RealmsView.On = on; return; }   // (the realms map layer, D2-167: as the player's R)
+            if (what == "names") { Hud.Names = on; return; }        // (places, works and people named: D2-172)
             if (what == "cover") { TerrainLod.CoverOff = !on; return; }   // (the ground cover near the camera: D2-081)
             if (what == "covershadow") { TerrainLod.CoverShadows = on; return; }   // (shrubs' and boulders' shadows)
             int part = what == "trees" ? 1 : what == "people" ? 2 : what == "buildings" ? 4 : 0;
             if (part != 0) { WorldObjectsView.Off = on ? WorldObjectsView.Off & ~part : WorldObjectsView.Off | part; return; }
-            string prefix = what == "terrain" ? "Patch" : what == "planet" ? "Face" : what == "sea" ? "Sea" : what == "air" ? "Atmosphere" : what == "rivers" ? "Rivers" : null;
+            string prefix = what == "terrain" ? "Patch" : what == "planet" ? "Face" : what == "sea" ? "Sea" : what == "air" ? "Atmosphere" : what == "clouds" ? "Clouds" : what == "rivers" ? "Rivers" : null;
             if (what == "terrain") foreach (var t in FindObjectsByType<TerrainLod>(FindObjectsSortMode.None)) t.enabled = on;
             if (prefix != null)
             {

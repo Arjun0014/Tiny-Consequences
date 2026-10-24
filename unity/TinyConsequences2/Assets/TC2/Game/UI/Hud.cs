@@ -61,6 +61,7 @@ namespace TC2.Game
         Texture2D _dot;
         readonly System.Collections.Generic.List<Rect> _placed = new System.Collections.Generic.List<Rect>();
         readonly System.Collections.Generic.List<int> _byPeople = new System.Collections.Generic.List<int>();
+        readonly System.Collections.Generic.Dictionary<int, string> _placeLine = new System.Collections.Generic.Dictionary<int, string>();
         float _byPeopleAt = -99f;
         int _hoverPid, _hoverBid; float _hoverAt;
         string _news = ""; float _newsAge = 99f; int _newsCount;
@@ -197,14 +198,16 @@ namespace TC2.Game
             _dot = Solid(Color.white);
         }
 
-        /// <summary>A word drawn with a dark edge (the eight neighbours, then the letters).</summary>
+        /// <summary>A word drawn with a dark edge (four diagonal shadows, then the letters; the HUD draws its labels twice a frame, so it is kept cheap).</summary>
         static void Edged(Rect r, string text, GUIStyle st)
         {
+            if (Event.current.type != EventType.Repaint) return;   // (labels take no input: only the repaint draws them)
             var c = st.normal.textColor;
             st.normal.textColor = new Color(0.04f, 0.05f, 0.06f, 0.85f);
-            for (int dx = -1; dx <= 1; dx++)
-                for (int dy = -1; dy <= 1; dy++)
-                    if (dx != 0 || dy != 0) GUI.Label(new Rect(r.x + dx, r.y + dy, r.width, r.height), text, st);
+            GUI.Label(new Rect(r.x - 1, r.y - 1, r.width, r.height), text, st);
+            GUI.Label(new Rect(r.x + 1, r.y - 1, r.width, r.height), text, st);
+            GUI.Label(new Rect(r.x - 1, r.y + 1, r.width, r.height), text, st);
+            GUI.Label(new Rect(r.x + 1, r.y + 1, r.width, r.height), text, st);
             st.normal.textColor = c;
             GUI.Label(r, text, st);
         }
@@ -228,6 +231,15 @@ namespace TC2.Game
                 _byPeople.Clear();
                 for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid)) if (w.Settlements.Get(sid).Inhabited) _byPeople.Add(sid);
                 _byPeople.Sort((a, b) => { int c = w.Settlements.Get(b).Population.CompareTo(w.Settlements.Get(a).Population); return c != 0 ? c : a.CompareTo(b); });
+                _placeLine.Clear();
+                foreach (int sid in _byPeople)
+                {
+                    ref var s = ref w.Settlements.Get(sid);
+                    int paying = 0;
+                    for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o)) { ref var os = ref w.Settlements.Get(o); if (os.Lord == sid && os.Inhabited) paying++; }
+                    _placeLine[sid] = Gazetteer.Word(in s).Substring(2) + " of " + s.Population.ToString("N0", CultureInfo.InvariantCulture) +
+                                      (s.Lord != 0 && w.Settlements.Exists(s.Lord) ? ", pays " + w.History.NameOf(EntityRef.Settlement(s.Lord)) : paying > 0 ? ", lord of " + paying + (paying == 1 ? " village" : " villages") : "");
+                }
             }
             _placed.Clear();
             int max = alt > 9000f ? 12 : 48, shown = 0;
@@ -250,10 +262,7 @@ namespace TC2.Game
                 string name = w.History.NameOf(EntityRef.Settlement(sid));
                 var st = town ? _mapTown : _mapName;
                 Vector2 ns = st.CalcSize(new GUIContent(name));
-                int paying = 0;
-                for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o)) { ref var os = ref w.Settlements.Get(o); if (os.Lord == sid && os.Inhabited) paying++; }
-                string sub = Gazetteer.Word(in s).Substring(2) + " of " + s.Population.ToString("N0", CultureInfo.InvariantCulture) +
-                             (s.Lord != 0 && w.Settlements.Exists(s.Lord) ? ", pays " + w.History.NameOf(EntityRef.Settlement(s.Lord)) : paying > 0 ? ", lord of " + paying + (paying == 1 ? " village" : " villages") : "");
+                if (!_placeLine.TryGetValue(sid, out string sub)) sub = "";
                 bool withSub = alt < 9000f;
                 Vector2 ss = withSub ? _mapSub.CalcSize(new GUIContent(sub)) : Vector2.zero;
                 float wdt = Mathf.Max(ns.x, ss.x) + 6f, hgt = ns.y + ss.y;
