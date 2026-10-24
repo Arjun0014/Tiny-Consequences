@@ -56,6 +56,7 @@ namespace TC2.Headless
             if (a.Has("marriage")) { Marriage(w); return 0; }
             if (a.Has("ways")) { PeoplesWays(w); return 0; }
             if (a.Has("stonewalls")) { StoneWalls(w); return 0; }
+            if (a.Has("ceiling")) { Ceiling(w); return 0; }
             if (a.Has("heirs")) { Heirs(w); return 0; }
             if (a.Has("crofts")) { Crofts(w, a.Int("cell", 2)); return 0; }
             if (a.Has("seasons"))
@@ -693,6 +694,57 @@ namespace TC2.Headless
                                   guarded.ToString("0").PadLeft(19) + timber.ToString("0").PadLeft(16) + (r.stone ? r.dist.ToString("0") + (r.quarry ? " q" : "") : "-").PadLeft(12) +
                                   stoneH.ToString("0").PadLeft(14) + (" (" + (TC2.Core.Society.Conflict.LabourWorth * stoneH).ToString("0") + ")").PadLeft(9) + r.years.ToString("0.0").PadLeft(10));
             }
+        /// (settlement change at the ceiling, measured first: `place --ceiling`) why the map stops changing once the land fills: each living village's people,
+        /// its arable land against what its people need (`HaPerHead`), what presses its households to leave (`Migration.Pressure`), the land none of its
+        /// households holds and the households short of their want (C3.6b), the best place its people know and whether it is still free and good
+        /// (`Migration.BestSite`), and the parties it sent out in the last fifty years; for the world, the villages with land to spare and the crowded,
+        /// and the foundings of fifty years - whether land left empty in one village could draw the land-short of another (a pull no rule has yet).
+        /// </summary>
+        static void Ceiling(World w)
+        {
+            long now = w.Now;
+            var M = w.Migration;
+            var H = w.History;
+            var parties = new Dictionary<int, int>();
+            int founded50 = 0, parties50 = 0;
+            for (int i = H.Count - 1; i >= 0; i--)
+            {
+                var e = H.At(i);
+                if (e.Time < now - 50 * SimTime.Year) break;
+                if (e.Kind == HistoryKind.PartySetOut) { parties.TryGetValue(e.Settlement, out int n); parties[e.Settlement] = n + 1; parties50++; }
+                else if (e.Kind == HistoryKind.SettlementFounded) founded50++;
+            }
+            var rows = new List<(int sid, int pop, double ratio, double pressure, double unheld, int shortHh, int hhN, double loreQ, int live, double liveQ, int parties)>();
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                ref var st = ref w.Settlements.Get(sid);
+                if (!st.Inhabited) continue;
+                double need = Math.Max(1.0, st.Population * TC2.Core.Places.SettlementSystem.HaPerHead(w, in st));
+                double ratio = st.ArableHa / need;
+                double pressure = M.Pressure(in st);
+                double unheld = w.Holdings.Unheld(sid);
+                var hhs = w.HouseholdsOf(sid);
+                int shortHh = 0, hhN = 0;
+                for (int i = 0; i < hhs.Count; i++) { ref var hh = ref w.Households.Get(hhs[i]); if (hh.Dissolved != 0) continue; hhN++; if (hh.Land < w.Holdings.LandWant(hhs[i]) - 1e-9) shortHh++; }
+                st.Lore.Best(out float lq);
+                int live = M.BestSite(sid, out double liveQ);
+                parties.TryGetValue(sid, out int np);
+                rows.Add((sid, st.Population, ratio, pressure, unheld, shortHh, hhN, lq, live, liveQ, np));
+            }
+            rows.Sort((a, b) => a.ratio.CompareTo(b.ratio));
+            Console.WriteLine("ceiling at " + SimTime.Format(now) + ": " + rows.Count + " villages; parties set out in the last fifty years " + parties50 + ", villages founded " + founded50);
+            Console.WriteLine("  village                 people  land/need  pressure  unheld ha  short hh  best known (stored / free now)  parties 50 y");
+            int roomy = 0, crowded = 0, knowFree = 0; double spare = 0; int shortCrowded = 0;
+            foreach (var r in rows)
+            {
+                if (r.ratio >= 1.25) { roomy++; spare += r.unheld; }
+                if (r.ratio < 0.9) { crowded++; shortCrowded += r.shortHh; }
+                if (r.live >= 0) knowFree++;
+                Console.WriteLine("  " + w.History.NameOf(EntityRef.Settlement(r.sid)).PadRight(22) + r.pop.ToString().PadLeft(7) + r.ratio.ToString("0.00").PadLeft(11) + r.pressure.ToString("0.00").PadLeft(10) +
+                                  r.unheld.ToString("0").PadLeft(11) + (r.shortHh + "/" + r.hhN).PadLeft(10) + (r.loreQ.ToString("0.00") + " / " + (r.live >= 0 ? r.liveQ.ToString("0.00") : "none")).PadLeft(32) + r.parties.ToString().PadLeft(14));
+            }
+            Console.WriteLine("  land to spare (1.25 x need or more): " + roomy + " villages, " + spare.ToString("0") + " ha held by none; crowded (under 0.9): " + crowded + " villages, " + shortCrowded +
+                              " households short of their want; villages knowing a place still free and good: " + knowFree);
         }
 
         static void Marriage(World w)
