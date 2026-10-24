@@ -272,6 +272,7 @@ namespace TC2.Game
                 Vector2 ss = withSub ? _mapSub.CalcSize(new GUIContent(sub)) : Vector2.zero;
                 float wdt = Mathf.Max(ns.x, ss.x) + 6f, hgt = ns.y + ss.y;
                 var box = new Rect(x - wdt * 0.5f, y - hgt - 7f, wdt, hgt);
+                if (box.y < 48f || box.yMax > sh - 46f) continue;   // (clear of the bar at the top and the ticker at the foot)
                 bool clash = false;
                 foreach (var r in _placed) if (r.Overlaps(box)) { clash = true; break; }
                 if (clash) continue;
