@@ -54,7 +54,7 @@ namespace TC2.Headless
             if (a.Has("still")) { StillAudit(w, a); return 0; }
             if (a.Has("heads")) { Heads(w); return 0; }
             if (a.Has("marriage")) { Marriage(w); return 0; }
-            if (a.Has("ways")) { Ways(w); return 0; }
+            if (a.Has("ways")) { PeoplesWays(w); return 0; }
             if (a.Has("heirs")) { Heirs(w); return 0; }
             if (a.Has("crofts")) { Crofts(w, a.Int("cell", 2)); return 0; }
             if (a.Has("seasons"))
@@ -598,7 +598,7 @@ namespace TC2.Headless
         /// within a day's walk) against all pairs, how many lines live and how far each spreads, and whether the houses stand as their village's way
         /// (their recorded roof form against the tradition's).
         /// </summary>
-        static void Ways(World w)
+        static void PeoplesWays(World w)
         {
             var ids = new List<int>();
             for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid)) if (w.Settlements.Get(sid).Inhabited) ids.Add(sid);
