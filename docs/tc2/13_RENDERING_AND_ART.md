@@ -238,3 +238,11 @@ street, the street beaten earth out past its last house; a hamlet with no worn w
 - Tools: shots `--ground` lay each home's simulated ground under it as a plate (`WorldObjectsView.ShowGround`); views `rowclose`, `rowlow`,
   `rowstreet`, `rowmarket` (the street with most narrow town houses, the market place), `hall`, `mouth`/`mouthfar` (the largest river mouth near
   the village: rivers end at the drawn waterline, `Rivers.Mouth`).
+
+## 15. The planet from space (session 25, D2-170)
+The air is single scattering in an exponential atmosphere (`Atmosphere.shader`: Rayleigh with Earth's vertical optical depths over a scale height of
+1.6 % of the radius, a grey haze, the sun's light dimmed on its way in, the planet's soft shadow): a thin bright limb, a veil toward the limb, the
+terminator's reddened light and a ring of sunrise against the sun; it takes over from the views' haze above 900 m-2.2 km. Clouds come from the weather
+in two channels (`CloudView`, `Clouds.shader`): decks where it rains today (billowing edges, sun-side relief, drawn out along the bands' winds) and
+fair-weather cumulus of the moist climate (puffs, a veil from afar); the shell at 228 m, gone at the village view. Tunables in `Look.cs`; shots take
+per-view variants (`"orbit~AtmoSun=8"`).

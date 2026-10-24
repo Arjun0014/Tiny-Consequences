@@ -117,3 +117,12 @@ births, deaths, marriages, settlement founded, harvests).
   years an age), names them for what marked them, and writes chapters, places' histories and lives whose every line is a record.
 - In the game: the Book (B) - ages or places, chapters, each line a link to its causes and its place. Headless: `chronicle`.
 - Not yet: Your Actions (with F9), timelines, news by incident, biography and polity pages.
+
+## 12. The History Book as a book (session 25, D2-171)
+- `Core/History/HistoryBook.cs` (an observer) writes the world's history after the fact in eight parts: the Ages; Realms and Rulers (lordships rebuilt
+  year by year from their bonds, their tiers, the houses that led their seats); Wars and Feuds (raids between two villages, ended by a bow or twelve
+  quiet years; past forty years a feud); Famine, Plague and Disaster (hungry times as the annals' peaks); Places; Lives (rulers, founders, war
+  leaders, finders); Threads of Cause (the chains through the most kinds of things, their turning points shown); A Chronology. Every line its record.
+- In the game: Book (B) - a two-page book (contents left, the chapter right, a line's causes, Go there, turning pages), each part written when first
+  opened (`HistoryBook.Writer`); headless `book --load SAVE --md FILE`; tests `HistoryBookTests`.
+- Next: a timeline page (the realms' sizes and the ages over the years, drawn), a realm's map, "Your Actions" (F9) as a part of its own.

@@ -5066,3 +5066,178 @@ buffers sized at the load: ~114 MB more than before), 955 MB with the view, 1,05
 9,500 people still holds ~1.05 GB, a little past `14`'s 1 GB budget - what holds it (the world's own state at ~3.6x its headless managed size, the
 views' meshes) is a question for a memory pass of great worlds, with their frame rate (`14` §7).
 (D2-168 - C10.8 the asking, drafted before this - is recorded when it lands.)
+
+## D2-170 — 2026-10-24 — The planet from space: the air as single scattering, clouds from the weather drawn as decks and cumulus fields (presentation)
+
+**Context.** Arjun (24 Oct 2026): "make the planet look more like Earth from space: better atmosphere, cloud coverage, cloud form, and overall orbital
+readability." Real orbit shots (`s24q`, `s24tn`) showed why it did not: the air was an additive rim on a sphere 1.07 R, brightest at its *outer* edge,
+so it read as a glass shell round the planet (a hard ring at the region view's horizon too); nothing veiled the ground toward the limb; the clouds were a
+sparse blotch where it rained (one cover number with noise), floating on a shell 390 m up on a 6 km planet - a separate layer beyond the limb; the deep
+sea a mid blue.
+
+**Decision.** (presentation only; `Game/View/Look.cs` holds the tunables, a shot sets them per view: `"orbit~AtmoSun=8~CloudCu=1.2"`)
+- **The air** (`Atmosphere.shader`, rewritten): the sunlight scattered toward the eye along each ray through an exponential atmosphere - Rayleigh with
+  Earth's vertical optical depths (0.040, 0.095, 0.230 at 680/550/440 nm) over a scale height of 1.6 % of the radius (~96 m: a miniature's limb must
+  read at the orbit view), a grey haze a third as high - single scattering, 16 steps along the ray and 4 toward the sun, the sun's light dimmed on its way
+  in, the planet's shadow with a soft penumbra (the twilight wedge); composed as colour + what lies behind x the air's transmittance, drawn after the
+  clouds over everything the shell covers, the ground as the sea's sphere (no depth texture; from orbit the relief is a few pixels). It gives the thin
+  bright limb fading to space, the veil deepening toward the limb, the terminator's reddened light and the ring of sunrise round a planet seen against
+  the sun. It takes over from the views' own haze and sky between 900 m and 2.2 km of height (the village view and below unchanged: there the ground's
+  real distance matters and the sky is the camera's background); the sky there turns to space.
+- **The clouds** (`CloudView`, `Clouds.shader`): the cover map now carries the weather in two channels - **decks** where it rains today (and the storms'
+  bands) and **fair-weather cumulus** where the climate's air is moist on a dry day (`Moist`, the circulation bands of `WorldGenerator.Moisture`) - so the
+  wet bands show their cumulus fields and the dry subtropics stay clear. Decks are drawn with billowing, ragged edges, lumpier inside, their forms drawn
+  out east-west and drifting with the latitude bands' winds (trades from the east, westerlies beyond 30 degrees; whole noise tiles round each parallel,
+  the three-way projection near the poles) and given relief from the sun's side; cumulus as soft puffs of two sizes (~45 m and ~110 m cells), formed
+  or not by a coarser noise (more the moister), drawn as their mean cover - a soft veil - once a puff would be under ~4 pixels (from orbit a speckle reads
+  as glitter). The shell lowered to 228 m (high ground pierces it); clouds are gone at the village view and below (they smeared it) and fade at grazing
+  angles at the limb. The ground's cloud shadow reads both channels.
+- **The sea** a darker deep blue (the floor's deep colour 0.010/0.052/0.155); **villages' lights** at night half as wide with a brighter core - points,
+  not pink discs, from orbit.
+Nothing here reads more of the world than the cover map, the moisture and the time; no cloud exists where the weather and the climate put none.
+
+**Evidence.** Real shots of seed 2's year-300 world in four rounds, the defaults beside variants in one run: `s25a` (the new air reads at once - the
+limb, the veil, the terminator; the first cumulus a field of white worms and the village view smeared), `s25b` (isotropic puffs, the shell lowered, the
+village view clear; puffs read as polka dots), `s25c` (puffs of two sizes, ragged; the twilight wedge soft; the planet at midnight ringed with sunrise
+and its villages' lights points), `s25d` (the veil from afar). The Unity C# compiles (the editor's own compile in each shots run; `cc` itself was found to compile nothing since session 23 and was repaired,
+ea6b826). **Web `s25web1` 6/6** (WebGPU; the browser's probe = headless, bit-identical; reload continues; a day away catches up 96 years); its frame rates
+are below session 24's `s24web2` in every view (orbit 109 against 119 fps, region 40 against 50, village 24 against 30) - two runs on a shared machine are
+no evidence (14 §7: paired counts in one page), and the village view draws neither the new air nor the clouds; the names (D2-172) drew each label nine
+times twice a frame - made cheaper at once (dd2c3a3); the paired cost of the air, the clouds and the names (`realmsperf.mjs --layer air|clouds|names`)
+waits for the next Web build.
+
+## D2-171 — 2026-10-24 — The History Book as a book: eight parts written after the fact, every line its record (C12; 11 §7)
+
+**Context.** Arjun (24 Oct 2026): "plan and begin a much better History Book presentation: real book-like structure, sections, rulers, major events,
+realm changes, wars, disasters, and long-term causality." The book (D2-077) was a list of ages and places, each a list of lines. A 900-year world's
+ledger (seed 2's `_l9i2`: 305,000 events) holds far more: 279 bonds of tribute, ~1,000 raids, a hundred successions a town, the famines and epidemics,
+chains of causes centuries long - but nothing told them as realms, wars, rulers or threads.
+
+**Decision.** A historian - `Core/History/HistoryBook.cs`, an observer that reads the ledger and the annals and writes nothing - composes the book in
+eight parts; prose only counts and names what the records and the annals hold, and every line stands on its record (the record's own words under its
+date) whose causes the reader can walk:
+1. **The Ages of the World** - the eras (Chronicle, D2-077), each with a paragraph of what marked it from its numbers, the greatest realm at its end, its
+   numbers and its most important records (half of what marked it).
+2. **Realms and Rulers** - every lordship rebuilt year by year from its bonds (`TributeAgreed`/`TributeEnded`): each village under its highest lord at
+   each year's end, the realm's size in all its tiers and its depth; a chapter per realm (the twelve greatest; the rest as lesser lordships): how it
+   began, its size by century, the bonds made with its seat and how (after its bands came, for famine grain, when it asked), how they ended, how it
+   ended (its seat bowed to another, was abandoned, or the last paying village stopped); **the houses that led its seat** (runs of the first among its
+   people by family name, with their years and heads - a household's id changes with each marriage, a house is its name), the longest first among them;
+   its bonds made and ended; its wars by foe.
+3. **Wars and Feuds** - the raids between two villages, one war until a bow between them or twelve quiet years; past forty years a long feud; titles
+   after the fact ("The Raids of A on B", "The War of A and B", "The Second Long Feud of ..."); its raids by side, bands driven off, blows, grain carried
+   off, how it began and its first cause on record, how it ended.
+4. **Famine, Plague and Disaster** - hungry times found as the peaks of the annals' hunger (a world at its land's ceiling hungers most years: the book
+   tells the worst eight, each the worst year not yet told, widened while its neighbours starved two fifths as many), the villages that starved, where it
+   came first and its chain's first cause; each sickness's outbreaks (by its family), their dead and villages; the earth's and the sky's violence.
+5. **Places** - the most storied 24: founded when and by whom, the houses that led it, whom it paid and who paid it, what befell it, its records.
+6. **Lives** - rulers (the longest first at each great seat while it was a realm), founders (who led a following away), war leaders (who raised the most
+   bands), finders (the first to find a craft), each with their records.
+7. **Threads of Cause** - the chains that passed through the most kinds of things (nature, hunger, sickness, deeds, war, tribute, founding...), scored by
+   their years and their kinds, root first; the book shows each chain's turning points (the root, each kind's first link, the most important, the last)
+   and tells the links between ("... 113 links of takings, bands and raids, years 308-382 ...").
+8. **A Chronology** - each century's ten most important records.
+The game's Book (B) is a two-page book on a warm page: the title and contents on the left (the preface, the parts, the open part's chapters), the
+chapter on the right (headings, prose, numbers, lines), a chosen line's causes under it with Go there, the chapter's place to go to, turning pages; a part
+is written when first opened (`HistoryBook.Writer`), the book rewritten in a new year. Headless `book --load SAVE [--md FILE]`.
+
+**Evidence.** `HistoryBookTests` 5/5 (every line its record and its text; the same world writes the same book; reading changes nothing; realms rebuilt
+tier by tier from a premise ledger - B under A, C under B, D under A, then B leaving with C; raids one war until twelve quiet years and a bow; a thread
+from lightning through a failed harvest, famine and a setting out to a raid, root first); `ChronicleTests` 3/3; floatcheck clean. The year-900 world's
+book: 8 parts, 85 chapters, 1,065 lines, none without its record, written in 0.55 s headless (the Ages 0.10 s, Places 0.24 s - a part at a time in the
+game); read through and corrected from its own text (a hundred-name ruler list became the houses; a 320-year "Great Famine" became the peaks; a 381-year
+"war" became a feud split at its bows; the threads first chose endless tit-for-tat chains, now the chains through the most kinds of things; the place
+chapters had counted only political records - now every record at the place). **In the browser** (`s25web1`; `bookshots.mjs` on the year-900
+world): each part written when first opened in 2-83 ms, Places in 271 ms (a hitch the first time); the pages read as a book (`tc2/out/webtest/s25web1b900`:
+the preface, a realm with its houses, a thread with its turning points); the HUD's dark buttons on the page were restyled as the page's own (8c8fab4).
+
+## D2-172 — 2026-10-24 — Places and people read clearly: places named on the map, a tag on who and what is under the pointer (presentation)
+
+**Context.** Arjun (24 Oct 2026): "improve human / house / settlement identification so places and people read clearly." From the region view up a
+village is a smudge among fields with no name; close in, a person or a house tells who or what it is only once clicked.
+
+**Decision.** (HUD, reads the world) Each inhabited place is **named on the map** over its square - a town (300 and more) larger - with what it is and its
+bond under it ("town of 864, pays Lounstead"; "village of 207, lord of 3 villages"), the most peopled first and none drawn over another; places over the
+horizon and the village under the camera (below 1.4 km) are left out, none below 420 m, and from orbit only the largest dozen without the line under
+it. The key N (and the Web bridge's `names on|off`) turns them off. Close in (below 1.3 km), **a tag** on the person under the pointer - their name and
+age, what they are doing - or the building: its plan and whose home it is (or that it stands empty), or the work and its place.
+
+**Evidence.** In the Web build on great worlds (`tc2/scripts/bookshots.mjs`: a headless save put into the browser's store; `s25web1b900`,
+`s25web1b300`): the region view names each place with its line ("town of 864, lord of 5 villages"; "town of 575, pays Lounstead"), the orbit the
+largest dozen over the planet; names that ran under the HUD's bar are now kept clear of it and of the ticker (25e50d1). Later the same day: **the works
+named at the village view** (the well, granaries, smithy, training ground, market, weaver's shed, kiln, boat shed, mine or quarry - each kind once a
+place) and **people's given names over their heads at the closest views** (below 140 m, the fourteen nearest the middle); labels drawn at the repaint
+only with four shadows, each place's line worked out once a second (the cost of nine passes twice a frame).
+
+## D2-168 — 2026-10-21 — The asking: a free village is asked a tenth at its harvest by its nearest stronger neighbour whose first household keeps sworn men (C10.8)
+
+**Context.** The roadmap named the next governance slices as a lord's death and its tributaries, and rising together. Measured first (session 24,
+`lordships --heads --margins --could --wrongs`, new tools, on the ten C9.5b worlds at year 300; `results/lordships_s*_y1_hm.txt`, `could_s*_y1.txt`,
+`wrongs_s*_y1.txt`): 33 bonds in 2,151 bond-years, the lord's first person changing at least 167 times while one held - **25 of the 26 bonds still paid
+had outlived the person they were made with** - yet **25 of the 26 lords were still the stronger by the odds of a first bow**: the bonds hold by strength,
+not inertia, and renewing them at each succession would end about one in 26; lordships of one to four villages leave little to rise against. What
+limits them is formation: **514 pairs of villages within a day's walk of different realms where one is the stronger by the odds of a bow** (a way on foot
+joins 435, the weaker pays nobody in 408; 142 of 179 villages could make a neighbour bow) against 26 bonds - a village bows only after a raid over a
+wrong has held the field and it is hemmed in (D2-075), or for famine grain (C10.4); nobody ever asks. Since C10.7b (D2-165) the instrument exists: at year
+300 the ten worlds keep 499 sworn men in 80 villages (against 28 lords), whose only use was practice and the bands raised over wrongs.
+
+**Decision.** At a free village's harvest (`Conflict.Demanded`, both resolutions, after it weighs bowing for bread) its nearest neighbour within a day's
+walk joined by a way on foot, outside its own lordship, whose first among the people keeps at least three sworn men (`DemandMen` = `BandAtLeast`: a band
+of its own to come for the tenth) and which is the stronger by the odds of a bow (`TributeOdds` x1.2, `Might` with its call), asks it a tenth of its
+harvest. Its people bow where they could neither stand against the asker's men nor go elsewhere (no good land known - D2-075's own reason): a bond for
+peace made at the asking (`TributeAgreed` ArgB 2, caused by the asking, which is enabled by the swearing of the asker's men), this harvest's tenth paid at
+once; else they refuse, and the refusal is a wrong the asker holds (D2-075's refusal deed, worth the tenth): its bands may come over it (D2-073), and a
+raid that holds the field weighs D2-075's bow - which a village that knows good land elsewhere still declines (it may leave). Once a year at most (its
+harvest), by one asker (the nearest). History: `TributeDemanded` (100). `--olddemand` (nobody asks) on the same binary; `--demandtally`; sim version 91.
+
+**The record.** Early medieval lordship lived on tribute taken from weaker neighbours by expeditions that also fed and rewarded the lord's following
+(T. Reuter, "Plunder and tribute in the Carolingian empire", *TRHS* 35, 1985); Bede's overkings took tribute of lesser kingdoms; Irish kings took
+tribute and hostages of their clients. Those who could neither resist nor leave paid; those who could, refused - and the following came.
+
+**Tells.** History: "Methdal, whose first household keeps sworn men, asked Stohope a tenth of its harvest (400 days' grain): its people could neither stand
+against them nor go elsewhere, and bowed" / "...its people would not pay - a refusal Methdal holds against them"; the bond: "...agreed to pay it a tenth of
+every harvest when it asked: they could neither stand against its men nor go elsewhere". The settlement page: "It pays tribute to X since year Y: when it
+asked a tenth, its people could neither stand against its men nor go elsewhere." **The world picture**: realms grow outward from the villages that keep
+men (the realms map layer, D2-167); bands on the roads after a refusal; the tenth carried to more lords.
+
+**Evidence.** DemandTests 4/4 (a hemmed village bows to its stronger neighbour keeping three sworn men when it asks - the bond for peace on its asking, its
+cause the asking, the texts and the page; under `--olddemand` nobody asks; a village that knows good land elsewhere refuses - the refusal a wrong the
+asker holds, its foe the refuser the next day, heavy enough to raise a band; nobody asks with too few men, the weaker never asks the stronger, a
+tributary is not asked, a tributary never asks its own lord); LordshipTests 4, BreadTests 5, SwornTests 5, MightTests 6, DefenceTests 8, DeterminismTests
+6, SaveLoad 8 - all 0 skipped (`bin_dm1`, db7e92e); floatcheck clean. Control: `--olddemand` (with `--demandtally`) seed 4 = the integrated rules'
+`_i2` - annals byte-identical, state hash eda1d412561bb10a both. **Ten seeds** (`_dm1` against `_i2`, `results/cmp_i2_dm1.txt`; the twins part at years
+6-30): the per-person rates at par - births and deaths a thousand person-years x1.008 and x0.982 (t 0.95, -1.79), hunger a person-year x0.72 (t -1.34),
+people at the end x1.020 (t 0.49), over years 200-299 x0.946 (t -1.51); **one lean, people over years 100-199 x0.908 (t -2.85)**. The mechanism, strongly:
+tribute agreed x12.1 (t 9.5: 19 to 92 bonds a world against 1 to 10), the greatest lordship x4.2 (t 5.1: 8 to 16 villages in seven worlds - Rainthorpe 16
+of seed 4's 32, Logruthford 15 of seed 3's 21, Skaldton 12 of seed 8's 14), depth x1.5; askings 17-91 a world, nearly all bowed (refused 0-5: few free
+villages know good land elsewhere); but **bonds ended x20.9** (11-67 a world: most bonds end - the lord no longer the stronger) and each end is a refusal
+the lord holds: **raids x6.1** (t 4.5), loot x10, wounds a person-year x2.75 (t 4.3), deaths of wounds x2.8, palisades x1.84 - war around the lordships,
+the heirs' and the weakened lords' bands against those that stopped paying. **The 900-year check, seed 2** (`_l9dm1`, `bin_dm2` = `bin_dm1`'s rules
+with the tools, its tests 0 skipped and `_dm1` reproduced): 279 bonds made and 250 ended in the 600 years, 185 askings all bowed; at year 900 two lords,
+the greatest Mestskouford with 18 villages paying of 31, depth 3 (the integrated rules' seed 2: Lounstead's 13 of 32); 9,254 people (9,532); births and
+deaths a thousand person-years 39.7 and 38.1 (39.8, 38.0), hunger 7.11 (6.57), wounds 0.71 (0.60); raids 1,281 (963). **Seed 4**: 198 bonds made and 166 ended, 111 askings all bowed; at year 900 two lords, Krailddal with 24 of 35 villages
+paying, depth 4 (the integrated rules' seed 4: seven lordships, the greatest 4); 10,873 people (12,071); births and deaths a thousand person-years 40.3
+and 38.5 (37.7, 36.1), hunger 4.89 (6.23), wounds 0.69 (0.47); raids 1,415 (681) - in both worlds one realm grows to hold most of the villages, through a
+churn of bonds and twice the raids. **The lordships at years 300, 600 and 900** (`7_g`, `lordships --bonds --heads --margins --could --wrongs`
+on `_dm1`/`_l9dm1`; `results/lordships_s{2,4}_dm1_y*.txt`): most villages pay a lord at every age (seed 2: 24 of 27 at year 300, 25 of 27 at 600, 28 of 31
+at 900; seed 4: 27 of 31, 29 of 33, 31 of 35), every bond still paid is the stronger by the odds of a bow (none held in the band x1-x1.2: the churn is no
+lapse of the record but real strength moving), and **the greatest realm changes hands** - seed 2: Taildvehope 10 villages (year 300), 20 in four tiers
+(600), then Mestskouford 18 (900); seed 4: Rainthorpe 16 (300), 12 (600), then Krailddal 24 (900). **The worlds' books** (`book --load` on `_l9dm1`
+year 900, D2-171) tell it as a cycle of hegemonies, not one realm growing for ever: seed 2's Taildvehope held 24 villages in five tiers by year 338
+and was gone by 829, Elddal held 19 for eleven years (247-258), Vaildwick, Skaenstead and Mestskouford 22 each in their turns (586, 621, 664). **What
+holds the great realms** (`lordships --together`, session 25): in 22 of the 28 realms with two or more villages paying directly, the villages together
+outweigh their lord's own strength (x1.3-x13.8) while none alone can stand against the lord and the others' call - divide and rule; the counterweight
+the record names is the lord's death (C10.9's design: `tc2/out/tools/s25/c109_design.md`). **The matched placebo** (`7_h`, `7_i`: the integrated
+rules `--olddemand` nudged by one FU at each world's parting year; `results/cmp_i2_dmp.txt`, `cmp_dmp_dm1.txt`): the placebo twins themselves do not lean
+(people over years 100-199 x1.005, t 0.28) - **against its placebo twin C10.8's lean holds and is real: people over 100-199 x0.904 (t -4.64)**, over
+200-299 x0.907 (t -1.25), at the end x0.945 (t -0.43); births and deaths a thousand person-years at par (x1.005, x0.994). By 25-year spans (the
+annals of the ten pairs) the gap opens from year 25 (x0.985) to its widest at years 175-224 (x0.87) and narrows to x0.91-0.93 by 250-300. **Its
+mechanism, by century** (rates a thousand person-years, placebo -> C10.8): years 0-99 births 43.0 -> 42.7, deaths 27.5 -> 27.9 (wounds 0.0 -> 0.7);
+years 100-199 births 42.3 -> 42.1, deaths 30.0 -> 30.8 (wounds 0.06 -> 0.72, hunger 1.9 -> 2.1), **foundings 74 -> 49** (founding answers crowding:
+fewer people, fewer parties); years 200-299 near the land's ceiling, deaths 34.3 -> 33.3 (sickness 1.6 -> 0.05). So the asking costs its worlds about a
+tenth of their people while they grow - the war of lords over refusals (wounds x4.2 a person-year, raids x6.6, tribute paid x44) - and little at the
+ceiling. **Landed as it is**: that cost is the record's (lordship lived on tribute taken by expeditions that also fed its following, and war around it
+was the price), it is a level, not a rate (the per-person rates at par), and the realms rise and fall; C10.9 (the lord's death frees its tributaries)
+follows at once and is measured against it.
+
+**Landed** (session 25, 25 Oct 2026; merge 731c75a, sim 91). The branch's full suite (`7_j`, its tip with main's book and names) passed 450 and failed one: `HistoryBookTests.RaidsAreOneWarUntilABowOrTwelveQuietYears`, whose hand-written raids and bow between villages 1 and 2 met C10.8's own asking between the same two villages - village 1 bowed to village 2 by its own asking in year 26, a year before the premise's bow, so the book rightly ended the war there; the premise now keeps the askings off (`Conflict.DemandOff`, 1b5e033). On the merged tip (`bin_dm4`): HistoryBookTests 5/5, DemandTests 4/4, DeterminismTests 7/7, SaveLoad 8/8, floatcheck clean; main's full suite follows the landing. C10.9 (the lord's death, D2-173) is measured against it.

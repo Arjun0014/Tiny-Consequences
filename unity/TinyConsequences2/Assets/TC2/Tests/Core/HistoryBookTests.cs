@@ -3,6 +3,7 @@ using NUnit.Framework;
 using TC2.Core.Foundation;
 using TC2.Core.History;
 using TC2.Core.Simulation;
+using TC2.Core.Society;
 
 namespace TC2.Tests.Core
 {
@@ -85,6 +86,15 @@ namespace TC2.Tests.Core
             var lesser = realms.Chapters.Find(x => x.Title == "Lesser Lordships");
             Assert.IsNotNull(lesser, "B, paying nobody after it stopped, is a lordship of one village paying it");
             Assert.IsTrue(lesser.Blocks.Exists(x => x.Text.StartsWith(bn + " - ")), "B's own lordship");
+            // the Timeline draws the same realm: four villages with its seat at its height, year by year from its bonds
+            var tl = HistoryBook.Timeline(w);
+            Assert.AreEqual(tl.To - tl.From + 1, tl.People.Length, "a year a column");
+            Assert.AreEqual(1, tl.Realms.Count, "only realms of two villages paying or more are drawn");
+            Assert.AreEqual(an, tl.Realms[0].Name);
+            Assert.AreEqual(4, tl.Realms[0].Peak);
+            Assert.AreEqual(4, tl.Realms[0].Villages[tl.Realms[0].PeakYear - tl.From], "its height in its year's column");
+            Assert.AreEqual(2, tl.Realms[0].Villages[tl.To - tl.From], "and now A with D only");
+            Assert.IsTrue(tl.Marks.Exists(m => m.Kind == 0 && m.Year == tl.Realms[0].PeakYear), "its height a moment of the timeline");
         }
 
         [Test]
@@ -111,29 +121,36 @@ namespace TC2.Tests.Core
         [Test]
         public void RaidsAreOneWarUntilABowOrTwelveQuietYears()
         {
-            var w = TestWorlds.Make(617);
-            Coarse(w);
-            Years(w, 2);
-            int a = 1, b = 2;
-            Rec(w, HistoryKind.Raid, a, b, argA: 10, argB: 103, at: b);
-            Years(w, 3);
-            Rec(w, HistoryKind.Raid, a, b, argA: 12, argB: 204, at: b);   // (driven off)
-            Years(w, 20);   // twelve quiet years and more: a new war
-            Rec(w, HistoryKind.Raid, b, a, argA: 9, argB: 105, at: a);
-            Years(w, 1);
-            Rec(w, HistoryKind.Raid, a, b, argA: 14, argB: 106, at: b);
-            Years(w, 1);
-            Rec(w, HistoryKind.TributeAgreed, b, a);   // and the bow that ends it
-            Years(w, 1);
-            var wars = HistoryBook.Write(w).Parts[2];
-            foreach (var ch in wars.Chapters) Console.WriteLine(ch.Title + " - " + ch.Sub + "\n  " + (ch.Blocks.Count > 0 ? ch.Blocks[0].Text : ""));
-            string an = w.History.NameOf(EntityRef.Settlement(a)), bn = w.History.NameOf(EntityRef.Settlement(b));
-            var first = wars.Chapters.Find(x => x.Title == "The Raids of " + an + " on " + bn);
-            var second = wars.Chapters.Find(x => x.Title == "The War of " + an + " and " + bn);
-            Assert.IsNotNull(first, "the first two raids, one way: raids");
-            Assert.IsNotNull(second, "after the quiet years, raids both ways: a war");
-            StringAssert.Contains("one band was driven off", first.Blocks[0].Text);
-            StringAssert.Contains("bowed to " + an, second.Blocks[0].Text, "the bow ends it");
+            // premise: raids and a bow between villages 1 and 2 written by hand - the world's own askings (C10.8) are off, or a refusal
+            // between the same two villages in those years would be a war event of its own and the premise's bow not the war's end
+            Conflict.DemandOff = true;
+            try
+            {
+                var w = TestWorlds.Make(617);
+                Coarse(w);
+                Years(w, 2);
+                int a = 1, b = 2;
+                Rec(w, HistoryKind.Raid, a, b, argA: 10, argB: 103, at: b);
+                Years(w, 3);
+                Rec(w, HistoryKind.Raid, a, b, argA: 12, argB: 204, at: b);   // (driven off)
+                Years(w, 20);   // twelve quiet years and more: a new war
+                Rec(w, HistoryKind.Raid, b, a, argA: 9, argB: 105, at: a);
+                Years(w, 1);
+                Rec(w, HistoryKind.Raid, a, b, argA: 14, argB: 106, at: b);
+                Years(w, 1);
+                Rec(w, HistoryKind.TributeAgreed, b, a);   // and the bow that ends it
+                Years(w, 1);
+                var wars = HistoryBook.Write(w).Parts[2];
+                foreach (var ch in wars.Chapters) Console.WriteLine(ch.Title + " - " + ch.Sub + "\n  " + (ch.Blocks.Count > 0 ? ch.Blocks[0].Text : ""));
+                string an = w.History.NameOf(EntityRef.Settlement(a)), bn = w.History.NameOf(EntityRef.Settlement(b));
+                var first = wars.Chapters.Find(x => x.Title == "The Raids of " + an + " on " + bn);
+                var second = wars.Chapters.Find(x => x.Title == "The War of " + an + " and " + bn);
+                Assert.IsNotNull(first, "the first two raids, one way: raids");
+                Assert.IsNotNull(second, "after the quiet years, raids both ways: a war");
+                StringAssert.Contains("one band was driven off", first.Blocks[0].Text);
+                StringAssert.Contains("bowed to " + an, second.Blocks[0].Text, "the bow ends it");
+            }
+            finally { Conflict.DemandOff = false; }
         }
 
         [Test]

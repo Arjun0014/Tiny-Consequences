@@ -359,6 +359,20 @@ war (raids x6), and over 900 years one realm comes to hold most of each world (s
 placebo and the bonds' lives (queued) decide whether it lands as it is or, as this leans, with a counterweight first (rising together, renewal at
 succession). SESSION_HANDOFF "Session 24, second context - END" has the queue (stopping; how to restart) and the steps.
 
+**Direction from Arjun (24 Oct 2026, session 25)**: forward progress, not over-testing; the governance/civilisation slices; a strong "finished core
+simulation" within two weeks (`25` §8); the planet like Earth from space; places, houses and people identifiable; a real History Book (sections,
+rulers, realm changes, wars, disasters, long causality); then god powers and player-facing gameplay.
+
+**Where we are (session 25, 24 Oct 2026, 22:14-~23:40 IST; context handoff with the job queue running)**: on main (sim 90, no simulation change) **the
+planet from space** (D2-170: single-scattering air - a thin limb, a veil toward it, the terminator's penumbra; clouds from the weather as rain decks and
+cumulus fields; `Look.cs`), **the History Book as a book** (D2-171: `HistoryBook` writes eight parts after the fact - Ages, Realms and Rulers with the
+houses that led each seat, Wars and Feuds, Famine/Plague/Disaster, Places, Lives, Threads of Cause, A Chronology - and a Timeline page; a two-page
+reader; headless `book`), **places, works and people named** (D2-172); the compile check `unity.mjs cc` repaired (it had compiled nothing since session 23).
+Web `s25web1` 6/6. **C10.8 the asking decided: land** (its matched placebo: a real lean, people x0.90 while the worlds grow, explained by its war -
+D2-168 draft complete); its branch suite was running at the handoff. **C10.9 the lord's death** (bonds for peace lapse at the death of the first at a
+lord's seat; heirs win them back by asking; sim 92) built on `wip/c109-lapse` after measuring that C10.8's great realms are held by the call (22 of 28);
+its ten seeds queued. SESSION_HANDOFF "Session 25" has the queue and the steps.
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.
