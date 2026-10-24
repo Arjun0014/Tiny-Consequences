@@ -34,6 +34,8 @@ const holdOn = flag('--hold-on');
 const settle = Number(opt('--settle', '2500'));
 const windowMs = Number(opt('--window', '2500'));
 const tag = opt('--tag', 'realmsperf');
+// (session 25) --layer NAME: the bridge's `on NAME` / `off NAME` measured instead of the realms layer (names, air, clouds...)
+const layer = opt('--layer', 'realms');
 const outDir = path.join(root, 'tc2', 'out', 'webtest', tag);
 fs.mkdirSync(outDir, { recursive: true });
 
@@ -99,7 +101,7 @@ try {
   if (hold > 0 && views.length > 0) {
     // the first view held with the layer in one state: does the heap grow with time alone?
     await cmd(`look ${lat} ${lon} ${views[0].dist}`);
-    await cmd(holdOn ? 'on realms' : 'off realms');
+    await cmd(holdOn ? `on ${layer}` : `off ${layer}`);
     await page.waitForTimeout(settle * 2);
     await traceHeap(`${views[0].name}, the layer ${holdOn ? 'on' : 'off'}, held 0 s`);
     for (let s = 15; s <= hold; s += 15) {
@@ -107,7 +109,7 @@ try {
       await traceHeap(`${views[0].name}, the layer ${holdOn ? 'on' : 'off'}, held ${s} s`);
       if (failed()) throw new Error('the page failed while held (see console.txt)');
     }
-    await cmd('off realms');
+    await cmd(`off ${layer}`);
   }
   if (toggles > 0 && views.length > 0) {
     // the layer turned on and off at the first view, as a player pressing R
@@ -115,8 +117,8 @@ try {
     await page.waitForTimeout(settle * 2);
     await traceHeap(`${views[0].name}, before turning`);
     for (let i = 1; i <= toggles; i++) {
-      await cmd('on realms'); await page.waitForTimeout(toggleGap);
-      await cmd('off realms'); await page.waitForTimeout(toggleGap);
+      await cmd(`on ${layer}`); await page.waitForTimeout(toggleGap);
+      await cmd(`off ${layer}`); await page.waitForTimeout(toggleGap);
       if (i % 5 === 0 || i === toggles) await traceHeap(`${views[0].name}, turned on and off ${i} times`);
       if (failed()) throw new Error('the page failed while turning (see console.txt)');
     }
@@ -129,7 +131,7 @@ try {
   }), windowMs);
   for (const v of views) {
     await cmd(`look ${lat} ${lon} ${v.dist}`);
-    await cmd('off realms');
+    await cmd(`off ${layer}`);
     await page.waitForTimeout(settle * 2);   // (the view's patches and meshes come up)
     await traceHeap(`${v.name}, the layer off`);
     if (pairs <= 0) {
@@ -143,7 +145,7 @@ try {
       const order = i % 2 === 0 ? ['off', 'on'] : ['on', 'off'];
       const got = {};
       for (const o of order) {
-        await cmd(`${o} realms`);
+        await cmd(`${o} ${layer}`);
         await page.waitForTimeout(settle);
         got[o] = await fps();
       }
@@ -152,9 +154,9 @@ try {
       await traceHeap(`${v.name}, pair ${i + 1}`);
       if (failed()) throw new Error('the page failed (see console.txt) - the frame counts after it are not the game\'s');
     }
-    await cmd('on realms'); await page.waitForTimeout(settle);
-    await page.screenshot({ path: path.join(outDir, `${v.name}_realms.png`) });
-    await cmd('off realms'); await page.waitForTimeout(settle);
+    await cmd(`on ${layer}`); await page.waitForTimeout(settle);
+    await page.screenshot({ path: path.join(outDir, `${v.name}_${layer}.png`) });
+    await cmd(`off ${layer}`); await page.waitForTimeout(settle);
     await page.screenshot({ path: path.join(outDir, `${v.name}_plain.png`) });
     const r = { view: v.name, dist: v.dist, off, on, medianOff: median(off), medianOn: median(on), medianRatio: median(ratio),
       msOff: 1000 / median(off), msOn: 1000 / median(on) };
