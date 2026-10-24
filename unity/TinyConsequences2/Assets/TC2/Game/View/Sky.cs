@@ -33,6 +33,13 @@ namespace TC2.Game
         static readonly int CanopyK = Shader.PropertyToID("_TC2CanopyK");
         static readonly int CoverMean = Shader.PropertyToID("_TC2CoverMean");
         static readonly int StandCdf = Shader.PropertyToID("_TC2StandCdf");
+        static readonly int AtmoGround = Shader.PropertyToID("_TC2AtmoGround");
+        static readonly int AtmoTop = Shader.PropertyToID("_TC2AtmoTop");
+        static readonly int AtmoH = Shader.PropertyToID("_TC2AtmoH");
+        static readonly int AtmoBeta = Shader.PropertyToID("_TC2AtmoBeta");
+        static readonly int AtmoSun = Shader.PropertyToID("_TC2AtmoSun");
+        static readonly int AtmoFade = Shader.PropertyToID("_TC2AtmoFade");
+        static readonly int AtmoOverGround = Shader.PropertyToID("_TC2AtmoOverGround");
         Volume _volume;
         public Color Horizon;
 
@@ -85,7 +92,7 @@ namespace TC2.Game
             float top = (float)(14000.0 * w.Planet.GeoScale);   // (the air's top in the picture goes with the planet's size, D2-085)
             float density = altitude < top ? Mathf.Lerp(1f / 26000f, 1f / 240000f, Mathf.Sqrt(Mathf.InverseLerp(150f, top, altitude))) : 0f;
             Shader.SetGlobalVector(FogColor, new Vector4(Horizon.linear.r, Horizon.linear.g, Horizon.linear.b, day));
-            Shader.SetGlobalFloat(FogDensity, density);
+            Shader.SetGlobalFloat(FogDensity, density * (1f - AirFade(altitude)));
             Shader.SetGlobalVector(SunDir, toSun);
             // the moon: opposite the sun and a little to the side, so night has a light with a direction
             Vector3 moon = (Quaternion.AngleAxis(150f, Vector3.up) * toSun + Vector3.up * 0.25f).normalized;
@@ -103,11 +110,27 @@ namespace TC2.Game
                 if (urp.shadowCascadeCount != cascades) urp.shadowCascadeCount = cascades;
                 urp.shadowDistance = gl ? Mathf.Clamp(altitude * GlShadowReach, 200f, 3000f) : Mathf.Clamp(altitude * GpuShadowReach, 250f, 7000f);
             }
-            // below the air the empty sky is the sky; from orbit it is space
-            float sky = 1f - Mathf.InverseLerp(1500f, Mathf.Max(2000f, top * 0.5f), altitude);
+            // the air seen from afar (Atmosphere.shader): Rayleigh's blue scattered along each ray, in an atmosphere whose scale height goes
+            // with the planet; it takes over from the views' haze and sky as the camera rises past the village view
+            float Rg = (float)(w.Planet.Radius + Ground.WaterHeight(w.Planet, w.Planet.SeaLevel));
+            float H = Rg * Look.AtmoH, k = Look.AtmoTau / H;
+            float air = AirFade(altitude);
+            Shader.SetGlobalFloat(AtmoGround, Rg);
+            Shader.SetGlobalFloat(AtmoTop, Look.AirTop(Rg));
+            Shader.SetGlobalFloat(AtmoH, H);
+            Shader.SetGlobalVector(AtmoBeta, new Vector4(0.040f * k, 0.095f * k, 0.230f * k, Look.AtmoMie / (H * 0.33f)));
+            Shader.SetGlobalFloat(AtmoSun, Look.AtmoSun);
+            Shader.SetGlobalFloat(AtmoFade, air);
+            Shader.SetGlobalFloat(AtmoOverGround, Look.AtmoGround);
+            // below the air the empty sky is the sky; from higher up the air's own light against space
+            float sky = 1f - air;
             Color zenith = Color.Lerp(new Color(0.01f, 0.015f, 0.035f), new Color(0.30f, 0.50f, 0.82f), day);
             Rig.Cam.backgroundColor = Color.Lerp(new Color(0.012f, 0.016f, 0.035f), Color.Lerp(zenith, Horizon, 0.45f), sky);
         }
+
+        /// <summary>How far the drawn air (Atmosphere.shader) has taken over from the views' own haze and sky: nothing at the village view
+        /// (900 m) and below, all of it from 2.2 km up.</summary>
+        static float AirFade(float altitude) => Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(900f, 2200f, altitude));
 
         /// <summary>A tileable value-noise texture (four octaves) for small-scale ground detail.</summary>
         static Texture2D MakeDetail(int size)

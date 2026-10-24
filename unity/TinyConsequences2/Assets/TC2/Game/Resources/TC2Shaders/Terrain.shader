@@ -355,7 +355,8 @@ Shader "TC2/Terrain"
                 half3 amb = lerp(_AmbientGround.rgb, _AmbientSky.rgb, hemi) * lerp(half3(0.30h, 0.34h, 0.50h), half3(1.0h, 1.0h, 1.0h), day) * floorOcc;
                 // the shadow of the cloud between this point and the sun
                 float3 toCloud = normalize(i.positionWS + _TC2SunDir.xyz * max(0.0, _TC2CloudShell - length(i.positionWS)));
-                half cloud = smoothstep(0.38h, 0.78h, SAMPLE_TEXTURECUBE_LOD(_TC2Clouds, sampler_TC2Clouds, toCloud, 0).r * 0.95h);
+                half2 cc = SAMPLE_TEXTURECUBE_LOD(_TC2Clouds, sampler_TC2Clouds, toCloud, 0).rg;   // (the decks; the cumulus fields' puffs as a lighter dapple)
+                half cloud = smoothstep(0.38h, 0.78h, max(cc.r, cc.g * 0.55h) * 0.95h);
                 half3 sun = l.color * wrap * lerp(0.25h, 1.0h, l.shadowAttenuation) * 1.2h * (1.0h - 0.55h * cloud) * saturate(dot(up, l.direction) * 4.0h + 0.35h);
                 half moon = saturate(dot(nl, _TC2MoonDir.xyz) * 0.7h + 0.3h) * (1.0h - day);
                 half3 c = albedo * (amb + sun + half3(0.13h, 0.17h, 0.29h) * moon);
@@ -365,7 +366,7 @@ Shader "TC2/Terrain"
                 if (below > 0.0)
                 {
                     half through = (half)exp(-below / 3.2);
-                    half3 waterCol = lerp(half3(0.07h, 0.42h, 0.50h), half3(0.015h, 0.075h, 0.20h), (half)saturate(below / 28.0)) * (0.3h + 0.7h * day);
+                    half3 waterCol = lerp(half3(0.07h, 0.42h, 0.50h), half3(0.010h, 0.052h, 0.155h), (half)saturate(below / 28.0)) * (0.3h + 0.7h * day);
                     c = lerp(waterCol, c * half3(0.86h, 0.98h, 1.0h), through);
                 }
                 // the surf: a broken, moving line of foam just below the sea surface, where waves run up the shore

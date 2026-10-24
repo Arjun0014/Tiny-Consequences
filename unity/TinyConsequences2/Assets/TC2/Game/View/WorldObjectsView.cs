@@ -183,9 +183,10 @@ namespace TC2.Game
                 var v = _lights[i];
                 Vector3 at = new Vector3(v.x, v.y, v.z);
                 float lit = v.w;
-                // (a glow some pixels across at any height: wider as the camera rises, by the village's lit homes)
-                float size = Mathf.Max(60f, alt * 0.012f) * (0.6f + 0.25f * Mathf.Sqrt(lit));
-                float glow = show * Mathf.Clamp01(0.35f + lit / 12f);
+                // (a glow some pixels across at any height: wider as the camera rises, by the village's lit homes; session 25: a town's
+                // lights from orbit a bright point of a few pixels, not a pink disc - half the width, a brighter core)
+                float size = Mathf.Max(45f, alt * 0.0062f) * (0.6f + 0.25f * Mathf.Sqrt(lit));
+                float glow = show * Mathf.Clamp01(0.45f + lit / 10f) * 1.35f;
                 Puffs.Add(at + at.normalized * (size * 0.1f), size, 0.05f * show, 0f, glow * 1.6f, Mathf.Repeat(i * 0.618f, 1f), 0f);
             }
         }

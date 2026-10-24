@@ -7,7 +7,7 @@ namespace TC2.Game
 {
     /// <summary>
     /// The planet (13 §2, F0 version): six cube-face meshes at 3x the surface grid's resolution, displaced by
-    /// the simulated relief and coloured by biome, vegetation and fire; a sea sphere; an atmosphere rim.
+    /// the simulated relief and coloured by biome, vegetation and fire; a sea sphere; the air's shell (Atmosphere.shader).
     /// Reads the world only. Recolours every couple of seconds of real time.
     /// </summary>
     public sealed class PlanetView : MonoBehaviour
@@ -46,6 +46,8 @@ namespace TC2.Game
             _sinceBuild += Time.unscaledDeltaTime;
             bool iceMoved = System.Math.Abs(P.IceVolume - _builtIce) > 0.04 * System.Math.Max(_builtIce, 1e9) && _sinceBuild > 10f;
             if (_built != Host.WorldVersion || _coast != P.CoastVersion) BuildShell(); // the ground itself is TerrainLod
+            // the air's shell encloses the drawn atmosphere's top (Look: a shot may change it between views)
+            if (_air != null) _air.transform.localScale = Vector3.one * (Look.AirTop((float)(P.Radius + Ground.WaterHeight(P, P.SeaLevel))) * 1.01f);
         }
 
         void BuildShell()
@@ -65,7 +67,6 @@ namespace TC2.Game
                 var ar = _air.AddComponent<MeshRenderer>(); ar.sharedMaterial = _atmo; ar.shadowCastingMode = ShadowCastingMode.Off;
             }
             _sea.transform.localScale = Vector3.one * (float)(P.Radius + Ground.WaterHeight(P, P.SeaLevel));
-            _air.transform.localScale = Vector3.one * (float)(P.Radius * 1.07);
         }
 
         void Build()
