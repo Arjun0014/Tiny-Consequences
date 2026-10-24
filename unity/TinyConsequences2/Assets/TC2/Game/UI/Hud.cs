@@ -185,7 +185,12 @@ namespace TC2.Game
             _tocSel.normal.background = Solid(new Color(0.55f, 0.35f, 0.15f, 0.14f));
             _tocPart = new GUIStyle(_ink) { fontSize = 14, fontStyle = FontStyle.Bold, padding = new RectOffset(0, 4, 5, 1) };
             _tocPart.hover.textColor = red;
-            _inkBtn = new GUIStyle(GUI.skin.button) { fontSize = 12, padding = new RectOffset(8, 8, 3, 3) };
+            // the book's buttons on its page: a darker leaf of the same paper, ink letters (not the HUD's dark buttons)
+            _inkBtn = new GUIStyle(GUI.skin.button) { fontSize = 12, fontStyle = FontStyle.Bold, padding = new RectOffset(10, 10, 4, 4), border = new RectOffset(0, 0, 0, 0) };
+            _inkBtn.normal.background = Solid(new Color(0.84f, 0.78f, 0.66f, 1f));
+            _inkBtn.hover.background = Solid(new Color(0.78f, 0.70f, 0.56f, 1f));
+            _inkBtn.active.background = Solid(new Color(0.70f, 0.60f, 0.46f, 1f));
+            _inkBtn.normal.textColor = ink; _inkBtn.hover.textColor = red; _inkBtn.active.textColor = red;
             // names on the map: light letters with a dark edge, readable over sea, snow and field alike
             _mapName = new GUIStyle(GUI.skin.label) { fontSize = 13, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = false, richText = false, padding = new RectOffset(0, 0, 0, 0) };
             _mapName.normal.textColor = new Color(0.98f, 0.96f, 0.90f);
