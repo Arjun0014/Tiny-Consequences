@@ -116,7 +116,7 @@ namespace TC2.Core.Agents
             w.People.Add(id, p);
             w.Residents(home).InsertSorted(id);
             w.Members(household).InsertSorted(id);
-            w.History.Register(EntityRef.Person(id), Worldgen.Names.Person(seed, id, sex == Sex.Female) + " " + w.FamilyName(household), born);
+            w.History.Register(EntityRef.Person(id), Worldgen.Names.Person(seed, id, sex == Sex.Female, w.Settlements.Get(home).Tongue) + " " + w.FamilyName(household), born);   // (named in the tongue of the village born in: C11.1)
             ref var pr = ref w.People.Get(id);
             if (w.Resolution == Simulation.Resolution.Activity) Schedule(in pr);
             else { pr.Step = StepKind.None; pr.T1 = w.Now; }

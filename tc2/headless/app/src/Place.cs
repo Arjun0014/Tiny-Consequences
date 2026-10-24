@@ -632,6 +632,9 @@ namespace TC2.Headless
                 foreach (int sid in ll) { int t = w.Settlements.Get(sid).Tradition; int k = TC2.Core.Places.Architecture.TraditionRoof(t) * 10 + TC2.Core.Places.Architecture.TraditionPalette(t); forms.TryGetValue(k, out int c); forms[k] = c + 1; }
                 Console.WriteLine("  line of " + w.History.NameOf(EntityRef.Settlement(l)) + " (" + l + "): " + ll.Count + " villages, spread " + (far / 1000.0).ToString("0.0") + " km; ways (roof x10 + shade): " +
                                   string.Join(" ", new List<string>(System.Linq.Enumerable.Select(forms, kv => kv.Key + ":" + kv.Value)).ToArray()));
+                var names = new List<string>();
+                foreach (int sid in ll) if (names.Count < 14) names.Add(w.History.NameOf(EntityRef.Settlement(sid)) + (w.Settlements.Get(sid).Tongue != 0 ? "[" + TC2.Core.Worldgen.Names.Apart(w.Settlements.Get(sid).Tongue, w.Settlements.Get(ll[0]).Tongue) + "]" : ""));
+                Console.WriteLine("    names (in [] how far each speaks from the first listed): " + string.Join(", ", names.ToArray()));
             }
             // the houses: do they stand as their village's way?
             int houses = 0, asWay = 0, shadeWay = 0;

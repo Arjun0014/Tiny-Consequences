@@ -71,6 +71,7 @@ namespace TC2.Core.Places
         public byte Wall;               // its palisade: 0 none, 1 being built, 2 standing, 3 fallen (D2-074)
         public byte WallKeep;           // whether it still mends it (what it loses still outweighs the mending)
         public int Tradition;           // its building tradition: carried by its founders from the village they came from (D2-114)
+        public long Tongue;             // its people's tongue: the sounds its names are made of, carried by its founders and changed a sound at a time (C11.1)
         public byte StreetN;            // its streets: the ways out of it its people wore to paths, laid as streets (C13.1, D2-116)
         public float Street0, Street1, Street2, Street3;   // each street's bearing from the square (radians, local frame: atan2(y, x))
         public float WallR, WallCond;   // the ring's radius (m) round the square; the timber's soundness (1 new, 0 fallen)
@@ -266,6 +267,7 @@ namespace TC2.Core.Places
             w.Double(Muck); w.Double(Spread);   // (C3.7c, sim version 79)
             w.Double(Stubble);   // (C3.7d, sim version 80)
             w.Double(TributeDue); w.Byte(CarryToday);   // (C10.6, sim version 85)
+            w.Long(Tongue);   // (C11.1, sim version 94)
         }
 
         public static Settlement Read(BinReader r)
@@ -297,6 +299,7 @@ namespace TC2.Core.Places
             s.Muck = r.Double(); s.Spread = r.Double();
             s.Stubble = r.Double();
             s.TributeDue = r.Double(); s.CarryToday = r.Byte();
+            s.Tongue = r.Long();
             return s;
         }
 
@@ -328,6 +331,7 @@ namespace TC2.Core.Places
             h.Add(Muck); h.Add(Spread);
             h.Add(Stubble);
             h.Add(TributeDue); h.Add(CarryToday);
+            h.Add(Tongue);   // (C11.1)
         }
 
         internal static void WriteV(BinWriter w, Vec3d v) { w.Double(v.X); w.Double(v.Y); w.Double(v.Z); }

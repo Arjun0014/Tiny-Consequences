@@ -234,6 +234,7 @@ namespace TC2.Headless
             if (a.Has("olddemand")) TC2.Core.Society.Conflict.DemandOff = true;   // (C10.8 off: no village asks a tenth of another)
             if (a.Has("oldlapse")) TC2.Core.Society.Conflict.LapseOff = true;     // (C10.9 off: bonds for peace outlive their lord's death)
             if (a.Has("lapsetally")) TC2.Core.Society.Conflict.LapseTally = new double[TC2.Core.Society.Conflict.LapseTallyN];
+            if (a.Has("oldnames")) TC2.Core.Places.Migration.TonguesOff = true;   // (C11.1 off: every name from the one speech of before)
             if (a.Has("demandtally")) TC2.Core.Society.Conflict.DemandTally = new double[TC2.Core.Society.Conflict.DemandTallyN];   // (C10.8: the askings and their answers)
             if (a.Has("oldways")) TC2.Core.Agents.RouteCache.LiveForest = true;   // (D2-160 off: routes from the woods as they are when built)
             if (a.Has("oldtribute")) TC2.Core.Society.Conflict.CarryOff = true;   // (C10.6 off: the tenth into the lord's store at the harvest, carried by nobody)
