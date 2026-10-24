@@ -52,7 +52,13 @@ namespace TC2.Game
         /// <summary>Opens the History Book at a part and chapter (-1: the preface) - the page a tool asks for.</summary>
         public void OpenBookAt(int part, int chapter) { _book = true; _openPart = part; _openChapter = chapter; _line = 0; }
         public void CloseBook() { _book = false; }
-        int _openPart = -2, _openChapter;
+        int _openPart = NoRequest, _openChapter;
+        const int NoRequest = -99;
+        // the Timeline page (session 25): the world's years drawn once into a texture when the book is written (one draw a frame)
+        BookTimeline _timeline; Texture2D _timelineTex; int _timelineYear = -1;
+        const int TimelinePart = -2;
+        static readonly Color[] RealmInk = { new Color(0.66f, 0.17f, 0.12f), new Color(0.17f, 0.32f, 0.60f), new Color(0.22f, 0.48f, 0.22f), new Color(0.80f, 0.58f, 0.14f),
+                                             new Color(0.47f, 0.22f, 0.52f), new Color(0.12f, 0.50f, 0.52f), new Color(0.85f, 0.42f, 0.12f), new Color(0.45f, 0.31f, 0.20f) };
         bool _bookAsked;
         // names on the map (session 25: places and people read clearly): each inhabited place's name at its square, what it is and whom
         // it pays under it, the most peopled first and none over another; close in, a tag on the person or building under the pointer
@@ -918,11 +924,11 @@ namespace TC2.Game
                 _parts = new BookPart[HistoryBook.PartTitles.Length];
                 _bookYear = year;
             }
-            if (_openPart != -2)
+            if (_openPart != NoRequest)
             {
                 if (_openPart >= 0 && _openPart < _parts.Length) { Part(_openPart); _bookPart = _openPart; _bookChapter = Mathf.Clamp(_openChapter, 0, Mathf.Max(0, _parts[_openPart].Chapters.Count - 1)); }
-                else _bookPart = -1;
-                _openPart = -2; _bookScroll = Vector2.zero;
+                else _bookPart = _openPart == TimelinePart ? TimelinePart : -1;
+                _openPart = NoRequest; _bookScroll = Vector2.zero;
             }
             if (_openAt != -2)
             {
@@ -939,7 +945,8 @@ namespace TC2.Game
             GUILayout.Label(_writer.Book.Title, _inkTitle);
             GUILayout.Label(_writer.Book.Sub, _inkSub);
             _listScroll = GUILayout.BeginScrollView(_listScroll);
-            if (GUILayout.Button("Preface", _bookPart < 0 ? _tocSel : _tocPart)) { _bookPart = -1; _bookScroll = Vector2.zero; _line = 0; }
+            if (GUILayout.Button("Preface", _bookPart == -1 ? _tocSel : _tocPart)) { _bookPart = -1; _bookScroll = Vector2.zero; _line = 0; }
+            if (GUILayout.Button("A Timeline of the World", _bookPart == TimelinePart ? _tocSel : _tocPart)) { _bookPart = TimelinePart; _bookScroll = Vector2.zero; _line = 0; }
             for (int i = 0; i < HistoryBook.PartTitles.Length; i++)
             {
                 if (GUILayout.Button(HistoryBook.Roman(i + 1) + ". " + HistoryBook.PartTitles[i], _tocPart) && _bookPart != i) { Part(i); _bookPart = i; _bookChapter = 0; _bookScroll = Vector2.zero; _line = 0; }
@@ -954,7 +961,8 @@ namespace TC2.Game
             // the right page: the preface, or the chapter
             GUILayout.BeginVertical();
             BookChapter ch = null;
-            if (_bookPart < 0)
+            if (_bookPart == TimelinePart) TimelinePage(w, r);
+            else if (_bookPart < 0)
             {
                 GUILayout.Label("Preface", _inkTitle);
                 GUILayout.Label("the world in year " + _writer.Book.Year, _inkSub);
@@ -1019,6 +1027,117 @@ namespace TC2.Game
             GUILayout.EndArea();
         }
 
+        /// <summary>
+        /// The Timeline page: the world's years at a glance - its ages as bands across the top, under them each great realm's villages year by year
+        /// stacked in its own ink (the height of the whole the world's places), the people as a dark line over them, and its greatest moments.
+        /// The chart is drawn once into a texture when the book is written; the page draws it and its words.
+        /// </summary>
+        void TimelinePage(TC2.Core.Simulation.World w, Rect r)
+        {
+            if (_timeline == null || _timelineYear != _bookYear)
+            {
+                var t0 = System.Diagnostics.Stopwatch.StartNew();
+                _timeline = HistoryBook.Timeline(w);
+                _timelineYear = _bookYear;
+                if (_timelineTex != null) Destroy(_timelineTex);
+                _timelineTex = DrawTimeline(_timeline, w);
+                Debug.Log("[TC2] book: the timeline written in " + t0.Elapsed.TotalMilliseconds.ToString("0", CultureInfo.InvariantCulture) + " ms");
+            }
+            var tl = _timeline;
+            GUILayout.Label("A Timeline of the World", _inkTitle);
+            GUILayout.Label(tl.To > tl.From ? "years " + tl.From + " to " + tl.To + ": its ages, its realms and its people" : "its first days", _inkSub);
+            _bookScroll = GUILayout.BeginScrollView(_bookScroll, GUILayout.Height(r.height * 0.80f));
+            float cw = Mathf.Max(200f, r.width - Mathf.Min(300f, r.width * 0.32f) - 90f);
+            float ch = 250f;
+            Rect ages = GUILayoutUtility.GetRect(cw, 20f);
+            Rect chart = GUILayoutUtility.GetRect(cw, ch);
+            Rect axis = GUILayoutUtility.GetRect(cw, 16f);
+            int n = tl.To - tl.From + 1;
+            if (Event.current.type == EventType.Repaint && n > 1)
+            {
+                // the ages: alternate shades, named where there is room
+                for (int i = 0; i < tl.Ages.Count; i++)
+                {
+                    var e = tl.Ages[i];
+                    float x0 = chart.x + cw * (e.From - tl.From) / (float)(n - 1), x1 = chart.x + cw * Mathf.Min(n - 1, e.To - tl.From) / (float)(n - 1);
+                    GUI.color = i % 2 == 0 ? new Color(0.55f, 0.35f, 0.15f, 0.16f) : new Color(0.55f, 0.35f, 0.15f, 0.07f);
+                    GUI.DrawTexture(new Rect(x0, ages.y, Mathf.Max(1f, x1 - x0), ages.height + ch), _dot);
+                    GUI.color = Color.white;
+                    string name = e.Name.StartsWith("The ") ? e.Name.Substring(4) : e.Name;
+                    if (_inkFact.CalcSize(new GUIContent(name)).x < x1 - x0 - 4f) GUI.Label(new Rect(x0 + 2f, ages.y, x1 - x0, ages.height), name, _inkFact);
+                }
+                GUI.DrawTexture(chart, _timelineTex);
+                for (int y = (tl.From / 100 + 1) * 100; y <= tl.To; y += 100)
+                {
+                    float x = chart.x + cw * (y - tl.From) / (float)(n - 1);
+                    GUI.Label(new Rect(x - 20f, axis.y, 40f, axis.height), y.ToString(CultureInfo.InvariantCulture), _inkFact);
+                }
+            }
+            // the realms' inks, the people's line
+            GUILayout.Space(6);
+            GUILayout.Label("Each band is a realm: the villages of its lord and of every tier under it, year by year; the whole height is the world's places. The dark line is the world's people (at most " +
+                            tl.MaxPeople.ToString("N0", CultureInfo.InvariantCulture) + ").", _ink);
+            for (int i = 0; i < tl.Realms.Count; i++)
+            {
+                var rr = tl.Realms[i];
+                Rect line = GUILayoutUtility.GetRect(cw, 18f);
+                if (Event.current.type == EventType.Repaint) { GUI.color = RealmInk[i % RealmInk.Length]; GUI.DrawTexture(new Rect(line.x, line.y + 4f, 14f, 10f), _dot); GUI.color = Color.white; }
+                GUI.Label(new Rect(line.x + 20f, line.y, line.width - 20f, line.height), rr.Name + " - at its height " + rr.Peak + " villages, year " + rr.PeakYear, _ink);
+            }
+            if (tl.Marks.Count > 0)
+            {
+                GUILayout.Label("Its greatest moments", _inkHead);
+                foreach (var m in tl.Marks) GUILayout.Label("Year " + m.Year + ": " + m.Text + ".", _ink);
+            }
+            GUILayout.EndScrollView();
+        }
+
+        /// <summary>The timeline's chart in pixels: the realms stacked in their inks over the world's places, the people's line, on clear paper.</summary>
+        Texture2D DrawTimeline(BookTimeline tl, TC2.Core.Simulation.World w)
+        {
+            const int TW = 720, TH = 250;
+            var tex = new Texture2D(TW, TH, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear, name = "tc2-timeline" };
+            var px = new Color32[TW * TH];
+            int n = tl.To - tl.From + 1;
+            if (n > 1)
+            {
+                // the scale: the most places the world has had (the realms' villages are a share of them)
+                int places = 1;
+                var a = w.Annals;
+                for (int i = 0; i < a.Count; i++) places = Mathf.Max(places, a[i].Places);
+                for (int x = 0; x < TW; x++)
+                {
+                    int k = Mathf.Clamp(Mathf.RoundToInt(x * (n - 1) / (float)(TW - 1)), 0, n - 1);
+                    int y = 0;
+                    for (int ri = 0; ri < tl.Realms.Count; ri++)
+                    {
+                        int v = tl.Realms[ri].Villages[k];
+                        if (v <= 0) continue;
+                        int hgt = Mathf.Max(1, Mathf.RoundToInt(v / (float)places * (TH - 8)));
+                        Color c = RealmInk[ri % RealmInk.Length];
+                        var c32 = new Color32((byte)(c.r * 255), (byte)(c.g * 255), (byte)(c.b * 255), 215);
+                        for (int j = y; j < Mathf.Min(TH, y + hgt); j++) px[j * TW + x] = c32;
+                        y += hgt;
+                    }
+                    // the people: a dark line two pixels thick
+                    if (tl.MaxPeople > 0 && tl.People[k] > 0)
+                    {
+                        int py = Mathf.Clamp(Mathf.RoundToInt(tl.People[k] / (float)tl.MaxPeople * (TH - 4)), 0, TH - 2);
+                        px[py * TW + x] = new Color32(40, 28, 18, 235); px[(py + 1) * TW + x] = new Color32(40, 28, 18, 235);
+                    }
+                }
+                // the moments: a short tick at the top
+                foreach (var m in tl.Marks)
+                {
+                    int x = Mathf.Clamp(Mathf.RoundToInt((m.Year - tl.From) / (float)(n - 1) * (TW - 1)), 0, TW - 1);
+                    for (int j = TH - 10; j < TH; j++) px[j * TW + x] = new Color32(120, 30, 20, 255);
+                }
+            }
+            tex.SetPixels32(px);
+            tex.Apply(false, true);
+            return tex;
+        }
+
         /// <summary>Writes a part of the book if it is not written yet.</summary>
         void Part(int i)
         {
@@ -1031,11 +1150,12 @@ namespace TC2.Game
         void Turn(int d)
         {
             _line = 0; _bookScroll = Vector2.zero;
-            if (_bookPart < 0) { if (d > 0) { Part(0); _bookPart = 0; _bookChapter = 0; } return; }
+            if (_bookPart == -1) { if (d > 0) _bookPart = TimelinePart; return; }
+            if (_bookPart == TimelinePart) { if (d > 0) { Part(0); _bookPart = 0; _bookChapter = 0; } else _bookPart = -1; return; }
             int k = _bookChapter + d;
             if (k >= 0 && k < _parts[_bookPart].Chapters.Count) { _bookChapter = k; return; }
             int p = _bookPart + d;
-            if (p < 0) { _bookPart = -1; return; }
+            if (p < 0) { _bookPart = TimelinePart; return; }
             if (p >= _parts.Length) return;
             Part(p);
             _bookPart = p;
