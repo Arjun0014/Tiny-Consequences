@@ -44,12 +44,13 @@ then god powers and player-facing gameplay.
   look alike in real shots (`s25m_s2_y300`, `_y1000`).
 - Open: the war spears do not read yet in the realms shot (`s25m_s2_y1000r`: a rain deck and dark ink on the wash); one `ArgumentOutOfRangeException` per
   Unity shots run since session 24 (no TC2 frame in the log; trace it); the acceptance shots framed a different lord at each age (use a fixed village).
-- **`wip/book-reigns`** (worktree `C:/Game Dev/tc-reigns`, bb8f581, tests and `cc` ok): the realm chapters fold a village's re-bowings after lapses into
-  one count - merge it into main once no Unity job runs in the main checkout (if not merged yet: `git log main --oneline | grep reigns`).
+- **The book's realms as reigns merged** (9fac1c6; an observer, tests and `cc` ok): the realm chapters fold a village's re-bowings after lapses into one count.
+- **All the queue's shots done** (`tc2/out/shots/s25m_s{2,4}_*`); the settlement-change measure `9_d_ceiling_cl0` (`place --ceiling`, worktree
+  `C:/Game Dev/tc-ceiling`, `wip/ceiling` b9479f5) ran last: `tc2/out/tools/s25/results/ceiling_s*_y*.txt`.
 
 ## Do next, in order
-1. Merge `wip/book-reigns` (above) if it is not on main; look at seed 4's age shots (`tc2/out/shots/s25m_s4_y*`) - the queue should have finished them
-   (`$Q/runq.log`; if the runner is gone and jobs are left, restart it only when Arjun asks).
+1. Look at seed 4's age shots (`tc2/out/shots/s25m_s4_y*`) and the ceiling measure (`ceiling_s*_y*.txt`); the queue is empty after `9_d` (the runner
+   idles; `touch $Q/stop` to stop it, or leave it for new jobs).
 2. **The next slice by the acceptance's evidence: settlement change at the ceiling** - measure first why no village empties (even after the plague halves
    a world: each shrinks in place) and why none is founded after ~300 (no good land known, or none left), and which of the record's mechanisms has its
    state in the world: deserted villages after depopulation (survivors drawn to vacant holdings - C3.6d weighs leaving by a household's own land only,
