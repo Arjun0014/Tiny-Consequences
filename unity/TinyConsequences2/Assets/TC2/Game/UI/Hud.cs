@@ -320,8 +320,7 @@ namespace TC2.Game
                 string doing = HistoryText.Doing(w, in p);
                 int cut = doing.IndexOf(':'); if (cut > 0) doing = doing.Substring(0, cut);
                 if (doing.Length > 70) doing = doing.Substring(0, 67) + "...";
-                text = "<b>" + Biography.Title(w, _hoverPid) + "</b>
-" + doing;
+                text = "<b>" + Biography.Title(w, _hoverPid) + "</b>\n" + doing;
             }
             else if (_hoverBid != 0 && w.Buildings.Exists(_hoverBid))
             {
@@ -329,9 +328,7 @@ namespace TC2.Game
                 string place = w.History.NameOf(EntityRef.Settlement(b.Settlement));
                 if (Structures.IsHome(b.Kind))
                     text = "<b>" + (b.Kind == Structures.House ? (Architecture.Has(b.Form) ? "A " + Architecture.PlanName(Architecture.PlanOf(b.Form)) : "A house") : "A hut") + "</b> of " + place +
-                           (b.Household != 0 && w.Households.Exists(b.Household) ? "
-home of the " + HistoryText.Plural(w.History.NameOf(EntityRef.Household(b.Household))) + " (" + w.Members(b.Household).Count + ")" : "
-standing empty");
+                           (b.Household != 0 && w.Households.Exists(b.Household) ? "\nhome of the " + HistoryText.Plural(w.History.NameOf(EntityRef.Household(b.Household))) + " (" + w.Members(b.Household).Count + ")" : "\nstanding empty");
                 else text = "<b>The " + Structures.Of(b.Kind).Name + "</b> of " + place;
             }
             if (text == null) return;

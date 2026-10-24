@@ -56,9 +56,11 @@ function compileCheck() {
   if (src !== proj) console.log('sources from ' + src);
   mkdirSync(cc, { recursive: true });
   const projects = { Core: ['TC2.Core.csproj', 'Assets/TC2/Core'], Game: ['TC2.Game.csproj', 'Assets/TC2/Game'], Editor: ['TC2.Editor.csproj', 'Assets/TC2/Editor'], Tests: ['TC2.Tests.Core.csproj', 'Assets/TC2/Tests/Core'] };
-  for (const [name, [src, folder]] of Object.entries(projects)) {
-    const p = path.join(project, src);
-    if (!existsSync(p)) { console.log('no ' + src + ' (open the project in Unity once to generate it)'); return 1; }
+  // (session 25: the csproj's name was destructured as `src`, shadowing the sources' root - every glob read "TC2.Game.csproj/Assets/...", matched
+  // nothing, and the check compiled no Game, Core or test source at all since `--src` came in (session 23): it passed whatever was written)
+  for (const [name, [csproj, folder]] of Object.entries(projects)) {
+    const p = path.join(project, csproj);
+    if (!existsSync(p)) { console.log('no ' + csproj + ' (open the project in Unity once to generate it)'); return 1; }
     let s = readFileSync(p, 'utf8').replace(/^﻿/, '');
     s = s.replace(/<BaseIntermediateOutputPath>.*?<\/BaseIntermediateOutputPath>/, `<BaseIntermediateOutputPath>${cc}/obj/${name}/</BaseIntermediateOutputPath>`);
     s = s.replace(/<OutputPath>.*?<\/OutputPath>/, `<OutputPath>${cc}/bin/</OutputPath>`);

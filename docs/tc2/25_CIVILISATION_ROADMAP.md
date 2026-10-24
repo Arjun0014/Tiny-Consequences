@@ -145,3 +145,27 @@ some stay fragmented, some collapse, some never form a state - desirable.
 
 ## 7. After the C-phases
 F9 (the god's powers beyond those that exist), F10 (art and presentation: animation of labour, UI art pass), F11 (platform).
+
+## 8. Toward a finished core simulation (session 25, 24 Oct 2026 - Arjun: "push toward a strong finished core simulation within the next 2 weeks")
+**What "finished core" means here**: every C-phase's "done when" (§1) met by systems that exist and were judged by the standing method (measured first;
+ten seeds against a control; a matched placebo for any lean; real shots), and the 1,000-year acceptance (§6) passed on several seeds - judged in real
+shots at the ages and in the History Book (D2-171), which now tells a world's realms, rulers, wars, disasters and threads of cause. Then F9 (the god's
+powers as play) and the player-facing game. The order, each a slice that answers "what changes in the world picture?":
+1. **C10.8 the asking** - land it (D2-168) once its matched placebo has judged its one lean. Its 900-year books (`book --load` on `_l9dm1`) show realms
+   that rise and fall in turn - seed 2: Taildvehope's realm held 24 villages in five tiers by year 338 and was gone by 829, Elddal's 19 for eleven
+   years, Vaildwick's, Skaenstead's and Mestskouford's 22 each - a cycle of hegemonies, not one realm that grows for ever.
+2. **C10.9 rising together** - the tributaries of one lord that together outweigh it stop paying together (the record: Kent's rising under Eadberht
+   Praen at Offa's death; the tributary kings' coalitions against overkings): the mechanism by which an overgrown realm breaks, beside the lord's weakness.
+   Measured first (`lordships --margins` per realm: how often a realm's tributaries together outweigh their lord while each alone does not).
+3. **C8.1 the campaign and the siege** - a lord's band with its tributaries' men (the call exists, C10.1) against a walled place: a blockade until its
+   stores fail or the besiegers' do (C8's "wars change the map": a taken town becomes a tributary or is burnt).
+4. **C7.2 stone walls** - a wealthy walled town that knows stone (C1.3) rebuilds its palisade's stretches in stone; towers at its gates: fortifications
+   that differ by region and history.
+5. **C11.1 a people's ways** - the household traditions that exist (D2-114's building forms, names) spread by founding, marriage and migration and drift:
+   regions that look different with no factions (C11's done-when), drawn in the view.
+6. **C13 the 1,000-year acceptance** on three seeds: shots at years 0, 50, 150, 300, 500, 800 and 1,000 (orbit, region, village) and each world's book.
+Alongside: the orbit look (D2-170: done), places named on the map (D2-172: done), the book (D2-171: done; next its portraits of realms on a map and a
+timeline page), great worlds in the browser (`14` §7: ~1 GB and ~8 fps at the region view - a memory and frame pass), W-FOREST pass 3.
+**Then F9 - the god's powers as play**: the powers that exist (eruption, quake, storm, lightning) and new ones that act through the world's own systems
+(a blessed or blighted harvest, a drought, a flood, a plague, a strange stone of ore), each a logged command whose consequences the book's "Your
+Actions" thread follows (`11` §7) - the player-facing game.
