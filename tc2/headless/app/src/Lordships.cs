@@ -261,7 +261,68 @@ namespace TC2.Headless
             if (a.Has("could")) Could(w, name);
             if (a.Has("wrongs")) Wrongs(w, name);
             if (a.Has("together")) Together(w, name);
+            if (a.Has("heirs")) Heirs(w, name);
             return 0;
+        }
+
+        /// <summary>
+        /// (C10.9 measure, `lordships --heirs`) from the ledger: each change of the one first among a lord village's people while bonds were paid to it -
+        /// by a death (the rise's cause a death) or otherwise - and the bonds for peace and for bread then held: how often a lord's death would free its
+        /// tributaries (a thousand bond-years), how many each would free, and the years between deaths at the seats that held the most.
+        /// </summary>
+        static void Heirs(World w, Func<int, string> name)
+        {
+            var H = w.History;
+            var peace = new Dictionary<int, HashSet<int>>();   // lord -> payers for peace now
+            var bread = new Dictionary<int, HashSet<int>>();
+            var lordOf = new Dictionary<int, int>();
+            var bondFrom = new Dictionary<int, long>();
+            double bondYears = 0;
+            int deaths = 0, others = 0, freed = 0, deathsWithPeace = 0;
+            var freedHist = new int[8];
+            var lastDeath = new Dictionary<int, long>();
+            var gaps = new List<double>();
+            long Y = SimTime.Year;
+            for (int i = 0; i < H.Count; i++)
+            {
+                var e = H.At(i);
+                if (e.Kind == HistoryKind.TributeAgreed)
+                {
+                    int payer = e.Subject.Id, lord = e.Object.Id;
+                    if (lordOf.TryGetValue(payer, out int old)) { peace.TryGetValue(old, out var po); po?.Remove(payer); bread.TryGetValue(old, out var bo); bo?.Remove(payer); bondYears += (e.Time - bondFrom[payer]) / (double)Y; }
+                    lordOf[payer] = lord; bondFrom[payer] = e.Time;
+                    var set = e.ArgB == 1 ? bread : peace;
+                    if (!set.TryGetValue(lord, out var l)) set[lord] = l = new HashSet<int>();
+                    l.Add(payer);
+                }
+                else if (e.Kind == HistoryKind.TributeEnded)
+                {
+                    int payer = e.Subject.Id;
+                    if (lordOf.TryGetValue(payer, out int lord))
+                    {
+                        peace.TryGetValue(lord, out var po); po?.Remove(payer); bread.TryGetValue(lord, out var bo); bo?.Remove(payer);
+                        bondYears += (e.Time - bondFrom[payer]) / (double)Y; lordOf.Remove(payer);
+                    }
+                }
+                else if (e.Kind == HistoryKind.HeadmanRose && e.Settlement > 0)
+                {
+                    int lord = e.Settlement;
+                    int np = peace.TryGetValue(lord, out var pl) ? pl.Count : 0, nb = bread.TryGetValue(lord, out var bl) ? bl.Count : 0;
+                    if (np + nb == 0) continue;
+                    bool death = e.Cause1 != 0 && H.TryGet(e.Cause1, out var c) && c.Kind == HistoryKind.PersonDied;
+                    if (!death) { others++; continue; }
+                    deaths++; freed += np; if (np > 0) deathsWithPeace++;
+                    freedHist[Math.Min(7, np)]++;
+                    if (lastDeath.TryGetValue(lord, out long t0)) gaps.Add((e.Time - t0) / (double)Y);
+                    lastDeath[lord] = e.Time;
+                }
+            }
+            foreach (var kv in lordOf) bondYears += (w.Now - bondFrom[kv.Key]) / (double)Y;
+            gaps.Sort();
+            double med = gaps.Count > 0 ? gaps[gaps.Count / 2] : 0;
+            Console.WriteLine("  heirs (--heirs): " + bondYears.ToString("0") + " bond-years; firsts at lords' seats changed by a death " + deaths + " times (" + (1000.0 * deaths / Math.Max(1, bondYears)).ToString("0.0") +
+                              " a thousand bond-years), otherwise " + others + "; a death would have freed " + freed + " bonds for peace (" + deathsWithPeace + " deaths freed any; by how many 0..7+: " +
+                              string.Join(" ", Array.ConvertAll(freedHist, x => x.ToString())) + "); years between deaths at one seat: median " + med.ToString("0.0") + " (" + gaps.Count + " gaps)");
         }
 
         /// <summary>
