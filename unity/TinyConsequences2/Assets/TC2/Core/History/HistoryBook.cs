@@ -193,6 +193,7 @@ namespace TC2.Core.History
             public readonly Dictionary<int, HistoryEvent> Abandoned = new Dictionary<int, HistoryEvent>();
             public readonly Dictionary<int, List<int>> At = new Dictionary<int, List<int>>();   // a place's events (ledger indices), oldest first
             public readonly List<HistoryEvent> Refusals = new List<HistoryEvent>();              // askings refused (C10.8)
+            public readonly List<HistoryEvent> Judgments = new List<HistoryEvent>();             // amends made at a lord's judgment (C10.10)
             public List<War> WarList;
 
             public Ctx(World w)
@@ -237,6 +238,9 @@ namespace TC2.Core.History
                             break;
                         case HistoryKind.TributeDemanded:
                             if (e.ArgA == 0) Refusals.Add(e);
+                            break;
+                        case HistoryKind.AmendsMade:
+                            if (e.ArgB != 0) Judgments.Add(e);
                             break;
                     }
                 }
@@ -564,6 +568,20 @@ namespace TC2.Core.History
                 foreach (var kv in c.Refusals) if (kv.Subject.Id == r.Seat) evs.Add(kv);
             Best(evs, 14);
             foreach (var e in evs) ch.Line(w, e);
+            // (C10.10) the peace its seat kept: the claims for blood between villages it was lord over that it judged
+            var judged = new List<HistoryEvent>();
+            foreach (var j in c.Judgments) if (j.ArgB == r.Seat) judged.Add(j);
+            if (judged.Count > 0)
+            {
+                double fu = 0;
+                int yj0 = int.MaxValue, yj1 = 0;
+                foreach (var j in judged) { fu += j.Magnitude; yj0 = System.Math.Min(yj0, YearOf(j.Time)); yj1 = System.Math.Max(yj1, YearOf(j.Time)); }
+                ch.Heading("Its peace");
+                ch.Para(Cap(Plural(judged.Count, "claim", "claims")) + " for blood between villages that paid " + seat + " came before it in " + Years(yj0, yj1) + ", and at its judgment the doers made amends - " +
+                        F(fu) + " days' grain in all.", r.Seat);
+                Best(judged, 4);
+                foreach (var e in judged) ch.Line(w, e);
+            }
             // its wars, by the village it fought
             var foes = new Dictionary<int, int[]>();
             var order = new List<int>();

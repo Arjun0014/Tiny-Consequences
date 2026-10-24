@@ -1,5 +1,52 @@
 # TC2 Session handoff
 
+## Session 25, second context (25 Oct 2026, 23:56 - ~02:30 IST; Control Room run #78 session 2) - C10.8 and C10.9 landed; C10.10 the lord's peace and C11.1a a people's tongue built, the peace's placebo running
+
+### Exact state (~02:10)
+- **main** (040c897 and after): **C10.8 the asking landed** (731c75a, sim 91; D2-168 appended b5f299c) - its branch's one failing test was a premise the asking
+  overtook (village 1 bowed to village 2 by its own asking a year before the hand-written bow): `HistoryBookTests` keeps the askings off for it (1b5e033).
+  **C10.9 the lord's death landed** (aeb880b, **sim 92**; D2-173 appended 77fcef3, 040c897): ten seeds against C10.8 - people and per-person rates at par,
+  raids x0.64, wounds x0.82, bonds made x2.8 and ended x3.6, the greatest realm x1.04; control `--oldlapse` = `_dm1` byte for byte. **The wars on the
+  realms map layer** merged (8098877, presentation): the last ten years' raids as dark spearheads toward the raided (`RealmsView.Feuds`, the legend counts
+  them and those of one realm); Unity C# compiled (`cc --src`), **not yet shot**. PROGRESS checkpoint ef742c5. Not ours: `.claude/launch.json`,
+  `Assets/Resources.meta`.
+- **A fault in the job tooling, fixed**: `lib.sh`'s `gate` read the machine's load into global `r` and `c`, so jobs looping `for c in <classes>` ran filters
+  like "4" and "2", and "0 passed, 0 failed, 0 skipped" passed the gate (C10.9's first `lp1 ok` had run none of its classes). `gate` now keeps `r c` local;
+  every test gate since needs `[1-9][0-9]* passed`. Loop variables in jobs: `cls`.
+- **C8.1 the campaign and the siege - measured first and set aside** (`tc2/out/tools/s25/c81_design.md`; tools on `wip/peace`, worktree `C:/Game Dev/tc-siege`:
+  `lordships --walls`, `run --raidtally`): refusals of the asking are rare (0-3 a world) and every one ended in a bow at the next asking with no band; the war
+  is on walled villages (62-64 % of raids driven off) and it is **feud** - raids answer blows struck in earlier fights, refused claims, takers seen (bonds'
+  ends 1-6 %); **30-88 % of raids fall between villages of one realm**.
+- **C10.10 the lord's peace** (`wip/c1010-peace`, worktree `C:/Game Dev/tc-peace`, **sim 93**, on C10.9: 17d4968; D2-174 draft `tc2/out/tools/s25/d2174.md`):
+  villages of one realm raise no bands against each other (a band turns to the heaviest foe beyond the realm); a claim for blood between them is judged by
+  their common lord, whose judgment binds the doers where it is no weaker - amends paid willing or not (`AmendsMade` ArgB the judge); the book tells each
+  realm's peace. PeaceTests 3/3 and its classes 0 failed, 0 skipped; control `--oldpeace` = `_lp1` byte for byte (and = `_dm1` on C10.8's rules). **Ten
+  seeds against C10.9** (`results/cmp_lp1_pc1.txt`): per-person births and deaths at par (x1.010, x0.992), famines a person-year x0.83 (t -1.88), loot x0.65
+  (t -2.34), raids x0.86, wounds x1.09 (bands turned beyond the realm), lords x1.31, greatest x0.90; **a lean in people: years 100-199 x1.085 (t 4.13), at
+  year 300 x1.10 (t 2.14)** - its matched placebo `_pcp` (C10.9's rules nudged at each world's parting year 4:73 5:73 1:81 6:65 11:67 2:113 3:58 7:103 8:75
+  42:21) and the raid classification of both rules' year-300 worlds are in the queue (`8_f8`, `8_f9`).
+- **C11.1a a people's tongue** (`wip/c111-ways`, worktree `C:/Game Dev/tc-ways`, **sim 94**, on main 040c897: d3266b8; D2-175 draft `tc2/out/tools/s25/d2175.md`):
+  measured first (`place --ways`): every house stands as its village's way, villages never change their way, all names came from one speech. Each first
+  people speaks its own tongue (onsets, vowels, codas, place-name endings, habits of naming: `Names.NewTongue`); founders bring theirs, half the time changed
+  in one thing (`Names.DriftTongue`); places, first families and the born are named in it (`Settlement.Tongue`); the book's Places begins with The Peoples.
+  TongueTests 4/4, HistoryBookTests 5/5, Determinism, SaveLoad, `cc --src`; **seed 4's annals = `_lp1` byte for byte** (names change nothing else). Ready to
+  land after the peace's decision (the peace 93 first, then the tongue 94; if the peace is not landed, the tongue lands as 94 anyway).
+- **The queue** (task brw7xh61a, runner `tc2/out/tools/s23/runq.sh`; `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`):
+  running `8_f8_pcp_*` (ten placebo seeds), then `8_f9_cmp_pcp` (the lean judged: `results/cmp_lp1_pcp.txt`, `cmp_pcp_pc1.txt`; raids by realm in
+  `tc2/out/tools/s25/results/peace_s*_{lp1,pc1}.txt`). **Held** in `$Q/hold`: `8_g_fullsuite_m7`, `8_h_shots_realms`, `8_i_web` (superseded by the
+  post-landing checks below), `8_a*`, `8_b*`, `9_*` of session 24 (attribution only). `$Q/dropped`: the peace's first seeds against C10.8.
+
+### Next, in order
+1. Judge the peace's lean (`8_f9`): if the twins spread as wide (the placebo's people x1.0x with |t| < 2 and the peace against its twin inside it) or the
+   lean is explained by its mechanism (within-realm raids gone, famines and loot down), land it: on main `git merge --no-ff wip/c1010-peace` (sim 93),
+   D2-174 with its evidence; then merge main into `wip/c111-ways` (version line: 94 after 93) and land the tongue (D2-175).
+2. Then the post-landing checks and the 1,000-year acceptance: `bash tc2/out/tools/s25/accept/make_accept.sh $Q` writes `9_a` (main's full suite, bin_m8),
+   `9_b_ac1_s{2,4,7}` (1,000-year worlds saved at 50/150/300/500/800/1,000, books at 300 and 1,000), `9_c_shots_*` (each age's real shots, seeds 2 and 4;
+   realms at 1,000 - the war spears' first shots); and a Web build (copy `$Q/hold/8_i_web.sh`, point it at `$O/s2_ac1/world_y300.tc2` and `world_y1000.tc2`:
+   names in tongues on the map, the book's Peoples, Timeline and Realms with their peace, `realmsperf --layer names|air|clouds`).
+3. Then by evidence: war between realms after the peace (C8.1's room may open there), C7.2 stone walls, C11.1b households carrying their ways (marriage,
+   migration; villages that blend), great worlds in the browser (`14` §7), F9.
+
 ## Session 25 (24 Oct 2026, 22:14 - ~23:40 IST, first context) - context handoff with the job queue RUNNING; C10.8 decided (land); C10.9 built and queued
 
 ### Exact state at the handoff (~23:40)

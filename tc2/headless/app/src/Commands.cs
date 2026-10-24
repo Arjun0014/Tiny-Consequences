@@ -236,6 +236,9 @@ namespace TC2.Headless
             if (a.Has("lapsetally")) TC2.Core.Society.Conflict.LapseTally = new double[TC2.Core.Society.Conflict.LapseTallyN];
             if (a.Has("oldnames")) TC2.Core.Places.Migration.TonguesOff = true;   // (C11.1 off: every name from the one speech of before)
             if (a.Has("demandtally")) TC2.Core.Society.Conflict.DemandTally = new double[TC2.Core.Society.Conflict.DemandTallyN];   // (C10.8: the askings and their answers)
+            if (a.Has("raidtally")) TC2.Core.Society.Conflict.RaidTally = new double[TC2.Core.Society.Conflict.RaidTallyN];   // (C8.1 measured first: bands weighed over a wrong)
+            if (a.Has("oldpeace")) TC2.Core.Society.Conflict.PeaceOff = true;   // (C10.10 off: villages of one realm feud as free villages do)
+            if (a.Has("peacetally")) TC2.Core.Society.Conflict.PeaceTally = new double[TC2.Core.Society.Conflict.PeaceTallyN];   // (C10.10: claims judged, bands kept home)
             if (a.Has("oldways")) TC2.Core.Agents.RouteCache.LiveForest = true;   // (D2-160 off: routes from the woods as they are when built)
             if (a.Has("oldtribute")) TC2.Core.Society.Conflict.CarryOff = true;   // (C10.6 off: the tenth into the lord's store at the harvest, carried by nobody)
             if (a.Has("carrytally")) TC2.Core.Society.Conflict.CarryTally = new double[TC2.Core.Society.Conflict.CarryTallyN];   // (C10.6: loads carried, FU, lived, set aside, given back, by cart, km, a year uncarried, no way on foot; by sea)
@@ -1024,6 +1027,14 @@ namespace TC2.Headless
                     if (demandTallyC108 != null)   // (C10.8: the askings of a tenth and their answers)
                         Console.WriteLine("demands: free village-harvests weighed " + demandTallyC108[0] + ", asked " + demandTallyC108[1] + " - bowed " + demandTallyC108[2] + ", refused " + demandTallyC108[3] +
                                           "; asked by a village keeping fewer sworn men than the asked's own " + demandTallyC108[4]);
+                    var rt = TC2.Core.Society.Conflict.RaidTally;
+                    if (rt != null)   // (C8.1 measured first: bands weighed over a wrong, and the walls that kept them home)
+                        Console.WriteLine("raidtally: bands weighed over a wrong " + rt[0] + " (against walled villages " + rt[1] + "); too few would go " + rt[2] + "; too weak for the defence they expect " + rt[3] +
+                                          " (against walled villages " + rt[4] + ", of which would have dared without the wall " + rt[5] + "); raised " + rt[6] + " (against walled villages " + rt[7] + "), " + rt[8] + " people");
+                    var pt = TC2.Core.Society.Conflict.PeaceTally;
+                    if (pt != null)   // (C10.10: the lord's peace)
+                        Console.WriteLine("peace: claims within a realm before a common lord " + pt[0] + ", judged " + pt[1] + " (" + F(pt[2], "0") + " FU paid; not in full " + pt[5] + "); bands kept home " + pt[3] +
+                                          " (weighed instead against the foe beyond the realm " + pt[6] + "); tributaries' wrongs within the realm not answered by their lord " + pt[4]);
                     var lapseTallyC109 = TC2.Core.Society.Conflict.LapseTally;
                     if (lapseTallyC109 != null)   // (C10.9: the lord's death and its bonds)
                         Console.WriteLine("lapses: deaths of the first at a lord's seat " + lapseTallyC109[0] + ", with bonds for peace " + lapseTallyC109[1] + "; bonds for peace lapsed " + lapseTallyC109[2] + ", bonds for bread kept " + lapseTallyC109[3]);

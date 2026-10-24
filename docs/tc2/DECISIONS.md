@@ -5277,3 +5277,49 @@ a world, 88-237 deaths of the first at a lord's seat, 0-16 bonds for bread kept)
 tributaries back by asking, and a freed village asked by a nearer stronger neighbour goes to it - realms change hands at deaths rather than shrink.
 No outcome lean passes |t| 2; the largest, sickness x2.27 (t 1.81, seven seeds with any) and famines x1.25 (t 1.26), are chance-heavy counts.
 **Landed** (session 25, 25 Oct 2026, merge aeb880b, sim 92). Not yet run: its 900-year worlds (they are made with the rules that follow it: C10.10).
+
+## D2-174 — 2026-10-25 — The lord's peace: villages of one realm raise no bands against each other; their blood is judged by their common lord (C10.10)
+
+**Context.** 25 §8 named the campaign and the siege (C8.1) as the next slice: a lord's band with its tributaries' men against a walled place. Measured
+first on C10.8's worlds (session 25; `lordships --walls`, `run --raidtally`, new tools; `tc2/out/tools/s25/results/walls*_*.txt`, `raidtally_*.txt`,
+`c81_design.md`): **a campaign against refusers has no room** - refusals of the asking are rare (0-3 in a world's 19-91 askings at year 300; one in
+276 and three in 199 at year 900) and every first refusal of a pair was asked again within ten years and bowed, with no band raised over it. **The war is
+on walled villages** (at year 900 the asked were walled 240 of 276 and 156 of 199 times; raids on walled villages 1,271 and 1,406, 62-64 % driven off;
+a century from year 300, 61-85 % of the bands weighed over a wrong stayed home as too weak for the defence they expected, the wall alone keeping a
+third to two thirds of those). **And it is feud**: classified by the record of the wrong each band went for, raids answer a blow struck in an earlier
+fight (seed 2, year 900: 545), a claim for amends refused (349), a taker seen (259); a bond's end (the lord no longer the stronger) 15 - 1-6 % in every
+world. Each raid's blows, both ways, are the next raid's wrong. Placed by the two villages' bonds at its time, **30-88 % of raids fall between villages
+of one realm** (seed 2 year 900: 390 of 1,281, blows 10,792 of 27,929; seed 4 year 900: 907 of 1,415; year 300: seed 4 102 of 184, seed 7 99 of 113,
+seed 2 54 of 96), with half the refused claims. The realms the asking builds (C10.8) are realms in tribute only: their villages feud as if no lord
+stood over them.
+
+**The record.** The answer to feud in the early medieval world was the lord's peace: compensation judged and enforced by a common lord. Alfred's laws
+(c. 890, ch. 42) bid a man who knows his foe at home not to fight before he has asked justice; breach of a lord's protection (*mund*) was paid to the
+lord; overkings judged the quarrels of their client kings (Charles-Edwards 2000); lords and kings as peacemakers who turned feud into compensation
+(Hyams 2003, *Rancor and Reconciliation*; Halsall 1998, *Violence and Society in the Early Medieval West*). Between lordships, feud and war went on.
+
+**Decision.** (`Conflict`, both resolutions; sim version 93.) Two villages of one realm - one the other's lord, or both paying, directly or through
+their own lords, one highest lord (`OnePeace`) - **raise no bands against each other**: a village whose heaviest wrong lies within its realm weighs its
+band, if any, against the village beyond the realm it holds most against (`ForeignFoe`); a lord answers no tributary's wrong against a village of its
+own realm. **A claim for blood between them is judged by their common lord** - the nearest of the doers' lords that is the claimants' village or one of
+its lords (`Judge`) - and where that lord is no weaker than the doers (`Might`, the bond's own test) its judgment binds them: they make amends from what
+their store can spare, willing or not, and the wrong is settled (`AmendsMade` ArgB the judge: "at the judgment of X, lord over them both"). Taking back
+(one person's vengeance by night, D2-072) and the hungry's bands are unchanged. The book tells each realm's peace: the claims its seat judged, each line
+its record. `--oldpeace` (the control), `--peacetally`.
+
+**Evidence.** PeaceTests 3/3 (the judge is the nearest of the doers' lords over the claimants too; no band within a realm, a band weighed beyond it, the
+same wrong weighed under `--oldpeace`; a claim within a realm judged and paid though unwilling, the same claim between realms refused; the realm's book
+tells its peace), TakingTests 18/18, LordshipTests 4/4, DefenceTests 8/8, DemandTests 4/4, LapseTests 3/3, HistoryBookTests 5/5, DeterminismTests 7/7,
+SaveLoad 8/8 (0 skipped), floatcheck clean, the Unity C# compiled. **Control**: `--oldpeace` reproduces C10.8 (`_dm1`) and, rebased on C10.9, C10.9
+(`_lp1`) byte for byte - annals and state hash, seed 4. **Ten seeds against C10.9** (`_pc1` against `_lp1`, `results/cmp_lp1_pc1.txt`): per-person births
+and deaths at par (x1.010, t 1.46; x0.992, t -0.71); famines a person-year x0.83 (t -1.88), hunger x0.89, loot x0.65 (t -2.34), raids x0.86, wounds
+x1.09, lords x1.31, the greatest realm x0.90; lords judged 44-716 claims a world (603-41,586 days' grain paid in amends); people over years 100-199
+x1.085 (t 4.13), at year 300 x1.10 (t 2.14). **Its matched placebo** (`_pcp`: C10.9's rules nudged one FU at each world's parting year - 21 to 113, the
+peace parting only once realms and feuds within them exist; `results/cmp_lp1_pcp.txt`, `cmp_pcp_pc1.txt`): the twins themselves lean x1.029 over years
+100-199 (t 1.81) - **against its twin the peace's lean holds and is real: x1.054 (t 2.69)**, at year 300 x1.097 (t 1.59); raids x0.67 (t -2.26), loot x0.65
+(t -1.84), famines a person-year x0.82 (t -1.73), hunger x0.85, lords x1.55 (t 3.62: more villages, more realms). **Its mechanism**, by the villages' places
+in the realms (`lordships --walls` on both rules' year-300 worlds, `tc2/out/tools/s25/results/peace_s*_{lp1,pc1}.txt`): raids between villages of one
+realm vanish - seed 2: 47 -> 1, seed 4: 85 -> 0, seed 42: 36 -> 0, seed 8: 11 -> 0 - and the claims between them are judged (seed 4: refused 869 -> 0, amends
+713 -> 478 - fewer claims, as there were fewer blows), while raids across the realms' borders and on free villages rise (seed 2: 51 -> 97; seed 4: 54 -> 102; seed 42:
+32 -> 32; seed 8: 19 -> 23): war moves to the edges of the realms. Less grain carried off the stores within realms, fewer famines, more people while the
+worlds grow - C10.8's cost of war (x0.904 against its twin) given back in part. **Landed** (session 25, 25 Oct 2026, sim 93).
