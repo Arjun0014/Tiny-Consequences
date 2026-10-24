@@ -39,6 +39,8 @@ namespace TC2.Headless
                         return Commands.TimeUse(args);
                     case "chronicle":
                         return Commands.ChronicleBook(args);
+                    case "book":
+                        return Commands.WholeBook(args);
                     case "inspect":
                         return Commands.Inspect(args);
                     case "person":
