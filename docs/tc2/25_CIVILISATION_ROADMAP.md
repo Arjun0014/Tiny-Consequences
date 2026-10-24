@@ -161,7 +161,7 @@ powers as play) and the player-facing game. The order, each a slice that answers
    stores fail or the besiegers' do (C8's "wars change the map": a taken town becomes a tributary or is burnt).
 4. **C7.2 stone walls** - a wealthy walled town that knows stone (C1.3) rebuilds its palisade's stretches in stone; towers at its gates: fortifications
    that differ by region and history.
-5. **C11.1 a people's ways** - the household traditions that exist (D2-114's building forms, names) spread by founding, marriage and migration and drift:
+5. **C11.1 a people's ways** - ~~C11.1a a people's tongue~~ (D2-175: names in their founders' speech, a sound changed at a time; the book's Peoples); next C11.1b households carrying their ways (marriage, migration; villages that blend). Was: - the household traditions that exist (D2-114's building forms, names) spread by founding, marriage and migration and drift:
    regions that look different with no factions (C11's done-when), drawn in the view.
 6. **C13 the 1,000-year acceptance** on three seeds: shots at years 0, 50, 150, 300, 500, 800 and 1,000 (orbit, region, village) and each world's book.
 Alongside: the orbit look (D2-170: done), places named on the map (D2-172: done), the book (D2-171: done; next its portraits of realms on a map and a

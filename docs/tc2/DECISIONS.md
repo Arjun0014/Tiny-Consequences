@@ -5323,3 +5323,36 @@ realm vanish - seed 2: 47 -> 1, seed 4: 85 -> 0, seed 42: 36 -> 0, seed 8: 11 ->
 713 -> 478 - fewer claims, as there were fewer blows), while raids across the realms' borders and on free villages rise (seed 2: 51 -> 97; seed 4: 54 -> 102; seed 42:
 32 -> 32; seed 8: 19 -> 23): war moves to the edges of the realms. Less grain carried off the stores within realms, fewer famines, more people while the
 worlds grow - C10.8's cost of war (x0.904 against its twin) given back in part. **Landed** (session 25, 25 Oct 2026, sim 93).
+
+## D2-175 — 2026-10-25 — A people's tongue: names in the speech of their founders, a sound changed at a time (C11.1a)
+
+**Context.** C11's done-when is regions that look and act differently with no factions (25 §1); D2-114 gave each village a building tradition - a roof
+form and a shade, carried by its founders with a change now and then - and C11.1 was to spread such ways by founding, marriage and migration. Measured
+first (session 25, `place --ways`, a new tool, on C10.9's year-300 worlds, seeds 2, 4, 7, 42, 3; `tc2/out/tools/s25/results/ways_*.txt`): **every house
+stands as its village's way** (1,119-6,119 houses with a recorded form a world, 100 % its village's roof form) and a village never changes its way, so
+villages are uniform inside and differ only by their founders; neighbours within a day's walk share their line (the first village they descend from)
+69-73 % of the time in the larger worlds (39-50 % of all pairs) - one line holds 18-21 of 30 villages, spread over half the planet - and roof form 48-60 %
+(37-49 %). And **every name in the world comes from one speech**: one set of sounds and ten place-name endings for every people, so a map of names reads
+the same everywhere and nothing in a name tells whose village it is.
+
+**The record.** Place-names keep the speech of those who settled a land long after the settling: the Danelaw's -by and -thorpe beside English -ton and
+-ham; Gaelic Bal- and Kil- against Norse -bster and -setter in the north of Scotland; dialects and their place-names spread with migration and settle
+into continua, each community a little apart from its neighbours and further from those far along its line (founder effects in speech: a few people
+carry a way of speaking somewhere new).
+
+**Decision.** (Names and state; no behaviour reads them; sim version 94.) **Each first people speaks its own tongue** - a code of which onsets, vowels and
+codas its names are made of, two or three endings it gives its places, its women's names' ending, how long its names run (`Names.NewTongue`).
+**A village's founders bring the tongue of the village they came from, half the time changed in one thing** - a sound taken up or let go, a place-name
+ending, a habit of naming (`Names.DriftTongue`, `Migration.TongueAt`): dialects by descent, neighbours founded from one another alike, a line's far
+daughters apart. **Places are named in their founders' tongue, first families in their people's, and every child in the tongue of the village born in**
+(`Settlement.Tongue`); a family name passes down as before. `--oldnames` names as before (the one speech). The tools tell each line's names and how far
+each village speaks from the line's first (`place --ways`).
+
+**Evidence.** TongueTests 3/3 (each first people's own tongue, its place named with one of its endings, first peoples apart; founders' tongues changed
+in at most one thing, 122 of 200 foundings unchanged; `--oldnames` the names of before), DeterminismTests 7/7, SaveLoad 8/8, HistoryBookTests 5/5,
+floatcheck clean, the Unity C# compiled (`cc --src`). **Seed 4's 300 years: the annals equal C10.9's (`_lp1`) byte for byte** - the names change nothing
+else (the state hash differs by the tongues themselves). Its year-300 world (`place --ways`, `results/ways_s4_wy2.txt`): Stoby's line, 18 villages over
+18 km - Stoby, Finby, Tainnidal, Kothirhope, Tikdekstead, Thordimstead, Tohope, Dothaisby, Trodal, Erokby, Silddal, Hodal, Sonstead, Saidal (each 0-4
+changes from Stoby's speech); Trelton's line - Trelton, Bruldnelton, Foindmere, Brimere, Fainddoldton; Trailby's - Trailby, Nairthorpe, Dounvostead,
+Gounthaby: names that read by descent.
+**Landed** (session 25, 25 Oct 2026, sim 94, after C10.10).
