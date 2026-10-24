@@ -270,6 +270,52 @@ namespace TC2.Game
             }
         }
 
+        /// <summary>
+        /// At the village view, the works named where they stand (the well, the granaries, the smithy, the training ground, the market, the
+        /// weaver's shed, the kiln, the boat shed, a mine or a quarry): what a place has and where, at a glance. Standing ones only, each kind once a
+        /// place (but each granary), none over another, none over a place's name.
+        /// </summary>
+        void WorkNames(TC2.Core.Simulation.World w, float sw, float sh)
+        {
+            if (!Names || Rig == null || Rig.Cam == null) return;
+            var cam = Rig.Cam;
+            var P = w.Planet;
+            Vector3 camPos = cam.transform.position;
+            float alt = camPos.magnitude - (float)P.Radius;
+            if (alt > 1500f || alt < 60f) return;
+            long now = w.Now;
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                ref var s = ref w.Settlements.Get(sid);
+                if (!s.Inhabited || (PlanetGeo.Surface(P, s.Anchor) - camPos).sqrMagnitude > 2600f * 2600f) continue;
+                var bl = w.BuildingsOf(sid);
+                int namedKinds = 0;
+                for (int i = 0; i < bl.Count; i++)
+                {
+                    ref var b = ref w.Buildings.Get(bl[i]);
+                    if (Structures.IsHome(b.Kind) || Boats.IsBoat(b.Kind) || b.Done == 0 || b.Left != 0) continue;
+                    if ((namedKinds & (1 << (b.Kind & 31))) != 0 && b.Kind != Structures.Granary) continue;
+                    Vector3 at = PlanetGeo.Surface(P, s.LocalToSphere(b.X, b.Y, P.Radius));
+                    if (Vector3.Dot(at.normalized, (camPos - at).normalized) < 0.05f) continue;
+                    Vector3 sp = cam.WorldToScreenPoint(at);
+                    if (sp.z <= 0f) continue;
+                    float x = sp.x / _scale, y = (Screen.height - sp.y) / _scale;
+                    if (x < 0f || x > sw || y < 40f || y > sh) continue;
+                    string text = Structures.Name(b.Kind);
+                    Vector2 ts = _mapSub.CalcSize(new GUIContent(text));
+                    var box = new Rect(x - ts.x * 0.5f - 2f, y - ts.y - 4f, ts.x + 4f, ts.y);
+                    bool clash = false;
+                    foreach (var r in _placed) if (r.Overlaps(box)) { clash = true; break; }
+                    if (clash) continue;
+                    _placed.Add(box);
+                    namedKinds |= 1 << (b.Kind & 31);
+                    GUI.color = new Color(0f, 0f, 0f, 0.75f); GUI.DrawTexture(new Rect(x - 2.5f, y - 2.5f, 5f, 5f), _dot); GUI.color = new Color(1f, 0.86f, 0.5f);
+                    GUI.DrawTexture(new Rect(x - 1.5f, y - 1.5f, 3f, 3f), _dot); GUI.color = Color.white;
+                    Edged(box, text, _mapSub);
+                }
+            }
+        }
+
         /// <summary>Close in, who or what is under the pointer: a person's name, age and doing; a building's kind and whose it is.</summary>
         void HoverTag(TC2.Core.Simulation.World w, float sw, float sh)
         {
@@ -354,7 +400,7 @@ namespace TC2.Game
             if (Host.CatchingUp) { CatchUpScreen(sw, sh); PointerOverUi = true; return; }
 
             if (_hidden) { PointerOverUi = false; return; }
-            if (!_book) MapNames(w, sw, sh);
+            if (!_book) { MapNames(w, sw, sh); WorkNames(w, sw, sh); }
             // top-left: a slim bar - the date and the speeds
             _left = new Rect(10, 10, Mathf.Min(sw - 390, 900), 40);
             GUILayout.BeginArea(_left, _box);
