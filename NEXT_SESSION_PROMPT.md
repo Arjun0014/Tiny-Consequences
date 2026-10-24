@@ -62,6 +62,10 @@ then god powers and player-facing gameplay.
    legible; great worlds in the browser (`14` §7); F9 (god powers as play).
 
 ## Rules that bite
+- **Resolving a conflict by keeping both sides** duplicates whatever both branches inserted at the same anchor (session 25: two measures inserted above
+  one method lost a brace and broke main's headless, fixed in 1b83b9e) - build after every resolved conflict before committing. Main's tip at the
+  handoff: 1b83b9e (sim 94; the measure tools `place --stonewalls`, `--ceiling`, `--ways`, `lordships --walls` on it). The queue's runner idles (empty
+  `todo`); `touch $Q/stop` stops it.
 - **Job scripts: never name a loop variable `c` or `r`** before session 25's fix `gate` overwrote them; name test-class loops `cls`, and every test gate
   needs `[1-9][0-9]* passed, 0 failed, 0 skipped` ("0 passed" once passed a gate).
 - **Each landing changes the sim version and old saves stop loading**: queued shots/Web jobs must point at a save of the version they run (make one
