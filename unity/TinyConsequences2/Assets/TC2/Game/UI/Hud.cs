@@ -587,7 +587,8 @@ namespace TC2.Game
                 if (s.Lord != 0 && w.Settlements.Exists(s.Lord) && w.Settlements.Get(s.Lord).Inhabited) paying++;   // (as RealmsView reads a bond)
                 else if (w.Conflict.PolitySize(sid) == 0) free++;
             }
-            var r = new Rect(sw - 340, ry, 330, 52 + 20 * Mathf.Max(1, shown) + (legend.Count > shown ? 18 : 0));
+            bool wars = RealmsView.FeudRaids > 0;
+            var r = new Rect(sw - 340, ry, 330, 52 + 20 * Mathf.Max(1, shown) + (legend.Count > shown ? 18 : 0) + (wars ? 36 : 0));
             GUILayout.BeginArea(r, _box);
             GUILayout.Label("<b>Realms</b>   " + paying + (paying == 1 ? " village pays" : " villages pay") + " a lord, " + free + " stand" + (free == 1 ? "s" : "") + " alone", _label);
             if (legend.Count == 0) GUILayout.Label("No village pays tribute to another now.", _small);
@@ -605,6 +606,10 @@ namespace TC2.Game
                 GUILayout.EndHorizontal();
             }
             if (legend.Count > shown) GUILayout.Label("and " + (legend.Count - shown) + " more", _small);
+            // the wars of the last ten years (dark spearheads toward the raided): how many raids, between how many pairs, and how many pairs of one realm
+            if (wars)
+                GUILayout.Label("Dark spears: " + RealmsView.FeudRaids + (RealmsView.FeudRaids == 1 ? " raid" : " raids") + " in the last ten years between " + RealmsView.FeudPairs +
+                                (RealmsView.FeudPairs == 1 ? " pair of villages" : " pairs of villages") + (RealmsView.FeudsWithin > 0 ? ", " + RealmsView.FeudsWithin + " of one realm" : ", none of one realm"), _small);
             GUILayout.EndArea();
             return r;
         }
