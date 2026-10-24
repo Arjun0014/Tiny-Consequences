@@ -36,13 +36,27 @@ then god powers and player-facing gameplay.
   (each age's real shots `tc2/out/shots/s25m_*`, realms with the war spears at 1,000). No monitor survives the clear: arm one
   (`tail -n 0 -F $Q/runq.log | grep --line-buffered -E "^end |runner stopped"`).
 
+## Results since (04:25): main's full suite 461/461 (0 skipped); the 1,000-year acceptance run - 25 §6 "First run", `tc2/out/tools/s25/accept/notes.md`
+- **Holds**: wild land, villages, founders, walls, realms that rise and fall, a great plague and recovery (seed 2), peoples with their own speech, books
+  that read as history (sixteen-seventeen ages a world; realms as reigns). Web `s25web2` 6/6 over the year-1,000 world (names by tongue on the map; layer
+  costs names x0.99, clouds ~x1.0, air x0.92-0.97; the base frame 6-9 fps at region/village - `14` §7).
+- **Does not hold**: after the land fills (~300) the map stops changing (2-3 villages abandoned in 1,000 years, almost no foundings) - years 300 and 1,000
+  look alike in real shots (`s25m_s2_y300`, `_y1000`).
+- Open: the war spears do not read yet in the realms shot (`s25m_s2_y1000r`: a rain deck and dark ink on the wash); one `ArgumentOutOfRangeException` per
+  Unity shots run since session 24 (no TC2 frame in the log; trace it); the acceptance shots framed a different lord at each age (use a fixed village).
+- **`wip/book-reigns`** (worktree `C:/Game Dev/tc-reigns`, bb8f581, tests and `cc` ok): the realm chapters fold a village's re-bowings after lapses into
+  one count - merge it into main once no Unity job runs in the main checkout (if not merged yet: `git log main --oneline | grep reigns`).
+
 ## Do next, in order
-1. Judge the queue's results: the full suite (0 failed, 0 skipped); the 1,000-year worlds (25 §6: villages, realms, ruins and rebuilding by age; the books);
-   the shots at every age and view (`s25m_*`: can history be seen without reading the date? the war spears and realms at 1,000); the Web (names by tongue
-   on the map, the book's new chapters, the layers' paired costs). Fix what they find; write the acceptance up in 25 §6/§8 and DECISIONS.
-2. C7.2 stone walls from its measure (`stonewalls_*`: do any walled villages lose enough a year, know stone at hand and hold the grain for a curtain?),
-   or by evidence the next: war between realms (C8.1's room after the peace), C11.1b households carrying their ways (marriage, migration), great worlds
-   in the browser (`14` §7), then F9 (god powers as play).
+1. Merge `wip/book-reigns` (above) if it is not on main; look at seed 4's age shots (`tc2/out/shots/s25m_s4_y*`) - the queue should have finished them
+   (`$Q/runq.log`; if the runner is gone and jobs are left, restart it only when Arjun asks).
+2. **The next slice by the acceptance's evidence: settlement change at the ceiling** - measure first why no village empties (even after the plague halves
+   a world: each shrinks in place) and why none is founded after ~300 (no good land known, or none left), and which of the record's mechanisms has its
+   state in the world: deserted villages after depopulation (survivors drawn to vacant holdings - C3.6d weighs leaving by a household's own land only,
+   a push, never the pull of land left empty elsewhere), towns drawing the land-short (crafts, markets), war's destruction. Build the smallest real one;
+   judge it in shots of one fixed village at years 300, 600, 1,000.
+3. Then: C7.2 stone walls (measured: narrow room - a few heavy losers a world with stone at hand, `tc2/out/tools/s25/c72_design.md`); the war spears made
+   legible; great worlds in the browser (`14` §7); F9 (god powers as play).
 
 ## Rules that bite
 - **Job scripts: never name a loop variable `c` or `r`** before session 25's fix `gate` overwrote them; name test-class loops `cls`, and every test gate
