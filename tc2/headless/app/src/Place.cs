@@ -55,6 +55,7 @@ namespace TC2.Headless
             if (a.Has("heads")) { Heads(w); return 0; }
             if (a.Has("marriage")) { Marriage(w); return 0; }
             if (a.Has("ways")) { PeoplesWays(w); return 0; }
+            if (a.Has("stonewalls")) { StoneWalls(w); return 0; }
             if (a.Has("heirs")) { Heirs(w); return 0; }
             if (a.Has("crofts")) { Crofts(w, a.Int("cell", 2)); return 0; }
             if (a.Has("seasons"))
@@ -649,6 +650,49 @@ namespace TC2.Headless
                 if (pal == tp || pal == (tp + 1) % 8 || pal == (tp + 2) % 8) shadeWay++;
             }
             Console.WriteLine("  buildings with a recorded form " + houses + ": the roof form their village's way " + P(asWay, houses) + ", the shade within its way's three " + P(shadeWay, houses));
+        }
+
+        /// <summary>
+        /// (C7.2 measured first, `place --stonewalls`) each walled village: its ring (m, the dry stretches), what other villages' people cost it a year
+        /// (the harms of three years, as `Conflict.Defence` weighs them), what its palisade's guarding is worth over a wall's life against the timber
+        /// ring's labour and wood, whether it knows stone at hand (its outcrop and its distance, a quarry), its people and the years of grain in its
+        /// store, and what a curtain of dry stone would cost it (loads a metre cut, carried, laid) against what it loses.
+        /// </summary>
+        static void StoneWalls(World w)
+        {
+            long now = w.Now;
+            var rows = new List<(int sid, double perim, double lost, bool stone, double dist, bool quarry, int people, double years)>();
+            int walled = 0, knowStone = 0, withQuarry = 0;
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                ref var s = ref w.Settlements.Get(sid);
+                if (!s.Inhabited || !TC2.Core.Society.Conflict.Walled(in s, out _)) continue;
+                walled++;
+                double perim = 2.0 * Math.PI * Math.Max(1.0, (double)s.WallR) * (s.WallDry > 0f ? (double)s.WallDry : 1.0);
+                double lost = w.DeedBook.HarmSince(sid, now - 3 * SimTime.Year, out _) / 3.0;
+                bool stone = TC2.Core.Places.Stone.Known(in s) >= 0;
+                if (stone) knowStone++;
+                bool quarry = s.Quarry != 0;
+                if (quarry) withQuarry++;
+                TC2.Core.Places.Trade.DaysOfFood(w, in s, out double daily);
+                double years = daily > 0 ? s.Granary / daily / SimTime.DaysPerYear : 0;
+                rows.Add((sid, perim, lost, stone, s.StoneDist, quarry, s.Population, years));
+            }
+            rows.Sort((x, y) => y.lost.CompareTo(x.lost));
+            // a dry-stone curtain ~1.5 m high and 1 m thick: ~150 loads of 25 kg a metre, cut at the quarry's rate, carried two a trip, laid at ~8 loads an hour
+            const double LoadsPerM = 150.0, LayPerHour = 8.0;
+            Console.WriteLine("stonewalls: walled villages " + walled + ", knowing stone at hand " + knowStone + ", with a quarry " + withQuarry);
+            Console.WriteLine("  village                 people  ring m  lost/yr FU  guarded over 15 y  timber ring FU  stone at m  stone ring h  (FU)   grain years");
+            foreach (var r in rows)
+            {
+                double guarded = TC2.Core.Society.Conflict.WallGuards * r.lost * TC2.Core.Society.Conflict.WallLife;
+                double timber = TC2.Core.Society.Conflict.LabourWorth * (TC2.Core.Places.Construction.PalisadeHoursPerM + TC2.Core.Places.Construction.PalisadeWoodPerM) * r.perim;
+                double walkH = r.stone ? 2.0 * r.dist / 1.2 / 3600.0 / 2.0 : 0;   // (an hour's walk there and back for each two loads, at 1.2 m/s)
+                double stoneH = r.perim * LoadsPerM * (1.0 / TC2.Core.Places.Stone.CutPerHour + walkH + 1.0 / LayPerHour);
+                Console.WriteLine("  " + w.History.NameOf(EntityRef.Settlement(r.sid)).PadRight(22) + r.people.ToString().PadLeft(7) + r.perim.ToString("0").PadLeft(8) + r.lost.ToString("0").PadLeft(12) +
+                                  guarded.ToString("0").PadLeft(19) + timber.ToString("0").PadLeft(16) + (r.stone ? r.dist.ToString("0") + (r.quarry ? " q" : "") : "-").PadLeft(12) +
+                                  stoneH.ToString("0").PadLeft(14) + (" (" + (TC2.Core.Society.Conflict.LabourWorth * stoneH).ToString("0") + ")").PadLeft(9) + r.years.ToString("0.0").PadLeft(10));
+            }
         }
 
         static void Marriage(World w)
