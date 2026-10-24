@@ -316,6 +316,52 @@ namespace TC2.Game
             }
         }
 
+        readonly System.Collections.Generic.List<Vector3> _near = new System.Collections.Generic.List<Vector3>();   // (screen x, y, person id)
+
+        /// <summary>
+        /// At the closest views (below 140 m), the people nearest the middle of the picture named over their heads - their given name small, so a
+        /// street reads as people one knows; at most fourteen, none over another. Those asleep or indoors are not drawn and not named.
+        /// </summary>
+        void PeopleNames(TC2.Core.Simulation.World w, float sw, float sh)
+        {
+            if (!Names || Rig == null || Rig.Cam == null) return;
+            var cam = Rig.Cam;
+            Vector3 camPos = cam.transform.position;
+            float alt = camPos.magnitude - (float)w.Planet.Radius;
+            if (alt > 140f) return;
+            double t = Host.RenderTime;
+            _near.Clear();
+            for (int id = w.People.First(); id != 0; id = w.People.Next(id))
+            {
+                ref var p = ref w.People.Get(id);
+                if (!p.Alive || !Presence.Of(w, in p, t, out var pd, out _, out _, out _)) continue;
+                Vector3 at = PlanetGeo.Surface(w.Planet, pd);
+                if ((at - camPos).sqrMagnitude > 260f * 260f) continue;
+                Vector3 sp = cam.WorldToScreenPoint(at + at.normalized * 2.1f);
+                if (sp.z <= 0f) continue;
+                float x = sp.x / _scale, y = (Screen.height - sp.y) / _scale;
+                if (x < 0f || x > sw || y < 50f || y > sh - 20f) continue;
+                _near.Add(new Vector3(x, y, id));
+            }
+            _near.Sort((a, b) => { float da = (a.x - sw * 0.5f) * (a.x - sw * 0.5f) + (a.y - sh * 0.5f) * (a.y - sh * 0.5f), db = (b.x - sw * 0.5f) * (b.x - sw * 0.5f) + (b.y - sh * 0.5f) * (b.y - sh * 0.5f); int c = da.CompareTo(db); return c != 0 ? c : a.z.CompareTo(b.z); });
+            int shown = 0;
+            foreach (var v in _near)
+            {
+                if (shown >= 14) break;
+                string full = w.History.NameOf(EntityRef.Person((int)v.z));
+                int sp2 = full.IndexOf(' ');
+                string given = sp2 > 0 ? full.Substring(0, sp2) : full;
+                Vector2 ts = _mapSub.CalcSize(new GUIContent(given));
+                var box = new Rect(v.x - ts.x * 0.5f, v.y - ts.y, ts.x, ts.y);
+                bool clash = false;
+                foreach (var r in _placed) if (r.Overlaps(box)) { clash = true; break; }
+                if (clash) continue;
+                _placed.Add(box);
+                shown++;
+                Edged(box, given, _mapSub);
+            }
+        }
+
         /// <summary>Close in, who or what is under the pointer: a person's name, age and doing; a building's kind and whose it is.</summary>
         void HoverTag(TC2.Core.Simulation.World w, float sw, float sh)
         {
@@ -400,7 +446,7 @@ namespace TC2.Game
             if (Host.CatchingUp) { CatchUpScreen(sw, sh); PointerOverUi = true; return; }
 
             if (_hidden) { PointerOverUi = false; return; }
-            if (!_book) { MapNames(w, sw, sh); WorkNames(w, sw, sh); }
+            if (!_book) { MapNames(w, sw, sh); WorkNames(w, sw, sh); PeopleNames(w, sw, sh); }
             // top-left: a slim bar - the date and the speeds
             _left = new Rect(10, 10, Mathf.Min(sw - 390, 900), 40);
             GUILayout.BeginArea(_left, _box);
