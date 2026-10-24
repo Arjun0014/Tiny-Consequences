@@ -558,16 +558,37 @@ namespace TC2.Core.History
             }
             ch.Heading("How it grew and shrank");
             var evs = new List<HistoryEvent>();
+            // (C10.9) a village whose bond lapsed at a lord's death and that bowed again is told once - its first bow a line, its later bows counted
+            // below; the lapses are counted in the paragraph above, not listed
+            var firstBow = new HashSet<int>();
+            var again = new Dictionary<int, List<int>>();
+            var againOrder = new List<int>();
             foreach (var b in mine)
             {
-                if (w.History.TryGet(b.Made, out var e1)) evs.Add(e1);
-                if (b.Ended != 0 && w.History.TryGet(b.Ended, out var e2)) evs.Add(e2);
+                if (w.History.TryGet(b.Made, out var e1))
+                {
+                    if (firstBow.Add(b.Payer)) evs.Add(e1);
+                    else { if (!again.TryGetValue(b.Payer, out var yl)) { again[b.Payer] = yl = new List<int>(); againOrder.Add(b.Payer); } yl.Add(YearOf(e1.Time)); }
+                }
+                if (b.Ended != 0 && b.EndHow != 2 && w.History.TryGet(b.Ended, out var e2)) evs.Add(e2);
             }
             // (C10.8) the askings its seat made that were refused - a realm's story is also the tenths it was denied
             if (c.At.TryGetValue(r.Seat, out var _))
                 foreach (var kv in c.Refusals) if (kv.Subject.Id == r.Seat) evs.Add(kv);
             Best(evs, 14);
             foreach (var e in evs) ch.Line(w, e);
+            if (againOrder.Count > 0)
+            {
+                againOrder.Sort((a, b) => again[b].Count != again[a].Count ? again[b].Count.CompareTo(again[a].Count) : a.CompareTo(b));
+                var parts = new List<string>();
+                for (int i = 0; i < againOrder.Count && i < 6; i++)
+                {
+                    var yl = again[againOrder[i]];
+                    parts.Add(Name(w, againOrder[i]) + " " + (yl.Count == 1 ? "once more (year " + yl[0] + ")" : Num(yl.Count) + " times more (" + Years(yl[0], yl[yl.Count - 1]) + ")"));
+                }
+                ch.Para("Won back after their bonds lapsed, these bowed again to " + seat + ": " + Join(parts) +
+                        (againOrder.Count > 6 ? ", and " + Plural(againOrder.Count - 6, "village", "villages") + " more" : "") + ".", r.Seat);
+            }
             // (C10.10) the peace its seat kept: the claims for blood between villages it was lord over that it judged
             var judged = new List<HistoryEvent>();
             foreach (var j in c.Judgments) if (j.ArgB == r.Seat) judged.Add(j);
