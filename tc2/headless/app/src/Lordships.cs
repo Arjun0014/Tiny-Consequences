@@ -260,7 +260,50 @@ namespace TC2.Headless
             if (a.Has("margins")) Margins(w, name);
             if (a.Has("could")) Could(w, name);
             if (a.Has("wrongs")) Wrongs(w, name);
+            if (a.Has("together")) Together(w, name);
             return 0;
+        }
+
+        /// <summary>
+        /// (C10.9 measure, `lordships --together`) each lord with two or more villages paying it directly: each alone weighs the lord's might against it -
+        /// the lord's own strength and the call of its other tributaries within a day's walk (`Might(lord, it)`) - over its own; together, the lord's own
+        /// strength without any of their calls (`Might(lord, 0)`) against the sum of theirs (each with its own tributaries' call, `Might(it, lord)`); and
+        /// with the near ones only (within a day's walk of the lord: those that could march on it together). How many realms could not be stood against
+        /// by any one of their villages but could by them together - the room a rising together would have.
+        /// </summary>
+        static void Together(World w, Func<int, string> name)
+        {
+            var C = w.Conflict;
+            int lords = 0, aloneNone = 0, couldTogether = 0, couldNear = 0, tribs = 0;
+            for (int lord = w.Settlements.First(); lord != 0; lord = w.Settlements.Next(lord))
+            {
+                ref var ls = ref w.Settlements.Get(lord);
+                if (!ls.Inhabited) continue;
+                var mine = new List<int>();
+                for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o)) { ref var os = ref w.Settlements.Get(o); if (os.Inhabited && os.Lord == lord) mine.Add(o); }
+                if (mine.Count < 2) continue;
+                lords++; tribs += mine.Count;
+                double own = C.Might(lord, 0), sum = 0, sumNear = 0, best = 0;
+                int near = 0;
+                bool anyAlone = false;
+                foreach (int t in mine)
+                {
+                    double lm = C.Might(lord, t), tm = C.Might(t, lord);
+                    if (tm >= lm) anyAlone = true;
+                    best = Math.Max(best, tm / Math.Max(1e-9, lm));
+                    sum += tm;
+                    if (Vec3d.ArcDistance(w.Settlements.Get(t).Anchor, ls.Anchor, w.Planet.Radius) <= 6000 && w.Routes.Get(w, t, lord) != null) { sumNear += tm; near++; }
+                }
+                if (!anyAlone) aloneNone++;
+                bool together = !anyAlone && sum >= own, togetherNear = !anyAlone && sumNear >= own;
+                if (together) couldTogether++;
+                if (togetherNear) couldNear++;
+                Console.WriteLine("    together " + name(lord) + " (" + ls.Population + " people): " + mine.Count + " paying directly (" + near + " within a day's walk by a way on foot); its own strength " + own.ToString("0") +
+                                  "; the strongest alone x" + best.ToString("0.00") + " of what the lord brings against it; all together " + sum.ToString("0") + " (x" + (sum / Math.Max(1e-9, own)).ToString("0.00") +
+                                  "), the near ones " + sumNear.ToString("0") + " (x" + (sumNear / Math.Max(1e-9, own)).ToString("0.00") + ")" + (together ? (togetherNear ? " - could rise together, the near ones alone" : " - could rise together") : ""));
+            }
+            Console.WriteLine("  together (--together): " + lords + " lords with two or more villages paying directly (" + tribs + " villages); none of whose villages could stand against it alone " + aloneNone +
+                              "; of those, all their villages together outweigh the lord's own strength " + couldTogether + ", the near ones alone " + couldNear);
         }
 
         /// <summary>
