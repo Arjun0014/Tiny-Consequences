@@ -5273,7 +5273,7 @@ fixed: see SESSION_HANDOFF); floatcheck clean. **Control**: `--oldlapse` reprodu
 **Ten seeds** (`_lp1` against `_dm1`, `tc2/out/tools/s23/results/cmp_dm1_lp1.txt`): people at par (at year 300 x0.945, t -1.22; over years 200-299 x1.042,
 t 1.19; 100-199 x1.012), births and deaths a person-year at par (x0.988, t -1.92; x1.012); **less war** - raids x0.64 (t -1.34), bands x0.65 (t -1.86),
 blows x0.81, wounds a person-year x0.80, deaths of wounds x0.85; **the mechanism** - bonds made x2.8 and ended x3.6 (t 6.7: 12-215 bonds for peace lapsed
-a world, 88-237 deaths of the first at a lord's seat, 3-16 bonds for bread kept), the greatest realm x1.04 (t 0.71), lords x0.77: heirs win their
+a world, 88-237 deaths of the first at a lord's seat, 0-16 bonds for bread kept), the greatest realm x1.04 (t 0.71), lords x0.77: heirs win their
 tributaries back by asking, and a freed village asked by a nearer stronger neighbour goes to it - realms change hands at deaths rather than shrink.
 No outcome lean passes |t| 2; the largest, sickness x2.27 (t 1.81, seven seeds with any) and famines x1.25 (t 1.26), are chance-heavy counts.
 **Landed** (session 25, 25 Oct 2026, merge aeb880b, sim 92). Not yet run: its 900-year worlds (they are made with the rules that follow it: C10.10).
