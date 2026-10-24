@@ -51,14 +51,15 @@ namespace TC2.Tests.Core
         }
 
         /// <summary>Premise: `x` holds a heavy wrong against `y` (a raid of y's on its store it saw), read as its day reads its foe.</summary>
-        static void Wronged(World w, int x, int y)
+        static void Wronged(World w, int x, int y, double worth = Conflict.RaidFull)
         {
             long ev = w.Record(new HistoryEvent { Kind = HistoryKind.Raid, Time = w.Now, Cell = w.Settlements.Get(x).Cell, Settlement = x, Subject = EntityRef.Settlement(y), Object = EntityRef.Settlement(x), RootKind = RootKind.People });
-            int deed = w.DeedBook.Record(DeedKind.Raid, 0, y, 0, x, Trade.Grain, 0.0, Conflict.RaidFull, ev);
+            int deed = w.DeedBook.Record(DeedKind.Raid, 0, y, 0, x, Trade.Grain, 0.0, worth, ev);
             w.DeedBook.Learn(x, deed, KnownHow.Saw);
             w.DeedBook.Learn(y, deed, KnownHow.Own);
             ref var s = ref w.Settlements.Get(x);
-            s.Foe = y; s.FoeWorth = (float)Conflict.RaidFull; s.FoeEvent = ev;
+            int foe = w.DeedBook.Foe(x, out double worst);   // (its day's reading of whom it holds most against)
+            s.Foe = foe; s.FoeWorth = (float)worst; s.FoeEvent = w.DeedBook.LatestHarm(x, foe);
         }
 
         static int Grown(World w, int sid)
@@ -124,13 +125,23 @@ namespace TC2.Tests.Core
                 Wronged(w2, a, b);
                 w2.Conflict.RaiseBandNow(a);
                 Assert.AreEqual(1.0, Conflict.RaidTally[0], "across realms the wrong is weighed for a band");
+                // its heaviest wrong within the realm (against its own lord), a lighter one beyond it: the band is weighed against the one beyond
+                var w4 = Three(out lord, out a, out b);
+                Bond(w4, a, lord);
+                Wronged(w4, a, b, 2 * Conflict.RaidFrom);
+                Wronged(w4, a, lord, 2 * Conflict.RaidFull);
+                Assert.AreEqual(lord, w4.Settlements.Get(a).Foe, "it holds most against its lord");
+                int band = w4.Conflict.RaiseBandNow(a);
+                Assert.AreEqual(2.0, Conflict.RaidTally[0], "a band weighed");
+                Assert.AreEqual(1.0, Conflict.PeaceTally[6], "against the foe beyond the realm");
+                if (band != 0) Assert.AreEqual(b, w4.Bands.Get(band).Target, "the band goes against the village beyond the realm");
                 // the old rules: one realm, the band weighed
                 Conflict.PeaceOff = true;
                 var w3 = Three(out lord, out a, out b);
                 Bond(w3, a, lord); Bond(w3, b, lord);
                 Wronged(w3, a, b);
                 w3.Conflict.RaiseBandNow(a);
-                Assert.AreEqual(2.0, Conflict.RaidTally[0], "--oldpeace: weighed within the realm too");
+                Assert.AreEqual(3.0, Conflict.RaidTally[0], "--oldpeace: weighed within the realm too");
             }
             finally { Conflict.PeaceOff = false; Conflict.RaidTally = null; Conflict.PeaceTally = null; }
         }

@@ -826,15 +826,27 @@ namespace TC2.Core.Society
             if (fit < BandAtLeast) return;
             int target = 0, forT = 0; byte motive = 0;
             double urge = 0;
+            long ownEv = s.FoeEvent;
+            double ownW = (double)s.FoeWorth;
             if (s.Foe != 0 && s.FoeWorth >= RaidFrom && LordOf(s.Foe) != sid)
             {
-                // (the lord's peace, C10.10: no band against a village of its own realm - its blood is claimed before their common lord)
-                if (OnePeace(sid, s.Foe)) { if (PeaceTally != null) PeaceTally[3]++; }
-                else { target = s.Foe; motive = 1; urge = DMath.Clamp01((double)s.FoeWorth / RaidFull); }
+                if (!OnePeace(sid, s.Foe)) { target = s.Foe; motive = 1; urge = DMath.Clamp01((double)s.FoeWorth / RaidFull); }
+                else
+                {
+                    // (the lord's peace, C10.10: no band against a village of its own realm - its blood is claimed before their common lord; a band
+                    // goes, if at all, against the village beyond the realm it holds most against)
+                    if (PeaceTally != null) PeaceTally[3]++;
+                    int far = ForeignFoe(sid, out double fw);
+                    if (far != 0 && fw >= RaidFrom && LordOf(far) != sid)
+                    {
+                        target = far; motive = 1; urge = DMath.Clamp01(fw / RaidFull); ownEv = w.DeedBook.LatestHarm(sid, far); ownW = fw;
+                        if (PeaceTally != null) PeaceTally[6]++;
+                    }
+                }
             }
             // the lord answers for its tributaries (D2-108): the heaviest wrong one of them holds, weighed at the lord's share, when heavier
             // than its own - never against another of its tributaries, never against itself
-            double heaviest = motive == 1 ? (double)s.FoeWorth : 0.0;
+            double heaviest = motive == 1 ? ownW : 0.0;
             for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
             {
                 if (o == sid) continue;
@@ -927,7 +939,7 @@ namespace TC2.Core.Society
             int id = w.Ids.Next(EntityKind.Band);
             long off = w.LocalOffsetOf(sid);
             long arrive = SimTime.StartOfDay(now + off) + SimTime.Day + SimTime.Hours(1) - off;   // (one in the morning, the coming night)
-            long cause = motive == 1 ? s.FoeEvent : motive == 2 ? w.Settlements.Get(forT).FoeEvent : HungerCause(sid, now);
+            long cause = motive == 1 ? ownEv : motive == 2 ? w.Settlements.Get(forT).FoeEvent : HungerCause(sid, now);
             long ev = w.Record(new HistoryEvent
             {
                 Kind = HistoryKind.BandRaised, Time = now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Person(leader), Object = EntityRef.Settlement(target),
@@ -1883,9 +1895,10 @@ namespace TC2.Core.Society
         public static bool PeaceOff;
         /// <summary>Tools (`--peacetally`): [0] claims between villages of one realm with a common lord over the doers, [1] of them judged (the lord no weaker
         /// than the doers), [2] FU paid at a judgment, [3] bands kept home by the peace (a village's own wrong against one of its realm), [4] tributaries'
-        /// wrongs against a village of the realm its lord did not answer, [5] judgments the doers' store could not pay in full; null in the game.</summary>
+        /// wrongs against a village of the realm its lord did not answer, [5] judgments the doers' store could not pay in full, [6] of [3], bands weighed instead against the foe beyond the realm it holds most against;
+        /// null in the game.</summary>
         public static double[] PeaceTally;
-        public const int PeaceTallyN = 6;
+        public const int PeaceTallyN = 7;
 
         /// <summary>
         /// The lord's peace (C10.10): two villages of one realm - one the other's lord, or both paying, directly or through their own lords, one highest
@@ -1906,6 +1919,24 @@ namespace TC2.Core.Society
                 j = LordOf(j);
             }
             return 0;
+        }
+
+        /// <summary>The village outside its own realm a village holds most against (and the weight), or 0 (C10.10).</summary>
+        int ForeignFoe(int sid, out double worst)
+        {
+            worst = 0;
+            var w = _w;
+            var list = w.DeedBook.Others(sid);
+            if (list == null) return 0;
+            int foe = 0;
+            for (int i = 0; i < list.Count; i++)
+            {
+                int o = list[i];
+                if (!w.Settlements.Exists(o) || !w.Settlements.Get(o).Inhabited || OnePeace(sid, o)) continue;
+                double g = w.DeedBook.Grievance(sid, o);
+                if (g > worst) { worst = g; foe = o; }
+            }
+            return foe;
         }
 
         /// <summary>Whether a village pays `top`, directly or through its own lords.</summary>
