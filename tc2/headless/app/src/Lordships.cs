@@ -262,7 +262,157 @@ namespace TC2.Headless
             if (a.Has("wrongs")) Wrongs(w, name);
             if (a.Has("together")) Together(w, name);
             if (a.Has("heirs")) Heirs(w, name);
+            if (a.Has("walls")) Walls(w, name);
             return 0;
+        }
+
+        /// <summary>
+        /// (C8.1 measure, `lordships --walls`) from the ledger: each asking (C10.8) and how it ended, by whether the asked stood behind a palisade then
+        /// (its rings built less fallen); for each refusal, what the asker did in the ten years after - bands raised against the refuser, raids and how
+        /// they went (unseen, held the field, driven off), a later bow to the asker (by a raid, or at another asking); and every raid by its target's wall.
+        /// Whether walls stop lordships from growing - the room a siege would have - is read from these.
+        /// </summary>
+        static void Walls(World w, Func<int, string> name)
+        {
+            var H = w.History;
+            long Y = SimTime.Year, after = 10 * Y;
+            var rings = new Dictionary<int, int>();
+            bool walled(int sid) => rings.TryGetValue(sid, out int n) && n > 0;
+            var refusals = new List<(long t, int asker, int asked, bool wall)>();
+            int[] asked = new int[2], bowed = new int[2];
+            int[] raids = new int[2], unseen = new int[2], held = new int[2], driven = new int[2], bands = new int[2];
+            for (int i = 0; i < H.Count; i++)
+            {
+                var e = H.At(i);
+                switch (e.Kind)
+                {
+                    case HistoryKind.WallBuilt: rings[e.Settlement] = (rings.TryGetValue(e.Settlement, out int n0) ? n0 : 0) + 1; break;
+                    case HistoryKind.WallFallen: rings[e.Settlement] = Math.Max(0, (rings.TryGetValue(e.Settlement, out int n1) ? n1 : 0) - 1); break;
+                    case HistoryKind.TributeDemanded:
+                    {
+                        int k = walled(e.Object.Id) ? 1 : 0;
+                        asked[k]++;
+                        if (e.ArgA == 1) bowed[k]++; else refusals.Add((e.Time, e.Subject.Id, e.Object.Id, k == 1));
+                        break;
+                    }
+                    case HistoryKind.BandRaised: bands[walled(e.Object.Id) ? 1 : 0]++; break;
+                    case HistoryKind.Raid:
+                    {
+                        int k = walled(e.Object.Id) ? 1 : 0, o = e.ArgB / 100;
+                        raids[k]++;
+                        if (o == 0) unseen[k]++; else if (o == 1) held[k]++; else driven[k]++;
+                        break;
+                    }
+                }
+            }
+            for (int k = 0; k < 2; k++)
+                Console.WriteLine("    " + (k == 1 ? "walled  " : "unwalled") + ": asked " + asked[k] + ", bowed " + bowed[k] + " (" + (100.0 * bowed[k] / Math.Max(1, asked[k])).ToString("0") + " %); bands raised against " + bands[k] +
+                                  "; raids " + raids[k] + " (unseen " + unseen[k] + ", held the field " + held[k] + ", driven off " + driven[k] + ")");
+            // each refusal: the asker's bands and raids on the refuser in the ten years after, and a later bow to it
+            int[] refN = new int[2], withBand = new int[2], withRaid = new int[2], withHeld = new int[2], bowedLater = new int[2], bowedByRaid = new int[2], askedAgain = new int[2];
+            var seen = new HashSet<(int, int)>();
+            int from = 0;   // (refusals come in the ledger's order: the scan for each starts where the last one's did)
+            foreach (var r in refusals)
+            {
+                if (!seen.Add((r.asker, r.asked))) continue;   // (the first refusal of each pair: the later ones are the same quarrel)
+                int k = r.wall ? 1 : 0;
+                refN[k]++;
+                bool band = false, raid = false, heldF = false, bow = false, byRaid = false, again = false;
+                while (from < H.Count && H.At(from).Time <= r.t) from++;
+                for (int i = from; i < H.Count; i++)
+                {
+                    var e = H.At(i);
+                    if (e.Time <= r.t) continue;
+                    if (e.Time > r.t + after) break;
+                    if (e.Kind == HistoryKind.BandRaised && e.Settlement == r.asker && e.Object.Id == r.asked) band = true;
+                    else if (e.Kind == HistoryKind.Raid && e.Subject.Id == r.asker && e.Object.Id == r.asked) { raid = true; if (e.ArgB / 100 != 2) heldF = true; }
+                    else if (e.Kind == HistoryKind.TributeAgreed && e.Subject.Id == r.asked && e.Object.Id == r.asker && !bow) { bow = true; byRaid = e.ArgB == 0; }
+                    else if (e.Kind == HistoryKind.TributeDemanded && e.Subject.Id == r.asker && e.Object.Id == r.asked) again = true;
+                }
+                if (band) withBand[k]++;
+                if (raid) withRaid[k]++;
+                if (heldF) withHeld[k]++;
+                if (bow) bowedLater[k]++;
+                if (byRaid) bowedByRaid[k]++;
+                if (again) askedAgain[k]++;
+            }
+            for (int k = 0; k < 2; k++)
+                Console.WriteLine("    first refusals by a pair, " + (k == 1 ? "walled  " : "unwalled") + ": " + refN[k] + "; in the ten years after - asked again " + askedAgain[k] + ", a band raised against it " + withBand[k] + ", raided " + withRaid[k] +
+                                  " (held the field " + withHeld[k] + "), bowed to the asker " + bowedLater[k] + " (after a raid " + bowedByRaid[k] + ")");
+            // every raid by the wrong it went for: its band's motive and the kind of the wrong's record (a bond ended, a refused asking, a raid, ...)
+            var byWhy = new SortedDictionary<string, int[]>(StringComparer.Ordinal);   // why -> raids, against walled, held the field, driven off
+            var ringsB = new Dictionary<int, int>();
+            for (int i = 0; i < H.Count; i++)
+            {
+                var e = H.At(i);
+                if (e.Kind == HistoryKind.WallBuilt) { ringsB[e.Settlement] = (ringsB.TryGetValue(e.Settlement, out int n0) ? n0 : 0) + 1; continue; }
+                if (e.Kind == HistoryKind.WallFallen) { ringsB[e.Settlement] = Math.Max(0, (ringsB.TryGetValue(e.Settlement, out int n1) ? n1 : 0) - 1); continue; }
+                if (e.Kind != HistoryKind.Raid) continue;
+                string why = "unknown (band's record compacted)";
+                if (e.Cause1 != 0 && H.TryGet(e.Cause1, out var band) && band.Kind == HistoryKind.BandRaised)
+                {
+                    string m = band.ArgB == 0 ? "hunger" : band.ArgB == 2 ? "a tributary's wrong" : "its own wrong";
+                    string src = band.Cause1 != 0 && H.TryGet(band.Cause1, out var wr) ? wr.Kind.ToString() + (wr.Kind == HistoryKind.TributeEnded ? (wr.ArgA == 1 ? "(lord gone)" : wr.ArgA == 2 ? "(lapsed)" : "(no longer the stronger)") : wr.Kind == HistoryKind.Raid ? (wr.Subject.Id == e.Object.Id ? "(by the raided)" : "(by another)") : "") : "-";
+                    why = m + " <- " + src;
+                }
+                if (!byWhy.TryGetValue(why, out var c)) byWhy[why] = c = new int[4];
+                c[0]++;
+                if (ringsB.TryGetValue(e.Object.Id, out int rn) && rn > 0) c[1]++;
+                int o = e.ArgB / 100;
+                if (o == 1) c[2]++; else if (o == 2) c[3]++;
+            }
+            foreach (var kv in byWhy)
+                Console.WriteLine("    raids for " + kv.Key + ": " + kv.Value[0] + " (against walled " + kv.Value[1] + "; held the field " + kv.Value[2] + ", driven off " + kv.Value[3] + ")");
+            // (the lord's peace measured first) every raid, wound and refused claim by the two villages' places in the realms at its time, rebuilt from the
+            // bonds: a tributary on its own lord (or its lord's lord), a lord on its own tributary, two villages of one realm, of two realms, or a free one
+            var lordAt = new Dictionary<int, int>();
+            int rootOf(int x) { int r = x, g = 0; while (lordAt.TryGetValue(r, out int l) && l != 0 && g++ < 64) r = l; return r; }
+            bool under(int x, int top) { int r = x, g = 0; while (lordAt.TryGetValue(r, out int l) && l != 0 && g++ < 64) { if (l == top) return true; r = l; } return false; }
+            string[] cls = { "a tributary on its lord", "a lord on its tributary", "two villages of one realm", "villages of two realms", "a free village with another" };
+            var raidsBy = new int[5]; var heldBy = new int[5]; var blowsBy = new int[5]; var refusedBy = new int[5]; var amendsBy = new int[5];
+            int place(int a2, int b2)
+            {
+                if (under(a2, b2)) return 0;
+                if (under(b2, a2)) return 1;
+                bool ina = lordAt.ContainsKey(a2) && lordAt[a2] != 0 || IsLord(a2), inb = lordAt.ContainsKey(b2) && lordAt[b2] != 0 || IsLord(b2);
+                if (ina && inb) return rootOf(a2) == rootOf(b2) ? 2 : 3;
+                return 4;
+            }
+            bool IsLord(int x) { foreach (var kv in lordAt) if (kv.Value == x) return true; return false; }
+            for (int i = 0; i < H.Count; i++)
+            {
+                var e = H.At(i);
+                switch (e.Kind)
+                {
+                    case HistoryKind.TributeAgreed: lordAt[e.Subject.Id] = e.Object.Id; break;
+                    case HistoryKind.TributeEnded: lordAt.Remove(e.Subject.Id); break;
+                    case HistoryKind.Raid:
+                    {
+                        int k = place(e.Subject.Id, e.Object.Id);
+                        raidsBy[k]++; if (e.ArgB / 100 == 1) heldBy[k]++; blowsBy[k] += e.ArgB % 100;
+                        break;
+                    }
+                    case HistoryKind.AmendsMade:
+                        if (e.Subject.Kind == EntityKind.Settlement && e.Object.Kind == EntityKind.Settlement) amendsBy[place(e.Object.Id, e.Subject.Id)]++;
+                        break;
+                    case HistoryKind.ClaimRefused:
+                    {
+                        // (the claimants' village refused by the doers': Settlement the refusers', Object the claimants')
+                        if (e.Settlement > 0 && e.Object.Kind == EntityKind.Settlement) refusedBy[place(e.Object.Id, e.Settlement)]++;
+                        break;
+                    }
+                }
+            }
+            for (int k = 0; k < 5; k++)
+                Console.WriteLine("    peace: " + cls[k] + " - raids " + raidsBy[k] + " (held the field " + heldBy[k] + ", blows " + blowsBy[k] + "), claims refused " + refusedBy[k] + ", amends made " + amendsBy[k] + " (claims are local records: a ledger may have compacted old ones)");
+            int wnow = 0, wfree = 0;
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                ref var s = ref w.Settlements.Get(sid);
+                if (!s.Inhabited || !TC2.Core.Society.Conflict.Walled(in s, out _)) continue;
+                wnow++; if (s.Lord == 0) wfree++;
+            }
+            Console.WriteLine("  walls (--walls): askings " + (asked[0] + asked[1]) + " (of walled villages " + asked[1] + "); walled villages now " + wnow + " (paying nobody " + wfree + ")");
         }
 
         /// <summary>

@@ -393,6 +393,9 @@ namespace TC2.Core.Society
             return foe;
         }
 
+        /// <summary>The villages a village holds something against or owes thanks to (read-only use: a foe beyond its realm, C10.10).</summary>
+        public List<int> Others(int sid) => sid > 0 && sid < _others.Length ? _others[sid] : null;
+
         /// <summary>The event of the latest wrong (in fifty years) a village knows another's people did it, not made good, or 0.</summary>
         public long LatestHarm(int sid, int other)
         {

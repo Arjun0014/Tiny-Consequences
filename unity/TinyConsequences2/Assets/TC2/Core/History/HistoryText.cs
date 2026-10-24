@@ -174,7 +174,7 @@ namespace TC2.Core.History
                 case HistoryKind.WatchSet: return "The people of " + subj + " began to keep a watch at their store at night: grain has been taken from it.";
                 case HistoryKind.AmendsMade:
                     return "The people of " + subj + " made amends to " + obj + " for " + (e.ArgA == 5 ? "a death" : "a wounding") + " (" + F(e.Magnitude, "0") + " days' grain)" +
-                           (e.Other.IsNone ? "" : ", asked by " + other) + ".";
+                           (e.Other.IsNone ? "" : ", asked by " + other) + (e.ArgB != 0 ? ", at the judgment of " + w.History.NameOf(EntityRef.Settlement(e.ArgB)) + ", lord over them both" : "") + ".";
                 case HistoryKind.ClaimRefused:
                     return "The people of " + subj + (e.ArgA == 1 ? " said they had no part in " : " would make no amends to " + obj + " for ") + (e.ArgB == 5 ? "a death" : "a wounding") +
                            (e.ArgA == 1 ? " that " + obj + " laid at their door" : "") + (e.Other.IsNone ? "" : " when " + other + " came to ask") + ".";
