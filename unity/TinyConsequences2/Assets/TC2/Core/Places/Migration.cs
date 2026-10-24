@@ -229,6 +229,8 @@ namespace TC2.Core.Places
             ref var s = ref w.Settlements.Get(sid);
             int heads = w.Members(hid).Count;
             int best = 0; double bs = 0;
+            var jt = JoinTally;
+            if (jt != null) { jt[0]++; jt[8] += homePressure; }
             for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
             {
                 if (o == sid) continue;
@@ -236,16 +238,25 @@ namespace TC2.Core.Places
                 if (!t.Inhabited || w.Now - t.Founded < SimTime.Years(1)) continue;
                 double d = Vec3d.ArcDistance(s.Anchor, t.Anchor, P.Radius);
                 if (d > cfg.MarriageReach) continue;
+                if (jt != null) jt[1]++;
                 double p = Pressure(in t);
-                if (p > homePressure - 0.1) continue;
+                if (p > homePressure - 0.1) { if (jt != null) jt[2]++; continue; }
                 double spare = SpareLand(o) - heads * SettlementSystem.HaPerHead(w, in t);   // (what they would sow there, by what its land bears: C3.6f)
-                if (spare <= 0) continue;
-                if (w.Routes.Get(w, sid, o) == null) continue;
+                if (spare <= 0) { if (jt != null) jt[3]++; continue; }
+                if (w.Routes.Get(w, sid, o) == null) { if (jt != null) jt[4]++; continue; }
+                if (jt != null) jt[5]++;
                 double score = DMath.Min(spare, 10.0) / (1.0 + d / 2000.0) * (1.0 - DMath.Min(0.9, p)) * (KinIn(hid, o) ? 2.0 : 1.0);
                 if (score > bs) { bs = score; best = o; }
             }
+            if (jt != null) { if (best != 0) jt[6]++; else jt[7]++; }
             return best;
         }
+
+        /// <summary>Tools (`--jointally`, settlement change at the ceiling measured first): households looking for a village to join [0], candidates within
+        /// marriage reach [1], of those pressed no less than home (less 0.1) [2], with no land to spare for them [3], no way on foot [4], fit [5]; households
+        /// that found one [6], none [7]; the sum of their pressures at home [8]; null in the game.</summary>
+        public static double[] JoinTally;
+        public const int JoinTallyN = 9;
 
         /// <summary>Arable hectares within a village's fields' reach that no other village holds, beyond what its people need.</summary>
         double SpareLand(int sid)
