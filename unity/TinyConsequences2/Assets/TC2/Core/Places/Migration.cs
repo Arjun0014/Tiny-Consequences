@@ -283,7 +283,7 @@ namespace TC2.Core.Places
             return false;
         }
 
-        int BestSite(int sid, out double q)
+        public int BestSite(int sid, out double q)   // (public for the tools: `place --ceiling`)
         {
             var w = _w;
             ref var s = ref w.Settlements.Get(sid);
