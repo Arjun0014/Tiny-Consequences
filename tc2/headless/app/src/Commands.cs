@@ -232,6 +232,8 @@ namespace TC2.Headless
             if (a.Has("oldsworn")) TC2.Core.Society.Retinue.Off = true;   // (C10.7b off: nobody is sworn to a first household)
             if (a.Has("sworntally")) TC2.Core.Society.Retinue.Tally = new double[TC2.Core.Society.Retinue.TallyN];   // (C10.7b: men sworn and released, fed, their practice and bands)
             if (a.Has("olddemand")) TC2.Core.Society.Conflict.DemandOff = true;   // (C10.8 off: no village asks a tenth of another)
+            if (a.Has("oldlapse")) TC2.Core.Society.Conflict.LapseOff = true;     // (C10.9 off: bonds for peace outlive their lord's death)
+            if (a.Has("lapsetally")) TC2.Core.Society.Conflict.LapseTally = new double[TC2.Core.Society.Conflict.LapseTallyN];
             if (a.Has("demandtally")) TC2.Core.Society.Conflict.DemandTally = new double[TC2.Core.Society.Conflict.DemandTallyN];   // (C10.8: the askings and their answers)
             if (a.Has("oldways")) TC2.Core.Agents.RouteCache.LiveForest = true;   // (D2-160 off: routes from the woods as they are when built)
             if (a.Has("oldtribute")) TC2.Core.Society.Conflict.CarryOff = true;   // (C10.6 off: the tenth into the lord's store at the harvest, carried by nobody)
@@ -1021,6 +1023,9 @@ namespace TC2.Headless
                     if (demandTallyC108 != null)   // (C10.8: the askings of a tenth and their answers)
                         Console.WriteLine("demands: free village-harvests weighed " + demandTallyC108[0] + ", asked " + demandTallyC108[1] + " - bowed " + demandTallyC108[2] + ", refused " + demandTallyC108[3] +
                                           "; asked by a village keeping fewer sworn men than the asked's own " + demandTallyC108[4]);
+                    var lapseTallyC109 = TC2.Core.Society.Conflict.LapseTally;
+                    if (lapseTallyC109 != null)   // (C10.9: the lord's death and its bonds)
+                        Console.WriteLine("lapses: deaths of the first at a lord's seat " + lapseTallyC109[0] + ", with bonds for peace " + lapseTallyC109[1] + "; bonds for peace lapsed " + lapseTallyC109[2] + ", bonds for bread kept " + lapseTallyC109[3]);
                     var ct = TC2.Core.Society.Conflict.CarryTally;
                     if (ct != null)   // (C10.6: the lord's tenth carried to its store)
                         Console.WriteLine("carried: set aside " + F(ct[3], "0") + " FU; loads " + ct[0] + " (lived " + ct[2] + "), " + F(ct[1], "0") + " FU (by cart " + F(ct[5], "0") + "), carriers' km " + F(ct[6], "0") +

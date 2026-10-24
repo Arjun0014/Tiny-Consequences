@@ -463,15 +463,15 @@ namespace TC2.Core.History
             foreach (var kv in r.Sizes)
                 if ((kv.Key % 100 == 0 || kv.Key == r.PeakYear) && kv.Key != lastMark) { lastMark = kv.Key; marks.Add(kv.Value + " by year " + kv.Key); }
             if (marks.Count > 1) sb.Append("Villages paying it, in all its tiers: ").Append(string.Join(", ", marks.ToArray())).Append(". ");
-            int made = 0, bread = 0, asked = 0, endedWeak = 0, endedGone = 0;
-            foreach (var b in mine) { made++; if (b.How == 1) bread++; else if (b.How == 2) asked++; if (b.Ended != 0) { if (b.EndHow == 1) endedGone++; else endedWeak++; } }
+            int made = 0, bread = 0, asked = 0, endedWeak = 0, endedGone = 0, endedDeath = 0;
+            foreach (var b in mine) { made++; if (b.How == 1) bread++; else if (b.How == 2) asked++; if (b.Ended != 0) { if (b.EndHow == 1) endedGone++; else if (b.EndHow == 2) endedDeath++; else endedWeak++; } }
             sb.Append(Cap(Plural(made, "bond", "bonds"))).Append(" were made with ").Append(seat).Append(" itself");
             var hows = new List<string>();
             if (made - bread - asked > 0) hows.Add(Num(made - bread - asked) + " after its bands came");
             if (bread > 0) hows.Add(Num(bread) + " for famine grain");
             if (asked > 0) hows.Add(Num(asked) + " when it asked");
             if (hows.Count > 0) sb.Append(" (").Append(string.Join(", ", hows.ToArray())).Append(')');
-            sb.Append("; ").Append(Num(endedWeak)).Append(" ended when it was no longer the stronger").Append(endedGone > 0 ? ", " + Num(endedGone) + " when it was gone" : "").Append('.');
+            sb.Append("; ").Append(Num(endedWeak)).Append(" ended when it was no longer the stronger").Append(endedDeath > 0 ? ", " + Num(endedDeath) + " lapsed at the deaths of the first among its people" : "").Append(endedGone > 0 ? ", " + Num(endedGone) + " when it was gone" : "").Append('.');
             if (present) sb.Append(" Today ").Append(Plural(r.SizeAt(c.Now), "village pays", "villages pay")).Append(" it.");
             else
             {

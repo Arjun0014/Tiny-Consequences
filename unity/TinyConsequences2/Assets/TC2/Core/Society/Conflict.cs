@@ -1849,6 +1849,44 @@ namespace TC2.Core.Society
 
         /// <summary>`--olddemand`: no village asks a tenth of another (C10.7b's rules) on the same binary.</summary>
         public static bool DemandOff;
+        /// <summary>`--oldlapse`: bonds for peace outlive the death of the one first among their lord's people (C10.8's rules) on the same binary.</summary>
+        public static bool LapseOff;
+        /// <summary>Tools (`--lapsetally`): [0] deaths of the first at a lord's seat, [1] of those with bonds for peace, [2] bonds for peace lapsed, [3] bonds
+        /// for bread kept; null in the game.</summary>
+        public static double[] LapseTally;
+        public const int LapseTallyN = 4;
+
+        /// <summary>
+        /// The lord's death (C10.9, D2-173): when the one first among a lord village's people dies, the bonds for peace made with that village lapse - its
+        /// tributaries owe the heir nothing until it has won them again (the asking at their harvests, C10.8: the hemmed bow anew, the strong go free);
+        /// bonds for bread - a debt for famine grain (C10.4) - stand. What was set aside for the lord and not yet carried is the village's again. A
+        /// lapse is no refusal: nobody holds it a wrong.
+        /// </summary>
+        public void LordDied(int lord, long cause)
+        {
+            if (LapseOff) return;
+            var w = _w;
+            int lapsed = 0, kept = 0;
+            for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
+            {
+                ref var s = ref w.Settlements.Get(o);
+                if (s.Lord != lord || !s.Inhabited) continue;
+                long agreed = s.LordEvent;
+                if (agreed != 0 && w.History.TryGet(agreed, out var le) && le.ArgB == 1) { kept++; continue; }
+                s.Lord = 0; s.LordEvent = 0;
+                w.Record(new HistoryEvent
+                {
+                    Kind = HistoryKind.TributeEnded, Time = w.Now, Cell = s.Cell, Settlement = o, Subject = EntityRef.Settlement(o), Object = EntityRef.Settlement(lord),
+                    Cause1 = cause, Rel1 = cause != 0 ? CauseRel.CausedBy : CauseRel.None, Cause2 = agreed, Rel2 = agreed != 0 ? CauseRel.PartOf : CauseRel.None,
+                    ArgA = 2, RootKind = RootKind.People,
+                });
+                w.Metrics.TributesEnded++;
+                if (s.TributeDue > 0) { if (CarryTally != null) CarryTally[4] += s.TributeDue; s.Granary += s.TributeDue; s.TributeDue = 0; }
+                s.CarryToday = 0;
+                lapsed++;
+            }
+            if (LapseTally != null) { LapseTally[0]++; if (lapsed > 0) LapseTally[1]++; LapseTally[2] += lapsed; LapseTally[3] += kept; }
+        }
         /// <summary>The sworn men a first household keeps before its village asks a neighbour's tenth: a band of its own to come for it (C10.8).</summary>
         public const int DemandMen = BandAtLeast;
         /// <summary>Tools (`--demandtally`): [0] free village-harvests weighed, [1] with an asker in reach, [2] asked and bowed, [3] asked and refused, [4] of
