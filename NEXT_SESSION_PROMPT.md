@@ -51,7 +51,9 @@ then god powers and player-facing gameplay.
 ## Do next, in order
 1. Look at seed 4's age shots (`tc2/out/shots/s25m_s4_y*`) and the ceiling measure (`ceiling_s*_y*.txt`); the queue is empty after `9_d` (the runner
    idles; `touch $Q/stop` to stop it, or leave it for new jobs).
-2. **The next slice by the acceptance's evidence: settlement change at the ceiling** - measure first why no village empties (even after the plague halves
+2. **The next slice by the acceptance's evidence: settlement change at the ceiling** - MEASURED (`tc2/out/tools/s25/accept/notes.md` "Why the map freezes":
+   no village anywhere knows a free good place, so nothing is founded; after seed 2's plague 10 villages hold land to spare and 6 are crowded, but nothing
+   draws the land-short to land held elsewhere). Design and build the pull toward land held to spare (and villages that empty). Earlier note: measure first why no village empties (even after the plague halves
    a world: each shrinks in place) and why none is founded after ~300 (no good land known, or none left), and which of the record's mechanisms has its
    state in the world: deserted villages after depopulation (survivors drawn to vacant holdings - C3.6d weighs leaving by a household's own land only,
    a push, never the pull of land left empty elsewhere), towns drawing the land-short (crafts, markets), war's destruction. Build the smallest real one;
