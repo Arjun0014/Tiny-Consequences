@@ -891,13 +891,24 @@ namespace TC2.Core.Society
                     }
                     if (_band.Count > before) { _callers.Add(o); _callers.Add(_band.Count - before); }
                 }
-            if (_band.Count < BandAtLeast) return;
+            bool walledT = RaidTally != null && Walled(in w.Settlements.Get(target), out _);
+            if (RaidTally != null && motive != 0) { RaidTally[0]++; if (walledT) RaidTally[1]++; }
+            if (_band.Count < BandAtLeast) { if (RaidTally != null && motive != 0) RaidTally[2]++; return; }
             // too few against the defence they expect (the neighbours round the store and its watch, on their own ground): they stay
             double bandStrength = 0;
             for (int i = 0; i < _band.Count; i++) bandStrength += Strength(in w.People.Get(_band[i]));
             // (they know the village: its neighbours round the store, its watch, and how many more would wake)
             double expect = (1 + Helpers(target) + (w.Settlements.Get(target).Watcher != 0 ? 1 : 0) + 2 + Reinforce * FitAt(target, now)) * 0.8 * Ground(target);
-            if (bandStrength < BandDares * expect) return;
+            if (bandStrength < BandDares * expect)
+            {
+                if (RaidTally != null && motive != 0)
+                {
+                    RaidTally[3]++;
+                    if (walledT) { RaidTally[4]++; if (bandStrength >= BandDares * expect * HomeGround / Ground(target)) RaidTally[5]++; }
+                }
+                return;
+            }
+            if (RaidTally != null && motive != 0) { RaidTally[6]++; if (walledT) RaidTally[7]++; RaidTally[8] += _band.Count; }
             // the band
             int id = w.Ids.Next(EntityKind.Band);
             long off = w.LocalOffsetOf(sid);
@@ -1846,6 +1857,12 @@ namespace TC2.Core.Society
             if (BreadTally != null) BreadTally[14]++;
             Diagnostics.ScaleTally.Pair(w, Diagnostics.ScaleTally.Tribute, sid, giver);
         }
+
+        /// <summary>Tools (`--raidtally`, C8.1 measured first): bands weighed over a wrong (after the day's chance and a way to walk) - [0] all, [1] against a
+        /// walled village; [2] too few would go; [3] too weak for the defence they expect, [4] of them against a walled village, [5] of those that would have
+        /// dared without the wall; [6] raised, [7] against a walled village, [8] their people; null in the game.</summary>
+        public static double[] RaidTally;
+        public const int RaidTallyN = 9;
 
         /// <summary>`--olddemand`: no village asks a tenth of another (C10.7b's rules) on the same binary.</summary>
         public static bool DemandOff;
