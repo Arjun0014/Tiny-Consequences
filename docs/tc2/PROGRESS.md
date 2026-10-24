@@ -20,6 +20,15 @@
   had passed; fixed (ea6b826): it compiles Game, Core, Editor and the tests again. (6) **C10.8's year-900 books**: realms rise and fall in turn (seed 2:
   Taildvehope 24 villages in five tiers by year 338, gone by 829; Elddal 19 for eleven years; Vaildwick, Skaenstead, Mestskouford 22 each) - a cycle of
   hegemonies; `wip/c108-demand` current with main, the book tells the asking (b808479). (7) 25 §8: the plan toward a finished core simulation.
+  (8) **Web `s25web1` 6/6** (5b91710) and the HUD in the browser over the year-300 and year-900 worlds (`bookshots.mjs`: names at the views, the book's
+  parts, each written in 2-271 ms); then the works named at the village view, people's given names at the closest views, names cheaper (repaint only),
+  the book's buttons on its page, names clear of the HUD's bars, and **the book's Timeline page** (the realms' villages year by year, the ages, the
+  people's line, the greatest moments; HistoryBookTests 5/5) - main 53cb512; DECISIONS D2-170..D2-172 appended. (9) **C10.8 decided: land** - its
+  matched placebo (`7_h`, `7_i`): the twins do not lean (x1.005) but C10.8 does against its twin, people over 100-199 x0.904 (t -4.64), explained by
+  century - war deaths (wounds +0.7 a thousand person-years) and fewer foundings while the worlds grow, x0.92 near the ceiling, per-person rates at
+  par (`d2168.md` complete); its branch's full suite (`7_j`) was running at the handoff. (10) **C10.9 the lord's death** measured (`lordships
+  --together`: 22 of 28 great realms held by the call; `--heirs`: the first at a seat dies about every 12 years) and built (`wip/c109-lapse`, sim 92,
+  LapseTests 3; the book tells the lapses); its control and ten seeds queued (`8_c`-`8_f`).
 - **Session 24, second context (21 Oct 2026, 01:45-~06:05 IST; Control Room run #73 session 2; stopped at Arjun's word) - C10.7a, C10.7b and C9.5c
   landed on main (3b236ee, sim version 90) with the lordships tools (3bf3d44); the realms map layer finished from real shots (D2-167); a browser OOM
   of great worlds found and fixed (D2-169); DECISIONS D2-164-D2-167 and D2-169 appended; C10.8 the asking in evaluation** (SESSION_HANDOFF "Session
