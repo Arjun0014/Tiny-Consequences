@@ -12,9 +12,9 @@ namespace TC2.Game
     /// <summary>
     /// Foundation HUD (IMGUI: no assets, works on every platform), kept out of the way of the world: a slim bar with
     /// the date and the speeds, a one-line ticker of what just happened, and panels behind toggles (Info: the world in
-    /// numbers; History: the recent feed; Book (B): the History Book - ages, places, every line its record and its causes; World:
-    /// saves, absences, new worlds) - H hides everything. The catch-up screen and a person inspector with their "why". Reads the
-    /// world; actions go through the host.
+    /// numbers; History: the recent feed; Book (B): the History Book - its parts and chapters, every line its record and its causes; World:
+    /// saves, absences, new worlds) - H hides everything. Places named on the map (N), a tag on the person or building under the pointer
+    /// close in. The catch-up screen and a person inspector with their "why". Reads the world; actions go through the host.
     /// </summary>
     public sealed class Hud : MonoBehaviour
     {
@@ -35,19 +35,34 @@ namespace TC2.Game
         // the settlement page (C12.2): a place's founding, people, food, works, land and making, neighbours and history (Core/History/Gazetteer)
         int _placeSid, _placeTab, _placeBuilt = -1, _placeFor; float _placeAt; string _placeText = "", _placeTitle = "";
         static readonly string[] PlaceTabs = { "Place", "Food", "Works", "Land", "Neighbours", "History" };
-        // the History Book (D2-077): ages or places on the left, a chapter's lines on the right, a line's causes under it
-        int _bookTab, _era = -1, _place, _bookKey = -1, _bookYear = -1;
+        // the History Book (session 25, HistoryBook: a book - its title page and preface, eight parts and their chapters on the left page,
+        // a chapter on the right, a line's causes under it; each part written when it is first opened, the book rewritten in a new year)
+        int _bookPart = -1, _bookChapter, _bookYear = -1, _openAt = -2;
+        HistoryBook.Writer _writer;
+        BookPart[] _parts;
         long _line;
         Vector2 _listScroll, _bookScroll, _whyScroll;
-        System.Collections.Generic.List<Era> _eras;
-        System.Collections.Generic.List<BookLine> _lines;
         readonly long[] _chain = new long[16];
-        GUIStyle _lineStyle, _lineSel, _page;
+        GUIStyle _lineStyle, _lineSel, _page, _sheet, _ink, _inkTitle, _inkHead, _inkFact, _inkSub, _inkLine, _inkLineSel, _toc, _tocSel, _tocPart, _inkBtn;
         Rect _bookRect;
 
-        /// <summary>Opens the History Book at an age (the page a tool or a URL asks for).</summary>
-        public void OpenBook(int era) { _book = true; _bookTab = 0; _era = era; _bookKey = -1; _line = 0; _eras = null; }
+        /// <summary>Opens the History Book at an age (the page a tool or a URL asks for; -1 the present age).</summary>
+        public void OpenBook(int era) { _book = true; _openAt = era; _line = 0; }
+
+        /// <summary>Opens the History Book at a part and chapter (-1: the preface) - the page a tool asks for.</summary>
+        public void OpenBookAt(int part, int chapter) { _book = true; _openPart = part; _openChapter = chapter; _line = 0; }
+        public void CloseBook() { _book = false; }
+        int _openPart = -2, _openChapter;
         bool _bookAsked;
+        // names on the map (session 25: places and people read clearly): each inhabited place's name at its square, what it is and whom
+        // it pays under it, the most peopled first and none over another; close in, a tag on the person or building under the pointer
+        public static bool Names = true;
+        GUIStyle _mapName, _mapTown, _mapSub, _mapTag;
+        Texture2D _dot;
+        readonly System.Collections.Generic.List<Rect> _placed = new System.Collections.Generic.List<Rect>();
+        readonly System.Collections.Generic.List<int> _byPeople = new System.Collections.Generic.List<int>();
+        float _byPeopleAt = -99f;
+        int _hoverPid, _hoverBid; float _hoverAt;
         string _news = ""; float _newsAge = 99f; int _newsCount;
 
         void Update()
@@ -61,6 +76,7 @@ namespace TC2.Game
             if (Input.GetKeyDown(KeyCode.Space)) Host.SpeedIndex = Host.SpeedIndex == 0 ? 3 : 0;
             if (Input.GetKeyDown(KeyCode.H)) _hidden = !_hidden;
             if (Input.GetKeyDown(KeyCode.R)) RealmsView.On = !RealmsView.On;   // (the realms map layer, D2-167)
+            if (Input.GetKeyDown(KeyCode.N)) Names = !Names;   // (places named on the map)
             if (Host.Feed.Count != _newsCount) { _newsCount = Host.Feed.Count; _news = _newsCount > 0 ? Host.Feed[_newsCount - 1] : ""; _newsAge = 0f; }
             _newsAge += Time.unscaledDeltaTime;
             for (int i = 0; i < SimHost.Speeds.Length && i < 8; i++) if (Input.GetKeyDown(KeyCode.Alpha1 + i)) { Host.SpeedIndex = i; Host.MaxSpeed = false; }
@@ -141,7 +157,195 @@ namespace TC2.Game
             _lineSel.normal.textColor = new Color(1f, 0.85f, 0.45f);
             var sel = new Texture2D(1, 1); sel.SetPixel(0, 0, new Color(1f, 1f, 1f, 0.08f)); sel.Apply();
             _lineSel.normal.background = sel;
+            // the book: dark ink on a warm page
+            _sheet = new GUIStyle(GUI.skin.box) { padding = new RectOffset(22, 22, 16, 14) };
+            _sheet.normal.background = Solid(new Color(0.925f, 0.885f, 0.80f, 0.985f));
+            Color ink = new Color(0.17f, 0.12f, 0.08f), faded = new Color(0.40f, 0.32f, 0.24f), red = new Color(0.52f, 0.16f, 0.10f);
+            _ink = new GUIStyle(GUI.skin.label) { fontSize = 14, wordWrap = true, richText = true, padding = new RectOffset(0, 0, 3, 5) };
+            _ink.normal.textColor = ink;
+            _inkTitle = new GUIStyle(_ink) { fontSize = 21, fontStyle = FontStyle.Bold, padding = new RectOffset(0, 0, 2, 0) };
+            _inkTitle.normal.textColor = red;
+            _inkSub = new GUIStyle(_ink) { fontSize = 12, fontStyle = FontStyle.Italic, padding = new RectOffset(0, 0, 0, 8) };
+            _inkSub.normal.textColor = faded;
+            _inkHead = new GUIStyle(_ink) { fontSize = 15, fontStyle = FontStyle.Bold, padding = new RectOffset(0, 0, 10, 2) };
+            _inkHead.normal.textColor = red;
+            _inkFact = new GUIStyle(_ink) { fontSize = 12, fontStyle = FontStyle.Italic, padding = new RectOffset(16, 8, 2, 6) };
+            _inkFact.normal.textColor = faded;
+            _inkLine = new GUIStyle(_ink) { fontSize = 13, padding = new RectOffset(10, 4, 2, 2) };
+            _inkLine.hover.textColor = red;
+            _inkLine.hover.background = Solid(new Color(0.55f, 0.35f, 0.15f, 0.08f));
+            _inkLineSel = new GUIStyle(_inkLine);
+            _inkLineSel.normal.textColor = red;
+            _inkLineSel.normal.background = Solid(new Color(0.55f, 0.35f, 0.15f, 0.16f));
+            _toc = new GUIStyle(_ink) { fontSize = 13, padding = new RectOffset(14, 4, 1, 1) };
+            _toc.hover.textColor = red;
+            _tocSel = new GUIStyle(_toc);
+            _tocSel.normal.textColor = red;
+            _tocSel.normal.background = Solid(new Color(0.55f, 0.35f, 0.15f, 0.14f));
+            _tocPart = new GUIStyle(_ink) { fontSize = 14, fontStyle = FontStyle.Bold, padding = new RectOffset(0, 4, 5, 1) };
+            _tocPart.hover.textColor = red;
+            _inkBtn = new GUIStyle(GUI.skin.button) { fontSize = 12, padding = new RectOffset(8, 8, 3, 3) };
+            // names on the map: light letters with a dark edge, readable over sea, snow and field alike
+            _mapName = new GUIStyle(GUI.skin.label) { fontSize = 13, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = false, richText = false, padding = new RectOffset(0, 0, 0, 0) };
+            _mapName.normal.textColor = new Color(0.98f, 0.96f, 0.90f);
+            _mapTown = new GUIStyle(_mapName) { fontSize = 16 };
+            _mapSub = new GUIStyle(_mapName) { fontSize = 11, fontStyle = FontStyle.Italic };
+            _mapSub.normal.textColor = new Color(0.90f, 0.88f, 0.80f);
+            _mapTag = new GUIStyle(GUI.skin.box) { fontSize = 12, alignment = TextAnchor.MiddleLeft, wordWrap = false, richText = true, padding = new RectOffset(7, 7, 3, 3) };
+            _mapTag.normal.textColor = new Color(0.96f, 0.95f, 0.92f);
+            _mapTag.normal.background = Solid(new Color(0.05f, 0.06f, 0.08f, 0.72f));
+            _dot = Solid(Color.white);
         }
+
+        /// <summary>A word drawn with a dark edge (the eight neighbours, then the letters).</summary>
+        static void Edged(Rect r, string text, GUIStyle st)
+        {
+            var c = st.normal.textColor;
+            st.normal.textColor = new Color(0.04f, 0.05f, 0.06f, 0.85f);
+            for (int dx = -1; dx <= 1; dx++)
+                for (int dy = -1; dy <= 1; dy++)
+                    if (dx != 0 || dy != 0) GUI.Label(new Rect(r.x + dx, r.y + dy, r.width, r.height), text, st);
+            st.normal.textColor = c;
+            GUI.Label(r, text, st);
+        }
+
+        /// <summary>
+        /// Places named on the map: each inhabited place's name over its square - a town larger - and under it what it is ("town of 864")
+        /// and its bond ("pays Lounstead", "seat of 14 villages"); the most peopled first, none drawn over another, the far side of the
+        /// planet and the places under the camera left out (close in, the village is around you). From orbit only the largest dozen.
+        /// </summary>
+        void MapNames(TC2.Core.Simulation.World w, float sw, float sh)
+        {
+            if (!Names || Rig == null || Rig.Cam == null) return;
+            var cam = Rig.Cam;
+            var P = w.Planet;
+            Vector3 camPos = cam.transform.position;
+            float alt = camPos.magnitude - (float)P.Radius;
+            if (alt < 420f) return;
+            if (Time.unscaledTime - _byPeopleAt > 1f)
+            {
+                _byPeopleAt = Time.unscaledTime;
+                _byPeople.Clear();
+                for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid)) if (w.Settlements.Get(sid).Inhabited) _byPeople.Add(sid);
+                _byPeople.Sort((a, b) => { int c = w.Settlements.Get(b).Population.CompareTo(w.Settlements.Get(a).Population); return c != 0 ? c : a.CompareTo(b); });
+            }
+            _placed.Clear();
+            int max = alt > 9000f ? 12 : 48, shown = 0;
+            foreach (int sid in _byPeople)
+            {
+                if (shown >= max) break;
+                if (!w.Settlements.Exists(sid)) continue;
+                ref var s = ref w.Settlements.Get(sid);
+                if (!s.Inhabited) continue;
+                Vector3 up = PlanetGeo.ToVector(s.Anchor);
+                Vector3 at = PlanetGeo.Surface(P, s.Anchor);
+                Vector3 toCam = camPos - at;
+                if (Vector3.Dot(up, toCam.normalized) < 0.10f) continue;   // (over the horizon)
+                Vector3 sp = cam.WorldToScreenPoint(at);
+                if (sp.z <= 0f) continue;
+                float x = sp.x / _scale, y = (Screen.height - sp.y) / _scale;
+                if (x < -60f || x > sw + 60f || y < -30f || y > sh + 30f) continue;
+                if (alt < 1400f && (new Vector2(x - sw * 0.5f, y - sh * 0.5f)).magnitude < 90f) continue;   // (the village the camera is over)
+                bool town = s.Population >= 300;
+                string name = w.History.NameOf(EntityRef.Settlement(sid));
+                var st = town ? _mapTown : _mapName;
+                Vector2 ns = st.CalcSize(new GUIContent(name));
+                int paying = 0;
+                for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o)) { ref var os = ref w.Settlements.Get(o); if (os.Lord == sid && os.Inhabited) paying++; }
+                string sub = Gazetteer.Word(in s).Substring(2) + " of " + s.Population.ToString("N0", CultureInfo.InvariantCulture) +
+                             (s.Lord != 0 && w.Settlements.Exists(s.Lord) ? ", pays " + w.History.NameOf(EntityRef.Settlement(s.Lord)) : paying > 0 ? ", lord of " + paying + (paying == 1 ? " village" : " villages") : "");
+                bool withSub = alt < 9000f;
+                Vector2 ss = withSub ? _mapSub.CalcSize(new GUIContent(sub)) : Vector2.zero;
+                float wdt = Mathf.Max(ns.x, ss.x) + 6f, hgt = ns.y + ss.y;
+                var box = new Rect(x - wdt * 0.5f, y - hgt - 7f, wdt, hgt);
+                bool clash = false;
+                foreach (var r in _placed) if (r.Overlaps(box)) { clash = true; break; }
+                if (clash) continue;
+                _placed.Add(box);
+                shown++;
+                GUI.color = new Color(0f, 0f, 0f, 0.8f); GUI.DrawTexture(new Rect(x - 3f, y - 3f, 6f, 6f), _dot); GUI.color = Color.white;
+                GUI.DrawTexture(new Rect(x - 2f, y - 2f, 4f, 4f), _dot);
+                Edged(new Rect(box.x, box.y, wdt, ns.y), name, st);
+                if (withSub) Edged(new Rect(box.x, box.y + ns.y - 1f, wdt, ss.y), sub, _mapSub);
+            }
+        }
+
+        /// <summary>Close in, who or what is under the pointer: a person's name, age and doing; a building's kind and whose it is.</summary>
+        void HoverTag(TC2.Core.Simulation.World w, float sw, float sh)
+        {
+            if (Rig == null || Rig.Cam == null || PointerOverUi) return;
+            var cam = Rig.Cam;
+            float alt = cam.transform.position.magnitude - (float)w.Planet.Radius;
+            if (alt > 1300f) return;
+            Vector2 mp = Input.mousePosition;
+            if (Time.unscaledTime - _hoverAt > 0.12f)
+            {
+                _hoverAt = Time.unscaledTime;
+                _hoverPid = 0; _hoverBid = 0;
+                double t = Host.RenderTime;
+                float best = 16f * _scale;
+                for (int id = w.People.First(); id != 0; id = w.People.Next(id))
+                {
+                    ref var p = ref w.People.Get(id);
+                    if (!p.Alive || !Presence.Of(w, in p, t, out var pd, out _, out _, out _)) continue;
+                    Vector3 sp = cam.WorldToScreenPoint(PlanetGeo.Surface(w.Planet, pd));
+                    if (sp.z < 0) continue;
+                    float d = Vector2.Distance(mp, sp);
+                    if (d < best) { best = d; _hoverPid = id; }
+                }
+                if (_hoverPid == 0)
+                {
+                    float bestB = 22f * _scale;
+                    Vector3 camPos = cam.transform.position;
+                    for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+                    {
+                        ref var s = ref w.Settlements.Get(sid);
+                        if ((PlanetGeo.Surface(w.Planet, s.Anchor) - camPos).sqrMagnitude > 2500f * 2500f) continue;
+                        var bl = w.BuildingsOf(sid);
+                        for (int i = 0; i < bl.Count; i++)
+                        {
+                            ref var b = ref w.Buildings.Get(bl[i]);
+                            Vector3 sp = cam.WorldToScreenPoint(PlanetGeo.Surface(w.Planet, s.LocalToSphere(b.X, b.Y, w.Planet.Radius)));
+                            if (sp.z < 0) continue;
+                            float d = Vector2.Distance(mp, sp);
+                            if (d < bestB) { bestB = d; _hoverBid = bl[i]; }
+                        }
+                    }
+                }
+            }
+            string text = null;
+            if (_hoverPid != 0 && w.People.Exists(_hoverPid))
+            {
+                ref var p = ref w.People.Get(_hoverPid);
+                string doing = HistoryText.Doing(w, in p);
+                int cut = doing.IndexOf(':'); if (cut > 0) doing = doing.Substring(0, cut);
+                if (doing.Length > 70) doing = doing.Substring(0, 67) + "...";
+                text = "<b>" + Biography.Title(w, _hoverPid) + "</b>
+" + doing;
+            }
+            else if (_hoverBid != 0 && w.Buildings.Exists(_hoverBid))
+            {
+                ref var b = ref w.Buildings.Get(_hoverBid);
+                string place = w.History.NameOf(EntityRef.Settlement(b.Settlement));
+                if (Structures.IsHome(b.Kind))
+                    text = "<b>" + (b.Kind == Structures.House ? (Architecture.Has(b.Form) ? "A " + Architecture.PlanName(Architecture.PlanOf(b.Form)) : "A house") : "A hut") + "</b> of " + place +
+                           (b.Household != 0 && w.Households.Exists(b.Household) ? "
+home of the " + HistoryText.Plural(w.History.NameOf(EntityRef.Household(b.Household))) + " (" + w.Members(b.Household).Count + ")" : "
+standing empty");
+                else text = "<b>The " + Structures.Of(b.Kind).Name + "</b> of " + place;
+            }
+            if (text == null) return;
+            var content = new GUIContent(text);
+            Vector2 size = _mapTag.CalcSize(content);
+            float x = mp.x / _scale + 14f, y = (Screen.height - mp.y) / _scale + 10f;
+            if (x + size.x > sw) x = sw - size.x - 4f;
+            if (y + size.y > sh) y = sh - size.y - 4f;
+            GUI.Box(new Rect(x, y, size.x, size.y), content, _mapTag);
+        }
+
+        static string Cap(string s) => string.IsNullOrEmpty(s) ? s : char.ToUpperInvariant(s[0]) + s.Substring(1);
+
+        static Texture2D Solid(Color c) { var t = new Texture2D(1, 1); t.SetPixel(0, 0, c); t.Apply(); return t; }
 
         void OnGUI()
         {
@@ -153,6 +357,7 @@ namespace TC2.Game
             if (Host.CatchingUp) { CatchUpScreen(sw, sh); PointerOverUi = true; return; }
 
             if (_hidden) { PointerOverUi = false; return; }
+            if (!_book) MapNames(w, sw, sh);
             // top-left: a slim bar - the date and the speeds
             _left = new Rect(10, 10, Mathf.Min(sw - 390, 900), 40);
             GUILayout.BeginArea(_left, _box);
@@ -251,7 +456,8 @@ namespace TC2.Game
             else if (_personPage && _selected != 0 && w.People.Exists(_selected)) { float pw = Mathf.Min(600, sw - 430); _pageRect = new Rect(Mathf.Max(10, sw - 410 - pw), 60, pw, sh - 130); PersonPage(_pageRect, w); }
             else if (_building != 0 && w.Buildings.Exists(_building)) { showInsp = true; BuildingPage(insp, w); }
             Vector2 m = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y) / _scale;
-            PointerOverUi = _left.Contains(m) || _toggles.Contains(m) || _right.Contains(m) || worldRect.Contains(m) || realmsRect.Contains(m) || _bottom.Contains(m) || _ticker.Contains(m) || (showInsp && insp.Contains(m)) || _bookRect.Contains(m) || _pageRect.Contains(m);
+            PointerOverUi = _left.Contains(m) || _toggles.Contains(m) || _right.Contains(m) || worldRect.Contains(m) || realmsRect.Contains(m) || _bottom.Contains(m) || _ticker.Contains(m) || (showInsp && insp.Contains(m)) || (_book && _bookRect.Contains(m)) || _pageRect.Contains(m);
+            if (!_book) HoverTag(w, sw, sh);
         }
 
         /// <summary>
@@ -594,77 +800,142 @@ namespace TC2.Game
         }
 
         /// <summary>
-        /// The History Book (D2-077; F7): the ages of the world found after the fact, or its places; a chapter's numbers from the
-        /// annals and its events, each line its record; a chosen line's causes back to their root, each a record to follow in turn,
-        /// and the place it happened to go to. Reads the ledger and the annals; writes nothing.
+        /// The History Book (D2-077; session 25: a book): a two-page spread - on the left the title, the preface and the contents (eight
+        /// parts, the open part's chapters), on the right the chapter: its headings, the historian's prose over the records, the numbers,
+        /// and its lines, each the record it stands on; a chosen line's causes back to their root (each a record to follow in turn) and the
+        /// place to go to. A part is written when it is first opened (HistoryBook.Writer); a new year rewrites the book. Writes nothing.
         /// </summary>
         void Book(Rect r, TC2.Core.Simulation.World w)
         {
             int year = (int)(w.Now / SimTime.Year);
-            if (_eras == null || year != _bookYear) { _eras = Chronicle.Eras(w); _bookYear = year; _bookKey = -1; if (_era < 0 || _era >= _eras.Count) _era = _eras.Count - 1; }
-            GUILayout.BeginArea(r, _page);
+            if (_writer == null || year != _bookYear)
+            {
+                _writer = new HistoryBook.Writer(w);
+                _parts = new BookPart[HistoryBook.PartTitles.Length];
+                _bookYear = year;
+            }
+            if (_openPart != -2)
+            {
+                if (_openPart >= 0 && _openPart < _parts.Length) { Part(_openPart); _bookPart = _openPart; _bookChapter = Mathf.Clamp(_openChapter, 0, Mathf.Max(0, _parts[_openPart].Chapters.Count - 1)); }
+                else _bookPart = -1;
+                _openPart = -2; _bookScroll = Vector2.zero;
+            }
+            if (_openAt != -2)
+            {
+                // an age asked for (-1 the present): the Ages, at that age's chapter
+                Part(0);
+                int n = _parts[0].Chapters.Count;
+                _bookPart = 0; _bookChapter = _openAt < 0 || _openAt >= n ? n - 1 : _openAt; _openAt = -2;
+                _bookScroll = Vector2.zero;
+            }
+            GUILayout.BeginArea(r, _sheet);
             GUILayout.BeginHorizontal();
-            // the ages and the places
-            GUILayout.BeginVertical(GUILayout.Width(240));
-            GUILayout.Label("<b>The History Book</b>", _label);
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Toggle(_bookTab == 0, "Ages", _btn) && _bookTab != 0) { _bookTab = 0; _bookKey = -1; _line = 0; }
-            if (GUILayout.Toggle(_bookTab == 1, "Places", _btn) && _bookTab != 1) { _bookTab = 1; _bookKey = -1; _line = 0; }
-            GUILayout.EndHorizontal();
+            // the left page: the title, the contents
+            GUILayout.BeginVertical(GUILayout.Width(Mathf.Min(300f, r.width * 0.32f)));
+            GUILayout.Label(_writer.Book.Title, _inkTitle);
+            GUILayout.Label(_writer.Book.Sub, _inkSub);
             _listScroll = GUILayout.BeginScrollView(_listScroll);
-            if (_bookTab == 0)
-                for (int i = 0; i < _eras.Count; i++)
-                {
-                    var e = _eras[i];
-                    string label = e.Name + "\n<size=11>years " + e.From + " to " + (e.Present ? "this day" : e.To.ToString(CultureInfo.InvariantCulture)) + "</size>";
-                    if (GUILayout.Toggle(_era == i, label, _btn) && _era != i) { _era = i; _bookKey = -1; _line = 0; _bookScroll = Vector2.zero; }
-                }
-            else
-                for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
-                {
-                    ref var st = ref w.Settlements.Get(sid);
-                    string label = w.History.NameOf(EntityRef.Settlement(sid)) + (st.Inhabited ? "" : " (gone)") + (st.Wall == 2 ? " (walled)" : "") + (st.Lord != 0 ? " (pays " + w.History.NameOf(EntityRef.Settlement(st.Lord)) + ")" : "");
-                    if (GUILayout.Toggle(_place == sid, label, _btn) && _place != sid) { _place = sid; _bookKey = -1; _line = 0; _bookScroll = Vector2.zero; }
-                }
+            if (GUILayout.Button("Preface", _bookPart < 0 ? _tocSel : _tocPart)) { _bookPart = -1; _bookScroll = Vector2.zero; _line = 0; }
+            for (int i = 0; i < HistoryBook.PartTitles.Length; i++)
+            {
+                if (GUILayout.Button(HistoryBook.Roman(i + 1) + ". " + HistoryBook.PartTitles[i], _tocPart) && _bookPart != i) { Part(i); _bookPart = i; _bookChapter = 0; _bookScroll = Vector2.zero; _line = 0; }
+                if (_bookPart != i || _parts[i] == null) continue;
+                var chs = _parts[i].Chapters;
+                for (int k = 0; k < chs.Count; k++)
+                    if (GUILayout.Button(chs[k].Title, k == _bookChapter ? _tocSel : _toc) && k != _bookChapter) { _bookChapter = k; _bookScroll = Vector2.zero; _line = 0; }
+            }
             GUILayout.EndScrollView();
             GUILayout.EndVertical();
-            // the chapter, each line its record; the chosen line's causes
+            GUILayout.Space(18);
+            // the right page: the preface, or the chapter
             GUILayout.BeginVertical();
-            int key = _bookTab == 0 ? _era : 1000000 + _place;
-            if (key != _bookKey)
+            BookChapter ch = null;
+            if (_bookPart < 0)
             {
-                _lines = _bookTab == 0 ? (_era >= 0 && _era < _eras.Count ? Chronicle.Chapter(w, _eras[_era], 14) : null) : (_place > 0 && w.Settlements.Exists(_place) ? Chronicle.Place(w, _place, 24) : null);
-                _bookKey = key;
+                GUILayout.Label("Preface", _inkTitle);
+                GUILayout.Label("the world in year " + _writer.Book.Year, _inkSub);
+                _bookScroll = GUILayout.BeginScrollView(_bookScroll);
+                foreach (var para in _writer.Book.Preface) GUILayout.Label(para, _ink);
+                GUILayout.EndScrollView();
             }
-            if (_bookTab == 0 && _era >= 0 && _era < _eras.Count) GUILayout.Label("<b>" + _eras[_era].Name + "</b>   <size=11>years " + _eras[_era].From + " to " + (_eras[_era].Present ? "this day" : _eras[_era].To.ToString(CultureInfo.InvariantCulture)) + "</size>", _label);
-            else if (_bookTab == 1 && _place > 0) GUILayout.Label("<b>" + w.History.NameOf(EntityRef.Settlement(_place)) + "</b>", _label);
-            _bookScroll = GUILayout.BeginScrollView(_bookScroll, GUILayout.Height(r.height * 0.55f));
-            if (_lines != null)
-                foreach (var l in _lines)
+            else
+            {
+                var part = _parts[_bookPart];
+                if (_bookChapter >= part.Chapters.Count) _bookChapter = part.Chapters.Count - 1;
+                if (_bookChapter < 0) { GUILayout.Label(HistoryBook.PartTitles[_bookPart], _inkTitle); GUILayout.Label(part.Intro ?? "", _ink); }
+                else
                 {
-                    if (l.Event == 0) { GUILayout.Label("<i>" + l.Text + "</i>  <size=10>(the annals)</size>", _small); continue; }
-                    if (GUILayout.Button(l.Text, _line == l.Event ? _lineSel : _lineStyle)) { _line = l.Event; _whyScroll = Vector2.zero; }
+                    ch = part.Chapters[_bookChapter];
+                    GUILayout.Label(ch.Title, _inkTitle);
+                    if (!string.IsNullOrEmpty(ch.Sub)) GUILayout.Label(ch.Sub, _inkSub);
+                    _bookScroll = GUILayout.BeginScrollView(_bookScroll, GUILayout.Height(r.height * (_line != 0 ? 0.52f : 0.80f)));
+                    if (_bookChapter == 0 && !string.IsNullOrEmpty(part.Intro)) GUILayout.Label("<i>" + part.Intro + "</i>", _inkFact);
+                    foreach (var b in ch.Blocks)
+                    {
+                        switch (b.Kind)
+                        {
+                            case BookKind.Heading: GUILayout.Label(b.Text, _inkHead); break;
+                            case BookKind.Fact: GUILayout.Label(b.Text, _inkFact); break;
+                            case BookKind.Line: if (GUILayout.Button(b.Text, _line == b.Event ? _inkLineSel : _inkLine)) { _line = _line == b.Event ? 0 : b.Event; _whyScroll = Vector2.zero; } break;
+                            default: GUILayout.Label(b.Text, _ink); break;
+                        }
+                    }
+                    GUILayout.EndScrollView();
                 }
-            GUILayout.EndScrollView();
+            }
+            // a chosen line's causes, back to their root
             if (_line != 0 && w.History.TryGet(_line, out var chosen))
             {
                 GUILayout.BeginHorizontal();
-                GUILayout.Label("<b>Why?</b>  <size=11>each cause is a record of its own; its root is " + chosen.RootKind + "</size>", _small);
-                if (Place(w, chosen, out double lat, out double lon) && GUILayout.Button("Go there", _btn, GUILayout.Width(80))) { Rig.Lat = lat; Rig.Lon = lon; }
+                GUILayout.Label("<b>Why?</b>  <size=11>each cause is a record of its own; its root is " + chosen.RootKind + "</size>", _ink);
+                if (Place(w, chosen, out double lat, out double lon) && GUILayout.Button("Go there", _inkBtn, GUILayout.Width(80))) { Rig.Lat = lat; Rig.Lon = lon; }
                 GUILayout.EndHorizontal();
                 _whyScroll = GUILayout.BeginScrollView(_whyScroll);
                 int n = w.History.CausalChain(_line, _chain);
                 for (int i = 0; i < n; i++)
                 {
-                    if (!w.History.TryGet(_chain[i], out var e)) { GUILayout.Label("<- (a record forgotten)", _small); break; }
+                    if (!w.History.TryGet(_chain[i], out var e)) { GUILayout.Label("<- (a record forgotten)", _inkFact); break; }
                     string row = (i == 0 ? "" : "<- ") + HistoryText.Dated(w, e);
-                    if (GUILayout.Button(row, _chain[i] == _line ? _lineSel : _lineStyle) && _chain[i] != _line) { _line = _chain[i]; break; }
+                    if (GUILayout.Button(row, _chain[i] == _line ? _inkLineSel : _inkLine) && _chain[i] != _line) { _line = _chain[i]; break; }
                 }
                 GUILayout.EndScrollView();
             }
+            GUILayout.FlexibleSpace();
+            // turning the pages
+            GUILayout.BeginHorizontal();
+            if (_bookPart >= 0 && GUILayout.Button("< previous", _inkBtn, GUILayout.Width(90))) Turn(-1);
+            GUILayout.FlexibleSpace();
+            if (ch != null && ch.Settlement > 0 && w.Settlements.Exists(ch.Settlement) && GUILayout.Button("Go to " + w.History.NameOf(EntityRef.Settlement(ch.Settlement)), _inkBtn))
+            { var a = w.Settlements.Get(ch.Settlement).Anchor; Rig.Lat = a.Latitude; Rig.Lon = a.Longitude; }
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("next >", _inkBtn, GUILayout.Width(90))) Turn(1);
+            GUILayout.EndHorizontal();
             GUILayout.EndVertical();
             GUILayout.EndHorizontal();
             GUILayout.EndArea();
+        }
+
+        /// <summary>Writes a part of the book if it is not written yet.</summary>
+        void Part(int i)
+        {
+            if (_parts[i] != null) return;
+            _parts[i] = _writer.Part(i);
+            Debug.Log("[TC2] book: part " + HistoryBook.Roman(i + 1) + " written in " + _writer.LastMs.ToString("0", CultureInfo.InvariantCulture) + " ms (" + _parts[i].Chapters.Count + " chapters)");
+        }
+
+        /// <summary>The next or previous chapter, across parts (the preface before the first).</summary>
+        void Turn(int d)
+        {
+            _line = 0; _bookScroll = Vector2.zero;
+            if (_bookPart < 0) { if (d > 0) { Part(0); _bookPart = 0; _bookChapter = 0; } return; }
+            int k = _bookChapter + d;
+            if (k >= 0 && k < _parts[_bookPart].Chapters.Count) { _bookChapter = k; return; }
+            int p = _bookPart + d;
+            if (p < 0) { _bookPart = -1; return; }
+            if (p >= _parts.Length) return;
+            Part(p);
+            _bookPart = p;
+            _bookChapter = d > 0 ? 0 : _parts[p].Chapters.Count - 1;
         }
 
         /// <summary>Where an event happened, for the camera: its village, else its cell.</summary>

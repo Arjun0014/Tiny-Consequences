@@ -306,7 +306,7 @@ namespace TC2.Core.History
         }
 
         /// <summary>The events that bear an age's mark.</summary>
-        static bool Marks(byte sign, HistoryKind k)
+        public static bool Marks(byte sign, HistoryKind k)
         {
             switch (sign)
             {

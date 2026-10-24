@@ -15,6 +15,34 @@ namespace TC2.Headless
         /// (an event the ledger holds, whose causes can be walked; or the annals' years). With --why, each chapter's lines' causes.
         /// Usage: chronicle [--seed N] [--years Y] [--coarse] [--lines L] [--why] [--places]
         /// </summary>
+        /// <summary>
+        /// The History Book as a book (session 25, `HistoryBook`): `book --load SAVE [--md FILE] [--noids]` - the whole book of a saved
+        /// world as Markdown (to FILE, or the console), its parts and chapters counted, every line checked to stand on a record the
+        /// ledger holds, and the time it took to write. Reads only.
+        /// </summary>
+        public static int WholeBook(Args a)
+        {
+            var w = TC2.Core.Persistence.SaveFile.Load(System.IO.File.ReadAllBytes(a.Get("load")), out _);
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            var bw = new HistoryBook.Writer(w);
+            var times = new System.Text.StringBuilder("first reading " + F(bw.LastMs, "0") + " ms");
+            for (int i = 0; i < HistoryBook.PartTitles.Length; i++) { bw.Book.Parts.Add(bw.Part(i)); times.Append(", " + HistoryBook.Roman(i + 1) + " " + F(bw.LastMs, "0")); }
+            var book = bw.Book;
+            double ms = watch.Elapsed.TotalMilliseconds;
+            Console.WriteLine("timing: " + times);
+            int chapters = 0, lines = 0, bad = 0;
+            foreach (var p in book.Parts)
+                foreach (var ch in p.Chapters)
+                {
+                    chapters++;
+                    foreach (var b in ch.Blocks) if (b.Kind == BookKind.Line) { lines++; if (!w.History.TryGet(b.Event, out _)) bad++; }
+                }
+            string md = HistoryBook.Markdown(book, !a.Has("noids"));
+            if (a.Has("md")) System.IO.File.WriteAllText(a.Get("md"), md); else Console.WriteLine(md);
+            Console.WriteLine("the book of year " + book.Year + ": " + book.Parts.Count + " parts, " + chapters + " chapters, " + lines + " lines (" + bad + " without their record), " + md.Length + " characters; written in " + F(ms, "0") + " ms from " + w.History.Count + " events and " + w.Annals.Count + " years of annals");
+            return bad == 0 ? 0 : 1;
+        }
+
         public static int ChronicleBook(Args a)
         {
             var w = WorldGenerator.Create(ConfigFrom(a));

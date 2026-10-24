@@ -314,6 +314,18 @@ namespace TC2.Game
                 // "view+D@H": the world lives on D days, then to the next local hour H at the first village, before this view is shot
                 // (seasons and nights in the same round; the world's state goes on as it would)
                 string view = spec.Trim();
+                // (session 25) "view~Name=value~...": the look's tunables for this view only (Look: the air's and the clouds' variants side by side)
+                Look.Reset();
+                if (view.IndexOf('~') > 0)
+                {
+                    var parts = view.Split('~');
+                    view = parts[0];
+                    for (int q = 1; q < parts.Length; q++)
+                    {
+                        int eq = parts[q].IndexOf('=');
+                        if (eq <= 0 || !Look.Set(parts[q].Substring(0, eq), parts[q].Substring(eq + 1))) Debug.LogWarning("[TC2] no look tunable " + parts[q]);
+                    }
+                }
                 int at = view.IndexOf('@');
                 double hAt = -1;
                 if (at > 0) { hAt = Parse(view.Substring(at + 1), hour); view = view.Substring(0, at); }
@@ -348,7 +360,7 @@ namespace TC2.Game
                 // terrain patches, trees and people settle (real time: views rebuild on timers; no end-of-frame in batch mode)
                 yield return new WaitForSecondsRealtime(5f);
                 for (int i = 0; i < 5; i++) yield return null;
-                _pending = spec.Trim().Replace('@', '_').Replace('+', 'd').Replace(':', '-'); _pendingW = width; _pendingH = height; _saved = false;   // (':' - "forest:rain", W-FOREST - is no file name)
+                _pending = spec.Trim().Replace('@', '_').Replace('+', 'd').Replace(':', '-').Replace('~', '_').Replace('=', '-'); _pendingW = width; _pendingH = height; _saved = false;   // (':' - "forest:rain", W-FOREST - is no file name)
                 while (!_saved) yield return null;
             }
             foreach (var mn in new[] { "person", "home_cottage_g", "tree_broadleaf", "granary", "home_hall_g", "home_row_g", "home_two_g" })
