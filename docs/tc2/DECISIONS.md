@@ -5241,3 +5241,39 @@ was the price), it is a level, not a rate (the per-person rates at par), and the
 follows at once and is measured against it.
 
 **Landed** (session 25, 25 Oct 2026; merge 731c75a, sim 91). The branch's full suite (`7_j`, its tip with main's book and names) passed 450 and failed one: `HistoryBookTests.RaidsAreOneWarUntilABowOrTwelveQuietYears`, whose hand-written raids and bow between villages 1 and 2 met C10.8's own asking between the same two villages - village 1 bowed to village 2 by its own asking in year 26, a year before the premise's bow, so the book rightly ended the war there; the premise now keeps the askings off (`Conflict.DemandOff`, 1b5e033). On the merged tip (`bin_dm4`): HistoryBookTests 5/5, DemandTests 4/4, DeterminismTests 7/7, SaveLoad 8/8, floatcheck clean; main's full suite follows the landing. C10.9 (the lord's death, D2-173) is measured against it.
+
+## D2-173 — 2026-10-25 — The lord's death: bonds for peace lapse with the one first among the lord's people; heirs win their tributaries again by asking (C10.9)
+
+**Context.** C10.8 (D2-168) made realms of 8-16 villages by year 300 and, over 900 years, a cycle of hegemonies - each held, at its height, most of a
+world. What holds them was measured first (session 25, `lordships --together` and `--heirs`, new tools, on C10.8's worlds `_dm1` year 300 and `_l9dm1`
+years 600 and 900, seeds 2 and 4; `tc2/out/tools/s25/c109_design.md`): of the 28 lords with two or more villages paying directly, **in none could any
+village stand against its lord alone** (the strongest alone x0.18-0.93 of what the lord brings against it with the others' call), while **in 22 of the
+28 the villages together outweigh the lord's own strength**, mostly by far (x2-x4; Mestskouford x6.2 with 12 paying, Rainthorpe x9.2-x13.8) - realms
+held by the call, each tributary facing its lord with all the others' men behind it. The bonds outlive their lords: the first among a lord village's
+people changed by a death 378 and 337 times in the two 900-year worlds (19.8 and 15.9 a thousand bond-years, a median of about twelve years between
+deaths at one seat), and a lapse at each would have freed 1,047 and 1,247 bonds for peace.
+
+**The record.** Overlordship lapsed with the overlord: a dead overking's tributary rulers owed his heir nothing until he had won them again - Bede's
+overkings, few successions within one line; Kent rising under Eadberht Praen at Offa's death in 796; Irish tributary kings submitting anew, with
+hostages, to each new king (Charles-Edwards 2000); in Frankish and feudal law the *Herrenfall*, the man renewing his homage to the heir or the bond
+lapsing (Ganshof 1952). Risings came at such moments, not whenever the sums allowed.
+
+**Decision.** (`Conflict.LordDied`, called by `Leaders` when the one first among a village's people is succeeded at their death; both resolutions;
+sim version 92.) At the death of the one first among a lord village's people, **every bond for peace made with that village lapses**: its tributaries
+pay no more (`TributeEnded` ArgA 2, caused by the new first's rising, part of the bond's making); what was set aside for the lord and not yet carried is
+the tributary's again. **Bonds for bread** (C10.4: a debt for famine grain) stand. A lapse is no refusal: nobody holds it a wrong. Nothing else is new -
+the heir's village asks (C10.8) the freed villages one by one at their harvests where it is the stronger by the odds of a bow (its own strength and the
+call of those it has already won back): the hemmed bow again, the rest refuse or go free. The book tells the lapses. `--oldlapse` (the control),
+`--lapsetally`.
+
+**Evidence.** LapseTests 3/3 (a lord's death lapses its bonds for peace and keeps its bonds for bread; the heir's asking wins the hemmed back; `--oldlapse`
+keeps them); with main merged in (502ffba) HistoryBookTests 5/5, DemandTests 4/4, DeterminismTests 7/7, SaveLoad 8/8, and on the branch tip LordshipTests
+4/4, SwornTests 5/5, LeadersTests 8/8, BreadTests 5/5 (0 skipped; the first run of these classes, 8_c, had run none of them - a fault of the job tooling,
+fixed: see SESSION_HANDOFF); floatcheck clean. **Control**: `--oldlapse` reproduces C10.8 (`_dm1`) byte for byte - annals and the state hash, seed 4.
+**Ten seeds** (`_lp1` against `_dm1`, `tc2/out/tools/s23/results/cmp_dm1_lp1.txt`): people at par (at year 300 x0.945, t -1.22; over years 200-299 x1.042,
+t 1.19; 100-199 x1.012), births and deaths a person-year at par (x0.988, t -1.92; x1.012); **less war** - raids x0.64 (t -1.34), bands x0.65 (t -1.86),
+blows x0.81, wounds a person-year x0.80, deaths of wounds x0.85; **the mechanism** - bonds made x2.8 and ended x3.6 (t 6.7: 12-215 bonds for peace lapsed
+a world, 88-237 deaths of the first at a lord's seat, 3-16 bonds for bread kept), the greatest realm x1.04 (t 0.71), lords x0.77: heirs win their
+tributaries back by asking, and a freed village asked by a nearer stronger neighbour goes to it - realms change hands at deaths rather than shrink.
+No outcome lean passes |t| 2; the largest, sickness x2.27 (t 1.81, seven seeds with any) and famines x1.25 (t 1.26), are chance-heavy counts.
+**Landed** (session 25, 25 Oct 2026, merge aeb880b, sim 92). Not yet run: its 900-year worlds (they are made with the rules that follow it: C10.10).

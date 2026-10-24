@@ -80,7 +80,7 @@ village sworn to them, fed from that grain - a lord's from its tribute; they pra
 (D2-168, landed 25 Oct 2026, sim 91; `10` §12k: a free village is asked a tenth at its harvest by its nearest stronger neighbour whose first household keeps sworn men - it bows where its
 people could neither stand against them nor go elsewhere, else the refusal is a wrong the asker holds; chosen by measuring first: bonds outlive their lords but
 hold by strength, so succession at a death changes little - what limits the lordships is that they rarely form, 514 pairs where one could make the other bow
-against 26 bonds; realms of 8-16 villages by year 300 and a cycle of hegemonies over 900 years, its war costing about a tenth of the people while the worlds grow); C10.9 the lord's death is in evaluation on `wip/c109-lapse` (D2-173 draft); then by evidence: commendation (a wronged village that cannot answer its foe puts itself under a protector: 24 such at year 300 in ten
+against 26 bonds; realms of 8-16 villages by year 300 and a cycle of hegemonies over 900 years, its war costing about a tenth of the people while the worlds grow); ~~C10.9 the lord's death~~ (D2-173, sim 92: bonds for peace lapse with the one first among the lord's people; heirs win their tributaries again by asking - raids x0.64, realms change hands at deaths); C10.10 the lord's peace in evaluation on `wip/c1010-peace` (D2-174 draft: the measured war is feud, 30-88 % of raids between villages of one realm); then by evidence: commendation (a wronged village that cannot answer its foe puts itself under a protector: 24 such at year 300 in ten
 worlds), a lord's death and its tributaries once realms are held by the margin, rising together once realms are large. Done meanwhile: ~~a polity map layer~~ (D2-167: the realms map layer - each lordship's land in its
 colour, chevrons from tributary to lord, a legend; HUD R).
 
@@ -154,7 +154,7 @@ powers as play) and the player-facing game. The order, each a slice that answers
 1. ~~**C10.8 the asking**~~ - landed (D2-168, 25 Oct 2026) after its matched placebo judged its one lean real and explained by its war. Its 900-year books (`book --load` on `_l9dm1`) show realms
    that rise and fall in turn - seed 2: Taildvehope's realm held 24 villages in five tiers by year 338 and was gone by 829, Elddal's 19 for eleven
    years, Vaildwick's, Skaenstead's and Mestskouford's 22 each - a cycle of hegemonies, not one realm that grows for ever.
-2. **C10.9 rising together** - the tributaries of one lord that together outweigh it stop paying together (the record: Kent's rising under Eadberht
+2. ~~**C10.9**~~ landed as **the lord's death** (D2-173) - the measured counterweight; rising together not needed by the evidence. Then **C10.10 the lord's peace** (D2-174), chosen over C8.1 by measuring first. Was: **C10.9 rising together** - the tributaries of one lord that together outweigh it stop paying together (the record: Kent's rising under Eadberht
    Praen at Offa's death; the tributary kings' coalitions against overkings): the mechanism by which an overgrown realm breaks, beside the lord's weakness.
    Measured first (`lordships --margins` per realm: how often a realm's tributaries together outweigh their lord while each alone does not).
 3. **C8.1 the campaign and the siege** - a lord's band with its tributaries' men (the call exists, C10.1) against a walled place: a blockade until its
