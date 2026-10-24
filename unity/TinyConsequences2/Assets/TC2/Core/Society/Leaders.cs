@@ -154,6 +154,8 @@ namespace TC2.Core.Society
             });
             w.Metrics.Headmen++;
             if (how == 1) w.Metrics.HeadsWithin++; else if (how == 2) w.Metrics.HeadsRisen++;
+            // (C10.9) the one before dead: the bonds for peace made with this village lapse at their lord's death
+            if (vacancy && prev != 0 && w.People.Exists(prev) && !w.People.Get(prev).Alive) w.Conflict.LordDied(sid, s.HeadEvent);
             if (vacancy) Contest(w, sid, house, cause, 0);
         }
 

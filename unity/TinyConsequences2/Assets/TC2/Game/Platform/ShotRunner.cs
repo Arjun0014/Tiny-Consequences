@@ -433,7 +433,7 @@ namespace TC2.Game
             File.WriteAllBytes(Path.Combine(_out ?? _dir, name + ".png"), tex.EncodeToPNG());
             Destroy(tex); rt.Release(); Destroy(rt);
             Debug.Log("[TC2] shot " + name);
-            if (RealmsView.On) Debug.Log("[TC2] realms: " + RealmsView.Legend.Count + " realms, " + RealmsView.Bonds + " bonds (" + RealmsView.BondsAfoot + " along a way on foot), " + RealmsView.Washed + " villages washed, " + RealmsView.ChevronsDrawn + " chevrons drawn" + (RealmsView.SameColour.Length > 0 ? "; the same colour: " + RealmsView.SameColour : ""));
+            if (RealmsView.On) Debug.Log("[TC2] realms: " + RealmsView.Legend.Count + " realms, " + RealmsView.Bonds + " bonds (" + RealmsView.BondsAfoot + " along a way on foot), " + RealmsView.Washed + " villages washed, " + RealmsView.ChevronsDrawn + " chevrons drawn; wars: " + RealmsView.FeudRaids + " raids in ten years between " + RealmsView.FeudPairs + " pairs (" + RealmsView.FeudsWithin + " of one realm), " + RealmsView.SpearsDrawn + " spears drawn" + (RealmsView.SameColour.Length > 0 ? "; the same colour: " + RealmsView.SameColour : ""));
             var sea = FindAnyObjectByType<SeaLifeView>();
             if (sea != null) Debug.Log("[TC2] sea life: shoals " + sea.Shoals + " drawn " + sea.Drawn + " seals " + sea.SealsDrawn + " | " + sea.Why);
             var wild = FindAnyObjectByType<WildlifeView>();

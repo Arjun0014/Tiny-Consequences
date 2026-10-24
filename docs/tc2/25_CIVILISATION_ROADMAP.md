@@ -76,11 +76,11 @@ and loads moved) and cargo boats, coastal trade at the sea's cost ratio; **C9.5a
 ~~C10.6 tribute carried to the lord's store~~ (D2-161: its labour on the ways after each harvest; a fifth of the tribute has no way on foot to its lord - by boat since C9.5a, D2-162); ~~C10.7a a
 lordship's might by lasting strength~~ (D2-164: villages weigh each other's people of fighting age by their years, tools and arms and fighting skill, not
 by heads); ~~C10.7b sworn men~~ (D2-165: the one first among a village's people, whose household's grain runs years beyond its needs, keeps young men of the
-village sworn to them, fed from that grain - a lord's from its tribute; they practise every day and go with every band; retainers, `23` §3); C10.8 the asking
-(D2-168, `10` §12k: a free village is asked a tenth at its harvest by its nearest stronger neighbour whose first household keeps sworn men - it bows where its
+village sworn to them, fed from that grain - a lord's from its tribute; they practise every day and go with every band; retainers, `23` §3); ~~C10.8 the asking~~
+(D2-168, landed 25 Oct 2026, sim 91; `10` §12k: a free village is asked a tenth at its harvest by its nearest stronger neighbour whose first household keeps sworn men - it bows where its
 people could neither stand against them nor go elsewhere, else the refusal is a wrong the asker holds; chosen by measuring first: bonds outlive their lords but
 hold by strength, so succession at a death changes little - what limits the lordships is that they rarely form, 514 pairs where one could make the other bow
-against 26 bonds); then by evidence: commendation (a wronged village that cannot answer its foe puts itself under a protector: 24 such at year 300 in ten
+against 26 bonds; realms of 8-16 villages by year 300 and a cycle of hegemonies over 900 years, its war costing about a tenth of the people while the worlds grow); C10.9 the lord's death is in evaluation on `wip/c109-lapse` (D2-173 draft); then by evidence: commendation (a wronged village that cannot answer its foe puts itself under a protector: 24 such at year 300 in ten
 worlds), a lord's death and its tributaries once realms are held by the margin, rising together once realms are large. Done meanwhile: ~~a polity map layer~~ (D2-167: the realms map layer - each lordship's land in its
 colour, chevrons from tributary to lord, a legend; HUD R).
 
@@ -151,7 +151,7 @@ F9 (the god's powers beyond those that exist), F10 (art and presentation: animat
 ten seeds against a control; a matched placebo for any lean; real shots), and the 1,000-year acceptance (§6) passed on several seeds - judged in real
 shots at the ages and in the History Book (D2-171), which now tells a world's realms, rulers, wars, disasters and threads of cause. Then F9 (the god's
 powers as play) and the player-facing game. The order, each a slice that answers "what changes in the world picture?":
-1. **C10.8 the asking** - land it (D2-168) once its matched placebo has judged its one lean. Its 900-year books (`book --load` on `_l9dm1`) show realms
+1. ~~**C10.8 the asking**~~ - landed (D2-168, 25 Oct 2026) after its matched placebo judged its one lean real and explained by its war. Its 900-year books (`book --load` on `_l9dm1`) show realms
    that rise and fall in turn - seed 2: Taildvehope's realm held 24 villages in five tiers by year 338 and was gone by 829, Elddal's 19 for eleven
    years, Vaildwick's, Skaenstead's and Mestskouford's 22 each - a cycle of hegemonies, not one realm that grows for ever.
 2. **C10.9 rising together** - the tributaries of one lord that together outweigh it stop paying together (the record: Kent's rising under Eadberht
