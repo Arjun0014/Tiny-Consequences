@@ -143,6 +143,14 @@ regional structures, defended towns, real trade; ~500 perhaps kingdoms, larger w
 powers, ruins, rebuilding; ~1,000 a political, ecological and architectural landscape visibly the result of its history. Seeds differ;
 some stay fragmented, some collapse, some never form a state - desirable.
 
+**First run (session 25, 25 Oct 2026; main sim 94 - C10.8-C10.10, C11.1a; `tc2/out/tools/s25/accept/notes.md`)**: seeds 2, 4 and 7 for 1,000 years
+(`_ac1`, saved at 50/150/300/500/800/1,000; books; real shots `s25m_*`; the Web build over year 1,000). **Holds**: a wild planet, first villages, founders,
+larger settlements, walls, realms in tiers that rise and fall (seed 4: Touldandholm 30 of 34 villages at year 917, 18 at 1,000), a great plague (seed 2:
+-52 % over 450-600 and recovered by 650), peoples with their own speech, and books that tell all of it as history (sixteen or seventeen ages a world, the
+realms as reigns). **Does not hold**: after the land fills (~year 300) the map stops changing - 2-3 villages abandoned in 1,000 years, almost no foundings,
+no ruins or rebuilding, no town drawing in its hinterland; years 300 and 1,000 cannot be told apart from the picture. The next slice by this evidence:
+settlement change at the ceiling (measured first: why no village empties - the plague included - and why none is founded).
+
 ## 7. After the C-phases
 F9 (the god's powers beyond those that exist), F10 (art and presentation: animation of labour, UI art pass), F11 (platform).
 
