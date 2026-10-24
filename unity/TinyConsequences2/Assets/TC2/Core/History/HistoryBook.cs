@@ -130,6 +130,7 @@ namespace TC2.Core.History
             public readonly Dictionary<int, HistoryEvent> Founded = new Dictionary<int, HistoryEvent>();
             public readonly Dictionary<int, HistoryEvent> Abandoned = new Dictionary<int, HistoryEvent>();
             public readonly Dictionary<int, List<int>> At = new Dictionary<int, List<int>>();   // a place's events (ledger indices), oldest first
+            public readonly List<HistoryEvent> Refusals = new List<HistoryEvent>();              // askings refused (C10.8)
             public List<War> WarList;
 
             public Ctx(World w)
@@ -171,6 +172,9 @@ namespace TC2.Core.History
                             break;
                         case HistoryKind.SettlementAbandoned:
                             if (e.Subject.Kind == EntityKind.Settlement) Abandoned[e.Subject.Id] = e;
+                            break;
+                        case HistoryKind.TributeDemanded:
+                            if (e.ArgA == 0) Refusals.Add(e);
                             break;
                     }
                 }
@@ -448,8 +452,12 @@ namespace TC2.Core.History
             for (int i = 0; i < c.Bonds.Count; i++) if (c.Bonds[i].Lord == r.Seat) mine.Add(c.Bonds[i]);
             var sb = new StringBuilder();
             if (mine.Count > 0 && w.History.TryGet(mine[0].Made, out var first))
-                sb.Append(seat).Append("'s lordship began in year ").Append(YearOf(first.Time)).Append(", when ").Append(w.History.NameOf(first.Subject))
+            {
+                int fy = YearOf(first.Time);
+                sb.Append(seat).Append(fy < r.From ? " first took tribute in year " : "'s lordship began in year ").Append(fy).Append(", when ").Append(w.History.NameOf(first.Subject))
                   .Append(first.ArgB == 1 ? " bowed to it for the famine grain it could not give back" : first.ArgB == 2 ? " bowed when it asked a tenth" : " bowed to it after its bands came").Append(". ");
+                if (fy < r.From) sb.Append("It paid a lord of its own until year ").Append(r.From).Append(", when it came to stand at the head of its realm. ");
+            }
             var marks = new List<string>();
             int lastMark = -1;
             foreach (var kv in r.Sizes)
@@ -489,6 +497,9 @@ namespace TC2.Core.History
                 if (w.History.TryGet(b.Made, out var e1)) evs.Add(e1);
                 if (b.Ended != 0 && w.History.TryGet(b.Ended, out var e2)) evs.Add(e2);
             }
+            // (C10.8) the askings its seat made that were refused - a realm's story is also the tenths it was denied
+            if (c.At.TryGetValue(r.Seat, out var _))
+                foreach (var kv in c.Refusals) if (kv.Subject.Id == r.Seat) evs.Add(kv);
             Best(evs, 14);
             foreach (var e in evs) ch.Line(w, e);
             // its wars, by the village it fought
@@ -577,6 +588,7 @@ namespace TC2.Core.History
                 int a, b;
                 if (e.Kind == HistoryKind.Raid) { a = e.Subject.Id; b = e.Object.Id; }
                 else if (e.Kind == HistoryKind.BandRaised && e.Object.Kind == EntityKind.Settlement && e.Settlement > 0) { a = e.Settlement; b = e.Object.Id; }
+                else if (e.Kind == HistoryKind.TributeDemanded && e.ArgA == 0) { a = e.Subject.Id; b = e.Object.Id; }   // (a refused asking: the asker holds it a wrong)
                 else if (e.Kind == HistoryKind.TributeAgreed && e.ArgB != 1) { a = e.Subject.Id; b = e.Object.Id; }   // (a bow ends a war between the two)
                 else continue;
                 if (a <= 0 || b <= 0 || a == b) continue;
@@ -1035,7 +1047,7 @@ namespace TC2.Core.History
             {
                 case HistoryKind.Taken: case HistoryKind.TakingSeen: case HistoryKind.Struck: case HistoryKind.ClaimRefused: case HistoryKind.AmendsMade: case HistoryKind.WatchSet: return 1;
                 case HistoryKind.BandRaised: case HistoryKind.Raid: case HistoryKind.CallAnswered: return 2;
-                case HistoryKind.TributeAgreed: case HistoryKind.TributeEnded: case HistoryKind.TributePaid: return 3;
+                case HistoryKind.TributeAgreed: case HistoryKind.TributeEnded: case HistoryKind.TributePaid: case HistoryKind.TributeDemanded: return 3;
                 case HistoryKind.HarvestFailed: case HistoryKind.Rationing: case HistoryKind.Hunger: case HistoryKind.Famine: case HistoryKind.WildFood: case HistoryKind.ReliefSent: case HistoryKind.ReliefReturned: return 4;
                 case HistoryKind.PathogenAppeared: case HistoryKind.EpidemicArrived: case HistoryKind.EpidemicEnded: return 5;
                 case HistoryKind.PartySetOut: case HistoryKind.SettlementFounded: case HistoryKind.VillageSplit: case HistoryKind.Scouted: case HistoryKind.PartyJoined: case HistoryKind.HouseholdMoved: return 6;
