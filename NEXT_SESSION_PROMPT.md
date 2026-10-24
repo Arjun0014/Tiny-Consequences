@@ -15,53 +15,40 @@ world readability and presentation alongside (the planet like Earth from space, 
 then god powers and player-facing gameplay.
 
 ## Read first (this order), then work autonomously
-1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the standing prompt (architecture, rules, every direction; "Where we are (session 25)").
-2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 25 ... first context"**: the exact state, the job queue, "Next, in order".
-3. `docs/tc2/DECISIONS.md` newest (D2-170 orbit look, D2-171 the History Book, D2-172 names); the C10.8 draft `tc2/out/tools/s24/d2168.md` (complete,
-   to append when it lands); C10.9's design and measures `tc2/out/tools/s25/c109_design.md`; `docs/tc2/PROGRESS.md` CURRENT STATE (session 25);
-   `docs/tc2/25_CIVILISATION_ROADMAP.md` §8 (the plan to a finished core).
+1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the standing prompt (architecture, rules, every direction; "Where we are (session 25, second context)").
+2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 25, second context"**: the exact state, the job queue, "Next, in order".
+3. `docs/tc2/DECISIONS.md` newest (D2-168 the asking, D2-173 the lord's death, D2-174 the lord's peace, D2-175 a people's tongue); `docs/tc2/PROGRESS.md`
+   CURRENT STATE (session 25, second context); `docs/tc2/25_CIVILISATION_ROADMAP.md` §8 (the plan to a finished core); the C7.2 measure in
+   `tc2/out/tools/s25/results/stonewalls_*.txt` when it has run, and `tc2/out/tools/s25/c81_design.md` (why C8.1 waits).
 4. `git status`, `git log --oneline -15`, `git worktree list`, and the queue: `cat $Q/runq.log` (`Q` below) - which jobs ended, with what.
 
-## Session 25, first context (24 Oct 2026, 22:14 - ~23:40 IST) - handed off with the job queue RUNNING
-- **On main (50f999f; sim 90 - no simulation change this session)**: the planet from space (D2-170: single-scattering air, clouds from the weather as
-  rain decks and cumulus fields, a darker sea, villages' lights as points); the History Book as a book (D2-171: `Core/History/HistoryBook.cs`, eight
-  parts written after the fact from the ledger - Ages, Realms and Rulers, Wars and Feuds, Famine/Plague/Disaster, Places, Lives, Threads of Cause, A
-  Chronology - and a Timeline page; the HUD's two-page reader; headless `book --load SAVE --md F`); places, works and people named on the map and hover
-  tags (D2-172); the compile check `unity.mjs cc` repaired (it compiled nothing since session 23); DECISIONS D2-170..D2-172; 25 §8.
-- **Validated**: full suite 442/442 (before the observer/presentation changes); HistoryBookTests 5/5; shots `s25a`-`s25d`; **Web `s25web1` 6/6** and the HUD
-  over the year-300/900 worlds in the browser (`tc2/out/webtest/s25web1b900`, `s25web1b300`). **Not yet in a Web build**: works/people names, the book's
-  buttons, names clear of the bars, the Timeline page; the paired frame cost of names/air/clouds (`realmsperf.mjs --layer`).
+## Session 25, second context (25 Oct 2026, 23:56 - ~02:45 IST) - four slices landed; the 1,000-year acceptance RUNNING in the queue
+- **On main (2935c9a and after; sim 94)**: C10.8 the asking (D2-168), C10.9 the lord's death (D2-173: bonds for peace lapse with the first among the lord's
+  people; heirs win them back by asking - raids x0.64), **C10.10 the lord's peace** (D2-174: no bands within a realm, blood judged by the common lord;
+  chosen over C8.1 by measuring that the war was feud, 30-88 % of it inside realms; people x1.054 against its matched placebo twin, explained - raids
+  within realms gone, war at the realms' edges, famines a person-year x0.82), **C11.1a a people's tongue** (D2-175: names in their founders' speech, a sound
+  changed at a time; the book's Peoples; annals unchanged byte for byte), **the wars on the realms map layer** (the last ten years' raids as dark spearheads).
+- **A fault in the job tooling, fixed**: `lib.sh`'s `gate` clobbered a loop variable `c`; gates now need 1+ passed (name test-class loop variables `cls`).
 - **The queue** (background task brw7xh61a, runner `tc2/out/tools/s23/runq.sh`; `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`):
-  `7_j_fullsuite_dm3` ended 23:49 (450 passed, 1 failed - below; `tc2/out/tools/s23/results/fullsuite_dm3.txt`); at the handoff running C10.9's evaluation `8_c_build_lp1`, `8_d_ctl_lp0_s4`, `8_e_lp1_01..10`, `8_f_cmp_lp1`
-  (`results/cmp_dm1_lp1.txt`), ~35 min. Held in `$Q/hold`: `8_a*`, `8_b*`, `9_*` (attribution only). No monitor survives the clear: arm one
+  `9_a_fullsuite_m8` (main's suite on the final rules: `results/fullsuite_m8.txt`, `fs_m8_ok`), `9_b_ac1_s{2,4,7}` (1,000-year worlds `$O/s*_ac1/world_y{50,150,300,500,800,1000}.tc2`,
+  books `tc2/out/tools/s25/accept/book_s*_y{300,1000}.md`), `9_bx_stone_st0` (the C7.2 measure), `9_bz_web` (Web `s25web2`: the test, bookshots over the
+  year-1,000 and year-300 worlds - names in tongues, the book's Peoples/Timeline/Realms, `realmsperf --layer names|air|clouds`), `9_c_shots_s{2,4}_y*`
+  (each age's real shots `tc2/out/shots/s25m_*`, realms with the war spears at 1,000). No monitor survives the clear: arm one
   (`tail -n 0 -F $Q/runq.log | grep --line-buffered -E "^end |runner stopped"`).
-- **C10.8 the asking - decided: land it** (`wip/c108-demand`, worktree `C:/Game Dev/tc-demand`, sim 91). Its matched placebo: the lean is real (people
-  over 100-199 x0.904, t -4.64 against the twin; the twins x1.005) and explained by its own war - wounds +0.7 deaths a thousand person-years and fewer
-  foundings while the worlds grow (about a tenth of their people), x0.92 near the ceiling, per-person rates at par; realms rise and fall (the year-900
-  books). D2-168's draft is complete.
-- **C10.9 the lord's death - built, in evaluation** (`wip/c109-lapse`, worktree `C:/Game Dev/tc-lapse`, from C10.8; sim 92; bd27e74; LapseTests 3): at
-  the death of the first at a lord's seat its bonds for peace lapse (bread bonds stand), and heirs win the villages back by asking. Measured first with
-  new tools on C10.8's worlds: `lordships --together` (22 of 28 great realms held by the call - their villages together outweigh the lord x1.3-x13.8,
-  none alone can) and `--heirs` (the first at a seat dies about every 12 years).
-
-## `7_j` result (23:49): C10.8's branch full suite 450 passed, **1 failed**, 0 skipped
-- `HistoryBookTests.RaidsAreOneWarUntilABowOrTwelveQuietYears` failed on C10.8's rules ("the bow ends it": the second war's text has no bow). The test's
-  premise writes raids and a bow between villages 1 and 2 of a young world by hand, and under C10.8 the world's own asking between those villages can
-  record its own bow/refusal in the same years (the book now counts refused askings as war events: b808479), so the premise's bow is not the war's end.
-  Not a simulation fault: make the test's premise immune (set `Conflict.DemandOff = true` in a try/finally for that test, as `LapseTests` does with
-  `LapseOff`, or pick two villages the asking cannot join), rerun `HistoryBookTests` on the branch (0 failed, 0 skipped), then land.
 
 ## Do next, in order
-1. Fix that test on `wip/c108-demand` (above), rerun HistoryBookTests (`bin_dm3` rebuilt), then land C10.8 - in `C:/Game Dev/tc-demand` `git merge main` (main moved: docs, names, the timeline), then on main
-   `git merge --no-ff wip/c108-demand` (sim 91); append `tc2/out/tools/s24/d2168.md` to DECISIONS (D2-168); `25`'s C10 line; queue on main the full suite
-   (a bin built from main), real shots of realms grown (`unity.mjs shots --realms --load $O/s2_l9dm1/world_y600.tc2 --village lord`), a Web build with
-   `bookshots.mjs` (`--book "-2,1:0,6:0"`: the Timeline page) and `realmsperf.mjs --layer names|air|clouds` (paired costs).
-2. C10.9: judge `8_f` against `_dm1` (vital rates, bonds lapsed and won back, the greatest realm's share); if sound, its 900 years (from
-   `$O/s{2,4}_lp1/world_y300.tc2`, with `lordships --bonds --together --heirs` and `book --load`), D2-173, land after C10.8.
-3. Then 25 §8: C8.1 the campaign and the siege, C7.2 stone walls, C11.1 a people's ways, the 1,000-year acceptance; great worlds in the browser
-   (`14` §7: ~1 GB, ~8 fps at the region view); then F9 (god powers as play).
+1. Judge the queue's results: the full suite (0 failed, 0 skipped); the 1,000-year worlds (25 §6: villages, realms, ruins and rebuilding by age; the books);
+   the shots at every age and view (`s25m_*`: can history be seen without reading the date? the war spears and realms at 1,000); the Web (names by tongue
+   on the map, the book's new chapters, the layers' paired costs). Fix what they find; write the acceptance up in 25 §6/§8 and DECISIONS.
+2. C7.2 stone walls from its measure (`stonewalls_*`: do any walled villages lose enough a year, know stone at hand and hold the grain for a curtain?),
+   or by evidence the next: war between realms (C8.1's room after the peace), C11.1b households carrying their ways (marriage, migration), great worlds
+   in the browser (`14` §7), then F9 (god powers as play).
 
 ## Rules that bite
+- **Job scripts: never name a loop variable `c` or `r`** before session 25's fix `gate` overwrote them; name test-class loops `cls`, and every test gate
+  needs `[1-9][0-9]* passed, 0 failed, 0 skipped` ("0 passed" once passed a gate).
+- **Each landing changes the sim version and old saves stop loading**: queued shots/Web jobs must point at a save of the version they run (make one
+  with the landed binary: `9_b_*`); keep two branches' versions distinct (a save of one loads silently in the other's binary if they share a number).
 - **`unity.mjs cc` compiled nothing from session 23 to session 25** (a shadowed variable made every glob miss): fixed in ea6b826 - check its
   `tc2/out/cc/Game.csproj` has `<Compile Include="C:/.../Assets/TC2/Game/**/*.cs" />` if a compile ever passes suspiciously. Unity's own compile (shots,
   Web build) is the final word; an ILPP pipe error (`ILPPTrigger: Can't find file \\.\pipe\unity-ilpp-...`) is Unity's glitch - rerun the job.

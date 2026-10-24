@@ -1,6 +1,8 @@
 # TC2 Session handoff
 
-## Session 25, second context (25 Oct 2026, 23:56 - ~02:30 IST; Control Room run #78 session 2) - C10.8 and C10.9 landed; C10.10 the lord's peace and C11.1a a people's tongue built, the peace's placebo running
+## Session 25, second context (25 Oct 2026, 23:56 - ~02:45 IST; Control Room run #78 session 2) - C10.8, C10.9, C10.10 and C11.1a LANDED (sim 94); the 1,000-year acceptance RUNNING in the queue
+
+**Update (~02:45)**: the peace's lean was judged against its matched placebo (the twins x1.029; the peace against its twin x1.054, t 2.69) and explained by its mechanism (raids within realms gone: seed 4 85 -> 0; war at the realms' edges) - **C10.10 landed** (955b497, sim 93; D2-174 e2b41b0); **C11.1a landed** after it (33fd336, sim 94; D2-175 80a1eaa); PROGRESS 2935c9a; root and standing NEXT_SESSION_PROMPTs updated. The queue now: `9_a_fullsuite_m8` (running), `9_b_ac1_s{2,4,7}` (1,000-year worlds on main's final rules, saved at 50/150/300/500/800/1,000; books at 300 and 1,000), `9_bx_stone_st0` (`place --stonewalls` on them: C7.2 measured first, worktree `C:/Game Dev/tc-stone`, branch `wip/c72-stone`), `9_bz_web` (Web `s25web2` over the year-1,000 and year-300 worlds), `9_c_shots_s{2,4}_*` (every age's real shots `s25m_*`). Generator: `tc2/out/tools/s25/accept/make_accept.sh`. The rest of this block below is the state at ~02:10 (kept for the record).
 
 ### Exact state (~02:10)
 - **main** (040c897 and after): **C10.8 the asking landed** (731c75a, sim 91; D2-168 appended b5f299c) - its branch's one failing test was a premise the asking
