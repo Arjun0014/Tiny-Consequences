@@ -215,3 +215,8 @@ a realm takes only dyes that cannot pass for the land's own colours (`MapSafe`):
 all. Every mark is real state - the land worked, who pays whom, the way the tenth goes; no border is drawn where no bond is. Judged in real shots
 (`s24r3`/`s24r8` found the first look's faults; `s24s3`/`s24s8` read at the region and orbit views; `s24t`, a year-900 overkingship, found a sky-blue
 realm reading as lakes and a white one as a salt flat).
+
+## 10. Places and people named (session 25, D2-172)
+Each inhabited place is named on the map over its square with what it is and its bond ("town of 864, pays Lounstead"), the most peopled first and
+none over another (only the largest dozen from orbit); at the village view the works are named where they stand; at the closest views the nearest
+people's given names over their heads; close in, a tag on who or what is under the pointer. N turns the names off.

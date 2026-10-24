@@ -36,6 +36,35 @@ namespace TC2.Core.History
         public readonly List<BookChapter> Chapters = new List<BookChapter>();
     }
 
+    /// <summary>
+    /// The world's years at a glance (the book's Timeline page): its people by year, its ages, each great realm's villages year by year (the lord
+    /// and every tier under it), and its greatest moments - all read from the annals and the ledger, nothing drawn that did not happen.
+    /// </summary>
+    public sealed class BookTimeline
+    {
+        public int From, To;                 // years [From, To]
+        public int[] People;                 // by year (From..To), from the annals
+        public int MaxPeople, MaxRealm;
+        public readonly List<Era> Ages = new List<Era>();
+        public readonly List<TimelineRealm> Realms = new List<TimelineRealm>();   // the greatest first
+        public readonly List<TimelineMark> Marks = new List<TimelineMark>();      // in time order
+    }
+
+    public sealed class TimelineRealm
+    {
+        public int Seat, Peak, PeakYear;
+        public string Name;
+        public int[] Villages;               // by year (From..To): the villages of its realm with the seat, 0 when it was none
+    }
+
+    public struct TimelineMark
+    {
+        public int Year;
+        public string Text;
+        public long Event;
+        public byte Kind;                    // 0 a realm's height, 1 a great famine, 2 a plague, 3 the earth and the sky, 4 a founding or an end
+    }
+
     public sealed class WorldBook
     {
         public string Title, Sub;
@@ -77,6 +106,39 @@ namespace TC2.Core.History
             var bw = new Writer(w);
             for (int i = 0; i < PartTitles.Length; i++) bw.Book.Parts.Add(bw.Part(i));
             return bw.Book;
+        }
+
+        /// <summary>The world's years at a glance (the Timeline page): people, ages, the greatest realms year by year, the greatest moments.</summary>
+        public static BookTimeline Timeline(World w, int realms = 8)
+        {
+            var c = new Ctx(w);
+            var t = new BookTimeline { From = c.First, To = c.Now };
+            int n = t.To - t.From + 1;
+            if (n <= 0) return t;
+            t.People = new int[n];
+            var a = w.Annals;
+            for (int i = 0; i < a.Count; i++) { int k = a[i].Year - t.From; if (k >= 0 && k < n) { t.People[k] = a[i].People; t.MaxPeople = System.Math.Max(t.MaxPeople, a[i].People); } }
+            t.Ages.AddRange(Chronicle.Eras(w));
+            for (int r = 0; r < c.RealmOrder.Count && t.Realms.Count < realms; r++)
+            {
+                var rr = c.Realms[c.RealmOrder[r]];
+                if (rr.Peak < 2) continue;
+                var tr = new TimelineRealm { Seat = rr.Seat, Name = Name(w, rr.Seat), Peak = rr.Peak + 1, PeakYear = rr.PeakYear, Villages = new int[n] };
+                foreach (var kv in rr.Sizes) { int k = kv.Key - t.From; if (k >= 0 && k < n) tr.Villages[k] = kv.Value + 1; }
+                t.MaxRealm = System.Math.Max(t.MaxRealm, tr.Peak);
+                t.Realms.Add(tr);
+                t.Marks.Add(new TimelineMark { Year = rr.PeakYear, Kind = 0, Text = tr.Name + "'s realm at its height, " + Plural(tr.Peak, "village", "villages") });
+            }
+            // the worst hungry times (the annals' peaks) and the deadliest plagues and violence of the earth: the moments a reader looks for
+            int peak = -1, max = 0;
+            for (int i = 0; i < a.Count; i++) if (a[i].Hunger > max) { max = a[i].Hunger; peak = i; }
+            if (peak >= 0 && max >= 5) t.Marks.Add(new TimelineMark { Year = a[peak].Year, Kind = 1, Text = "the worst year of hunger: " + F(max) + " dead" });
+            int sickPeak = -1, sickMax = 0, ruinPeak = -1, ruinMax = 0;
+            for (int i = 0; i < a.Count; i++) { if (a[i].Sick > sickMax) { sickMax = a[i].Sick; sickPeak = i; } if (a[i].Disaster > ruinMax) { ruinMax = a[i].Disaster; ruinPeak = i; } }
+            if (sickPeak >= 0 && sickMax >= 5) t.Marks.Add(new TimelineMark { Year = a[sickPeak].Year, Kind = 2, Text = "the worst year of sickness: " + F(sickMax) + " dead" });
+            if (ruinPeak >= 0 && ruinMax >= 3) t.Marks.Add(new TimelineMark { Year = a[ruinPeak].Year, Kind = 3, Text = "the earth's and the sky's worst year: " + F(ruinMax) + " dead" });
+            t.Marks.Sort((p, q) => p.Year.CompareTo(q.Year));
+            return t;
         }
 
         /// <summary>The book written part by part (the game writes a part when its reader opens it): the title, the preface and the

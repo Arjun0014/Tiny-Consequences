@@ -21,7 +21,7 @@ if (!savePath || !fs.existsSync(savePath) || !Number.isFinite(lat) || !Number.is
   console.error('usage: node tc2/scripts/bookshots.mjs --save F.tc2 --lat DEG --lon DEG [--views region:6000,...] [--book "-1,0:0,..."] [--tag NAME]');
   process.exit(2);
 }
-const views = opt('--views', 'region:6000,orbit:22000,village:1400').split(',').filter((v) => v).map((v) => { const [n, d] = v.split(':'); return { name: n, dist: Number(d) }; });
+const views = opt('--views', 'region:6000,orbit:22000,village:1400,close:500,street:110').split(',').filter((v) => v).map((v) => { const [n, d] = v.split(':'); return { name: n, dist: Number(d) }; });
 const pages = opt('--book', '-1,0:0,1:0,2:0,3:0,4:0,5:0,6:0,7:0').split(',').filter((v) => v).map((v) => { const [p, c] = v.split(':'); return { part: Number(p), chapter: Number(c || 0) }; });
 const tag = opt('--tag', 'bookshots');
 const outDir = path.join(root, 'tc2', 'out', 'webtest', tag);

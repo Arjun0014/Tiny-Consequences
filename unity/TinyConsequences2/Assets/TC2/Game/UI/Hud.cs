@@ -52,7 +52,13 @@ namespace TC2.Game
         /// <summary>Opens the History Book at a part and chapter (-1: the preface) - the page a tool asks for.</summary>
         public void OpenBookAt(int part, int chapter) { _book = true; _openPart = part; _openChapter = chapter; _line = 0; }
         public void CloseBook() { _book = false; }
-        int _openPart = -2, _openChapter;
+        int _openPart = NoRequest, _openChapter;
+        const int NoRequest = -99;
+        // the Timeline page (session 25): the world's years drawn once into a texture when the book is written (one draw a frame)
+        BookTimeline _timeline; Texture2D _timelineTex; int _timelineYear = -1;
+        const int TimelinePart = -2;
+        static readonly Color[] RealmInk = { new Color(0.66f, 0.17f, 0.12f), new Color(0.17f, 0.32f, 0.60f), new Color(0.22f, 0.48f, 0.22f), new Color(0.80f, 0.58f, 0.14f),
+                                             new Color(0.47f, 0.22f, 0.52f), new Color(0.12f, 0.50f, 0.52f), new Color(0.85f, 0.42f, 0.12f), new Color(0.45f, 0.31f, 0.20f) };
         bool _bookAsked;
         // names on the map (session 25: places and people read clearly): each inhabited place's name at its square, what it is and whom
         // it pays under it, the most peopled first and none over another; close in, a tag on the person or building under the pointer
@@ -61,6 +67,7 @@ namespace TC2.Game
         Texture2D _dot;
         readonly System.Collections.Generic.List<Rect> _placed = new System.Collections.Generic.List<Rect>();
         readonly System.Collections.Generic.List<int> _byPeople = new System.Collections.Generic.List<int>();
+        readonly System.Collections.Generic.Dictionary<int, string> _placeLine = new System.Collections.Generic.Dictionary<int, string>();
         float _byPeopleAt = -99f;
         int _hoverPid, _hoverBid; float _hoverAt;
         string _news = ""; float _newsAge = 99f; int _newsCount;
@@ -184,7 +191,12 @@ namespace TC2.Game
             _tocSel.normal.background = Solid(new Color(0.55f, 0.35f, 0.15f, 0.14f));
             _tocPart = new GUIStyle(_ink) { fontSize = 14, fontStyle = FontStyle.Bold, padding = new RectOffset(0, 4, 5, 1) };
             _tocPart.hover.textColor = red;
-            _inkBtn = new GUIStyle(GUI.skin.button) { fontSize = 12, padding = new RectOffset(8, 8, 3, 3) };
+            // the book's buttons on its page: a darker leaf of the same paper, ink letters (not the HUD's dark buttons)
+            _inkBtn = new GUIStyle(GUI.skin.button) { fontSize = 12, fontStyle = FontStyle.Bold, padding = new RectOffset(10, 10, 4, 4), border = new RectOffset(0, 0, 0, 0) };
+            _inkBtn.normal.background = Solid(new Color(0.84f, 0.78f, 0.66f, 1f));
+            _inkBtn.hover.background = Solid(new Color(0.78f, 0.70f, 0.56f, 1f));
+            _inkBtn.active.background = Solid(new Color(0.70f, 0.60f, 0.46f, 1f));
+            _inkBtn.normal.textColor = ink; _inkBtn.hover.textColor = red; _inkBtn.active.textColor = red;
             // names on the map: light letters with a dark edge, readable over sea, snow and field alike
             _mapName = new GUIStyle(GUI.skin.label) { fontSize = 13, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = false, richText = false, padding = new RectOffset(0, 0, 0, 0) };
             _mapName.normal.textColor = new Color(0.98f, 0.96f, 0.90f);
@@ -197,14 +209,16 @@ namespace TC2.Game
             _dot = Solid(Color.white);
         }
 
-        /// <summary>A word drawn with a dark edge (the eight neighbours, then the letters).</summary>
+        /// <summary>A word drawn with a dark edge (four diagonal shadows, then the letters; the HUD draws its labels twice a frame, so it is kept cheap).</summary>
         static void Edged(Rect r, string text, GUIStyle st)
         {
+            if (Event.current.type != EventType.Repaint) return;   // (labels take no input: only the repaint draws them)
             var c = st.normal.textColor;
             st.normal.textColor = new Color(0.04f, 0.05f, 0.06f, 0.85f);
-            for (int dx = -1; dx <= 1; dx++)
-                for (int dy = -1; dy <= 1; dy++)
-                    if (dx != 0 || dy != 0) GUI.Label(new Rect(r.x + dx, r.y + dy, r.width, r.height), text, st);
+            GUI.Label(new Rect(r.x - 1, r.y - 1, r.width, r.height), text, st);
+            GUI.Label(new Rect(r.x + 1, r.y - 1, r.width, r.height), text, st);
+            GUI.Label(new Rect(r.x - 1, r.y + 1, r.width, r.height), text, st);
+            GUI.Label(new Rect(r.x + 1, r.y + 1, r.width, r.height), text, st);
             st.normal.textColor = c;
             GUI.Label(r, text, st);
         }
@@ -228,6 +242,15 @@ namespace TC2.Game
                 _byPeople.Clear();
                 for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid)) if (w.Settlements.Get(sid).Inhabited) _byPeople.Add(sid);
                 _byPeople.Sort((a, b) => { int c = w.Settlements.Get(b).Population.CompareTo(w.Settlements.Get(a).Population); return c != 0 ? c : a.CompareTo(b); });
+                _placeLine.Clear();
+                foreach (int sid in _byPeople)
+                {
+                    ref var s = ref w.Settlements.Get(sid);
+                    int paying = 0;
+                    for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o)) { ref var os = ref w.Settlements.Get(o); if (os.Lord == sid && os.Inhabited) paying++; }
+                    _placeLine[sid] = Gazetteer.Word(in s).Substring(2) + " of " + s.Population.ToString("N0", CultureInfo.InvariantCulture) +
+                                      (s.Lord != 0 && w.Settlements.Exists(s.Lord) ? ", pays " + w.History.NameOf(EntityRef.Settlement(s.Lord)) : paying > 0 ? ", lord of " + paying + (paying == 1 ? " village" : " villages") : "");
+                }
             }
             _placed.Clear();
             int max = alt > 9000f ? 12 : 48, shown = 0;
@@ -250,14 +273,12 @@ namespace TC2.Game
                 string name = w.History.NameOf(EntityRef.Settlement(sid));
                 var st = town ? _mapTown : _mapName;
                 Vector2 ns = st.CalcSize(new GUIContent(name));
-                int paying = 0;
-                for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o)) { ref var os = ref w.Settlements.Get(o); if (os.Lord == sid && os.Inhabited) paying++; }
-                string sub = Gazetteer.Word(in s).Substring(2) + " of " + s.Population.ToString("N0", CultureInfo.InvariantCulture) +
-                             (s.Lord != 0 && w.Settlements.Exists(s.Lord) ? ", pays " + w.History.NameOf(EntityRef.Settlement(s.Lord)) : paying > 0 ? ", lord of " + paying + (paying == 1 ? " village" : " villages") : "");
+                if (!_placeLine.TryGetValue(sid, out string sub)) sub = "";
                 bool withSub = alt < 9000f;
                 Vector2 ss = withSub ? _mapSub.CalcSize(new GUIContent(sub)) : Vector2.zero;
                 float wdt = Mathf.Max(ns.x, ss.x) + 6f, hgt = ns.y + ss.y;
                 var box = new Rect(x - wdt * 0.5f, y - hgt - 7f, wdt, hgt);
+                if (box.y < 48f || box.yMax > sh - 46f) continue;   // (clear of the bar at the top and the ticker at the foot)
                 bool clash = false;
                 foreach (var r in _placed) if (r.Overlaps(box)) { clash = true; break; }
                 if (clash) continue;
@@ -267,6 +288,98 @@ namespace TC2.Game
                 GUI.DrawTexture(new Rect(x - 2f, y - 2f, 4f, 4f), _dot);
                 Edged(new Rect(box.x, box.y, wdt, ns.y), name, st);
                 if (withSub) Edged(new Rect(box.x, box.y + ns.y - 1f, wdt, ss.y), sub, _mapSub);
+            }
+        }
+
+        /// <summary>
+        /// At the village view, the works named where they stand (the well, the granaries, the smithy, the training ground, the market, the
+        /// weaver's shed, the kiln, the boat shed, a mine or a quarry): what a place has and where, at a glance. Standing ones only, each kind once a
+        /// place (but each granary), none over another, none over a place's name.
+        /// </summary>
+        void WorkNames(TC2.Core.Simulation.World w, float sw, float sh)
+        {
+            if (!Names || Rig == null || Rig.Cam == null) return;
+            var cam = Rig.Cam;
+            var P = w.Planet;
+            Vector3 camPos = cam.transform.position;
+            float alt = camPos.magnitude - (float)P.Radius;
+            if (alt > 1500f || alt < 60f) return;
+            long now = w.Now;
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                ref var s = ref w.Settlements.Get(sid);
+                if (!s.Inhabited || (PlanetGeo.Surface(P, s.Anchor) - camPos).sqrMagnitude > 2600f * 2600f) continue;
+                var bl = w.BuildingsOf(sid);
+                int namedKinds = 0;
+                for (int i = 0; i < bl.Count; i++)
+                {
+                    ref var b = ref w.Buildings.Get(bl[i]);
+                    if (Structures.IsHome(b.Kind) || Boats.IsBoat(b.Kind) || b.Done == 0 || b.Left != 0) continue;
+                    if ((namedKinds & (1 << (b.Kind & 31))) != 0 && b.Kind != Structures.Granary) continue;
+                    Vector3 at = PlanetGeo.Surface(P, s.LocalToSphere(b.X, b.Y, P.Radius));
+                    if (Vector3.Dot(at.normalized, (camPos - at).normalized) < 0.05f) continue;
+                    Vector3 sp = cam.WorldToScreenPoint(at);
+                    if (sp.z <= 0f) continue;
+                    float x = sp.x / _scale, y = (Screen.height - sp.y) / _scale;
+                    if (x < 0f || x > sw || y < 40f || y > sh) continue;
+                    string text = Structures.Name(b.Kind);
+                    Vector2 ts = _mapSub.CalcSize(new GUIContent(text));
+                    var box = new Rect(x - ts.x * 0.5f - 2f, y - ts.y - 4f, ts.x + 4f, ts.y);
+                    bool clash = false;
+                    foreach (var r in _placed) if (r.Overlaps(box)) { clash = true; break; }
+                    if (clash) continue;
+                    _placed.Add(box);
+                    namedKinds |= 1 << (b.Kind & 31);
+                    GUI.color = new Color(0f, 0f, 0f, 0.75f); GUI.DrawTexture(new Rect(x - 2.5f, y - 2.5f, 5f, 5f), _dot); GUI.color = new Color(1f, 0.86f, 0.5f);
+                    GUI.DrawTexture(new Rect(x - 1.5f, y - 1.5f, 3f, 3f), _dot); GUI.color = Color.white;
+                    Edged(box, text, _mapSub);
+                }
+            }
+        }
+
+        readonly System.Collections.Generic.List<Vector3> _near = new System.Collections.Generic.List<Vector3>();   // (screen x, y, person id)
+
+        /// <summary>
+        /// At the closest views (below 140 m), the people nearest the middle of the picture named over their heads - their given name small, so a
+        /// street reads as people one knows; at most fourteen, none over another. Those asleep or indoors are not drawn and not named.
+        /// </summary>
+        void PeopleNames(TC2.Core.Simulation.World w, float sw, float sh)
+        {
+            if (!Names || Rig == null || Rig.Cam == null) return;
+            var cam = Rig.Cam;
+            Vector3 camPos = cam.transform.position;
+            float alt = camPos.magnitude - (float)w.Planet.Radius;
+            if (alt > 140f) return;
+            double t = Host.RenderTime;
+            _near.Clear();
+            for (int id = w.People.First(); id != 0; id = w.People.Next(id))
+            {
+                ref var p = ref w.People.Get(id);
+                if (!p.Alive || !Presence.Of(w, in p, t, out var pd, out _, out _, out _)) continue;
+                Vector3 at = PlanetGeo.Surface(w.Planet, pd);
+                if ((at - camPos).sqrMagnitude > 260f * 260f) continue;
+                Vector3 sp = cam.WorldToScreenPoint(at + at.normalized * 2.1f);
+                if (sp.z <= 0f) continue;
+                float x = sp.x / _scale, y = (Screen.height - sp.y) / _scale;
+                if (x < 0f || x > sw || y < 50f || y > sh - 20f) continue;
+                _near.Add(new Vector3(x, y, id));
+            }
+            _near.Sort((a, b) => { float da = (a.x - sw * 0.5f) * (a.x - sw * 0.5f) + (a.y - sh * 0.5f) * (a.y - sh * 0.5f), db = (b.x - sw * 0.5f) * (b.x - sw * 0.5f) + (b.y - sh * 0.5f) * (b.y - sh * 0.5f); int c = da.CompareTo(db); return c != 0 ? c : a.z.CompareTo(b.z); });
+            int shown = 0;
+            foreach (var v in _near)
+            {
+                if (shown >= 14) break;
+                string full = w.History.NameOf(EntityRef.Person((int)v.z));
+                int sp2 = full.IndexOf(' ');
+                string given = sp2 > 0 ? full.Substring(0, sp2) : full;
+                Vector2 ts = _mapSub.CalcSize(new GUIContent(given));
+                var box = new Rect(v.x - ts.x * 0.5f, v.y - ts.y, ts.x, ts.y);
+                bool clash = false;
+                foreach (var r in _placed) if (r.Overlaps(box)) { clash = true; break; }
+                if (clash) continue;
+                _placed.Add(box);
+                shown++;
+                Edged(box, given, _mapSub);
             }
         }
 
@@ -354,7 +467,7 @@ namespace TC2.Game
             if (Host.CatchingUp) { CatchUpScreen(sw, sh); PointerOverUi = true; return; }
 
             if (_hidden) { PointerOverUi = false; return; }
-            if (!_book) MapNames(w, sw, sh);
+            if (!_book) { MapNames(w, sw, sh); WorkNames(w, sw, sh); PeopleNames(w, sw, sh); }
             // top-left: a slim bar - the date and the speeds
             _left = new Rect(10, 10, Mathf.Min(sw - 390, 900), 40);
             GUILayout.BeginArea(_left, _box);
@@ -811,11 +924,11 @@ namespace TC2.Game
                 _parts = new BookPart[HistoryBook.PartTitles.Length];
                 _bookYear = year;
             }
-            if (_openPart != -2)
+            if (_openPart != NoRequest)
             {
                 if (_openPart >= 0 && _openPart < _parts.Length) { Part(_openPart); _bookPart = _openPart; _bookChapter = Mathf.Clamp(_openChapter, 0, Mathf.Max(0, _parts[_openPart].Chapters.Count - 1)); }
-                else _bookPart = -1;
-                _openPart = -2; _bookScroll = Vector2.zero;
+                else _bookPart = _openPart == TimelinePart ? TimelinePart : -1;
+                _openPart = NoRequest; _bookScroll = Vector2.zero;
             }
             if (_openAt != -2)
             {
@@ -832,7 +945,8 @@ namespace TC2.Game
             GUILayout.Label(_writer.Book.Title, _inkTitle);
             GUILayout.Label(_writer.Book.Sub, _inkSub);
             _listScroll = GUILayout.BeginScrollView(_listScroll);
-            if (GUILayout.Button("Preface", _bookPart < 0 ? _tocSel : _tocPart)) { _bookPart = -1; _bookScroll = Vector2.zero; _line = 0; }
+            if (GUILayout.Button("Preface", _bookPart == -1 ? _tocSel : _tocPart)) { _bookPart = -1; _bookScroll = Vector2.zero; _line = 0; }
+            if (GUILayout.Button("A Timeline of the World", _bookPart == TimelinePart ? _tocSel : _tocPart)) { _bookPart = TimelinePart; _bookScroll = Vector2.zero; _line = 0; }
             for (int i = 0; i < HistoryBook.PartTitles.Length; i++)
             {
                 if (GUILayout.Button(HistoryBook.Roman(i + 1) + ". " + HistoryBook.PartTitles[i], _tocPart) && _bookPart != i) { Part(i); _bookPart = i; _bookChapter = 0; _bookScroll = Vector2.zero; _line = 0; }
@@ -847,7 +961,8 @@ namespace TC2.Game
             // the right page: the preface, or the chapter
             GUILayout.BeginVertical();
             BookChapter ch = null;
-            if (_bookPart < 0)
+            if (_bookPart == TimelinePart) TimelinePage(w, r);
+            else if (_bookPart < 0)
             {
                 GUILayout.Label("Preface", _inkTitle);
                 GUILayout.Label("the world in year " + _writer.Book.Year, _inkSub);
@@ -912,6 +1027,117 @@ namespace TC2.Game
             GUILayout.EndArea();
         }
 
+        /// <summary>
+        /// The Timeline page: the world's years at a glance - its ages as bands across the top, under them each great realm's villages year by year
+        /// stacked in its own ink (the height of the whole the world's places), the people as a dark line over them, and its greatest moments.
+        /// The chart is drawn once into a texture when the book is written; the page draws it and its words.
+        /// </summary>
+        void TimelinePage(TC2.Core.Simulation.World w, Rect r)
+        {
+            if (_timeline == null || _timelineYear != _bookYear)
+            {
+                var t0 = System.Diagnostics.Stopwatch.StartNew();
+                _timeline = HistoryBook.Timeline(w);
+                _timelineYear = _bookYear;
+                if (_timelineTex != null) Destroy(_timelineTex);
+                _timelineTex = DrawTimeline(_timeline, w);
+                Debug.Log("[TC2] book: the timeline written in " + t0.Elapsed.TotalMilliseconds.ToString("0", CultureInfo.InvariantCulture) + " ms");
+            }
+            var tl = _timeline;
+            GUILayout.Label("A Timeline of the World", _inkTitle);
+            GUILayout.Label(tl.To > tl.From ? "years " + tl.From + " to " + tl.To + ": its ages, its realms and its people" : "its first days", _inkSub);
+            _bookScroll = GUILayout.BeginScrollView(_bookScroll, GUILayout.Height(r.height * 0.80f));
+            float cw = Mathf.Max(200f, r.width - Mathf.Min(300f, r.width * 0.32f) - 90f);
+            float ch = 250f;
+            Rect ages = GUILayoutUtility.GetRect(cw, 20f);
+            Rect chart = GUILayoutUtility.GetRect(cw, ch);
+            Rect axis = GUILayoutUtility.GetRect(cw, 16f);
+            int n = tl.To - tl.From + 1;
+            if (Event.current.type == EventType.Repaint && n > 1)
+            {
+                // the ages: alternate shades, named where there is room
+                for (int i = 0; i < tl.Ages.Count; i++)
+                {
+                    var e = tl.Ages[i];
+                    float x0 = chart.x + cw * (e.From - tl.From) / (float)(n - 1), x1 = chart.x + cw * Mathf.Min(n - 1, e.To - tl.From) / (float)(n - 1);
+                    GUI.color = i % 2 == 0 ? new Color(0.55f, 0.35f, 0.15f, 0.16f) : new Color(0.55f, 0.35f, 0.15f, 0.07f);
+                    GUI.DrawTexture(new Rect(x0, ages.y, Mathf.Max(1f, x1 - x0), ages.height + ch), _dot);
+                    GUI.color = Color.white;
+                    string name = e.Name.StartsWith("The ") ? e.Name.Substring(4) : e.Name;
+                    if (_inkFact.CalcSize(new GUIContent(name)).x < x1 - x0 - 4f) GUI.Label(new Rect(x0 + 2f, ages.y, x1 - x0, ages.height), name, _inkFact);
+                }
+                GUI.DrawTexture(chart, _timelineTex);
+                for (int y = (tl.From / 100 + 1) * 100; y <= tl.To; y += 100)
+                {
+                    float x = chart.x + cw * (y - tl.From) / (float)(n - 1);
+                    GUI.Label(new Rect(x - 20f, axis.y, 40f, axis.height), y.ToString(CultureInfo.InvariantCulture), _inkFact);
+                }
+            }
+            // the realms' inks, the people's line
+            GUILayout.Space(6);
+            GUILayout.Label("Each band is a realm: the villages of its lord and of every tier under it, year by year; the whole height is the world's places. The dark line is the world's people (at most " +
+                            tl.MaxPeople.ToString("N0", CultureInfo.InvariantCulture) + ").", _ink);
+            for (int i = 0; i < tl.Realms.Count; i++)
+            {
+                var rr = tl.Realms[i];
+                Rect line = GUILayoutUtility.GetRect(cw, 18f);
+                if (Event.current.type == EventType.Repaint) { GUI.color = RealmInk[i % RealmInk.Length]; GUI.DrawTexture(new Rect(line.x, line.y + 4f, 14f, 10f), _dot); GUI.color = Color.white; }
+                GUI.Label(new Rect(line.x + 20f, line.y, line.width - 20f, line.height), rr.Name + " - at its height " + rr.Peak + " villages, year " + rr.PeakYear, _ink);
+            }
+            if (tl.Marks.Count > 0)
+            {
+                GUILayout.Label("Its greatest moments", _inkHead);
+                foreach (var m in tl.Marks) GUILayout.Label("Year " + m.Year + ": " + m.Text + ".", _ink);
+            }
+            GUILayout.EndScrollView();
+        }
+
+        /// <summary>The timeline's chart in pixels: the realms stacked in their inks over the world's places, the people's line, on clear paper.</summary>
+        Texture2D DrawTimeline(BookTimeline tl, TC2.Core.Simulation.World w)
+        {
+            const int TW = 720, TH = 250;
+            var tex = new Texture2D(TW, TH, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear, name = "tc2-timeline" };
+            var px = new Color32[TW * TH];
+            int n = tl.To - tl.From + 1;
+            if (n > 1)
+            {
+                // the scale: the most places the world has had (the realms' villages are a share of them)
+                int places = 1;
+                var a = w.Annals;
+                for (int i = 0; i < a.Count; i++) places = Mathf.Max(places, a[i].Places);
+                for (int x = 0; x < TW; x++)
+                {
+                    int k = Mathf.Clamp(Mathf.RoundToInt(x * (n - 1) / (float)(TW - 1)), 0, n - 1);
+                    int y = 0;
+                    for (int ri = 0; ri < tl.Realms.Count; ri++)
+                    {
+                        int v = tl.Realms[ri].Villages[k];
+                        if (v <= 0) continue;
+                        int hgt = Mathf.Max(1, Mathf.RoundToInt(v / (float)places * (TH - 8)));
+                        Color c = RealmInk[ri % RealmInk.Length];
+                        var c32 = new Color32((byte)(c.r * 255), (byte)(c.g * 255), (byte)(c.b * 255), 215);
+                        for (int j = y; j < Mathf.Min(TH, y + hgt); j++) px[j * TW + x] = c32;
+                        y += hgt;
+                    }
+                    // the people: a dark line two pixels thick
+                    if (tl.MaxPeople > 0 && tl.People[k] > 0)
+                    {
+                        int py = Mathf.Clamp(Mathf.RoundToInt(tl.People[k] / (float)tl.MaxPeople * (TH - 4)), 0, TH - 2);
+                        px[py * TW + x] = new Color32(40, 28, 18, 235); px[(py + 1) * TW + x] = new Color32(40, 28, 18, 235);
+                    }
+                }
+                // the moments: a short tick at the top
+                foreach (var m in tl.Marks)
+                {
+                    int x = Mathf.Clamp(Mathf.RoundToInt((m.Year - tl.From) / (float)(n - 1) * (TW - 1)), 0, TW - 1);
+                    for (int j = TH - 10; j < TH; j++) px[j * TW + x] = new Color32(120, 30, 20, 255);
+                }
+            }
+            tex.SetPixels32(px);
+            tex.Apply(false, true);
+            return tex;
+        }
+
         /// <summary>Writes a part of the book if it is not written yet.</summary>
         void Part(int i)
         {
@@ -924,11 +1150,12 @@ namespace TC2.Game
         void Turn(int d)
         {
             _line = 0; _bookScroll = Vector2.zero;
-            if (_bookPart < 0) { if (d > 0) { Part(0); _bookPart = 0; _bookChapter = 0; } return; }
+            if (_bookPart == -1) { if (d > 0) _bookPart = TimelinePart; return; }
+            if (_bookPart == TimelinePart) { if (d > 0) { Part(0); _bookPart = 0; _bookChapter = 0; } else _bookPart = -1; return; }
             int k = _bookChapter + d;
             if (k >= 0 && k < _parts[_bookPart].Chapters.Count) { _bookChapter = k; return; }
             int p = _bookPart + d;
-            if (p < 0) { _bookPart = -1; return; }
+            if (p < 0) { _bookPart = TimelinePart; return; }
             if (p >= _parts.Length) return;
             Part(p);
             _bookPart = p;

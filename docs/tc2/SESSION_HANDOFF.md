@@ -1,5 +1,41 @@
 # TC2 Session handoff
 
+## Session 25 (24 Oct 2026, 22:14 - ~23:40 IST, first context) - context handoff with the job queue RUNNING; C10.8 decided (land); C10.9 built and queued
+
+### Exact state at the handoff (~23:40)
+- **main** (53cb512): the orbit look (D2-170), the History Book as a book with its Timeline page (D2-171), places, works and people named (D2-172),
+  the repaired compile check (`unity.mjs cc` compiled nothing since session 23), 25 §8 (the plan toward a finished core), DECISIONS D2-170..D2-172
+  appended. **No sim change on main: sim 90.** Not ours: `.claude/launch.json`, `Assets/Resources.meta`, and the Web build's `ProjectSettings.asset` /
+  `Assets/Resources/` - leave them.
+- **Validated on main**: full suite 442/442 (e290217, before this session's observer/presentation changes); HistoryBookTests 5/5 (with the timeline);
+  real shots `s25a`-`s25d` judged; **Web `s25web1` 6/6** (5b91710) and the HUD over the year-300/900 worlds in the browser (`tc2/out/webtest/s25web1b900`,
+  `s25web1b300`: names, the book's parts). Not yet in a Web build: works/people names, the book's buttons, names clear of the bars, the Timeline page.
+- **The queue** (task brw7xh61a; `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`):
+  running **`7_j_fullsuite_dm3`** (C10.8's branch tip, rebuilt as `bin_dm3`: `fs_dm3_ok` only with 0 failed, 0 skipped; `results/fullsuite_dm3.txt`), then
+  **C10.9's evaluation** `8_c_build_lp1` (bin_lp1 from `C:/Game Dev/tc-lapse`, its test classes -> `lp1_ok`), `8_d_ctl_lp0_s4` (control `--oldlapse` =
+  `_dm1` byte for byte -> `lp_ctl_ok`), `8_e_lp1_*` (ten seeds `_lp1`, saved at year 300), `8_f_cmp_lp1` (`results/cmp_dm1_lp1.txt`). Held: `8_a*`, `8_b*`,
+  `9_*` (attribution, not conditions). A monitor on `runq.log` (re-arm in a new context).
+- **C10.8 decided: land it** (`wip/c108-demand`, worktree `C:/Game Dev/tc-demand`, sim 91; draft `tc2/out/tools/s24/d2168.md`, complete): its matched
+  placebo showed the lean is real (people over 100-199 x0.904, t -4.64 against the twin; the twins themselves x1.005) and explained - war deaths (+0.7
+  a thousand person-years from wounds) and fewer foundings while the worlds grow, about a tenth of their people; near the ceiling x0.92; per-person
+  rates at par; realms rise and fall (its year-900 books). The branch is current with main up to ea6b826 (+ the book's asking b808479, the tools
+  `--together`, `--heirs`); main has moved since (docs, names, the timeline): merge main into it again before landing.
+- **C10.9 the lord's death** (`wip/c109-lapse`, worktree `C:/Game Dev/tc-lapse`, from C10.8; sim 92; bd27e74): at the death of the first at a lord's
+  seat the bonds for peace lapse (bread bonds stand); heirs win them back by asking. Measured first: C10.8's great realms are held by the call (22 of 28:
+  villages together outweigh the lord x1.3-x13.8, none alone can); the first at a seat dies about every 12 years. Design and measures:
+  `tc2/out/tools/s25/c109_design.md`; D2-173 to be written from its evaluation.
+
+### Next, in order
+1. `7_j` (23:49): 450 passed, 1 failed - `HistoryBookTests.RaidsAreOneWarUntilABowOrTwelveQuietYears` (its hand-written raids and bow between villages 1
+   and 2 meet C10.8's own askings between them; set `Conflict.DemandOff` for that test or choose villages the asking cannot join; rerun the class). Then
+   land C10.8 - in `C:/Game Dev/tc-demand` `git merge main`, rebuild nothing else; on main `git merge --no-ff wip/c108-demand` (sim 91);
+   append D2-168 (`d2168.md`) to DECISIONS; `25` C10 line; then queue on main: the full suite (bin from main), `cc`, real shots of realms grown
+   (`unity.mjs shots --realms --load $O/s2_l9dm1/world_y600.tc2 --village lord`) and a Web build with `bookshots.mjs` (the Timeline page: `--book "-2,1:0"`)
+   and `realmsperf.mjs --layer names|air|clouds` (paired costs, `14` §7).
+2. C10.9: judge `8_f` (vital rates against `_dm1`; bonds lapsed and won back; the greatest realm's share); if sound, its 900 years from
+   `$O/s{2,4}_lp1/world_y300.tc2` and the books (`book --load`); land after C10.8 (merge main into `wip/c109-lapse` first).
+3. Then 25 §8: C8.1 the campaign and the siege, C7.2 stone walls, C11.1 a people's ways, the 1,000-year acceptance; great worlds in the browser.
+
 ## Session 24, second context - END (21 Oct 2026, ~06:05 IST; stopped at Arjun's word) - landed and validated; C10.8 in evaluation; the queue stopping
 
 ### Exact state at the end

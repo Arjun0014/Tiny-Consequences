@@ -5066,3 +5066,105 @@ buffers sized at the load: ~114 MB more than before), 955 MB with the view, 1,05
 9,500 people still holds ~1.05 GB, a little past `14`'s 1 GB budget - what holds it (the world's own state at ~3.6x its headless managed size, the
 views' meshes) is a question for a memory pass of great worlds, with their frame rate (`14` §7).
 (D2-168 - C10.8 the asking, drafted before this - is recorded when it lands.)
+
+## D2-170 — 2026-10-24 — The planet from space: the air as single scattering, clouds from the weather drawn as decks and cumulus fields (presentation)
+
+**Context.** Arjun (24 Oct 2026): "make the planet look more like Earth from space: better atmosphere, cloud coverage, cloud form, and overall orbital
+readability." Real orbit shots (`s24q`, `s24tn`) showed why it did not: the air was an additive rim on a sphere 1.07 R, brightest at its *outer* edge,
+so it read as a glass shell round the planet (a hard ring at the region view's horizon too); nothing veiled the ground toward the limb; the clouds were a
+sparse blotch where it rained (one cover number with noise), floating on a shell 390 m up on a 6 km planet - a separate layer beyond the limb; the deep
+sea a mid blue.
+
+**Decision.** (presentation only; `Game/View/Look.cs` holds the tunables, a shot sets them per view: `"orbit~AtmoSun=8~CloudCu=1.2"`)
+- **The air** (`Atmosphere.shader`, rewritten): the sunlight scattered toward the eye along each ray through an exponential atmosphere - Rayleigh with
+  Earth's vertical optical depths (0.040, 0.095, 0.230 at 680/550/440 nm) over a scale height of 1.6 % of the radius (~96 m: a miniature's limb must
+  read at the orbit view), a grey haze a third as high - single scattering, 16 steps along the ray and 4 toward the sun, the sun's light dimmed on its way
+  in, the planet's shadow with a soft penumbra (the twilight wedge); composed as colour + what lies behind x the air's transmittance, drawn after the
+  clouds over everything the shell covers, the ground as the sea's sphere (no depth texture; from orbit the relief is a few pixels). It gives the thin
+  bright limb fading to space, the veil deepening toward the limb, the terminator's reddened light and the ring of sunrise round a planet seen against
+  the sun. It takes over from the views' own haze and sky between 900 m and 2.2 km of height (the village view and below unchanged: there the ground's
+  real distance matters and the sky is the camera's background); the sky there turns to space.
+- **The clouds** (`CloudView`, `Clouds.shader`): the cover map now carries the weather in two channels - **decks** where it rains today (and the storms'
+  bands) and **fair-weather cumulus** where the climate's air is moist on a dry day (`Moist`, the circulation bands of `WorldGenerator.Moisture`) - so the
+  wet bands show their cumulus fields and the dry subtropics stay clear. Decks are drawn with billowing, ragged edges, lumpier inside, their forms drawn
+  out east-west and drifting with the latitude bands' winds (trades from the east, westerlies beyond 30 degrees; whole noise tiles round each parallel,
+  the three-way projection near the poles) and given relief from the sun's side; cumulus as soft puffs of two sizes (~45 m and ~110 m cells), formed
+  or not by a coarser noise (more the moister), drawn as their mean cover - a soft veil - once a puff would be under ~4 pixels (from orbit a speckle reads
+  as glitter). The shell lowered to 228 m (high ground pierces it); clouds are gone at the village view and below (they smeared it) and fade at grazing
+  angles at the limb. The ground's cloud shadow reads both channels.
+- **The sea** a darker deep blue (the floor's deep colour 0.010/0.052/0.155); **villages' lights** at night half as wide with a brighter core - points,
+  not pink discs, from orbit.
+Nothing here reads more of the world than the cover map, the moisture and the time; no cloud exists where the weather and the climate put none.
+
+**Evidence.** Real shots of seed 2's year-300 world in four rounds, the defaults beside variants in one run: `s25a` (the new air reads at once - the
+limb, the veil, the terminator; the first cumulus a field of white worms and the village view smeared), `s25b` (isotropic puffs, the shell lowered, the
+village view clear; puffs read as polka dots), `s25c` (puffs of two sizes, ragged; the twilight wedge soft; the planet at midnight ringed with sunrise
+and its villages' lights points), `s25d` (the veil from afar). The Unity C# compiles (the editor's own compile in each shots run; `cc` itself was found to compile nothing since session 23 and was repaired,
+ea6b826). **Web `s25web1` 6/6** (WebGPU; the browser's probe = headless, bit-identical; reload continues; a day away catches up 96 years); its frame rates
+are below session 24's `s24web2` in every view (orbit 109 against 119 fps, region 40 against 50, village 24 against 30) - two runs on a shared machine are
+no evidence (14 §7: paired counts in one page), and the village view draws neither the new air nor the clouds; the names (D2-172) drew each label nine
+times twice a frame - made cheaper at once (dd2c3a3); the paired cost of the air, the clouds and the names (`realmsperf.mjs --layer air|clouds|names`)
+waits for the next Web build.
+
+## D2-171 — 2026-10-24 — The History Book as a book: eight parts written after the fact, every line its record (C12; 11 §7)
+
+**Context.** Arjun (24 Oct 2026): "plan and begin a much better History Book presentation: real book-like structure, sections, rulers, major events,
+realm changes, wars, disasters, and long-term causality." The book (D2-077) was a list of ages and places, each a list of lines. A 900-year world's
+ledger (seed 2's `_l9i2`: 305,000 events) holds far more: 279 bonds of tribute, ~1,000 raids, a hundred successions a town, the famines and epidemics,
+chains of causes centuries long - but nothing told them as realms, wars, rulers or threads.
+
+**Decision.** A historian - `Core/History/HistoryBook.cs`, an observer that reads the ledger and the annals and writes nothing - composes the book in
+eight parts; prose only counts and names what the records and the annals hold, and every line stands on its record (the record's own words under its
+date) whose causes the reader can walk:
+1. **The Ages of the World** - the eras (Chronicle, D2-077), each with a paragraph of what marked it from its numbers, the greatest realm at its end, its
+   numbers and its most important records (half of what marked it).
+2. **Realms and Rulers** - every lordship rebuilt year by year from its bonds (`TributeAgreed`/`TributeEnded`): each village under its highest lord at
+   each year's end, the realm's size in all its tiers and its depth; a chapter per realm (the twelve greatest; the rest as lesser lordships): how it
+   began, its size by century, the bonds made with its seat and how (after its bands came, for famine grain, when it asked), how they ended, how it
+   ended (its seat bowed to another, was abandoned, or the last paying village stopped); **the houses that led its seat** (runs of the first among its
+   people by family name, with their years and heads - a household's id changes with each marriage, a house is its name), the longest first among them;
+   its bonds made and ended; its wars by foe.
+3. **Wars and Feuds** - the raids between two villages, one war until a bow between them or twelve quiet years; past forty years a long feud; titles
+   after the fact ("The Raids of A on B", "The War of A and B", "The Second Long Feud of ..."); its raids by side, bands driven off, blows, grain carried
+   off, how it began and its first cause on record, how it ended.
+4. **Famine, Plague and Disaster** - hungry times found as the peaks of the annals' hunger (a world at its land's ceiling hungers most years: the book
+   tells the worst eight, each the worst year not yet told, widened while its neighbours starved two fifths as many), the villages that starved, where it
+   came first and its chain's first cause; each sickness's outbreaks (by its family), their dead and villages; the earth's and the sky's violence.
+5. **Places** - the most storied 24: founded when and by whom, the houses that led it, whom it paid and who paid it, what befell it, its records.
+6. **Lives** - rulers (the longest first at each great seat while it was a realm), founders (who led a following away), war leaders (who raised the most
+   bands), finders (the first to find a craft), each with their records.
+7. **Threads of Cause** - the chains that passed through the most kinds of things (nature, hunger, sickness, deeds, war, tribute, founding...), scored by
+   their years and their kinds, root first; the book shows each chain's turning points (the root, each kind's first link, the most important, the last)
+   and tells the links between ("... 113 links of takings, bands and raids, years 308-382 ...").
+8. **A Chronology** - each century's ten most important records.
+The game's Book (B) is a two-page book on a warm page: the title and contents on the left (the preface, the parts, the open part's chapters), the
+chapter on the right (headings, prose, numbers, lines), a chosen line's causes under it with Go there, the chapter's place to go to, turning pages; a part
+is written when first opened (`HistoryBook.Writer`), the book rewritten in a new year. Headless `book --load SAVE [--md FILE]`.
+
+**Evidence.** `HistoryBookTests` 5/5 (every line its record and its text; the same world writes the same book; reading changes nothing; realms rebuilt
+tier by tier from a premise ledger - B under A, C under B, D under A, then B leaving with C; raids one war until twelve quiet years and a bow; a thread
+from lightning through a failed harvest, famine and a setting out to a raid, root first); `ChronicleTests` 3/3; floatcheck clean. The year-900 world's
+book: 8 parts, 85 chapters, 1,065 lines, none without its record, written in 0.55 s headless (the Ages 0.10 s, Places 0.24 s - a part at a time in the
+game); read through and corrected from its own text (a hundred-name ruler list became the houses; a 320-year "Great Famine" became the peaks; a 381-year
+"war" became a feud split at its bows; the threads first chose endless tit-for-tat chains, now the chains through the most kinds of things; the place
+chapters had counted only political records - now every record at the place). **In the browser** (`s25web1`; `bookshots.mjs` on the year-900
+world): each part written when first opened in 2-83 ms, Places in 271 ms (a hitch the first time); the pages read as a book (`tc2/out/webtest/s25web1b900`:
+the preface, a realm with its houses, a thread with its turning points); the HUD's dark buttons on the page were restyled as the page's own (8c8fab4).
+
+## D2-172 — 2026-10-24 — Places and people read clearly: places named on the map, a tag on who and what is under the pointer (presentation)
+
+**Context.** Arjun (24 Oct 2026): "improve human / house / settlement identification so places and people read clearly." From the region view up a
+village is a smudge among fields with no name; close in, a person or a house tells who or what it is only once clicked.
+
+**Decision.** (HUD, reads the world) Each inhabited place is **named on the map** over its square - a town (300 and more) larger - with what it is and its
+bond under it ("town of 864, pays Lounstead"; "village of 207, lord of 3 villages"), the most peopled first and none drawn over another; places over the
+horizon and the village under the camera (below 1.4 km) are left out, none below 420 m, and from orbit only the largest dozen without the line under
+it. The key N (and the Web bridge's `names on|off`) turns them off. Close in (below 1.3 km), **a tag** on the person under the pointer - their name and
+age, what they are doing - or the building: its plan and whose home it is (or that it stands empty), or the work and its place.
+
+**Evidence.** In the Web build on great worlds (`tc2/scripts/bookshots.mjs`: a headless save put into the browser's store; `s25web1b900`,
+`s25web1b300`): the region view names each place with its line ("town of 864, lord of 5 villages"; "town of 575, pays Lounstead"), the orbit the
+largest dozen over the planet; names that ran under the HUD's bar are now kept clear of it and of the ticker (25e50d1). Later the same day: **the works
+named at the village view** (the well, granaries, smithy, training ground, market, weaver's shed, kiln, boat shed, mine or quarry - each kind once a
+place) and **people's given names over their heads at the closest views** (below 140 m, the fourteen nearest the middle); labels drawn at the repaint
+only with four shadows, each place's line worked out once a second (the cost of nine passes twice a frame).
