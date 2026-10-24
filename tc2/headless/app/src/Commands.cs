@@ -234,6 +234,7 @@ namespace TC2.Headless
             if (a.Has("olddemand")) TC2.Core.Society.Conflict.DemandOff = true;   // (C10.8 off: no village asks a tenth of another)
             if (a.Has("oldlapse")) TC2.Core.Society.Conflict.LapseOff = true;     // (C10.9 off: bonds for peace outlive their lord's death)
             if (a.Has("lapsetally")) TC2.Core.Society.Conflict.LapseTally = new double[TC2.Core.Society.Conflict.LapseTallyN];
+            if (a.Has("jointally")) TC2.Core.Places.Migration.JoinTally = new double[TC2.Core.Places.Migration.JoinTallyN];   // (the ceiling measured: households looking for a village to join)
             if (a.Has("oldnames")) TC2.Core.Places.Migration.TonguesOff = true;   // (C11.1 off: every name from the one speech of before)
             if (a.Has("demandtally")) TC2.Core.Society.Conflict.DemandTally = new double[TC2.Core.Society.Conflict.DemandTallyN];   // (C10.8: the askings and their answers)
             if (a.Has("raidtally")) TC2.Core.Society.Conflict.RaidTally = new double[TC2.Core.Society.Conflict.RaidTallyN];   // (C8.1 measured first: bands weighed over a wrong)
@@ -1031,6 +1032,10 @@ namespace TC2.Headless
                     if (rt != null)   // (C8.1 measured first: bands weighed over a wrong, and the walls that kept them home)
                         Console.WriteLine("raidtally: bands weighed over a wrong " + rt[0] + " (against walled villages " + rt[1] + "); too few would go " + rt[2] + "; too weak for the defence they expect " + rt[3] +
                                           " (against walled villages " + rt[4] + ", of which would have dared without the wall " + rt[5] + "); raised " + rt[6] + " (against walled villages " + rt[7] + "), " + rt[8] + " people");
+                    var jt = TC2.Core.Places.Migration.JoinTally;
+                    if (jt != null)   // (the ceiling measured: why the households that choose to leave find no village to join)
+                        Console.WriteLine("join: households looking for a village to join " + jt[0] + " (their pressure at home " + F(jt[0] > 0 ? jt[8] / jt[0] : 0, "0.00") + " on average); candidates within marriage reach " + jt[1] +
+                                          " - pressed no less than home " + jt[2] + ", no land to spare for them " + jt[3] + ", no way on foot " + jt[4] + ", fit " + jt[5] + "; found one " + jt[6] + ", none " + jt[7]);
                     var pt = TC2.Core.Society.Conflict.PeaceTally;
                     if (pt != null)   // (C10.10: the lord's peace)
                         Console.WriteLine("peace: claims within a realm before a common lord " + pt[0] + ", judged " + pt[1] + " (" + F(pt[2], "0") + " FU paid; not in full " + pt[5] + "); bands kept home " + pt[3] +
