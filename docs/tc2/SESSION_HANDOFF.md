@@ -1,5 +1,31 @@
 # TC2 Session handoff
 
+## Session 25 (24 Oct 2026, from 22:14 IST) - IN PROGRESS: the orbit look, the History Book as a book and places named on the map on main; C10.8's placebo running
+
+### Exact state (keep current)
+- **main** (ea6b826 and after): the orbit look 3486681 (D2-170 draft), the History Book merge 29c405c (D2-171 draft; `wip/book`), places named on the map
+  merge 5b91710 (D2-172 draft; `wip/labels`), the hover-tag string fix and the repaired compile check ea6b826, 25 §8 (the plan toward a finished core),
+  PROGRESS. **No sim change: sim 90.** Drafts of D2-170, D2-171, D2-172 in `tc2/out/tools/s25/d2170_172.md` (append to DECISIONS when the Web check fills
+  their evidence; D2-168 - C10.8 - when it lands). Not ours: `.claude/launch.json`, `Assets/Resources.meta`.
+- **Validated**: full suite 442/442 (e290217, before this session's changes; the book and names are observer/presentation: HistoryBookTests 5/5,
+  ChronicleTests 3/3, floatcheck clean, real `cc`); shots `s25a`, `s25b`, `s25c` judged (`s25d`, the cumulus veil from afar, failed twice to compile -
+  first a Unity pipe glitch, then the broken strings - not yet shot).
+- **The queue** (the same runner as session 24; `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`;
+  started 22:16 as background task brw7xh61a; a monitor on `runq.log`): `0_s_web` (Web build of main 5b91710+ -> webtest `s25web1`, then
+  `tc2/scripts/bookshots.mjs` on seed 2's year-900 and year-300 worlds: the names at the views and the book's parts in the browser, `tc2/out/webtest/s25web1b900`,
+  `s25web1b300`); then `7_h_dmp_09`, `7_h_dmp_10`, `7_i_cmp_dmp` (C10.8's matched placebo: `results/cmp_i2_dmp.txt`, `cmp_dmp_dm1.txt`). Held in `$Q/hold`: the
+  attribution runs `8_*`, `9_*` (not conditions). Job scripts of this session: `tc2/out/tools/s25/`.
+- **C10.8** (`wip/c108-demand`, worktree `C:/Game Dev/tc-demand`, sim 91): current with main (16590f4); the book tells the asking (b808479); a new measure
+  `lordships --together` (uncommitted in tc-demand's `Lordships.cs`: for each lord, whether its villages together outweigh its own strength while none
+  alone can) - build `bin_dm3` and run it on `$O/s{2,4}_dm1/world_y300.tc2`, `$O/s{2,4}_l9dm1/world_y{300,600}.tc2` for C10.9.
+
+### Next, in order
+1. Judge `0_s_web` (webtest 6/6; the names over the year-300 and year-900 worlds; the book at each part - its look on the page, the part times in
+   `console.txt`); re-shoot `s25d` (copy `tc2/out/tools/s25/0_r_shots_air4.sh` as `0_r3_...`). Fill D2-170..D2-172 and append them.
+2. `7_i` -> decide C10.8: if the people lean is within its placebo's spread, land it (merge `wip/c108-demand` into main; sim 91; D2-168 with its 900-year
+   evidence - the cycle of hegemonies in the books; the full suite; Web).
+3. C10.9 rising together (25 §8): measure with `--together` first, then build.
+
 ## Session 24, second context - END (21 Oct 2026, ~06:05 IST; stopped at Arjun's word) - landed and validated; C10.8 in evaluation; the queue stopping
 
 ### Exact state at the end

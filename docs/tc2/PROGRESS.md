@@ -4,6 +4,22 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 25 (24 Oct 2026, from 22:14 IST; Arjun's priorities: forward progress; the governance slice; a finished core simulation within two weeks;
+  the planet like Earth from space; places and people identifiable; a real History Book; then god powers) - the orbit look, the History Book as a book
+  and places named on the map landed on main (presentation and an observer: no sim change, sim 90); C10.8 in its last evaluation; the compile check
+  repaired.** (1) **The full suite on main's tip** (e290217): 442 passed, 0 failed, 0 skipped. (2) **The planet from space** (D2-170, 3486681): the air as
+  single scattering in an exponential atmosphere (a thin bright limb, the veil toward the limb, the terminator's soft penumbra and the ring of sunrise),
+  clouds from the weather in two channels (rain decks with billowing edges and sun-side relief, drawn out along the bands' winds; fair-weather cumulus of
+  the moist climate as puffs, a veil from afar), the cloud shell lowered and gone at the village view, a darker sea, villages' lights as points -
+  judged in real shots `s25a`-`s25c` (variants per view: `Look.cs`, `"orbit~Name=value"`). (3) **The History Book as a book** (D2-171, merge 29c405c;
+  `Core/History/HistoryBook.cs`): eight parts written after the fact - the Ages, Realms and Rulers (each lordship rebuilt year by year from its bonds,
+  its tiers, the houses that led its seat), Wars and Feuds, Famine, Plague and Disaster (hungry times as the annals' peaks), Places, Lives, Threads of
+  Cause, A Chronology; every line its record; the HUD's two-page reader; headless `book --load SAVE --md F`; HistoryBookTests 5/5; the year-900 world's
+  book 85 chapters, 1,065 lines, 0.55 s. (4) **Places named on the map and hover tags** (D2-172, merge 5b91710). (5) **The compile check `unity.mjs cc`
+  compiled nothing since session 23** (a shadowed variable: every glob matched no file) - found when Unity's own compile caught a broken string the check
+  had passed; fixed (ea6b826): it compiles Game, Core, Editor and the tests again. (6) **C10.8's year-900 books**: realms rise and fall in turn (seed 2:
+  Taildvehope 24 villages in five tiers by year 338, gone by 829; Elddal 19 for eleven years; Vaildwick, Skaenstead, Mestskouford 22 each) - a cycle of
+  hegemonies; `wip/c108-demand` current with main, the book tells the asking (b808479). (7) 25 §8: the plan toward a finished core simulation.
 - **Session 24, second context (21 Oct 2026, 01:45-~06:05 IST; Control Room run #73 session 2; stopped at Arjun's word) - C10.7a, C10.7b and C9.5c
   landed on main (3b236ee, sim version 90) with the lordships tools (3bf3d44); the realms map layer finished from real shots (D2-167); a browser OOM
   of great worlds found and fixed (D2-169); DECISIONS D2-164-D2-167 and D2-169 appended; C10.8 the asking in evaluation** (SESSION_HANDOFF "Session
