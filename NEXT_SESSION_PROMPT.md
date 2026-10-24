@@ -32,8 +32,7 @@ then god powers and player-facing gameplay.
   over the year-300/900 worlds in the browser (`tc2/out/webtest/s25web1b900`, `s25web1b300`). **Not yet in a Web build**: works/people names, the book's
   buttons, names clear of the bars, the Timeline page; the paired frame cost of names/air/clouds (`realmsperf.mjs --layer`).
 - **The queue** (background task brw7xh61a, runner `tc2/out/tools/s23/runq.sh`; `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`):
-  at the handoff running `7_j_fullsuite_dm3` (C10.8's branch tip 11b5b0c as `bin_dm3`, from 23:33, ~17 min: `$Q/../fs_dm3_ok` only with 0 failed and 0
-  skipped; `tc2/out/tools/s23/results/fullsuite_dm3.txt`), then C10.9's evaluation `8_c_build_lp1`, `8_d_ctl_lp0_s4`, `8_e_lp1_01..10`, `8_f_cmp_lp1`
+  `7_j_fullsuite_dm3` ended 23:49 (450 passed, 1 failed - below; `tc2/out/tools/s23/results/fullsuite_dm3.txt`); at the handoff running C10.9's evaluation `8_c_build_lp1`, `8_d_ctl_lp0_s4`, `8_e_lp1_01..10`, `8_f_cmp_lp1`
   (`results/cmp_dm1_lp1.txt`), ~35 min. Held in `$Q/hold`: `8_a*`, `8_b*`, `9_*` (attribution only). No monitor survives the clear: arm one
   (`tail -n 0 -F $Q/runq.log | grep --line-buffered -E "^end |runner stopped"`).
 - **C10.8 the asking - decided: land it** (`wip/c108-demand`, worktree `C:/Game Dev/tc-demand`, sim 91). Its matched placebo: the lean is real (people
@@ -45,8 +44,15 @@ then god powers and player-facing gameplay.
   new tools on C10.8's worlds: `lordships --together` (22 of 28 great realms held by the call - their villages together outweigh the lord x1.3-x13.8,
   none alone can) and `--heirs` (the first at a seat dies about every 12 years).
 
+## `7_j` result (23:49): C10.8's branch full suite 450 passed, **1 failed**, 0 skipped
+- `HistoryBookTests.RaidsAreOneWarUntilABowOrTwelveQuietYears` failed on C10.8's rules ("the bow ends it": the second war's text has no bow). The test's
+  premise writes raids and a bow between villages 1 and 2 of a young world by hand, and under C10.8 the world's own asking between those villages can
+  record its own bow/refusal in the same years (the book now counts refused askings as war events: b808479), so the premise's bow is not the war's end.
+  Not a simulation fault: make the test's premise immune (set `Conflict.DemandOff = true` in a try/finally for that test, as `LapseTests` does with
+  `LapseOff`, or pick two villages the asking cannot join), rerun `HistoryBookTests` on the branch (0 failed, 0 skipped), then land.
+
 ## Do next, in order
-1. Read the queue. When `7_j` passes: land C10.8 - in `C:/Game Dev/tc-demand` `git merge main` (main moved: docs, names, the timeline), then on main
+1. Fix that test on `wip/c108-demand` (above), rerun HistoryBookTests (`bin_dm3` rebuilt), then land C10.8 - in `C:/Game Dev/tc-demand` `git merge main` (main moved: docs, names, the timeline), then on main
    `git merge --no-ff wip/c108-demand` (sim 91); append `tc2/out/tools/s24/d2168.md` to DECISIONS (D2-168); `25`'s C10 line; queue on main the full suite
    (a bin built from main), real shots of realms grown (`unity.mjs shots --realms --load $O/s2_l9dm1/world_y600.tc2 --village lord`), a Web build with
    `bookshots.mjs` (`--book "-2,1:0,6:0"`: the Timeline page) and `realmsperf.mjs --layer names|air|clouds` (paired costs).

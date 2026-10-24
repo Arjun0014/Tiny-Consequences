@@ -26,7 +26,9 @@
   `tc2/out/tools/s25/c109_design.md`; D2-173 to be written from its evaluation.
 
 ### Next, in order
-1. When `7_j` passes: land C10.8 - in `C:/Game Dev/tc-demand` `git merge main`, rebuild nothing else; on main `git merge --no-ff wip/c108-demand` (sim 91);
+1. `7_j` (23:49): 450 passed, 1 failed - `HistoryBookTests.RaidsAreOneWarUntilABowOrTwelveQuietYears` (its hand-written raids and bow between villages 1
+   and 2 meet C10.8's own askings between them; set `Conflict.DemandOff` for that test or choose villages the asking cannot join; rerun the class). Then
+   land C10.8 - in `C:/Game Dev/tc-demand` `git merge main`, rebuild nothing else; on main `git merge --no-ff wip/c108-demand` (sim 91);
    append D2-168 (`d2168.md`) to DECISIONS; `25` C10 line; then queue on main: the full suite (bin from main), `cc`, real shots of realms grown
    (`unity.mjs shots --realms --load $O/s2_l9dm1/world_y600.tc2 --village lord`) and a Web build with `bookshots.mjs` (the Timeline page: `--book "-2,1:0"`)
    and `realmsperf.mjs --layer names|air|clouds` (paired costs, `14` §7).
