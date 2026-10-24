@@ -85,6 +85,15 @@ namespace TC2.Tests.Core
             var lesser = realms.Chapters.Find(x => x.Title == "Lesser Lordships");
             Assert.IsNotNull(lesser, "B, paying nobody after it stopped, is a lordship of one village paying it");
             Assert.IsTrue(lesser.Blocks.Exists(x => x.Text.StartsWith(bn + " - ")), "B's own lordship");
+            // the Timeline draws the same realm: four villages with its seat at its height, year by year from its bonds
+            var tl = HistoryBook.Timeline(w);
+            Assert.AreEqual(tl.To - tl.From + 1, tl.People.Length, "a year a column");
+            Assert.AreEqual(1, tl.Realms.Count, "only realms of two villages paying or more are drawn");
+            Assert.AreEqual(an, tl.Realms[0].Name);
+            Assert.AreEqual(4, tl.Realms[0].Peak);
+            Assert.AreEqual(4, tl.Realms[0].Villages[tl.Realms[0].PeakYear - tl.From], "its height in its year's column");
+            Assert.AreEqual(2, tl.Realms[0].Villages[tl.To - tl.From], "and now A with D only");
+            Assert.IsTrue(tl.Marks.Exists(m => m.Kind == 0 && m.Year == tl.Realms[0].PeakYear), "its height a moment of the timeline");
         }
 
         [Test]
