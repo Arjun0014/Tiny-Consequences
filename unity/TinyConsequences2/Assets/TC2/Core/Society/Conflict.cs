@@ -644,23 +644,31 @@ namespace TC2.Core.Society
             double willing = 0.2 + 0.3 * evidence + ties - 0.6 * counter;
             double spare = w.Trade.Spare(at, Trade.Grain);
             double u = KeyedRng.Unit(w.Seed, RngStream.Society, (ulong)deedId, (ulong)now, 30);
+            // (the lord's peace, C10.10: between villages of one realm the claim is judged by their common lord, and where the lord is no weaker than
+            // the doers its judgment binds them - they make amends, as far as their store can spare, willing or not)
+            int judge = Judge(at, from);
+            bool judged = judge != 0 && Might(judge, at) >= Might(at, judge);
+            if (PeaceTally != null && judge != 0) { PeaceTally[0]++; if (judged) PeaceTally[1]++; }
             ref var s = ref w.Settlements.Get(at);
             byte kind = d.Kind;
             long cause = d.Event;
             int hh = d.ToHh;
             int answer;
-            if (spare >= worth && u < willing)
+            if (judged || (spare >= worth && u < willing))
             {
-                s.Granary -= worth;
+                double paid = judged ? DMath.Min(worth, DMath.Max(0.0, spare)) : worth;
+                s.Granary -= paid;
                 ref var f = ref w.Settlements.Get(from);
-                f.Granary += worth;
+                f.Granary += paid;
                 long ev = w.Record(new HistoryEvent
                 {
                     Kind = HistoryKind.AmendsMade, Time = now, Cell = s.Cell, Settlement = at, Subject = EntityRef.Settlement(at), Object = EntityRef.Settlement(from),
-                    Other = EntityRef.Person(claimant.Id), Cause1 = cause, Rel1 = CauseRel.InResponseTo, Magnitude = (float)worth, ArgA = kind, RootKind = RootKind.People,
+                    Other = EntityRef.Person(claimant.Id), Cause1 = cause, Rel1 = CauseRel.InResponseTo, Magnitude = (float)paid, ArgA = kind, ArgB = judged ? judge : 0,
+                    RootKind = RootKind.People,
                 });
-                answer = w.DeedBook.Record(DeedKind.Amends, 0, at, hh, from, Trade.Grain, worth, worth, ev);
+                answer = w.DeedBook.Record(DeedKind.Amends, 0, at, hh, from, Trade.Grain, paid, worth, ev);
                 w.Metrics.Amends++;
+                if (judged && PeaceTally != null) { PeaceTally[2] += paid; if (paid < worth) PeaceTally[5]++; }
             }
             else
             {
@@ -818,7 +826,12 @@ namespace TC2.Core.Society
             if (fit < BandAtLeast) return;
             int target = 0, forT = 0; byte motive = 0;
             double urge = 0;
-            if (s.Foe != 0 && s.FoeWorth >= RaidFrom && LordOf(s.Foe) != sid) { target = s.Foe; motive = 1; urge = DMath.Clamp01((double)s.FoeWorth / RaidFull); }
+            if (s.Foe != 0 && s.FoeWorth >= RaidFrom && LordOf(s.Foe) != sid)
+            {
+                // (the lord's peace, C10.10: no band against a village of its own realm - its blood is claimed before their common lord)
+                if (OnePeace(sid, s.Foe)) { if (PeaceTally != null) PeaceTally[3]++; }
+                else { target = s.Foe; motive = 1; urge = DMath.Clamp01((double)s.FoeWorth / RaidFull); }
+            }
             // the lord answers for its tributaries (D2-108): the heaviest wrong one of them holds, weighed at the lord's share, when heavier
             // than its own - never against another of its tributaries, never against itself
             double heaviest = motive == 1 ? (double)s.FoeWorth : 0.0;
@@ -827,6 +840,7 @@ namespace TC2.Core.Society
                 if (o == sid) continue;
                 ref var tr = ref w.Settlements.Get(o);
                 if (tr.Lord != sid || !tr.Inhabited || tr.Foe == 0 || tr.Foe == sid || LordOf(tr.Foe) == sid) continue;
+                if (OnePeace(sid, tr.Foe)) { if (PeaceTally != null) PeaceTally[4]++; continue; }   // (the lord's peace: its realm's quarrels it judges, C10.10)
                 double taken = LordsShare * tr.FoeWorth;
                 if (taken < RaidFrom || taken <= heaviest) continue;
                 heaviest = taken; target = tr.Foe; forT = o; motive = 2; urge = DMath.Clamp01(taken / RaidFull);
@@ -1863,6 +1877,44 @@ namespace TC2.Core.Society
         /// dared without the wall; [6] raised, [7] against a walled village, [8] their people; null in the game.</summary>
         public static double[] RaidTally;
         public const int RaidTallyN = 9;
+
+        /// <summary>`--oldpeace`: no lord's peace - villages of one realm raise bands against each other and answer each other's claims as free villages do
+        /// (C10.8's rules) - on the same binary.</summary>
+        public static bool PeaceOff;
+        /// <summary>Tools (`--peacetally`): [0] claims between villages of one realm with a common lord over the doers, [1] of them judged (the lord no weaker
+        /// than the doers), [2] FU paid at a judgment, [3] bands kept home by the peace (a village's own wrong against one of its realm), [4] tributaries'
+        /// wrongs against a village of the realm its lord did not answer, [5] judgments the doers' store could not pay in full; null in the game.</summary>
+        public static double[] PeaceTally;
+        public const int PeaceTallyN = 6;
+
+        /// <summary>
+        /// The lord's peace (C10.10): two villages of one realm - one the other's lord, or both paying, directly or through their own lords, one highest
+        /// lord - raise no bands against each other; their blood is claimed before their common lord. The record's answer to feud: compensation judged
+        /// and enforced by a lord (Alfred's laws c. 890, ch. 42: who knows his foe at home is not to fight before he has asked justice; Hyams 2003).
+        /// </summary>
+        public bool OnePeace(int a, int b) => !PeaceOff && a != b && a > 0 && b > 0 && Root(a) == Root(b);
+
+        /// <summary>The lord who judges a claim of `claimants` against `doers` under the lord's peace (C10.10): the nearest of the doers' lords - their
+        /// lord, its lord, and so on - who is the claimants' village itself or one of its lords; 0 when none is (no common lord over the doers).</summary>
+        public int Judge(int doers, int claimants)
+        {
+            if (PeaceOff || doers == claimants) return 0;
+            int j = LordOf(doers);
+            for (int i = 0; i < 16 && j != 0 && j != doers; i++)
+            {
+                if (j == claimants || Under(claimants, j)) return j;
+                j = LordOf(j);
+            }
+            return 0;
+        }
+
+        /// <summary>Whether a village pays `top`, directly or through its own lords.</summary>
+        public bool Under(int sid, int top)
+        {
+            int r = LordOf(sid);
+            for (int i = 0; i < 16 && r != 0 && r != sid; i++) { if (r == top) return true; r = LordOf(r); }
+            return false;
+        }
 
         /// <summary>`--olddemand`: no village asks a tenth of another (C10.7b's rules) on the same binary.</summary>
         public static bool DemandOff;
