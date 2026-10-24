@@ -694,6 +694,9 @@ namespace TC2.Headless
                                   guarded.ToString("0").PadLeft(19) + timber.ToString("0").PadLeft(16) + (r.stone ? r.dist.ToString("0") + (r.quarry ? " q" : "") : "-").PadLeft(12) +
                                   stoneH.ToString("0").PadLeft(14) + (" (" + (TC2.Core.Society.Conflict.LabourWorth * stoneH).ToString("0") + ")").PadLeft(9) + r.years.ToString("0.0").PadLeft(10));
             }
+        }
+
+        /// <summary>
         /// (settlement change at the ceiling, measured first: `place --ceiling`) why the map stops changing once the land fills: each living village's people,
         /// its arable land against what its people need (`HaPerHead`), what presses its households to leave (`Migration.Pressure`), the land none of its
         /// households holds and the households short of their want (C3.6b), the best place its people know and whether it is still free and good
