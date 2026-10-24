@@ -62,6 +62,30 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void TheBookTellsThePeoplesOfTheWorld()
+        {
+            var w = TestWorlds.Make(607);
+            w.RequestResolution(Resolution.Coarse, SimTime.StartOfDay(w.Now) + SimTime.Day);
+            w.AdvanceTo(w.Now + SimTime.Years(90));
+            var lines = new Dictionary<int, int>();
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid)) { int l = Architecture.Line(w.Settlements.Get(sid).Tradition); lines.TryGetValue(l, out int n); lines[l] = n + 1; }
+            int peoples = 0; foreach (var kv in lines) if (kv.Value >= 2) peoples++;
+            Assume.That(peoples, Is.GreaterThan(0), "the premise: a village founded from another in ninety years");
+            var book = TC2.Core.History.HistoryBook.Write(w);
+            var ch = book.Parts[4].Chapters.Find(x => x.Title == "The Peoples");
+            Assert.IsNotNull(ch, "the places begin with the peoples");
+            int heads = 0, records = 0;
+            foreach (var b in ch.Blocks)
+            {
+                if (b.Kind == TC2.Core.History.BookKind.Heading) heads++;
+                if (b.Kind == TC2.Core.History.BookKind.Line) { records++; Assert.IsTrue(w.History.TryGet(b.Event, out var e) && e.Kind == TC2.Core.History.HistoryKind.SettlementFounded, "its lines are foundings on record"); }
+                Console.WriteLine(b.Text);
+            }
+            Assert.AreEqual(peoples, heads, "each people of more than one village");
+            Assert.Greater(records, 0);
+        }
+
+        [Test]
         public void UnderTheOldRulesNamesAreAsBefore()
         {
             Migration.TonguesOff = true;

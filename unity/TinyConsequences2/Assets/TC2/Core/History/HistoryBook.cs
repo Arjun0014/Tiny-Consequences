@@ -892,6 +892,8 @@ namespace TC2.Core.History
                 weight[sid] = v;
             }
             sids.Sort((p, q) => { int k = weight[q].CompareTo(weight[p]); return k != 0 ? k : p.CompareTo(q); });
+            var peoples = Peoples(c);   // (C11.1: the peoples - the villages of one line, how they speak and build)
+            if (peoples != null) part.Chapters.Add(peoples);
             var rest = new List<int>();
             for (int k = 0; k < sids.Count; k++)
             {
@@ -907,6 +909,70 @@ namespace TC2.Core.History
             }
             return part;
         }
+
+        /// <summary>
+        /// The peoples (C11.1): the villages descended from one first village (their building tradition's line, D2-114), the most first - how many,
+        /// from when, the endings their tongue gives their places (each village's own, C11.1a) and the roofs they raise; its lines the foundings of its
+        /// villages on record. Null when the world's names come from one speech (`--oldnames`) or no people has founded another village.
+        /// </summary>
+        static BookChapter Peoples(Ctx c)
+        {
+            var w = c.W;
+            var lines = new Dictionary<int, List<int>>();
+            var order = new List<int>();
+            bool spoken = false;
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                ref var s = ref w.Settlements.Get(sid);
+                if (s.Tongue != 0) spoken = true;
+                int l = TC2.Core.Places.Architecture.Line(s.Tradition);
+                if (!lines.TryGetValue(l, out var ll)) { lines[l] = ll = new List<int>(); order.Add(l); }
+                ll.Add(sid);
+            }
+            if (!spoken) return null;
+            order.RemoveAll(l => lines[l].Count < 2);
+            if (order.Count == 0) return null;
+            order.Sort((a, b) => lines[b].Count != lines[a].Count ? lines[b].Count.CompareTo(lines[a].Count) : a.CompareTo(b));
+            var ch = new BookChapter { Title = "The Peoples", Sub = Plural(order.Count, "people of more than one village", "peoples of more than one village") };
+            ch.Para("A people here is the villages that descend, founding by founding, from one of the first: their founders carried its way of building and " +
+                    "its speech, each now and then a little changed.");
+            foreach (int l in order)
+            {
+                var ll = lines[l];
+                int living = 0;
+                var ends = new Dictionary<string, int>(); var endOrder = new List<string>();
+                var roofs = new int[3];
+                int y0 = int.MaxValue, y1 = 0;
+                foreach (int sid in ll)
+                {
+                    ref var s = ref w.Settlements.Get(sid);
+                    if (s.Inhabited) living++;
+                    int fy = YearOf(s.Founded); y0 = System.Math.Min(y0, fy); y1 = System.Math.Max(y1, fy);
+                    roofs[TC2.Core.Places.Architecture.TraditionRoof(s.Tradition)]++;
+                    foreach (var e in TC2.Core.Worldgen.Names.EndsOf(s.Tongue)) { if (!ends.ContainsKey(e)) { ends[e] = 0; endOrder.Add(e); } ends[e]++; }
+                }
+                endOrder.Sort((a, b) => ends[b] != ends[a] ? ends[b].CompareTo(ends[a]) : string.CompareOrdinal(a, b));
+                var shown = new List<string>();
+                for (int i = 0; i < endOrder.Count && i < 5; i++) shown.Add("-" + endOrder[i]);
+                int roof = roofs[0] >= roofs[1] && roofs[0] >= roofs[2] ? 0 : roofs[1] >= roofs[2] ? 1 : 2;
+                string first = Name(w, l);
+                ch.Heading("The people of " + first, l);
+                ch.Para(Cap(Plural(ll.Count, "village", "villages")) + " founded " + Years(y0, y1) + ", " + Plural(living, "lived in", "lived in") + " today; they name their places " +
+                        Join(shown) + ", and most raise " + TC2.Core.Places.Architecture.RoofName(roof) + " roofs.", l);
+                // its foundings on record, the earliest first
+                var evs = new List<HistoryEvent>();
+                foreach (int sid in ll)
+                {
+                    ref var s = ref w.Settlements.Get(sid);
+                    if (s.FoundedEvent != 0 && w.History.TryGet(s.FoundedEvent, out var fe)) evs.Add(fe);
+                }
+                evs.Sort((a, b) => a.Time != b.Time ? a.Time.CompareTo(b.Time) : a.Id.CompareTo(b.Id));
+                for (int i = 0; i < evs.Count && i < 5; i++) ch.Line(w, evs[i]);
+            }
+            return ch;
+        }
+
+        static string Join(List<string> l) => l.Count == 0 ? "" : l.Count == 1 ? l[0] : string.Join(", ", l.GetRange(0, l.Count - 1).ToArray()) + " and " + l[l.Count - 1];
 
         static string Fate(Ctx c, int sid)
         {
