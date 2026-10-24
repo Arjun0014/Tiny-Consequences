@@ -152,6 +152,9 @@ namespace TC2.Core.History
                     return Cap(subj) + " was released from the service of " + obj +
                            (e.ArgA == 1 ? ": the grain of " + obj + "'s household could keep no more men" : e.ArgA == 2 ? ": another is first among the people of " + place + " now" : e.ArgA == 3 ? ": he is past forty" :
                             e.ArgA == 4 ? ": he and " + obj + " no longer live in one village" : e.ArgA == 5 ? ": " + obj + " died" : "") + ".";
+                case HistoryKind.TributeDemanded:
+                    return Cap(subj) + ", whose first household keeps sworn men, asked " + obj + " a tenth of its harvest (" + F(e.Magnitude, "0") + " days' grain)" +
+                           (e.ArgA == 1 ? ": its people could neither stand against them nor go elsewhere, and bowed." : ": its people would not pay - a refusal " + subj + " holds against them.");
                 case HistoryKind.CartMade:
                     return "The " + Plural(subj) + " of " + place + " made " + (e.ArgA == TC2.Core.Places.Carts.Ox ? "an ox cart" : "a handcart") + (e.Other.IsNone ? "" : ", " + other + " shaping its wheels") +
                            ": what they carried - their traders' loads along a worn way, wood and stone from far off - had been more than their backs could take.";
@@ -194,6 +197,9 @@ namespace TC2.Core.History
                 case HistoryKind.TributeAgreed:
                     if (e.ArgB == 1)   // (for bread: C10.4)
                         return "The people of " + subj + " bowed to " + obj + " and agreed to pay it a tenth of every harvest: its grain had kept them through their famines and they could not give it back" +
+                               (e.ArgA > 1 ? " (" + obj + " now has " + e.ArgA + " villages paying)." : ".");
+                    if (e.ArgB == 2)   // (on its asking: C10.8)
+                        return "The people of " + subj + " bowed to " + obj + " and agreed to pay it a tenth of every harvest when it asked: they could neither stand against its men nor go elsewhere" +
                                (e.ArgA > 1 ? " (" + obj + " now has " + e.ArgA + " villages paying)." : ".");
                     return "The people of " + subj + " bowed to " + obj + " and agreed to pay it a tenth of every harvest: they could neither stand against its bands nor go elsewhere" +
                            (e.ArgA > 1 ? " (" + obj + " now has " + e.ArgA + " villages paying)." : ".");

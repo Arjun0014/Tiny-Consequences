@@ -316,7 +316,7 @@ namespace TC2.Core.History
                 case SignGrowth: case SignFounding: return k == HistoryKind.SettlementFounded || k == HistoryKind.PartySetOut || k == HistoryKind.WorkBuilt || k == HistoryKind.TechniqueFound;
                 case SignDecline: return k == HistoryKind.SettlementAbandoned || k == HistoryKind.Famine || k == HistoryKind.HouseholdMoved;
                 case SignWalls: return k == HistoryKind.WallPlanned || k == HistoryKind.WallBuilt || k == HistoryKind.Raid;
-                case SignLords: return k == HistoryKind.TributeAgreed || k == HistoryKind.TributeEnded || k == HistoryKind.Raid;
+                case SignLords: return k == HistoryKind.TributeAgreed || k == HistoryKind.TributeEnded || k == HistoryKind.TributeDemanded || k == HistoryKind.Raid;
                 case SignRuin: return k == HistoryKind.Eruption || k == HistoryKind.Quake || k == HistoryKind.Tsunami || k == HistoryKind.Wildfire || k == HistoryKind.Storm || k == HistoryKind.AshFall;
                 case SignCold: return k == HistoryKind.IceAge || k == HistoryKind.HarvestFailed;
                 case SignWarm: return k == HistoryKind.IceAgeEnded;
