@@ -1,52 +1,51 @@
 # TC2 Session handoff
 
-## Session 26 (25 Oct 2026, from 21:20 IST; Control Room) - rain, the harrying and the ways on main (sim 101); stone walls, the memory pass, the god's ore and the lord's household in the queue
+## Session 26 - HANDOFF (25 Oct 2026, 21:20 - ~23:25 IST; Control Room run #80 session 1) - rain, the harrying and the ways on main (sim 101); stone walls, the memory pass, the god's ore and the lord's household built, their checks RUNNING in the queue
 
-### Exact state (keep this block current)
-- **main**: 36fad20 (**the harrying and the ways landed**, sim 101; D2-180, D2-181 in DECISIONS 45d4461) on b9ab94e (rain, sim 99) + ee11391 (flames on dry
-  ground only) + 4919446 (shot tunable `ShadowLite`) + 4928499 (bridge `sortplaces`, off) + docs. One full suite over everything landed: **484/0/0** (`fullsuite_bw3.txt`). Not ours: `.claude/launch.json`,
-  `Assets/Resources.meta`. Old sim-98 saves (`_ac3`, `_pv1`...) no longer load in main's Unity: shots need sim-matching saves (the fourth run makes them).
-- **Branches to land, in order** (each carries the one before; each changes the sim version):
-  1. ~~**C8.1a the harrying**~~ LANDED (its placebo: inside the noise against its twin). Was: `wip/harry` 8bb3dca (sim 100). Ten seeds done (`tc2/out/tools/s25/results/cmp_bn1_hy1.txt`, lean in sickness/people: see
-     PROGRESS session 26). Its **matched placebo** `0_zfa_hyp_*` + `0_zfb_cmp_hyp` (`results/cmp_bn1_hyp.txt`, `cmp_hyp_hy1.txt`, `lean_*.txt`) decides:
-     land if the placebo spreads as wide (the harrying against its placebo twin inside the noise) or the mechanism explains it. Write D2-180 (rain + the
-     harrying + the siege set aside: `tc2/out/tools/s25/siege/design.md`).
-  2. ~~**C11.1b a people's ways**~~ LANDED with it. Was: `wip/c111b-ways` d401d43 (= the ways + the harrying + rain + main; sim 101). Checks `0_zg_a` (build bw3, tests), `0_zg_b`
-     (control `--oldhouseways` = `_hy1` byte for byte; ways on: annals = `_hy1`), `0_zg_c` (**one full suite over everything to land**: `fs_bw3_ok`).
-     D2-181 from `tc2/out/tools/s25/ways/d2181.md` (its "[centuries]" from the fourth acceptance run's `ways4_s2_y*.txt`).
-     Land both: `git merge --no-ff wip/c111b-ways` (brings the harrying) once 1 and 2 hold; then `git merge main` into the next branches if main moved.
-  3. **C7.2 stone walls** - `wip/c72-stonewalls` (worktree `C:/Game Dev/tc-stonewall`, sim 102; draft `tc2/out/tools/s26/d2183.md`). Checks `0_zh_a` (build
-     bin_sw1, tests), `0_zh_b` (control `--oldstonewalls` = `_bw3`), `0_zh_c` ten seeds `_stw1`, `0_zh_d` (`tc2/out/tools/s26/results/cmp_hy1_stw1.txt` + the
-     `stonewalls:` tally per seed). Land after the ways if the seeds hold.
-  4. **The memory pass** - `wip/memory` (worktree `C:/Game Dev/tc-memory`, sim 103; `tc2/out/tools/s26/memory.md`). Checks `0_zi_a` (build bin_mem1, tests),
-     `0_zi_b` (control `--oldcompact` = `_stw1`; the pass on: annals = `_stw1` byte for byte; state sizes at 300). Land after stone walls; D2-184.
-  5. **F9.6-F9.7 the god's ore and bounty** - `wip/ore` (worktree `C:/Game Dev/tc-ore`, sim 104, on the memory pass; draft `tc2/out/tools/s26/d2184_185.md`):
-     a vein of copper laid bare at a place (40 t), unknown until someone sees it, its chain rooted in the cast (`run --castore Y`: seed 4 at 100, a mine by
-     160); the fields round a place renewed (tiredness 0); the ore bodies drawn (copper's green and blue stones, bog iron's rust); shots `--ore M`. Check
-     `0_zj_a_ore1` (build, PowersTests 9 and the rest, the uncast control = `_mem1` byte for byte). Land after the memory pass.
-  6. **C10.11 the lord's household** - `wip/hall` (worktree `C:/Game Dev/tc-hall`, sim 105, on the ore; `tc2/out/tools/s26/c1011_household.md`): a first
-     household whose grain runs beyond its needs and its sworn men keeps landless households - its village's, the neediest first; a lord's then its realm's,
-     who come to the seat (`Migration.Summon`) - a year of their need each harvest; kept households do not weigh leaving; let go when the grain fails, another
-     is first, or they hold land. HallTests 4/4. Measured first by `0_zga_deps_s4` (`results/deps_s4_y{300,600}.txt`: the lords' surplus beside their realms'
-     landless); a first look `0_zgb_hall_s4`; its evaluation `0_zk_*` (build, control `--oldhall` = `_ore0`, ten seeds `_hal1` against `_stw1`,
-     `results/cmp_stw1_hal1.txt`; generator `tc2/out/tools/s26/make_hall.sh`). Land after the ore if the seeds hold (D2-186).
-- **Then**: `bash tc2/out/tools/s26/make_ac4.sh $Q` - main's build and full suite (bin_m14), the fourth 1,000-year acceptance run (`_ac4`, seeds 2, 4, 7, books,
-  ways and stone walls by century) and real shots (`s26a_*`: village #4 at 300/600/1,000 with `ShadowLite` beside, the villages most walled in stone, realms,
-  the meteor again). Add one seed-2 run with `--oldcompact` for the memory measure at 1,000 if wanted (statesizes against `_ac4`).
-- **The queue**: `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q` (the old
-  session's scratchpad, still live; `lib.sh`'s `S`/`N` point there); runner `bash tc2/out/tools/s23/runq.sh` in the background (this session's task); held:
-  `K_ba_siege_s47`, `N_a_ways_s2` (superseded by the fourth run). Job generators this session: `make_sw.sh`, `make_mem.sh` (in this session's scratchpad),
-  `tc2/out/tools/s26/make_ac4.sh`.
-- **Measure tools on branches**: `wip/statesizes` (worktree `tc-statesizes`, sim 98) a30d401 - `run --load F --statesizes` with the ledger by kind and the
-  names by kind (loads the `_ac3` saves).
+### Exact state (verified at the handoff, ~23:22)
+- **main** 45d4461 + docs (sim 101): **rain** (b9ab94e), **the harrying and the ways** (merge 36fad20; D2-180, D2-181 in DECISIONS), the flames on dry ground only
+  (ee11391), shot tunable `ShadowLite` (4919446), bridge `sortplaces` (4928499, off until measured). **One full suite over everything landed: 484 passed, 0 failed,
+  0 skipped** (`tc2/out/tools/s25/results/fullsuite_bw3.txt`); main's Unity C# compiles after the merge (`unity.mjs cc` 0 errors). Not ours: `.claude/launch.json`,
+  `Assets/Resources.meta`. Old sim-98 saves (`_ac3`) no longer load in main's Unity: shots need sim-matching saves (the fourth run makes them).
+- **Branches built, each carrying the one before, to land in this order** (each changes the sim version; land with `git merge --no-ff wip/<branch>` into main):
+  1. **C7.2 stone walls** - `wip/c72-stonewalls` 395d5fb (worktree `C:/Game Dev/tc-stonewall`, sim 102; draft `tc2/out/tools/s26/d2183.md`). StoneWallTests 5/5 +
+     eight classes 0 failed. Checks: `0_zh_a2_tests_sw1` (its classes on `bin_sw1`), `0_zh_b` (control `--oldstonewalls` = `_bw3`), `0_zh_c` ten seeds `_stw1`,
+     `0_zh_d` (`tc2/out/tools/s26/results/cmp_hy1_stw1.txt` + each seed's `stonewalls:` tally). Land if the seeds hold (a lean past |t| 2: a matched placebo).
+  2. **The memory pass** - `wip/memory` f7c9218 (worktree `C:/Game Dev/tc-memory`, sim 103; `tc2/out/tools/s26/memory.md`, draft `d2184_185.md`). MemoryPassTests 3/3.
+     Checks `0_zi_a` (build `bin_mem1`, tests), `0_zi_b` (control `--oldcompact` = `_stw1`; **the pass on: annals = `_stw1` byte for byte** - it must change no
+     history; state sizes at 300 `results/statesizes_s4_mem{0,1}_y300.txt`).
+  3. **F9.6-F9.7 the god's ore and bounty** - `wip/ore` f66c50e (worktree `C:/Game Dev/tc-ore`, sim 104; draft `d2184_185.md`). PowersTests 9/9, Mining 6, Iron 8.
+     Check `0_zj_a_ore1` (build, tests, uncast control = `_mem1` byte for byte). Played: `run --castore 100` on seed 4 - a mine by year 160.
+  4. **C10.11 the lord's household** - `wip/hall` d07e0ae (worktree `C:/Game Dev/tc-hall`, sim 105; `tc2/out/tools/s26/c1011_household.md`). HallTests 5/5.
+     Measured first (`results/deps_s4_y{300,600}.txt`): lords' surplus for 1,260-1,907 people's food a year beside 312-1,387 landless people in their realms.
+     Two first looks on seed 4 (`_hal0`, `_hal2`; one seed - no evidence of effect): the first let 3,156 of 4,157 go at each change of first household -
+     fixed (a new first takes them over: 2,832 taken over in `_hal2`); now they are let go mostly when the grain runs short (2,730 of 3,334 taken in; ~2
+     household-years each; 50 kept at year 300; 2,960 summoned from realms to seats). Checks `0_zk_a` (build `bin_hall1`, 7 classes), `0_zk_b` (control
+     `--oldhall` = `_ore0`), `0_zk_c` ten seeds `_hal1`, `0_zk_d` (`results/cmp_stw1_hal1.txt`, `lean_stw1_hal1.txt`; the memory pass and the ore change no
+     annals, so `_stw1` is its baseline). Judge by people, hunger, the seats' size (`lordships --dependants` on `s*_hal1/world_y300.tc2`); D2-186.
+- **Measured, not built**: C8.2 flight from war (`tc2/out/tools/s26/c82_flight.md`: at the ceiling no village within reach has land to spare); a warmth power
+  (needs a temperature overlay inside `PlanetSystems.DayMean`, called very often).
+- **A fault of this session in the queue, repaired**: a retagging `sed` (`_sw1` -> `_stw1`) also renamed `0_zh_a`'s binary dir to `bin_stw1` while its tests
+  ran `bin_sw1` - `0_zh_a` ended rc=1; `bin_sw1` is now a copy of `bin_stw1` (tc-stonewall 395d5fb) and `0_zh_a2_tests_sw1` reruns its classes. Every other
+  queued job's binaries and runs were checked consistent at the handoff.
+
+### Running at the handoff (leave them; read their results)
+- **The job queue runner**: `bash tc2/out/tools/s23/runq.sh` (this session's background task `bj4o96476`), `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/
+  C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q` (the old session's scratchpad, still live; `lib.sh`'s `S`/`N` point there).
+  Order (todo): `0_zh_a2` (stone tests), `0_zh_b`, `0_zh_c` x10, `0_zh_d`, `0_zi_a`, `0_zi_b`, `0_zj_a`, `0_zk_a`, `0_zk_b`, `0_zk_c` x10, `0_zk_d`, `K_b_ac3_s7`
+  (the third acceptance run's seed 7, sim 98, `bin_m12`). ~2 hours in all. Held: `K_ba_siege_s47`, `N_a_ways_s2`. Watch: `tail -n 0 -F $Q/runq.log | grep
+  --line-buffered -E "^end |runner stopped"`. A Monitor on runq.log (`be17dmo21`) may still be armed; it expires by itself.
+- No server, Unity editor or Web build is running.
 
 ### Next, in order
-1. Judge the placebo; land the harrying and the ways (D2-180, D2-181); land stone walls (D2-183) and the memory pass (D2-184) by their checks.
-2. The fourth acceptance run and its shots (25 §6 "Fourth run"): the map at 300/600/1,000, stone walls where war was and rock lay near, the ways by century,
-   `ShadowLite` judged, the meteor's flames on land. Seed 7's third run (`K_b_ac3_s7`) for the third run's write-up.
-3. Great worlds in the browser: the Web heap with the memory pass (realmsperf heap at year 1,000 against `s25web5`'s 955 MB); the frame pass on buildings
-   (batches are per-instance coloured and culled by their bounds - spatially coherent batches or a smaller far LOD, measured in the browser first).
-4. Then F9's remaining powers (warmth, a bounty, a strange stone of ore) and F11 (packaging, settings).
+1. Read each check as it ends (`$Q/log/<job>.log`, the results files above) and land in order: stone walls (D2-183: append `tc2/out/tools/s26/d2183.md` with
+   the seeds' numbers), the memory pass and the ore (D2-184, D2-185 from `d2184_185.md` with the state sizes), the lord's household (D2-186 if its seeds hold;
+   a lean: its matched placebo `--oldhall --nudge Y`). Merge main into each branch first if main moved (docs only so far); build after resolving any conflict.
+2. Then the fourth acceptance run: `bash tc2/out/tools/s26/make_ac4.sh $Q` - main's build and full suite (`bin_m14`), seeds 2/4/7 for 1,000 years (`_ac4`) with
+   books, the ways and stone walls by century, real shots (`s26a_*`: village #4 at 300/600/1,000 with `ShadowLite` beside, the villages most walled in stone,
+   realms, the meteor's flames, the god's ore), the Web build `s26web1` (the test; the heap at year 1,000 against `s25web5`'s 955 MB; `sortplaces` and
+   `shadowlite` paired). Judge in the shots and books; write 25 §6 "Fourth run" and the acceptance's verdict on the finished core (25 §8).
+3. Then: the frame pass by the Web measures (make `sortplaces`/`shadowlite` the default if they help and read right); F9's remaining powers and F11.
 
 ## Session 25, fourth context - END (25 Oct 2026, ~17:45 IST; stopped at Arjun's word) - main (sim 98) clean of ours; the queue stopping after rain's checks
 

@@ -393,14 +393,13 @@ land in order**: F9.5 the rain (sim 99), C8.1a the harrying (100), **C11.1b a pe
 to, couples mostly as their village, tributaries' first households toward their lords). The third acceptance run: seed 2's map set by ~300, seed 4's keeps
 changing. SESSION_HANDOFF "Session 25, fourth context - END" has the steps.
 
-**Where we are (session 26, 25 Oct 2026, from 21:20 IST)**: **F9.5 the rain landed** (main b9ab94e, sim 99). In the job queue, each branch carrying the one
-before, to land in order: **C8.1a the harrying** (sim 100; its ten seeds lean in people x0.91 through two worlds' epidemics - a matched placebo `_hyp` decides),
-**C11.1b a people's ways** (101), **C7.2 stone walls** (102: a walled village with rock at hand that loses much lays a dry-stone curtain stretch by stretch;
-stone does not rot and triples the defenders' ground; drawn with towers at the gates), **the memory pass** (103: past 200 years the ordinary kept only for
-what it led to; the names nothing kept can show let go - at year 1,000, 148k of 509k events and 193k of 310k names), **F9.6-F9.7 the god's ore and bounty**
-(104: a vein of copper laid bare and found, mined and traded by the world's own rules; tired fields renewed). Measured, not built: C8.2 flight from war
-(at the ceiling no village within reach has land to spare - `tc2/out/tools/s26/c82_flight.md`). Then the fourth 1,000-year acceptance run on the final rules
-(`tc2/out/tools/s26/make_ac4.sh`). SESSION_HANDOFF "Session 26".
+**Where we are (session 26, 25 Oct 2026, 21:20 - ~23:25 IST; context handoff with the queue running)**: on main (sim 101) **F9.5 the rain**, **C8.1a the
+harrying** (its people lean was chaos by its matched placebo) and **C11.1b a people's ways**; one full suite 484/0/0. Built and in the job queue's checks, each
+branch carrying the one before, to land in order: **C7.2 stone walls** (102: walled villages with rock at hand that lose much lay dry-stone curtains; stone does
+not rot and triples the defenders' ground), **the memory pass** (103: the ordinary past 200 years kept only for what it led to; names nothing kept can show
+let go - must change no history), **F9.6-F9.7 the god's ore and bounty** (104), **C10.11 the lord's household** (105: lords' first households feed landless
+households of their realms, who come to the seat - measured first: surplus beside want). Measured, not built: C8.2 flight from war. Then the fourth 1,000-year
+acceptance run on the final rules with real shots and the Web heap (`tc2/out/tools/s26/make_ac4.sh`). SESSION_HANDOFF "Session 26 - HANDOFF".
 
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at

@@ -15,85 +15,48 @@ world readability and presentation alongside (the planet like Earth from space, 
 then god powers and player-facing gameplay.
 
 ## Read first (this order), then work autonomously
-1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the standing prompt (architecture, rules, every direction; "Where we are (session 25, second context)").
-2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 25, fourth context - END"** (then "Session 25, third context - HANDOFF" below it): the exact state, the job queue, the branches to land, "Next, in order".
-3. `docs/tc2/DECISIONS.md` newest (D2-176 the land between villages, D2-177 the burning-in, D2-178 the god's powers and the opening, D2-179 the meteor, the drought and the sound; before them D2-168, D2-173-D2-175); `docs/tc2/PROGRESS.md`
-   CURRENT STATE (session 25, second context); `docs/tc2/25_CIVILISATION_ROADMAP.md` §8 (the plan to a finished core); the C7.2 measure in
-   `tc2/out/tools/s25/results/stonewalls_*.txt` when it has run, and `tc2/out/tools/s25/c81_design.md` (why C8.1 waits).
-4. `git status`, `git log --oneline -15`, `git worktree list`, and the queue: `cat $Q/runq.log` (`Q` below) - which jobs ended, with what.
+1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the standing prompt (architecture, rules, every direction; "Where we are (session 26)").
+2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 26 - HANDOFF"**: the exact state, the branches to land in order, the queue and what it runs, "Next, in order".
+3. `docs/tc2/DECISIONS.md` newest (D2-180 the rain, the harrying, the siege set aside; D2-181 a people's ways; D2-182 great worlds in the browser; before them
+   D2-176-D2-179); `docs/tc2/PROGRESS.md` CURRENT STATE (session 26); `docs/tc2/25_CIVILISATION_ROADMAP.md` §6 (the acceptance runs) and §8 (the plan to a
+   finished core); the drafts and measures in `tc2/out/tools/s26/` (`d2183.md` stone walls, `d2184_185.md` the memory pass and the ore, `memory.md`,
+   `c1011_household.md`, `c82_flight.md`, `make_ac4.sh`, `make_hall.sh`, `results/`).
+4. `git status`, `git log --oneline -15`, `git worktree list`, and the queue: `cat $Q/runq.log` (`Q` below) - which jobs ended, with what; `ls $Q/todo`.
 
-## Session 25, fourth context (25 Oct 2026, 14:10 - ~17:45 IST, stopped at Arjun's word) - the frame pass and the streamed save on main; Web 8/8; rain, the harrying and C11.1b ready to land
-- Read SESSION_HANDOFF's top block **"Session 25, fourth context - END"** first: the exact state, the branches to land in order, the queue (stopped after
-  rain's checks `0_ze`; restart it for the harrying) and "Next, in order". First: read `0_ze`'s log and land rain (sim 99), then the harrying (100), then
-  C11.1b (101); D2-180 and D2-181 (drafts in `tc2/out/tools/s25/`). Then the realms and powers shots, `shadowlite` judged in shots, the frame pass on
-  (buildings), the memory pass on (the history ledger), the acceptance's seed 7.
-- **At the handoff (~17:55)**: main c47e9a3 verified (save, determinism and book classes 0 failed; a full suite on main is due before the next landing - the
-  streamed save changed the core after the last one). **`0_ze_rain_rn1` was still running** (its classes so far 0 failed; then the uncast control) - read
-  `$Q/log/0_ze_rain_rn1.log` first; the runner stops after it (`$Q/stop` set; restart: `rm $Q/stop`, `bash tc2/out/tools/s23/runq.sh` in the background).
-  Claude Code stopped this session's background waiters for low memory (RAM 87-88 % with a Web build): watch the queue in the foreground when memory is short.
-  No server or watcher of this session is left running.
-- **On main (728bd0e, sim 98, no sim change)**: a save streamed both ways (the heap -243 MB at year 1,000), the reload test fixed (it read a stale saveOk - the harness, not the game), the frame pass (people beyond the limb or outside the view unposed; villages beyond the limb unbuilt), the
-  reload fault fixed (`SaveNow` unsets `saveOk` while a save is in flight), the power's aim only over open ground, the Web test closing the pages before it
-  aims; the .meta files Unity made (sounds, Hud.Powers, Hud.Title, AudioView).
-- **Measured**: layer costs of a great world (buildings ~half the frame, people a quarter, shadows redraw both); the heap 1.3-1.5 GB (the memory pass is
-  next - SaveFile's kept buffers are the first candidate); **the siege has no room** (no band the walls held off could stand a sally - `siege/design.md`).
-- **Built**: C11.1b a people's ways carried and copied (`wip/c111b-ways`, worktree `tc-bways`, sim 101): households build as they were raised to, couples
-  mostly as their village, tributaries' first households toward their lords; its control is `--oldhouseways`.
-- Land after the queue's shots: rain (99), the harrying (100), the ways (101).
-
-## Session 25, third context (25 Oct 2026, from 07:34 IST) - C3.6g the land between villages landed (main b516bb1, sim 95; D2-176)
-- The acceptance's frozen map measured (`place --margins`): the room lay between villages, not on poorer land. Daughter villages now fill it on their
-  village's own margins (twice the places by ~300; people +16-33 %); joiners count those already on their way. Slow change after the infill.
-- Then (main 67a2cd8, sim 97): small villages measured to live better (no desertion rule); **C8.0 the burning-in** (D2-177); **F9.1-F9.3 the god's
-  powers as play and F11.1 the opening** (D2-178: the power bar, Your Actions, a sickness and a blight, the title).
-- Also landed: **F9.4 the meteor and the drought** and **F10.1 the world's sound** (D2-179, sim 98; main 9bd2814; full suite 473/0/0).
-- **Running at the handoff (~14:10)**: the queue's final run (`make_final.sh`: the third 1,000-year run `_ac3` - seed 2 since 14:03 -, Web `s25web3`
-  with its power-click and title checks and the layer costs, shots), then `L_a` (rain's checks) and `M_*` (the harrying's evaluation).
-- **Two branches to land in order after it**: `wip/rain` (F9.5, sim 99) then `wip/harry` (C8.1a the harrying, sim 100: a band broken on walls burns the
-  crop outside them). Never land a sim change while a queued job needs a sim-98 save.
-- Next: judge the final run (25 §6 third run), land rain and the harrying (D2-180), the frame pass by the layer costs, then the siege, more powers, F11.
-  Exact steps: SESSION_HANDOFF "Session 25, third context - HANDOFF".
-
-## Session 25, second context (25 Oct 2026, 23:56 - ~02:45 IST) - four slices landed; the 1,000-year acceptance RUNNING in the queue
-- **On main (2935c9a and after; sim 94)**: C10.8 the asking (D2-168), C10.9 the lord's death (D2-173: bonds for peace lapse with the first among the lord's
-  people; heirs win them back by asking - raids x0.64), **C10.10 the lord's peace** (D2-174: no bands within a realm, blood judged by the common lord;
-  chosen over C8.1 by measuring that the war was feud, 30-88 % of it inside realms; people x1.054 against its matched placebo twin, explained - raids
-  within realms gone, war at the realms' edges, famines a person-year x0.82), **C11.1a a people's tongue** (D2-175: names in their founders' speech, a sound
-  changed at a time; the book's Peoples; annals unchanged byte for byte), **the wars on the realms map layer** (the last ten years' raids as dark spearheads).
-- **A fault in the job tooling, fixed**: `lib.sh`'s `gate` clobbered a loop variable `c`; gates now need 1+ passed (name test-class loop variables `cls`).
-- **The queue** (background task brw7xh61a, runner `tc2/out/tools/s23/runq.sh`; `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`):
-  `9_a_fullsuite_m8` (main's suite on the final rules: `results/fullsuite_m8.txt`, `fs_m8_ok`), `9_b_ac1_s{2,4,7}` (1,000-year worlds `$O/s*_ac1/world_y{50,150,300,500,800,1000}.tc2`,
-  books `tc2/out/tools/s25/accept/book_s*_y{300,1000}.md`), `9_bx_stone_st0` (the C7.2 measure), `9_bz_web` (Web `s25web2`: the test, bookshots over the
-  year-1,000 and year-300 worlds - names in tongues, the book's Peoples/Timeline/Realms, `realmsperf --layer names|air|clouds`), `9_c_shots_s{2,4}_y*`
-  (each age's real shots `tc2/out/shots/s25m_*`, realms with the war spears at 1,000). No monitor survives the clear: arm one
-  (`tail -n 0 -F $Q/runq.log | grep --line-buffered -E "^end |runner stopped"`).
-
-## Results since (04:25): main's full suite 461/461 (0 skipped); the 1,000-year acceptance run - 25 §6 "First run", `tc2/out/tools/s25/accept/notes.md`
-- **Holds**: wild land, villages, founders, walls, realms that rise and fall, a great plague and recovery (seed 2), peoples with their own speech, books
-  that read as history (sixteen-seventeen ages a world; realms as reigns). Web `s25web2` 6/6 over the year-1,000 world (names by tongue on the map; layer
-  costs names x0.99, clouds ~x1.0, air x0.92-0.97; the base frame 6-9 fps at region/village - `14` §7).
-- **Does not hold**: after the land fills (~300) the map stops changing (2-3 villages abandoned in 1,000 years, almost no foundings) - years 300 and 1,000
-  look alike in real shots (`s25m_s2_y300`, `_y1000`).
-- Open: the war spears do not read yet in the realms shot (`s25m_s2_y1000r`: a rain deck and dark ink on the wash); one `ArgumentOutOfRangeException` per
-  Unity shots run since session 24 (no TC2 frame in the log; trace it); the acceptance shots framed a different lord at each age (use a fixed village).
-- **The book's realms as reigns merged** (9fac1c6; an observer, tests and `cc` ok): the realm chapters fold a village's re-bowings after lapses into one count.
-- **All the queue's shots done** (`tc2/out/shots/s25m_s{2,4}_*`); the settlement-change measure `9_d_ceiling_cl0` (`place --ceiling`, worktree
-  `C:/Game Dev/tc-ceiling`, `wip/ceiling` b9479f5) ran last: `tc2/out/tools/s25/results/ceiling_s*_y*.txt`.
+## Session 26 (25 Oct 2026, 21:20 - ~23:25 IST; Control Room run #80) - rain, the harrying and the ways on main (sim 101); four slices built, their checks RUNNING
+- **On main** (45d4461 + docs): F9.5 the rain; C8.1a the harrying - its ten seeds leaned (people x0.91, sickness x3.9) and **its matched placebo showed chaos**
+  (a one-FU nudge of the old rules gives the same pattern: main's ten worlds were a draw with few epidemics; the harrying against its placebo twin people x1.04,
+  t 0.5); C11.1b a people's ways. **One full suite over all of it: 484/0/0.** View: flames on dry ground only (the meteor's stood in the sea), `ShadowLite` per
+  shot, bridge `sortplaces` (off until measured).
+- **Built, to land in order** (worktrees; each carries the one before; each changes the sim version): **C7.2 stone walls** (`wip/c72-stonewalls`, sim 102),
+  **the memory pass** (`wip/memory`, 103 - must change no history: its check requires annals byte for byte), **F9.6-F9.7 the god's ore and bounty** (`wip/ore`,
+  104), **C10.11 the lord's household** (`wip/hall`, 105 - measured first: lords' surplus for 1,260-1,907 people's food a year beside 312-1,387 landless
+  people in their realms; a first household keeps landless households from its grain, a lord's realm's come to its seat; a new first takes them over).
+- **The queue was running at the handoff** (runner = this session's background task `bj4o96476`, `bash tc2/out/tools/s23/runq.sh`; `Q` =
+  `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`, the scratchpad `lib.sh`'s `S`/`N`
+  point at; if the runner has stopped and jobs remain in `$Q/todo`, restart it in the background): stone walls' tests
+  (`0_zh_a2`), control and ten seeds; the memory pass's control and annals check (`0_zi_*`); the ore's control (`0_zj_a`); the household's build, control and
+  ten seeds (`0_zk_*`); then seed 7's third acceptance run (`K_b_ac3_s7`). ~2 hours from 23:22.
+- **Measured, not built**: C8.2 flight from war - harm concentrates on small frontier hamlets, but at the ceiling no village within reach has land to spare
+  (`tc2/out/tools/s26/c82_flight.md`); the household slice is the first answer (the landless drawn to a lord's surplus, not to land).
 
 ## Do next, in order
-1. Look at seed 4's age shots (`tc2/out/shots/s25m_s4_y*`) and the ceiling measure (`ceiling_s*_y*.txt`); the queue is empty after `9_d` (the runner
-   idles; `touch $Q/stop` to stop it, or leave it for new jobs).
-2. **The next slice by the acceptance's evidence: settlement change at the ceiling** - MEASURED (`tc2/out/tools/s25/accept/notes.md` "Why the map freezes":
-   no village anywhere knows a free good place, so nothing is founded; after seed 2's plague 10 villages hold land to spare and 6 are crowded, but nothing
-   draws the land-short to land held elsewhere). Design and build the pull toward land held to spare (and villages that empty). **Sharper**: households *choose* to leave ~400-530 times a year (`LeaveTally`) but `Migration.VillageToJoin` finds them no village - MEASURED (`run --jointally`, `wip/join-tally`): after a plague they find one (18,873 of 19,166 in seed 2), at the ceiling none (70,528 of 72,054 in seed 4: no land to spare anywhere, no free good site). Hypothesis to measure and build: **marginal land** - settlement onto poorer sites under pressure (below `Sites.MinQuality`), the marginal villages deserted first in crises (notes.md, "Where the chain breaks"). Earlier note: measure first why no village empties (even after the plague halves
-   a world: each shrinks in place) and why none is founded after ~300 (no good land known, or none left), and which of the record's mechanisms has its
-   state in the world: deserted villages after depopulation (survivors drawn to vacant holdings - C3.6d weighs leaving by a household's own land only,
-   a push, never the pull of land left empty elsewhere), towns drawing the land-short (crafts, markets), war's destruction. Build the smallest real one;
-   judge it in shots of one fixed village at years 300, 600, 1,000.
-3. Then: C7.2 stone walls (measured: narrow room - a few heavy losers a world with stone at hand, `tc2/out/tools/s25/c72_design.md`); the war spears made
-   legible; great worlds in the browser (`14` §7); F9 (god powers as play).
+1. Read each check's result (`$Q/log/<job>.log`, `tc2/out/tools/s26/results/`) and land in order: stone walls (D2-183), the memory pass and the ore (D2-184,
+   D2-185), the lord's household (D2-186 if its ten seeds hold - a lean past |t| 2: its matched placebo `--oldhall --nudge Y` at each world's parting year,
+   `tc2/out/tools/s24/lean.py`). Append the drafts to `docs/tc2/DECISIONS.md` with the numbers; build after any merge.
+2. The fourth 1,000-year acceptance run on the final rules: `bash tc2/out/tools/s26/make_ac4.sh $Q` (main's build and full suite `bin_m14`; seeds 2/4/7 `_ac4`
+   with books, the ways and stone walls by century; real shots `s26a_*` incl. `ShadowLite` beside, the villages most walled in stone, realms, the meteor's
+   flames, the god's ore; the Web build `s26web1`: test, heap at year 1,000 against 955 MB, `sortplaces`/`shadowlite` paired). Regenerate it after the household
+   lands (its `M_*` jobs build main at run time). Judge in the shots and books; write 25 §6 "Fourth run" and whether the core is finished (25 §8).
+3. Then: the frame pass by the Web measures; F9's remaining powers (warmth needs a temperature overlay in `PlanetSystems.DayMean`) and F11 (packaging, settings).
 
 ## Rules that bite
+- **Never retag job files with a broad `sed`** (session 26: `s/_sw1"/_stw1"/` also renamed a build job's binary dir, so its tests ran a missing binary and the
+  whole chain behind it would have skipped). Pick fresh tags before generating jobs (`ls tc2/out/civ | grep _TAG`), and after any edit grep every queued job for
+  its binary, flag and run names.
+- **Gate commits on the build**: `grep -c " error "` must be 0 before `git commit` in the same command (a commit went in with a compile error this session).
+- **A premise that gives a household grain must put it in its village's granary too** (`Household.Grain` is a share of `Settlement.Granary`; the holdings
+  reconcile shares to the store within a day).
 - **Resolving a conflict by keeping both sides** duplicates whatever both branches inserted at the same anchor (session 25: two measures inserted above
   one method lost a brace and broke main's headless, fixed in 1b83b9e) - build after every resolved conflict before committing. Main's tip at the
   handoff: 1b83b9e (sim 94; the measure tools `place --stonewalls`, `--ceiling`, `--ways`, `lordships --walls` on it). The queue's runner idles (empty
