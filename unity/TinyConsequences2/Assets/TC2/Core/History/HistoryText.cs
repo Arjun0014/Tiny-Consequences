@@ -43,6 +43,7 @@ namespace TC2.Core.History
                 case HistoryKind.FieldsBurned: return "The fields of " + subj + " burned.";
                 case HistoryKind.CropsBlighted: return "A blight took the crop of " + subj + ".";
                 case HistoryKind.MeteorStruck: return "A stone fell from the sky " + At(place) + (e.ArgA > 0 || e.ArgB > 0 ? ": " + (e.ArgA > 0 ? e.ArgA + (e.ArgA == 1 ? " building" : " buildings") + " flattened" : "") + (e.ArgA > 0 && e.ArgB > 0 ? ", " : "") + (e.ArgB > 0 ? e.ArgB + (e.ArgB == 1 ? " dead" : " dead") : "") : "") + ".";
+                case HistoryKind.RainBrought: return "Rain came over the land round " + place + (e.ArgA > 0 ? " for " + e.ArgA + " days" : "") + ".";
                 case HistoryKind.Drought: return "A drought came over the land round " + place + (e.ArgA > 0 ? ": no rain for " + e.ArgA + " days" : "") + ".";
                 case HistoryKind.BuildingBurned:   // (C8.0: a band's burning-in)
                     if (e.Subject.Kind == EntityKind.Household)
@@ -243,6 +244,7 @@ namespace TC2.Core.History
                         case CommandKind.GodBlight: return "You blighted the fields " + At(place) + ".";
                         case CommandKind.GodMeteor: return "You threw down a stone from the sky " + At(place) + ".";
                         case CommandKind.GodDrought: return "You withheld the rain " + At(place) + ".";
+                        case CommandKind.GodRain: return "You brought rain " + At(place) + ".";
                         default: return "You reached down near " + place + ".";
                     }
                 default: return e.Kind + " at " + place;
