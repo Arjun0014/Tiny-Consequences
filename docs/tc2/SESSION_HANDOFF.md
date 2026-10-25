@@ -26,6 +26,16 @@
   the map's pattern set by ~300; seed 4: 65 -> 81 places over 300-990 - 25 §6), K_c/`s25web3` (layer costs), the shots of village #4 at 300/600/1,000
   (`tc2/out/shots/s25o_ac3_s2_v4_y*`: villages drawn to the limb with the culls on), the realms and the meteor/drought shots (`s25o_*`, not yet looked at).
 
+### Verified at the handoff (~17:55)
+- **Main's tip c47e9a3** built headless (`$N/bin_m13`): SaveStreamTests 3, SaveLoad 8, DeterminismTests 7, HistoryBookTests 5 - 0 failed, 0 skipped (the core
+  changed by the streamed save after main's last full suite 473/0/0 on 9d3c1c2; a full suite on main is still due - queue one before the next landing).
+- **Web `s25web6` 8/8** was built from d7e41e2 (all main's Game code but docs since); the frame pass is covered by it and by the shots `s25o_ac3_s2_v4_y*`.
+- **Still running at the handoff: `0_ze_rain_rn1`** (from 17:43): build, floatcheck clean, cc 0 errors, PowersTests 7, DiseaseTests 7, BurnTests 2,
+  HistoryBookTests 5 - all 0 failed; its remaining classes and the uncast control (= `_pv1` byte for byte) were running. The runner stops after it (`$Q/stop`).
+- **Control Room's stale verifications, reviewed**: older milestones whose files changed since - `WorldObjectsView.cs` (the frame pass: compiled, Web 8/8,
+  shots), `c81_design.md` (the war and siege notes appended: notes only), `make_c36g.sh` (a job generator; C3.6g landed and main's suites passed since) - none
+  is a code change left unverified.
+
 ### Next, in order
 1. Read `0_ze`'s log; land rain (sim 99). Restart the queue for the harrying (`0_zf_*`), land it (sim 100), D2-180; then C11.1b (sim 101), D2-181.
 2. Look at the realms shot (the war spears edged pale) and the meteor and drought shots; judge `shadowlite` (x1.21 at the region view) in real shots.

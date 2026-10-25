@@ -27,6 +27,11 @@ then god powers and player-facing gameplay.
   rain's checks `0_ze`; restart it for the harrying) and "Next, in order". First: read `0_ze`'s log and land rain (sim 99), then the harrying (100), then
   C11.1b (101); D2-180 and D2-181 (drafts in `tc2/out/tools/s25/`). Then the realms and powers shots, `shadowlite` judged in shots, the frame pass on
   (buildings), the memory pass on (the history ledger), the acceptance's seed 7.
+- **At the handoff (~17:55)**: main c47e9a3 verified (save, determinism and book classes 0 failed; a full suite on main is due before the next landing - the
+  streamed save changed the core after the last one). **`0_ze_rain_rn1` was still running** (its classes so far 0 failed; then the uncast control) - read
+  `$Q/log/0_ze_rain_rn1.log` first; the runner stops after it (`$Q/stop` set; restart: `rm $Q/stop`, `bash tc2/out/tools/s23/runq.sh` in the background).
+  Claude Code stopped this session's background waiters for low memory (RAM 87-88 % with a Web build): watch the queue in the foreground when memory is short.
+  No server or watcher of this session is left running.
 - **On main (728bd0e, sim 98, no sim change)**: a save streamed both ways (the heap -243 MB at year 1,000), the reload test fixed (it read a stale saveOk - the harness, not the game), the frame pass (people beyond the limb or outside the view unposed; villages beyond the limb unbuilt), the
   reload fault fixed (`SaveNow` unsets `saveOk` while a save is in flight), the power's aim only over open ground, the Web test closing the pages before it
   aims; the .meta files Unity made (sounds, Hud.Powers, Hud.Title, AudioView).
