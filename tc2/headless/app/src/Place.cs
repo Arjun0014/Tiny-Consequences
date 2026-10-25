@@ -652,6 +652,70 @@ namespace TC2.Headless
                 if (pal == tp || pal == (tp + 1) % 8 || pal == (tp + 2) % 8) shadeWay++;
             }
             Console.WriteLine("  buildings with a recorded form " + houses + ": the roof form their village's way " + P(asWay, houses) + ", the shade within its way's three " + P(shadeWay, houses));
+            // (C11.1b) the ways the households carry: within each village, and across the realms
+            int hhN = 0, asFounders = 0, asHead = 0, withHead = 0, mixed = 0, villagesN = 0;
+            foreach (int sid in ids)
+            {
+                ref var s = ref w.Settlements.Get(sid);
+                var hl = w.HouseholdsOf(sid);
+                if (hl.Count == 0) continue;
+                villagesN++;
+                int hw = s.HeadHh != 0 && w.Households.Exists(s.HeadHh) ? TC2.Core.Places.Architecture.WayOf(w, s.HeadHh, in s) : 0;
+                int first = TC2.Core.Places.Architecture.WayOf(w, hl[0], in s);
+                bool more = false;
+                for (int i = 0; i < hl.Count; i++)
+                {
+                    int way = TC2.Core.Places.Architecture.WayOf(w, hl[i], in s);
+                    hhN++;
+                    if (TC2.Core.Places.Architecture.Alike(way, s.Tradition)) asFounders++;
+                    if (hw != 0) { withHead++; if (TC2.Core.Places.Architecture.Alike(way, hw)) asHead++; }
+                    if (!TC2.Core.Places.Architecture.Alike(way, first)) more = true;
+                }
+                if (more) mixed++;
+            }
+            Console.WriteLine("  households " + hhN + ": building as their village's founders did " + P(asFounders, hhN) + ", as its first household builds " + P(asHead, withHead) +
+                              "; villages whose households build more than one way " + mixed + " of " + villagesN);
+            int trib = 0, tribAsLord = 0, free = 0, freeAsNear = 0;
+            foreach (int sid in ids)
+            {
+                ref var s = ref w.Settlements.Get(sid);
+                if (s.HeadHh == 0 || !w.Households.Exists(s.HeadHh)) continue;
+                int mine = TC2.Core.Places.Architecture.WayOf(w, s.HeadHh, in s);
+                if (s.Lord != 0 && w.Settlements.Exists(s.Lord) && w.Settlements.Get(s.Lord).HeadHh != 0 && w.Households.Exists(w.Settlements.Get(s.Lord).HeadHh))
+                {
+                    ref var l = ref w.Settlements.Get(s.Lord);
+                    trib++; if (TC2.Core.Places.Architecture.Alike(mine, TC2.Core.Places.Architecture.WayOf(w, l.HeadHh, in l))) tribAsLord++;
+                    continue;
+                }
+                if (s.Lord != 0) continue;
+                // (the baseline: a free village's first household against its nearest neighbour's)
+                int nearest = 0; double nd = double.MaxValue;
+                foreach (int o in ids)
+                {
+                    if (o == sid || w.Settlements.Get(o).HeadHh == 0 || !w.Households.Exists(w.Settlements.Get(o).HeadHh)) continue;
+                    double dn = Vec3d.ArcDistance(s.Anchor, w.Settlements.Get(o).Anchor, w.Planet.Radius);
+                    if (dn < nd) { nd = dn; nearest = o; }
+                }
+                if (nearest == 0) continue;
+                ref var ns = ref w.Settlements.Get(nearest);
+                free++; if (TC2.Core.Places.Architecture.Alike(mine, TC2.Core.Places.Architecture.WayOf(w, ns.HeadHh, in ns))) freeAsNear++;
+            }
+            Console.WriteLine("  first households: of tributaries " + trib + ", building as their lord's first household " + P(tribAsLord, trib) + "; of free villages " + free +
+                              ", as their nearest neighbour's " + P(freeAsNear, free));
+            // the houses standing by the century they were raised: roofed as their village's founders built
+            var byC = new SortedDictionary<int, (int n, int asF)>();
+            for (int b = w.Buildings.First(); b != 0; b = w.Buildings.Next(b))
+            {
+                ref var bb = ref w.Buildings.Get(b);
+                if (!TC2.Core.Places.Architecture.Has(bb.Form) || !TC2.Core.Places.Structures.IsHome(bb.Kind) || bb.Settlement == 0 || !w.Settlements.Exists(bb.Settlement)) continue;
+                int cen = (int)(bb.Built / SimTime.Year / 100);
+                byC.TryGetValue(cen, out var e);
+                bool f = TC2.Core.Places.Architecture.RoofOf(bb.Form) == TC2.Core.Places.Architecture.TraditionRoof(w.Settlements.Get(bb.Settlement).Tradition);
+                byC[cen] = (e.n + 1, e.asF + (f ? 1 : 0));
+            }
+            var parts = new List<string>();
+            foreach (var kv in byC) parts.Add((kv.Key * 100) + "s " + kv.Value.n + " (" + P(kv.Value.asF, kv.Value.n) + ")");
+            Console.WriteLine("  homes standing by the century raised (roofed as their village's founders built): " + string.Join(", ", parts.ToArray()));
         }
 
         /// <summary>

@@ -785,6 +785,14 @@ namespace TC2.Game
                 else sb.Append("standing empty").Append(b.Last != 0 ? "; the " + TC2.Core.History.HistoryText.Plural(w.History.NameOf(EntityRef.Household(b.Last))) + " lived in it last" : "").Append('\n');
                 if (b.Style != 0) sb.Append("raised by the ").Append(TC2.Core.History.HistoryText.Plural(w.History.NameOf(EntityRef.Household(b.Style)))).Append("\n");
                 if (Architecture.Has(b.Form) && b.Kind == Structures.House) sb.Append(Architecture.Describe(b.Form, true)).Append(" (").Append(Architecture.Why(b.Form, true)).Append(")\n");   // (how it was built: D2-114)
+                if (Architecture.Has(b.Form) && b.Kind == Structures.House && !Architecture.WaysOff && w.Settlements.Exists(b.Settlement))
+                {
+                    // (C11.1b) its roof's way: its village's founders', or its builders' own - carried from the house they grew up in or the village they came
+                    // from, or taken from the village's first household or a lord's seat (the cold's half-hips are a hipped way under snow)
+                    int founders = Architecture.TraditionRoof(w.Settlements.Get(b.Settlement).Tradition), roof = Architecture.RoofOf(b.Form);
+                    bool asFounders = roof == founders || (roof == Architecture.HalfHip && founders == Architecture.Hipped);
+                    sb.Append(asFounders ? "roofed as its village's founders built\n" : "roofed otherwise than its village's founders built: in its builders' own way\n");
+                }
                 if (b.Kind == Structures.House) sb.Append(b.Mat >= 1 ? "on stone footings (" + b.Stone.ToString("0", CultureInfo.InvariantCulture) + " loads of stone): it stands twice as long once left\n" : "on earth-fast posts: no stone near enough\n");
             }
             else if (w.Settlements.Exists(b.Settlement))

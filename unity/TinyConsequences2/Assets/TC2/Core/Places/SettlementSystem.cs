@@ -66,7 +66,7 @@ namespace TC2.Core.Places
             if (days > 1) Ahead(sid, g0, days);   // (the step's own work reads its store as days lived hold it too: F8)
             prof?.Begin(10002); prof?.Begin(10007); w.Wild.Survey(sid); prof?.End(10007); Boats.Plan(w, sid, days); Carts.Plan(w, sid); prof?.Begin(10008); w.HerdSys.Update(sid); prof?.End(10008); prof?.End(10002);   // the grounds and the herds round it today (D2-042, D2-047)
             if (days > 1) w.Wild.MidStep(sid, w.Stock.MidStepMast(sid, days));   // (DEEP: the woods as the step's middle day finds them)
-            if (doy == Migration.DecideDay) { prof?.Begin(10003); Diagnostics.SizeTally.Year(w, sid); Retire(sid); w.Migration.Weigh(sid); Society.Leaders.Weigh(w, sid); Homes.WeighRebuilding(w, sid); Weaving.Year(w, sid); Forge.Year(w, sid); prof?.End(10003); }   // who leaves (D2-045); who rebuilds (D2-114); another shed (C3.1b)
+            if (doy == Migration.DecideDay) { prof?.Begin(10003); Diagnostics.SizeTally.Year(w, sid); Retire(sid); w.Migration.Weigh(sid); Society.Leaders.Weigh(w, sid); Architecture.Year(w, sid); Homes.WeighRebuilding(w, sid); Weaving.Year(w, sid); Forge.Year(w, sid); prof?.End(10003); }   // who leaves (D2-045); the lord's way copied (C11.1b); who rebuilds (D2-114); another shed (C3.1b)
             if (w.Resolution == Resolution.Coarse) { prof?.Begin(10004); w.Agents.CoarseDay(sid, days); prof?.End(10004); }
             // DEEP: the step's later days grow the crop after its work, as days lived grow each day on the work done before it (grown
             // before the step's weeding, a growing step's days were three-quarters tended - harvests fell and households left: F8)
@@ -1397,6 +1397,7 @@ namespace TC2.Core.Places
             var hh = new Household
             {
                 Id = hid, Settlement = sid, Formed = w.Now, FamilyName = fam, Indoor = (float)Hearth.Comfort,
+                Way = Architecture.WayAtMarriage(w, sid, hid, manHh, w.People.Get(womanId).Household),   // (the groom's house's way, copied now and then: C11.1b)
             };
             w.Households.Add(hid, hh);
             // an empty home in the village if one stands, else a camp on a new lot (D2-059)

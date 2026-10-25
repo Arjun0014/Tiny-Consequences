@@ -1090,6 +1090,8 @@ namespace TC2.Core.Society
             w.DeedBook.Learn(origin, deed, KnownHow.Own);
             // (C8.0) a band that holds the field over blood fires the homes of those who killed its people - the burning-in; the raid weighs that more
             if (outcome == 1 && !BurnOff) { double burnt = BurnIn(bandId, at, origin, ev); if (burnt > 0) w.DeedBook.AddWorth(deed, 0.0, burnt); }
+            // (C8.1a) a band broken on a village's walls harries the fields outside them: the walls guard its people and its store, not its crop
+            if (outcome == 2) { double harried = Harry(at, n, ev); if (harried > 0) w.DeedBook.AddWorth(deed, 0.0, harried); }
             // (what it carries home answers the wrong it went for: its village's own, or the tributary's its lord answered - once: D2-108)
             if (b2.Motive != 0 && loot > 0) w.DeedBook.SettleBy(b2.Motive == 2 && b2.For != 0 ? b2.For : origin, at, loot);
             w.Metrics.Raids++;
@@ -1897,6 +1899,41 @@ namespace TC2.Core.Society
         /// standing [5]; the raided villages' homes standing, summed over the held raids [6]; held raids on walled villages [7]; held raids where the doers'
         /// homes would be all the village's [8]; blood deeds counted [9].</summary>
         public static double[] BurnTally;
+
+        /// <summary>`--oldharry`: no band harries the fields outside the walls that drove it off (before C8.1a), on the same binary.</summary>
+        public static bool HarryOff;
+        /// <summary>(C8.1a) The share of a standing crop each of a band's people burns or tramples as it goes (and the most a band takes).</summary>
+        public const double HarryPerRaider = 0.03, HarryMax = 0.6;
+        /// <summary>Tools (ravaging, measured first: `--harrytally`; null in the game): bands driven off [0], by a standing wall [1], with a crop standing [2],
+        /// the crop at stake (FU of the harvest expected) [3], the band's people [4]; harried (the rule on) [5], FU of the harvest burnt [6].</summary>
+        public static double[] HarryTally;
+
+        /// <summary>
+        /// (C8.1a) The harrying: a band broken on a village's standing palisade does not go home with nothing - it fires and tramples the standing crop
+        /// outside the walls as it goes, a share by its numbers (`HarryPerRaider` each, at most `HarryMax`), through the crop's own loss (`CropLoss`, a
+        /// `FieldsHarried` record caused by the raid): the harvest that follows is the smaller, its failure naming the raid. Returns what the harried
+        /// village lost (FU of its expected harvest), by which the raid weighs more against the band's village.
+        /// </summary>
+        double Harry(int at, int n, long raidEv)
+        {
+            var w = _w;
+            ref var t = ref w.Settlements.Get(at);
+            bool walled = t.Wall == 2, standing = t.Crop == Places.CropStage.Sown || t.Crop == Places.CropStage.Growing || t.Crop == Places.CropStage.Ripe;
+            double share = DMath.Min(HarryMax, HarryPerRaider * n);
+            var ht = HarryTally;
+            if (ht != null)
+            {
+                ht[0]++;
+                if (walled) { ht[1]++; if (standing) { ht[2]++; ht[3] += t.ExpectedHarvest; ht[4] += n; } }
+            }
+            if (HarryOff || !walled || !standing || t.ExpectedHarvest <= 0) return 0;
+            double before = t.CropBurnt;
+            w.SettlementSys.CropLoss(at, share, raidEv, HistoryKind.FieldsHarried);
+            ref var t2 = ref w.Settlements.Get(at);
+            double lost = (t2.CropBurnt - before) * t2.ExpectedHarvest;
+            if (ht != null && lost > 0) { ht[5]++; ht[6] += lost; }
+            return lost;
+        }
 
         /// <summary>`--oldburn`: no band fires a home (before C8.0), on the same binary.</summary>
         public static bool BurnOff;
