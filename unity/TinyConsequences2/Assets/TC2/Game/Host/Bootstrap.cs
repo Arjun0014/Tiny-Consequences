@@ -23,6 +23,7 @@ namespace TC2.Game
             cam.fieldOfView = 45f;
             cam.allowHDR = true;
             camGo.tag = "MainCamera";
+            camGo.AddComponent<AudioListener>();   // (the world's sound is heard at the camera: F10.1)
             var camData = camGo.GetComponent<UniversalAdditionalCameraData>() ?? camGo.AddComponent<UniversalAdditionalCameraData>();
             camData.renderShadows = true;
             camData.antialiasing = AntialiasingMode.SubpixelMorphologicalAntiAliasing;
@@ -66,6 +67,8 @@ namespace TC2.Game
             stock.Host = host; stock.Rig = rig;
             var sea = views.AddComponent<SeaLifeView>();
             sea.Host = host; sea.Rig = rig;
+            var audio = views.AddComponent<AudioView>();   // (the world's sound, an observer: F10.1)
+            audio.Host = host; audio.Rig = rig;
             var realms = views.AddComponent<RealmsView>();   // (the realms map layer, D2-167: off until the HUD's Realms or R)
             realms.Host = host; realms.Rig = rig;
 
