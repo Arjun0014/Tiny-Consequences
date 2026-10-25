@@ -136,7 +136,19 @@ namespace TC2.Core.Simulation
         public static Budget Events(long n) => new Budget { MaxEvents = n };
     }
 
-    public enum CommandKind : byte { None = 0, GodLightning = 1, Note = 2, SetResolution = 3, GodEruption = 4, GodQuake = 5, GodStorm = 6, SetStepDays = 7, GodPlague = 8, GodBlight = 9 }
+    public enum CommandKind : byte { None = 0, GodLightning = 1, Note = 2, SetResolution = 3, GodEruption = 4, GodQuake = 5, GodStorm = 6, SetStepDays = 7, GodPlague = 8, GodBlight = 9, GodMeteor = 10, GodDrought = 11 }
+
+    /// <summary>(F9.4) A god's drought: rain withheld from the land round a place until a time. State: saved (hashed while one is held).</summary>
+    public struct DrySpell
+    {
+        public int Cell;          // the place
+        public double Reach;      // m round it
+        public long Until;        // the rain comes back
+        public long Event;        // the drought's record
+        public void Write(BinWriter w) { w.Int(Cell); w.Double(Reach); w.Long(Until); w.Long(Event); }
+        public static DrySpell Read(BinReader r) => new DrySpell { Cell = r.Int(), Reach = r.Double(), Until = r.Long(), Event = r.Long() };
+        public void Hash(ref StateHasher h) { h.Add(Cell); h.Add(Reach); h.Add(Until); h.Add(Event); }
+    }
 
     /// <summary>How people are simulated (04 §4): every activity, or households by the day (deep time).</summary>
     public enum Resolution : byte { Activity = 0, Coarse = 1 }
@@ -166,7 +178,7 @@ namespace TC2.Core.Simulation
     /// </summary>
     public sealed class World
     {
-        public const int FormatSimVersion = 97; // 97: the god's sickness and blight - two powers that act through the world's own systems, a pestilence breaking out in a village and a blight on its standing crop, each rooted in the cast (F9.3), 96: the burning-in - a band that holds the field fires the homes of the raided village's people who killed people of the village whose wrong it went for; the vengeance answers the killing (C8.0), 95: the land between villages - leavers who find no free good place known and no village to join go together, enough to make one, to found a daughter village on their own village's margins, its houses beyond every village's fields (C3.6g), 94: a people's tongue - each village's people speak as its founders did, a sound changed now and then; places, families and the born are named in it (C11.1a, D2-175), 93: the lord's peace - villages of one realm raise no bands against each other; a claim for blood between them is judged by their common lord, whose judgment binds the doers where it is no weaker (C10.10, D2-174), 92: the lord's death - when the one first among a lord village's people dies, the bonds for peace made with that village lapse; its tributaries owe the heir nothing until it has won them again by asking; bonds for bread stand (C10.9, D2-173), 91: the asking - a free village is asked a tenth at its harvest by its nearest stronger neighbour whose first among the people keeps sworn men: it bows where its people could neither stand against them nor go elsewhere, else the refusal is a wrong the asker holds (C10.8, D2-168), 90: people across water - a COARSE day's visits, the sickness and news they carry and the ways they wear go only to neighbours a way on foot joins, as lived visitors walk one (C9.5c, D2-166), 89: sworn men - a village's first household whose grain runs years beyond its needs keeps young men of its village sworn to it, a year's food each at its harvest; they practise arms every day and go with every band (C10.7b, D2-165), 88: a lordship's might by lasting strength - villages weigh each other's people of fighting age by their years, tools and arms and fighting skill, not by heads (C10.7a, D2-164), 87: a boat to cross - a village whose neighbours across the water are worth reaching makes a boat for that, and a dugout carries a load across a short water (C9.5b), 86: grain across water goes by boat - within a day's walk grain moves at once only where a way on foot joins two villages, and traders walk only along one; relief, grain given back and the lord's tenth cross water in boats (the lord's come for the tenth where its tributary has none) or not at all (C9.5a), 85: tribute carried - the lord's tenth set aside at the tributary's harvest and carried to its store by its people (C10.6, D2-161), 84: the ways' woods - routes worked out from the woods as they stood at the last turn of the plates, so a route built late, after a load or first for the view is the same (D2-160), 83: a lordship's might - villages weigh each other by their people of fighting age and the men a lord's call brings, not the day's fit at home (C10.5, D2-159), 82: bread and dependence - a village bows to the neighbour whose famine grain it cannot give back; tribute gives the relief back, a lord feeds its own (C10.4, D2-157), 81: walks on foot round the water - a lived walk bends round a lake or a bay across its way, the woods by the way their cutters walk, crofts and the well's and the idle's spots out of the water (D2-156), 80: the herds on the stubble and the fallow - their day's dung on the fields (C3.7d, D2-155), 79: the muck - the herds' night dung in the yards, carted out to the fields (C3.7c, D2-153), 78: the burial ground - the dead buried where they lived, their graves fresh and sinking (D2-151), 77: the threshing floor - the harvest held in the sheaf until its people thresh it (C3.7b); the woods remember their felling (W-FELL), 76: the household's garden - its croft dug, weeded and gathered (C3.7a), 75: the household's niche - a couple marries when its land and hands keep it, or its grain carries the shortfall (C3.5b, D2-140), 74: the soil - the fields tire, rest and the herds' dung give back (C3.6f, D2-139), 73: a headman gone to live in another household of the village stays first; clients follow the household that took theirs in (D2-138), 72: a founding party joins a village standing at its place; a way of no length arrives where it goes (D2-137), 71: the old hand on their holding for their keep (C3.6e, D2-136), 70: each household weighs leaving by its own land (C3.6d, D2-135), 69: the harvest shared by land and labour (C3.6c, D2-134), 68: each household holds land - founding shares, portions, the last out, heirs, land taken up (C3.6b, D2-133), 67: the harvest's grain comes into the store as it is reaped (the hungry gap, D2-132), 66: villages work their land harder where it is short of their want (C3.6, D2-131), 65: a couple marries when it can keep a household to the next harvest (C3.5, D2-129), 64: a contested succession splits a village (C10.3, D2-128), 63: the village's first household and its headman (C10.2, D2-127), 62: the household's grain and what households owe (C3.3, D2-126), 61: the village smith - a smithy's four places, a smith's practice (C1.4b, D2-125), 60: carts (C4.2, D2-122), 59: the potter's kiln, jars and hearths' pots of real clay; clay by the ground's shape (C3.2, D2-121), 58: more weaver's sheds where a town's makers cannot keep up (C3.1b, D2-120), 57: the weaver's shed and the village's wares (C3.1, D2-119), 56: footprints, a town's divided core, the market place (C13.3, D2-118), 55: streets (C13.1, D2-116), 54: how buildings are built, building traditions (D2-114), 53: relief owed back, social storage (C9.3, D2-113), 52: trade by sea (C9.3, D2-113), 51: boats of planks, the boat shed (C9.2b, D2-112), 50: the landing and the crew (C9.2a, D2-111), 49: boats from the woods (C9.1, D2-110), 48: the lord answers for its tributaries (D2-108), 47: the lord's call (C10.1, D2-107), 46: whose ore (C5.4, D2-105), 45: iron traded, made for buyers (C5.3b, D2-104), 44: places by their ore (C5.3, D2-103), 43: bog iron and the bloomery (C5.2b, D2-102), 42: charcoal (C5.2a, D2-101), 41: copper ore bodies and mines (C5.1, D2-100), 40: rings that grow (C7.1, D2-098), 39: ways worn by use (C4.1, D2-097), 38: markets, rings on dry ground (C1.6, D2-095), 37: training grounds and fighting skill (C1.5, D2-094), 36: the smithy and arms (C1.4, D2-093), 35: stone and the quarry (C1.3, D2-092), 34: timber from the woods (C1.2, D2-091), 33: structures by kind, works by need, granary capacity (C1.1, D2-090), 32: the store a DEEP step leads (F8), 31: DEEP steps (F8), 30: the annals (D2-077), 29: tribute and lordship (D2-075), 28: palisades (D2-074), 27: raids (D2-073), 26: amends, news and taking back (D2-072), 25: the watch, blows and injury (D2-071), 24: sickness at scale (D2-070), 23: deeds and taking (D2-069), 22: trade and relief (D2-067), 21: sickness (D2-066), 20: metal (D2-064), 19: materials and two more techniques (D2-063), 18: techniques carried by people (D2-062), 17: homes standing on their own (D2-059), 16: goods made and mended (D2-058), 15: the household's work and warmth (D2-056), 14: tending (D2-050), 13: herds near people, livestock (D2-047, D2-048), 12: building, knowing places, parties (D2-045), 11: relief, ice and animal densities (D2-043, D2-044), 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032), 5: wildlife (D2-035), 6: ice-aware weathering (D2-036), 7: evolution (D2-037), 8: crag fare (D2-038), 9: the sea's life (D2-039), 10: wild food, body reserves, famine memory (D2-042)
+        public const int FormatSimVersion = 98; // 98: the god's meteor and drought - a strike from the sky that flattens, kills, burns and shakes round its place; the rain withheld from a land for a summer (F9.4), 97: the god's sickness and blight - two powers that act through the world's own systems, a pestilence breaking out in a village and a blight on its standing crop, each rooted in the cast (F9.3), 96: the burning-in - a band that holds the field fires the homes of the raided village's people who killed people of the village whose wrong it went for; the vengeance answers the killing (C8.0), 95: the land between villages - leavers who find no free good place known and no village to join go together, enough to make one, to found a daughter village on their own village's margins, its houses beyond every village's fields (C3.6g), 94: a people's tongue - each village's people speak as its founders did, a sound changed now and then; places, families and the born are named in it (C11.1a, D2-175), 93: the lord's peace - villages of one realm raise no bands against each other; a claim for blood between them is judged by their common lord, whose judgment binds the doers where it is no weaker (C10.10, D2-174), 92: the lord's death - when the one first among a lord village's people dies, the bonds for peace made with that village lapse; its tributaries owe the heir nothing until it has won them again by asking; bonds for bread stand (C10.9, D2-173), 91: the asking - a free village is asked a tenth at its harvest by its nearest stronger neighbour whose first among the people keeps sworn men: it bows where its people could neither stand against them nor go elsewhere, else the refusal is a wrong the asker holds (C10.8, D2-168), 90: people across water - a COARSE day's visits, the sickness and news they carry and the ways they wear go only to neighbours a way on foot joins, as lived visitors walk one (C9.5c, D2-166), 89: sworn men - a village's first household whose grain runs years beyond its needs keeps young men of its village sworn to it, a year's food each at its harvest; they practise arms every day and go with every band (C10.7b, D2-165), 88: a lordship's might by lasting strength - villages weigh each other's people of fighting age by their years, tools and arms and fighting skill, not by heads (C10.7a, D2-164), 87: a boat to cross - a village whose neighbours across the water are worth reaching makes a boat for that, and a dugout carries a load across a short water (C9.5b), 86: grain across water goes by boat - within a day's walk grain moves at once only where a way on foot joins two villages, and traders walk only along one; relief, grain given back and the lord's tenth cross water in boats (the lord's come for the tenth where its tributary has none) or not at all (C9.5a), 85: tribute carried - the lord's tenth set aside at the tributary's harvest and carried to its store by its people (C10.6, D2-161), 84: the ways' woods - routes worked out from the woods as they stood at the last turn of the plates, so a route built late, after a load or first for the view is the same (D2-160), 83: a lordship's might - villages weigh each other by their people of fighting age and the men a lord's call brings, not the day's fit at home (C10.5, D2-159), 82: bread and dependence - a village bows to the neighbour whose famine grain it cannot give back; tribute gives the relief back, a lord feeds its own (C10.4, D2-157), 81: walks on foot round the water - a lived walk bends round a lake or a bay across its way, the woods by the way their cutters walk, crofts and the well's and the idle's spots out of the water (D2-156), 80: the herds on the stubble and the fallow - their day's dung on the fields (C3.7d, D2-155), 79: the muck - the herds' night dung in the yards, carted out to the fields (C3.7c, D2-153), 78: the burial ground - the dead buried where they lived, their graves fresh and sinking (D2-151), 77: the threshing floor - the harvest held in the sheaf until its people thresh it (C3.7b); the woods remember their felling (W-FELL), 76: the household's garden - its croft dug, weeded and gathered (C3.7a), 75: the household's niche - a couple marries when its land and hands keep it, or its grain carries the shortfall (C3.5b, D2-140), 74: the soil - the fields tire, rest and the herds' dung give back (C3.6f, D2-139), 73: a headman gone to live in another household of the village stays first; clients follow the household that took theirs in (D2-138), 72: a founding party joins a village standing at its place; a way of no length arrives where it goes (D2-137), 71: the old hand on their holding for their keep (C3.6e, D2-136), 70: each household weighs leaving by its own land (C3.6d, D2-135), 69: the harvest shared by land and labour (C3.6c, D2-134), 68: each household holds land - founding shares, portions, the last out, heirs, land taken up (C3.6b, D2-133), 67: the harvest's grain comes into the store as it is reaped (the hungry gap, D2-132), 66: villages work their land harder where it is short of their want (C3.6, D2-131), 65: a couple marries when it can keep a household to the next harvest (C3.5, D2-129), 64: a contested succession splits a village (C10.3, D2-128), 63: the village's first household and its headman (C10.2, D2-127), 62: the household's grain and what households owe (C3.3, D2-126), 61: the village smith - a smithy's four places, a smith's practice (C1.4b, D2-125), 60: carts (C4.2, D2-122), 59: the potter's kiln, jars and hearths' pots of real clay; clay by the ground's shape (C3.2, D2-121), 58: more weaver's sheds where a town's makers cannot keep up (C3.1b, D2-120), 57: the weaver's shed and the village's wares (C3.1, D2-119), 56: footprints, a town's divided core, the market place (C13.3, D2-118), 55: streets (C13.1, D2-116), 54: how buildings are built, building traditions (D2-114), 53: relief owed back, social storage (C9.3, D2-113), 52: trade by sea (C9.3, D2-113), 51: boats of planks, the boat shed (C9.2b, D2-112), 50: the landing and the crew (C9.2a, D2-111), 49: boats from the woods (C9.1, D2-110), 48: the lord answers for its tributaries (D2-108), 47: the lord's call (C10.1, D2-107), 46: whose ore (C5.4, D2-105), 45: iron traded, made for buyers (C5.3b, D2-104), 44: places by their ore (C5.3, D2-103), 43: bog iron and the bloomery (C5.2b, D2-102), 42: charcoal (C5.2a, D2-101), 41: copper ore bodies and mines (C5.1, D2-100), 40: rings that grow (C7.1, D2-098), 39: ways worn by use (C4.1, D2-097), 38: markets, rings on dry ground (C1.6, D2-095), 37: training grounds and fighting skill (C1.5, D2-094), 36: the smithy and arms (C1.4, D2-093), 35: stone and the quarry (C1.3, D2-092), 34: timber from the woods (C1.2, D2-091), 33: structures by kind, works by need, granary capacity (C1.1, D2-090), 32: the store a DEEP step leads (F8), 31: DEEP steps (F8), 30: the annals (D2-077), 29: tribute and lordship (D2-075), 28: palisades (D2-074), 27: raids (D2-073), 26: amends, news and taking back (D2-072), 25: the watch, blows and injury (D2-071), 24: sickness at scale (D2-070), 23: deeds and taking (D2-069), 22: trade and relief (D2-067), 21: sickness (D2-066), 20: metal (D2-064), 19: materials and two more techniques (D2-063), 18: techniques carried by people (D2-062), 17: homes standing on their own (D2-059), 16: goods made and mended (D2-058), 15: the household's work and warmth (D2-056), 14: tending (D2-050), 13: herds near people, livestock (D2-047, D2-048), 12: building, knowing places, parties (D2-045), 11: relief, ice and animal densities (D2-043, D2-044), 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032), 5: wildlife (D2-035), 6: ice-aware weathering (D2-036), 7: evolution (D2-037), 8: crag fare (D2-038), 9: the sea's life (D2-039), 10: wild food, body reserves, famine memory (D2-042)
 
         public WorldConfig Config;
         public ulong Seed => Config.Seed;
@@ -212,6 +224,8 @@ namespace TC2.Core.Simulation
         public readonly Places.Deposits Deposits = new Places.Deposits();   // the ore bodies people have seen (C5.1)
         public readonly TC2.Core.History.Annals Annals = new TC2.Core.History.Annals();   // each year in numbers, for historians (D2-077)
         public readonly List<Command> CommandLog = new List<Command>();
+        /// <summary>(F9.4) The god's droughts held over the land now (rain withheld under each until its time).</summary>
+        public readonly List<DrySpell> DrySpells = new List<DrySpell>();
         public readonly Metrics Metrics = new Metrics();
         public ISimProfiler Profiler;
 
@@ -317,6 +331,80 @@ namespace TC2.Core.Simulation
             if (_cellSettlement[s.Cell] == sid) _cellSettlement[s.Cell] = 0;
             if (s.FieldCell >= 0 && _cellSettlement[s.FieldCell] == sid) _cellSettlement[s.FieldCell] = 0;
         }
+
+        /// <summary>(F9.4) A god's drought: how far round the place the rain is withheld (m) and for how many days (a third of the year: a summer).</summary>
+        public const double DroughtReach = 4000.0;
+        public const int DroughtDays = 16;
+        /// <summary>(F9.4) A meteor: what its blast flattens (m), within which those at home die, and the strength of the fire it lights.</summary>
+        public const double BlastM = 140.0, KillM = 70.0, MeteorFire = 4.0;
+
+        /// <summary>Whether the god's drought withholds the rain from a cell today (any spell held over it).</summary>
+        public bool RainWithheld(int cell)
+        {
+            if (DrySpells.Count == 0) return false;
+            Vec3d p = Planet.Grid.Center[cell];
+            for (int i = 0; i < DrySpells.Count; i++)
+                if (Now < DrySpells[i].Until && Vec3d.ArcDistance(p, Planet.Grid.Center[DrySpells[i].Cell], Planet.Radius) <= DrySpells[i].Reach) return true;
+            return false;
+        }
+
+        /// <summary>(F9.4) The god's droughts whose time is past are let go (the weather's day).</summary>
+        public void EndDrySpells() { for (int i = DrySpells.Count - 1; i >= 0; i--) if (Now >= DrySpells[i].Until) DrySpells.RemoveAt(i); }
+
+        /// <summary>
+        /// (F9.4) A meteor strikes a place: its blast flattens every building within `BlastM` (homes fall and their households go to an empty home or
+        /// a camp; works are lost), those at home within `KillM` die and the rest of its homes' people are hurt; it lights a fire where it falls and
+        /// the ground shakes - every consequence rooted in the cast.
+        /// </summary>
+        void Meteor(int cell, long cause)
+        {
+            var P = Planet;
+            Vec3d at = P.Grid.Center[cell];
+            // who and what the blast reaches (found first, so its record holds its counts and is the cause of each)
+            _meteorDie.Clear(); _meteorHurt.Clear(); _meteorFall.Clear();
+            for (int sid = Settlements.First(); sid != 0; sid = Settlements.Next(sid))
+            {
+                ref var s = ref Settlements.Get(sid);
+                if (!s.Inhabited || Vec3d.ArcDistance(at, s.Anchor, P.Radius) > BlastM + 1000.0) continue;
+                var res = Residents(sid);
+                for (int i = 0; i < res.Count; i++)
+                {
+                    ref var p = ref People.Get(res[i]);
+                    if (!p.Alive || p.At != sid || !Households.Exists(p.Household)) continue;
+                    ref var hh = ref Households.Get(p.Household);
+                    double d = Vec3d.ArcDistance(at, s.LocalToSphere(hh.HomeX, hh.HomeY, P.Radius), P.Radius);
+                    if (d < KillM) _meteorDie.Add(res[i]); else if (d < BlastM) _meteorHurt.Add(res[i]);
+                }
+                var bl = BuildingsOf(sid);
+                for (int i = 0; i < bl.Count; i++)
+                {
+                    ref var b = ref Buildings.Get(bl[i]);
+                    if (Places.Homes.Fallen(in b, Now) || Places.Boats.IsBoat(b.Kind)) continue;
+                    if (Vec3d.ArcDistance(at, s.LocalToSphere(b.X, b.Y, P.Radius), P.Radius) < BlastM) _meteorFall.Add(bl[i]);
+                }
+            }
+            long ev = Record(new HistoryEvent
+            {
+                Kind = HistoryKind.MeteorStruck, Time = Now, Cell = cell, Settlement = VillageNear(cell, BlastM + 1000.0), Cause1 = cause, Rel1 = CauseRel.CausedBy,
+                ArgA = _meteorFall.Count, ArgB = _meteorDie.Count, RootKind = RootKind.You,
+            });
+            for (int i = 0; i < _meteorDie.Count; i++) { ref var p = ref People.Get(_meteorDie[i]); if (p.Alive) Agents.Kill(ref p, ev, 14); }
+            for (int i = 0; i < _meteorHurt.Count; i++) { ref var p = ref People.Get(_meteorHurt[i]); if (p.Alive) p.Hurt = (float)DMath.Max(p.Hurt, 0.5); }
+            for (int i = 0; i < _meteorFall.Count; i++)
+            {
+                int bid = _meteorFall[i];
+                if (!Buildings.Exists(bid)) continue;
+                ref var b = ref Buildings.Get(bid);
+                if (Places.Structures.IsHome(b.Kind) && b.Household != 0 && Households.Exists(b.Household) && Households.Get(b.Household).Building == bid) { Places.Homes.Burnt(this, b.Household); continue; }
+                ref var b2 = ref Buildings.Get(bid);
+                b2.Household = 0; b2.Left = Now - DMath.ToLong(Places.Homes.FallYears(in b2) * SimTime.Year) - 1;   // (fallen at once)
+                if (!Places.Structures.IsHome(b2.Kind)) Places.Structures.Lost(this, bid);
+            }
+            Fx.Add(Now, cell, FxKind.Stone, _meteorFall.Count);   // (for the view: the stone falling, the flash, the dust)
+            Fire.TryIgnite(this, cell, ev, RootKind.You, MeteorFire);
+            GodQuake(cell, ev, 5);
+        }
+        readonly List<int> _meteorDie = new List<int>(), _meteorHurt = new List<int>(), _meteorFall = new List<int>();
 
         /// <summary>(F9.3) How far from the place a god's plague or blight reaches (m): a village within a walk of it.</summary>
         public const double GodReach = 2500.0;
@@ -467,6 +555,27 @@ namespace TC2.Core.Simulation
                         {
                             ref var s = ref Settlements.Get(sid);
                             if (s.Inhabited && Vec3d.ArcDistance(at, s.Anchor, Planet.Radius) <= GodReach) SettlementSys.CropLoss(sid, BlightShare, ev, HistoryKind.CropsBlighted);
+                        }
+                        break;
+                    }
+                case CommandKind.GodMeteor:
+                    {
+                        long ev = Record(new HistoryEvent { Kind = HistoryKind.GodCommand, Time = Now, Cell = c.Cell, Settlement = SettlementAtCell(c.Cell), RootKind = RootKind.You, ArgA = (int)c.Kind });
+                        Meteor(c.Cell, ev);
+                        break;
+                    }
+                case CommandKind.GodDrought:
+                    {
+                        // (F9.4) the rain withheld from the land round the place for a season: the soil dries, the crops wilt and the woods and fields
+                        // take fire more readily, as the weather's own droughts do; the crops standing there name the drought as their harm
+                        long ev = Record(new HistoryEvent { Kind = HistoryKind.GodCommand, Time = Now, Cell = c.Cell, Settlement = VillageNear(c.Cell, GodReach), RootKind = RootKind.You, ArgA = (int)c.Kind });
+                        long dev = Record(new HistoryEvent { Kind = HistoryKind.Drought, Time = Now, Cell = c.Cell, Settlement = VillageNear(c.Cell, DroughtReach), Cause1 = ev, Rel1 = CauseRel.CausedBy, ArgA = DroughtDays, RootKind = RootKind.You });
+                        DrySpells.Add(new DrySpell { Cell = c.Cell, Reach = DroughtReach, Until = Now + DroughtDays * SimTime.Day, Event = dev });
+                        Vec3d at = Planet.Grid.Center[c.Cell];
+                        for (int sid = Settlements.First(); sid != 0; sid = Settlements.Next(sid))
+                        {
+                            ref var s = ref Settlements.Get(sid);
+                            if (s.Inhabited && s.CropCause == 0 && Vec3d.ArcDistance(at, s.Anchor, Planet.Radius) <= DroughtReach) s.CropCause = dev;
                         }
                         break;
                     }
@@ -1133,6 +1242,7 @@ namespace TC2.Core.Simulation
             Metrics.Lightning++;
             long strike = Record(new HistoryEvent { Kind = HistoryKind.LightningStrike, Time = Now, Cell = cell, Settlement = SettlementAtCell(cell), Cause1 = cause, Rel1 = CauseRel.CausedBy, RootKind = root });
             Fire.TryIgnite(this, cell, strike, root, strength);
+            Fx.Add(Now, cell, FxKind.Bolt, (float)strength);   // (for the view: the bolt)
         }
 
         // ------------------------------------------------------------- time
@@ -1370,6 +1480,7 @@ namespace TC2.Core.Simulation
             Deposits.Write(w);
             History.Write(w);
             w.Int(CommandLog.Count); for (int i = 0; i < CommandLog.Count; i++) CommandLog[i].Write(w);
+            w.Int(DrySpells.Count); for (int i = 0; i < DrySpells.Count; i++) DrySpells[i].Write(w);   // (F9.4, sim version 98)
             Metrics.Write(w);
             Annals.Write(w);
             Holdings.Write(w);   // (C3.3, sim version 62)
@@ -1411,6 +1522,7 @@ namespace TC2.Core.Simulation
             w.Bands.SetMaxId(w.Ids.Peek(EntityKind.Band) - 1);
             w.History.Read(r);
             int nc = r.Int(); for (int i = 0; i < nc; i++) w.CommandLog.Add(Command.Read(r));
+            int nds = r.Int(); for (int i = 0; i < nds; i++) w.DrySpells.Add(DrySpell.Read(r));
             w.Metrics.Read(r);
             w.Annals.Read(r);
             w.Holdings.Read(r);
@@ -1445,6 +1557,7 @@ namespace TC2.Core.Simulation
             Deposits.Hash(ref h);
             History.Hash(ref h);
             h.Add(CommandLog.Count); for (int i = 0; i < CommandLog.Count; i++) CommandLog[i].Hash(ref h);
+            if (DrySpells.Count > 0) { h.Add(DrySpells.Count); for (int i = 0; i < DrySpells.Count; i++) DrySpells[i].Hash(ref h); }   // (F9.4: hashed while one is held)
             Annals.Hash(ref h);
             Holdings.Hash(ref h);
             return h.Value;

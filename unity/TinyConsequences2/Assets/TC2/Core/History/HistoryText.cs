@@ -31,7 +31,7 @@ namespace TC2.Core.History
                 case HistoryKind.PersonBorn: return subj + " was born to " + obj + (e.Other.IsNone ? "" : " and " + other) + " in " + place + ".";
                 case HistoryKind.PersonDied:
                     {
-                        string how = e.ArgA == 2 ? " of hunger" : (e.ArgA == 3 ? " in childbirth" : (e.ArgA == 4 ? " in the eruption" : (e.ArgA == 5 ? " when the earthquake brought the house down" : (e.ArgA == 6 ? " in the great wave" : (e.ArgA == 7 ? " in the storm" : (e.ArgA == 8 ? " when the storm drove the sea ashore" : (e.ArgA == 9 ? " of the cold" : (e.ArgA == 10 ? " of " + Sickness(w, e.Cause1) : (e.ArgA == 11 ? " of the wounds of a fight in the night" : (e.ArgA == 12 ? " at sea, when their boat overturned" : ""))))))))));
+                        string how = e.ArgA == 2 ? " of hunger" : (e.ArgA == 3 ? " in childbirth" : (e.ArgA == 4 ? " in the eruption" : (e.ArgA == 5 ? " when the earthquake brought the house down" : (e.ArgA == 6 ? " in the great wave" : (e.ArgA == 7 ? " in the storm" : (e.ArgA == 8 ? " when the storm drove the sea ashore" : (e.ArgA == 9 ? " of the cold" : (e.ArgA == 10 ? " of " + Sickness(w, e.Cause1) : (e.ArgA == 11 ? " of the wounds of a fight in the night" : (e.ArgA == 12 ? " at sea, when their boat overturned" : (e.ArgA == 14 ? " when the stone fell from the sky" : "")))))))))));
                         return subj + " died" + how + " in " + place + ", aged " + F(e.Magnitude, "0") + ".";
                     }
                 case HistoryKind.Marriage: return subj + " and " + obj + " married in " + place + (e.ArgA > 0 ? ", setting up their household with " + Bread(e.ArgA) + " bread of their own" : "") + ".";
@@ -42,6 +42,8 @@ namespace TC2.Core.History
                 case HistoryKind.FireOut: return "The fire near " + place + " burnt out after " + e.ArgA + " hours (" + F(e.Magnitude, "0") + " cells).";
                 case HistoryKind.FieldsBurned: return "The fields of " + subj + " burned.";
                 case HistoryKind.CropsBlighted: return "A blight took the crop of " + subj + ".";
+                case HistoryKind.MeteorStruck: return "A stone fell from the sky " + At(place) + (e.ArgA > 0 || e.ArgB > 0 ? ": " + (e.ArgA > 0 ? e.ArgA + (e.ArgA == 1 ? " building" : " buildings") + " flattened" : "") + (e.ArgA > 0 && e.ArgB > 0 ? ", " : "") + (e.ArgB > 0 ? e.ArgB + (e.ArgB == 1 ? " dead" : " dead") : "") : "") + ".";
+                case HistoryKind.Drought: return "A drought came over the land round " + place + (e.ArgA > 0 ? ": no rain for " + e.ArgA + " days" : "") + ".";
                 case HistoryKind.BuildingBurned:   // (C8.0: a band's burning-in)
                     if (e.Subject.Kind == EntityKind.Household)
                         return "The band from " + obj + " burned the home of the " + Plural(subj) + " in " + place + (e.Other.IsNone ? "" : ", for a killing by " + other) + ".";
@@ -239,6 +241,8 @@ namespace TC2.Core.History
                         case CommandKind.GodEruption: return "You split the earth " + At(place) + ".";
                         case CommandKind.GodPlague: return "You sent a sickness " + At(place) + ".";
                         case CommandKind.GodBlight: return "You blighted the fields " + At(place) + ".";
+                        case CommandKind.GodMeteor: return "You threw down a stone from the sky " + At(place) + ".";
+                        case CommandKind.GodDrought: return "You withheld the rain " + At(place) + ".";
                         default: return "You reached down near " + place + ".";
                     }
                 default: return e.Kind + " at " + place;
