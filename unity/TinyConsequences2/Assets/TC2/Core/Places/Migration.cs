@@ -168,6 +168,7 @@ namespace TC2.Core.Places
             // where kin live, sooner - or stays this year
             _unplaced.Clear();
             int unplacedPeople = 0;
+            if (!MarginsOff) Coming();
             for (int i = 0; i < _leaving.Count; i++)
             {
                 int hid = _leaving[i];
@@ -175,6 +176,7 @@ namespace TC2.Core.Places
                 if (dest == 0) { _unplaced.Add(hid); unplacedPeople += w.Members(hid).Count; continue; }
                 int pid = NewParty(sid, -1, dest);
                 w.Households.Get(hid).Party = pid;
+                if (!MarginsOff) { _coming.TryGetValue(dest, out int n); _coming[dest] = n + w.Members(hid).Count; }
             }
             // (C3.6g) those who found no village to join, enough to make one, go together to the land between villages: the best place on their own
             // village's margins, beyond every village's fields (the record's daughter settlements on the waste between townships)
@@ -188,8 +190,30 @@ namespace TC2.Core.Places
             for (int i = 0; i < _unplaced.Count; i++) w.Households.Get(_unplaced[i]).Party = mp;
         }
 
-        /// <summary>`--oldmargins`: no daughter villages on the margins (before C3.6g), on the same binary.</summary>
+        /// <summary>`--oldmargins`: no daughter villages on the margins, and the land a village has to spare not lessened by those already on their way
+        /// to it (before C3.6g), on the same binary.</summary>
         public static bool MarginsOff;
+
+        // (C3.6g) the people of the households on their way to join each village (gathering or walking): the land they will sow there is not spare
+        // for the next who weigh going - before, every household that weighed on one day saw a new village's free land as its own, and a daughter
+        // village took in five times the people its land could feed. Read from the parties' households each weighing (saved state: nothing kept)
+        readonly Dictionary<int, int> _coming = new Dictionary<int, int>();
+
+        void Coming()
+        {
+            var w = _w;
+            _coming.Clear();
+            if (w.Parties.Count == 0) return;
+            for (int hid = w.Households.First(); hid != 0; hid = w.Households.Next(hid))
+            {
+                ref var hh = ref w.Households.Get(hid);
+                if (hh.Party == 0 || hh.Dissolved != 0 || !w.Parties.Exists(hh.Party)) continue;
+                int dest = w.Parties.Get(hh.Party).Dest;
+                if (dest <= 0) continue;
+                _coming.TryGetValue(dest, out int n);
+                _coming[dest] = n + w.Members(hid).Count;
+            }
+        }
         /// <summary>Tools (null in the game): villages whose leavers, enough to found one, found no village to join and looked to their own margins [0],
         /// those that found a place there [1], the households [2] and people [3] who set out for it.</summary>
         public static double[] MarginTally;
@@ -341,7 +365,9 @@ namespace TC2.Core.Places
                 if (jt != null) jt[1]++;
                 double p = Pressure(in t);
                 if (p > homePressure - 0.1) { if (jt != null) jt[2]++; continue; }
-                double spare = SpareLand(o) - heads * SettlementSystem.HaPerHead(w, in t);   // (what they would sow there, by what its land bears: C3.6f)
+                int coming = 0;
+                if (!MarginsOff) _coming.TryGetValue(o, out coming);   // (and what those already on their way will: C3.6g)
+                double spare = SpareLand(o) - (heads + coming) * SettlementSystem.HaPerHead(w, in t);   // (what they would sow there, by what its land bears: C3.6f)
                 if (spare <= 0) { if (jt != null) jt[3]++; continue; }
                 if (w.Routes.Get(w, sid, o) == null) { if (jt != null) jt[4]++; continue; }
                 if (jt != null) jt[5]++;
@@ -359,7 +385,7 @@ namespace TC2.Core.Places
         public const int JoinTallyN = 9;
 
         /// <summary>Arable hectares within a village's fields' reach that no other village holds, beyond what its people need.</summary>
-        double SpareLand(int sid)
+        public double SpareLand(int sid)   // (public for the tests: C3.6g)
         {
             var w = _w; var P = w.Planet;
             ref var s = ref w.Settlements.Get(sid);

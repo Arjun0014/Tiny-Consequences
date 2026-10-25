@@ -127,6 +127,40 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void JoinersAreCountedAgainstAVillagesSpareLand()
+        {
+            // premise: a famine fresh in one village's mind and no place known to its scouts - its leavers look for villages to join; the others are
+            // not pressed. When the first join parties are gathering, the people bound for each village fit in the land it had to spare for them
+            Migration.MarginsOff = false;
+            var w = TestWorlds.Make(404);
+            int sid = w.Settlements.First();
+            Coarse(w);
+            w.AdvanceTo(w.Now + SimTime.Years(3) + SimTime.Day);
+            bool seen = false;
+            for (int h = 0; h < 24 * 100 && !seen; h++)
+            {
+                if (h % 24 == 0) { ref var s = ref w.Settlements.Get(sid); s.FamineAt = w.Now - SimTime.Day; s.ScoutAt = w.Now; s.Lore = KnownSites.Empty; }
+                w.AdvanceTo(w.Now + SimTime.Hour);
+                var bound = new System.Collections.Generic.Dictionary<int, int>();
+                for (int hid = w.Households.First(); hid != 0; hid = w.Households.Next(hid))
+                {
+                    ref var hh = ref w.Households.Get(hid);
+                    if (hh.Party == 0 || !w.Parties.Exists(hh.Party) || w.Parties.Get(hh.Party).Dest <= 0) continue;
+                    int d = w.Parties.Get(hh.Party).Dest;
+                    bound.TryGetValue(d, out int n); bound[d] = n + w.Members(hid).Count;
+                }
+                if (bound.Count == 0) continue;
+                seen = true;
+                foreach (var kv in bound)
+                {
+                    ref var t = ref w.Settlements.Get(kv.Key);
+                    Assert.Less(kv.Value * SettlementSystem.HaPerHead(w, in t), w.Migration.SpareLand(kv.Key) + 1e-9, "no more people bound for a village than its spare land feeds");
+                }
+            }
+            Assert.IsTrue(seen, "households set out to join villages");
+        }
+
+        [Test]
         public void AMarginSiteKeepsItsRoomAndIsWorthLiving()
         {
             Migration.MarginsOff = false;
