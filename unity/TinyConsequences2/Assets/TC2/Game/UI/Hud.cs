@@ -612,7 +612,7 @@ namespace TC2.Game
             if (legend.Count > shown) GUILayout.Label("and " + (legend.Count - shown) + " more", _small);
             // the wars of the last ten years (dark spearheads toward the raided): how many raids, between how many pairs, and how many pairs of one realm
             if (wars)
-                GUILayout.Label("Dark spears: " + RealmsView.FeudRaids + (RealmsView.FeudRaids == 1 ? " raid" : " raids") + " in the last ten years between " + RealmsView.FeudPairs +
+                GUILayout.Label("Dark spears edged pale: " + RealmsView.FeudRaids + (RealmsView.FeudRaids == 1 ? " raid" : " raids") + " in the last ten years between " + RealmsView.FeudPairs +
                                 (RealmsView.FeudPairs == 1 ? " pair of villages" : " pairs of villages") + (RealmsView.FeudsWithin > 0 ? ", " + RealmsView.FeudsWithin + " of one realm" : ", none of one realm"), _small);
             GUILayout.EndArea();
             return r;

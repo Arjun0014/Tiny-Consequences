@@ -37,6 +37,10 @@ namespace TC2.Game
         /// <summary>The wars shown: raids of the last this many years; their spearheads' ink (sable: a dye no realm takes, D2-167).</summary>
         const double FeudYears = 10.0;
         static readonly Color FeudInk = new Color(0.10f, 0.05f, 0.05f, 1f);
+        /// <summary>(session 25, third context) the spears' pale edge: dark ink alone read weakly on a darker realm's wash (`s25m_s2_y1000r`) - a pale
+        /// edge under the dark core reads on any dye, as heraldry sets a dark charge on a pale field.</summary>
+        static readonly Color FeudEdge = new Color(0.97f, 0.93f, 0.82f, 1f);
+        const float SpearScale = 1.5f;   // (the spears half again the bonds' chevrons: a war reads before a bond)
 
         // each realm village's wash (colour, alpha its strength), by village: read by TerrainLod as it colours the ground
         static readonly Dictionary<int, Color> _wash = new Dictionary<int, Color>();
@@ -280,15 +284,17 @@ namespace TC2.Game
                     float dist = Vector3.Distance(cam, pos);
                     if (dist < NearestM || dist > reach) continue;
                     if (d < 120.0 || d > f.Len - 120.0) continue;
-                    float size = Mathf.Clamp(ChevronK * dist, ChevronMin, ChevronMax) * grow;
+                    float size = Mathf.Clamp(ChevronK * dist, ChevronMin, ChevronMax) * grow * SpearScale;
                     Vector3 up = pos.normalized;
                     Vector3 ahead = PlanetGeo.Surface(P, f.Pts[seg + 1]) - PlanetGeo.Surface(P, f.Pts[seg]);
                     Vector3 fwd = Vector3.ProjectOnPlane(ahead, up);
                     if (fwd.sqrMagnitude < 1e-8f) continue;
                     fwd.Normalize();
                     Vector3 side = Vector3.Cross(up, fwd);
-                    Matrix4x4 m = Matrix4x4.TRS(pos + side * (0.45f * size) + up * (0.2f * size), Quaternion.LookRotation(fwd, up), new Vector3(size, size, size * 1.3f));
-                    _spears.Add(0, FeudInk, m, 0.05f);
+                    var rot = Quaternion.LookRotation(fwd, up);
+                    Vector3 c0 = pos + side * (0.45f * size);
+                    _spears.Add(0, FeudEdge, Matrix4x4.TRS(c0 + up * (0.12f * size) - fwd * (0.12f * size), rot, new Vector3(size * 1.45f, size * 0.7f, size * 1.3f * 1.4f)), 0.05f);   // (the pale edge, under)
+                    _spears.Add(0, FeudInk, Matrix4x4.TRS(c0 + up * (0.2f * size), rot, new Vector3(size, size, size * 1.3f)), 0.05f);
                     SpearsDrawn++;
                 }
             }
