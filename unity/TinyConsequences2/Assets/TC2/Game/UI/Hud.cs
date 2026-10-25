@@ -52,6 +52,8 @@ namespace TC2.Game
         /// <summary>Opens the History Book at a part and chapter (-1: the preface) - the page a tool asks for.</summary>
         public void OpenBookAt(int part, int chapter) { _book = true; _openPart = part; _openChapter = chapter; _line = 0; }
         public void CloseBook() { _book = false; }
+        /// <summary>Closes the book and every page - a person's, a place's, a building's (the tests' way back to the open world).</summary>
+        public void ClosePages() { _book = false; _personPage = false; _placeSid = 0; _building = 0; }
         int _openPart = NoRequest, _openChapter;
         const int NoRequest = -99;
         // the Timeline page (session 25): the world's years drawn once into a texture when the book is written (one draw a frame)
