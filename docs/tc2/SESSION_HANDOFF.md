@@ -35,8 +35,12 @@ measure (`Conform` 0.6: households as their first household 55 %, tributaries' f
 1. Judge `0_z`: webtest 8/8 (the reload), the heap after the streamed save against `0_x` (expected ~230 MB less at year 1,000); append D2-182 (`frame/d2182.md`).
    If a cull shows pop-in or missing villages in real shots (`K_d`), fix forward.
 2. **The frame and memory passes, next steps**: buildings are still the largest layer - villages in front of the limb but outside the view, the buildings' draws
-   by colour group (each a draw a camera and a shadow cascade), shadows cast only near; the heap grows with the record (history ledger 126k events at 300,
-   505k at 1,000; deeds, graves, ruins) - measure the managed state by store at 300 and 1,000 headless before choosing what to keep less of.
+   by colour group (each a draw a camera and a shadow cascade), shadows cast only near; the heap grows with the record - **measured** (`run --load F
+   --statesizes`, main 44b12bc; `tc2/out/tools/s25/frame/statesizes_s2_ac3_y{300,1000}.txt`): seed 2's state 33.7 MB at 300 -> 106.8 at 1,000; **the history
+   ledger 12.8 -> 63.9 MB** (114k -> 509k events, 117-132 B each; Local-tier Struck, TakingSeen, Sworn, Taken, TributePaid lead), **households 7,005 -> 68,066
+   rows** (dissolved ones kept: 10.7 MB), **people 25,461 -> 47,527** (12,698 living; 20.4 MB), the deed book 1.1 -> 3.6 MB. Levers, in order: compact old
+   Local-tier events the book does not read (check `HistoryBook`'s readers first - it is written after the fact), drop dissolved households nothing refers to
+   (check Building.Style/Last, biographies, the name registry), prune the long dead as compaction already does for some.
 3. Land in order once `K_d`-`K_f` are done (they need sim-98 saves): rain (`L_a`), the harrying (`M_*`; D2-180), then C11.1b (`0_y` ok; D2-181; merge main
    into `wip/c111b-ways` first - the version line 99, 100, 101).
 4. Judge the third acceptance run (25 §6 "Third run": `_ac3` seeds 2/4/7, books, `K_d` shots) and write it up.
