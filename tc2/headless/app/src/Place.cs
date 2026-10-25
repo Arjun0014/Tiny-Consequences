@@ -728,12 +728,14 @@ namespace TC2.Headless
         {
             long now = w.Now;
             var rows = new List<(int sid, double perim, double lost, bool stone, double dist, bool quarry, int people, double years)>();
-            int walled = 0, knowStone = 0, withQuarry = 0;
+            int walled = 0, knowStone = 0, withQuarry = 0, inStone = 0, laying = 0, oldStone = 0;
             for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
             {
                 ref var s = ref w.Settlements.Get(sid);
+                if (s.Inhabited && s.OldR > 0f && s.OldStone > 0f) oldStone++;   // (C7.2: old rings of stone inside, or about a place whose timber has fallen)
                 if (!s.Inhabited || !TC2.Core.Society.Conflict.Walled(in s, out _)) continue;
                 walled++;
+                if (s.Wall == 2 && s.StoneWall >= 1f) inStone++; else if (TC2.Core.Places.Construction.Laying(in s) || s.StoneWall > 0f) laying++;
                 double perim = 2.0 * Math.PI * Math.Max(1.0, (double)s.WallR) * (s.WallDry > 0f ? (double)s.WallDry : 1.0);
                 double lost = w.DeedBook.HarmSince(sid, now - 3 * SimTime.Year, out _) / 3.0;
                 bool stone = TC2.Core.Places.Stone.Known(in s) >= 0;
@@ -747,8 +749,8 @@ namespace TC2.Headless
             rows.Sort((x, y) => y.lost.CompareTo(x.lost));
             // a dry-stone curtain ~1.5 m high and 1 m thick: ~150 loads of 25 kg a metre, cut at the quarry's rate, carried two a trip, laid at ~8 loads an hour
             const double LoadsPerM = 150.0, LayPerHour = 8.0;
-            Console.WriteLine("stonewalls: walled villages " + walled + ", knowing stone at hand " + knowStone + ", with a quarry " + withQuarry);
-            Console.WriteLine("  village                 people  ring m  lost/yr FU  guarded over 15 y  timber ring FU  stone at m  stone ring h  (FU)   grain years");
+            Console.WriteLine("stonewalls: walled villages " + walled + ", knowing stone at hand " + knowStone + ", with a quarry " + withQuarry + "; rings of stone " + inStone + ", being laid or part laid " + laying + ", old rings of stone " + oldStone);
+            Console.WriteLine("  village                 people  ring m  lost/yr FU  guarded over 15 y  timber ring FU  stone at m  stone ring h  (FU)   grain years  in stone");
             foreach (var r in rows)
             {
                 double guarded = TC2.Core.Society.Conflict.WallGuards * r.lost * TC2.Core.Society.Conflict.WallLife;
@@ -757,7 +759,8 @@ namespace TC2.Headless
                 double stoneH = r.perim * LoadsPerM * (1.0 / TC2.Core.Places.Stone.CutPerHour + walkH + 1.0 / LayPerHour);
                 Console.WriteLine("  " + w.History.NameOf(EntityRef.Settlement(r.sid)).PadRight(22) + r.people.ToString().PadLeft(7) + r.perim.ToString("0").PadLeft(8) + r.lost.ToString("0").PadLeft(12) +
                                   guarded.ToString("0").PadLeft(19) + timber.ToString("0").PadLeft(16) + (r.stone ? r.dist.ToString("0") + (r.quarry ? " q" : "") : "-").PadLeft(12) +
-                                  stoneH.ToString("0").PadLeft(14) + (" (" + (TC2.Core.Society.Conflict.LabourWorth * stoneH).ToString("0") + ")").PadLeft(9) + r.years.ToString("0.0").PadLeft(10));
+                                  stoneH.ToString("0").PadLeft(14) + (" (" + (TC2.Core.Society.Conflict.LabourWorth * stoneH).ToString("0") + ")").PadLeft(9) + r.years.ToString("0.0").PadLeft(10) +
+                                  (w.Settlements.Get(r.sid).StoneWall > 0f || w.Settlements.Get(r.sid).StoneWallEvent != 0 ? (100.0 * w.Settlements.Get(r.sid).StoneWall).ToString("0") + " %" : "-").PadLeft(10));
             }
         }
 
