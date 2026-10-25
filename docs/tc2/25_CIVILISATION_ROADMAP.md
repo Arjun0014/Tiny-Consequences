@@ -155,7 +155,8 @@ settlement change at the ceiling (measured first: why no village empties - the p
 **Second run (C3.6g, D2-176; sim 95; `_ac2`)**: the land between villages - 15-20 % of the arable land, inside the spacing and beyond every village's
 reach - fills with daughter villages before ~year 300 (seed 2 57 places at 300 against 28, seed 4 60 against 31, seed 7 20 against 10; 12,797 / 14,362 /
 2,707 people at 1,000 against 10,083 / 11,494 / 2,131); after the infill the map still changes slowly (300-999: 12, 21 and 2 foundings, 2, 4 and 1
-abandoned). Still lacking: villages deserted in crises and refounded, ruins - the next question, measured first (do small villages live worse?).
+abandoned). Measured next: small villages live better, not worse (`run --sizetally`) - no rule empties them; war's burning (C8.0, D2-177) leaves
+burnt homes, ruins and rebuilding (5-45 homes a world in 300 years).
 
 ## 7. After the C-phases
 F9 (the god's powers beyond those that exist), F10 (art and presentation: animation of labour, UI art pass), F11 (platform).
@@ -171,7 +172,9 @@ powers as play) and the player-facing game. The order, each a slice that answers
 2. ~~**C10.9**~~ landed as **the lord's death** (D2-173) - the measured counterweight; rising together not needed by the evidence. Then **C10.10 the lord's peace** (D2-174), chosen over C8.1 by measuring first. Was: **C10.9 rising together** - the tributaries of one lord that together outweigh it stop paying together (the record: Kent's rising under Eadberht
    Praen at Offa's death; the tributary kings' coalitions against overkings): the mechanism by which an overgrown realm breaks, beside the lord's weakness.
    Measured first (`lordships --margins` per realm: how often a realm's tributaries together outweigh their lord while each alone does not).
-3. **C8.1 the campaign and the siege** - a lord's band with its tributaries' men (the call exists, C10.1) against a walled place: a blockade until its
+3. ~~**C8.0 the burning-in**~~ - landed (D2-177, 25 Oct 2026): a band that holds the field fires the homes of the raided village's people who killed its own;
+   the vengeance answers the killing (measured first: small villages live better - no desertion rule; killings, not wounds, bound what is burnt).
+   Then **C8.1 the campaign and the siege** - a lord's band with its tributaries' men (the call exists, C10.1) against a walled place: a blockade until its
    stores fail or the besiegers' do (C8's "wars change the map": a taken town becomes a tributary or is burnt).
 4. **C7.2 stone walls** - a wealthy walled town that knows stone (C1.3) rebuilds its palisade's stretches in stone; towers at its gates: fortifications
    that differ by region and history.
