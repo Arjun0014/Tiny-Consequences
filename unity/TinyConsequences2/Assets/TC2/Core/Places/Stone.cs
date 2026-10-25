@@ -76,7 +76,7 @@ namespace TC2.Core.Places
 
         /// <summary>
         /// Loads of stone the village wants in store (read once a day): footings for its next houses - the households living in huts that will
-        /// raise houses, a few ahead - while it knows rock within reach. 0 without.
+        /// raise houses, a few ahead - and the next stretches of a ring being laid in stone (C7.2), while it knows rock within reach. 0 without.
         /// </summary>
         public static double Want(World w, int sid)
         {
@@ -85,8 +85,15 @@ namespace TC2.Core.Places
             int huts = 0;
             var hl = w.HouseholdsOf(sid);
             for (int i = 0; i < hl.Count; i++) if (w.Households.Get(hl[i]).Shelter < Construction.House) huts++;
-            return FootingLoads * DMath.Min(huts + 1, AheadHouses);
+            double want = FootingLoads * DMath.Min(huts + 1, AheadHouses);
+            // (C7.2) and while its ring is being laid in stone, the next stretches' rubble - a few metres of curtain ahead, never more than is left to lay
+            if (Construction.Laying(in s))
+                want += DMath.Min(WallAheadM * Construction.StoneLoadsPerM, Construction.StoneLayHours(in s) * (1.0 - (double)s.StoneWall) * Construction.StoneLayPerHour);
+            return want;
         }
+
+        /// <summary>Metres of stone curtain whose rubble a village laying its ring in stone keeps cut ahead in store (C7.2).</summary>
+        public const double WallAheadM = 3.0;
 
         /// <summary>The village's standing quarry (0 none).</summary>
         public static int Quarry(World w, int sid)

@@ -718,6 +718,43 @@ namespace TC2.Game
             return b.Build("tc2-palisade");
         }
 
+        /// <summary>
+        /// A stretch of dry-stone curtain 2 m long (C7.2): rubble walling ~1.9 m high and a metre thick on a broader footing course, a darker coping, and
+        /// two merlons on its outer face (-z: the stretch's +z faces the village's square, as a palisade's does) - drawn in a ring where its people have laid
+        /// their palisade in stone, the old stone rings inside a grown town too.
+        /// </summary>
+        public static Mesh StoneCurtain()
+        {
+            var b = new Builder();
+            Color stone = Lin(0.60f, 0.58f, 0.54f), foot = Lin(0.48f, 0.46f, 0.43f), cope = Lin(0.68f, 0.66f, 0.62f);
+            b.Box(new Vector3(-1.04f, 0f, -0.62f), new Vector3(1.04f, 0.45f, 0.62f), foot);
+            b.Box(new Vector3(-1.04f, 0.45f, -0.5f), new Vector3(1.04f, 1.85f, 0.5f), stone);
+            b.Box(new Vector3(-1.04f, 1.85f, -0.56f), new Vector3(1.04f, 2.0f, 0.56f), cope);
+            b.Box(new Vector3(-0.85f, 2.0f, -0.56f), new Vector3(-0.25f, 2.55f, -0.18f), stone * 0.95f);
+            b.Box(new Vector3(0.25f, 2.0f, -0.56f), new Vector3(0.85f, 2.55f, -0.18f), stone * 0.95f);
+            return b.Build("tc2-stone-curtain");
+        }
+
+        /// <summary>
+        /// A wall tower of dry stone (C7.2): a square tower 3 m a side and ~4.6 m high, crenellated, its door at the foot of its inner face - drawn either side
+        /// of a stone ring's gates and along a curtain every ~45 m.
+        /// </summary>
+        public static Mesh WallTower()
+        {
+            var b = new Builder();
+            Color stone = Lin(0.58f, 0.56f, 0.52f), foot = Lin(0.47f, 0.45f, 0.42f), cope = Lin(0.67f, 0.65f, 0.61f);
+            b.Box(new Vector3(-1.7f, 0f, -1.7f), new Vector3(1.7f, 0.6f, 1.7f), foot);
+            b.Box(new Vector3(-1.5f, 0.6f, -1.5f), new Vector3(1.5f, 4.2f, 1.5f), stone);
+            b.Box(new Vector3(-1.6f, 4.2f, -1.6f), new Vector3(1.6f, 4.4f, 1.6f), cope);
+            for (int k = 0; k < 4; k++)
+            {
+                float sx = (k & 1) == 0 ? -1f : 1f, sz = (k & 2) == 0 ? -1f : 1f;
+                b.Box(new Vector3(sx > 0 ? 0.85f : -1.6f, 4.4f, sz > 0 ? 0.85f : -1.6f), new Vector3(sx > 0 ? 1.6f : -0.85f, 5.0f, sz > 0 ? 1.6f : -0.85f), stone * 0.95f);
+            }
+            b.Box(new Vector3(-0.45f, 0.6f, 1.5f), new Vector3(0.45f, 2.3f, 1.56f), Lin(0.30f, 0.22f, 0.15f));
+            return b.Build("tc2-wall-tower");
+        }
+
         public static Mesh Granary()
         {
             var b = new Builder();

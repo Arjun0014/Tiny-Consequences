@@ -1099,14 +1099,15 @@ namespace TC2.Core.History
             }
             if (lords.Count > 0) sb.Append("It paid tribute to ").Append(string.Join(", ", lords.ToArray())).Append(". ");
             if (c.Realms.TryGetValue(sid, out var r)) sb.Append("It was the seat of a realm of up to ").Append(Plural(r.Peak + 1, "village", "villages")).Append(" (year ").Append(r.PeakYear).Append("); ").Append(Plural(tributaries, "bond was", "bonds were")).Append(" made with it. ");
-            int famines = 0, epidemics = 0, raidsOn = 0, raidsBy = 0, splits = 0, walled = -1;
+            int famines = 0, epidemics = 0, raidsOn = 0, raidsBy = 0, splits = 0, walled = -1, stoned = -1;
             var all = c.Of(sid);
             foreach (var e in all)
             {
                 if (e.Kind == HistoryKind.Famine && e.Settlement == sid) famines++;
                 else if (e.Kind == HistoryKind.EpidemicArrived && e.Settlement == sid) epidemics++;
                 else if (e.Kind == HistoryKind.Raid) { if (e.Object.Id == sid) raidsOn++; else if (e.Subject.Id == sid) raidsBy++; }
-                else if (e.Kind == HistoryKind.WallBuilt && e.Settlement == sid && walled < 0) walled = YearOf(e.Time);
+                else if (e.Kind == HistoryKind.WallBuilt && e.Settlement == sid && e.ArgB != 2 && walled < 0) walled = YearOf(e.Time);
+                else if (e.Kind == HistoryKind.WallBuilt && e.Settlement == sid && e.ArgB == 2 && stoned < 0) stoned = YearOf(e.Time);   // (C7.2)
                 else if (e.Kind == HistoryKind.VillageSplit && e.Settlement == sid) splits++;
             }
             var befell = new List<string>();
@@ -1117,6 +1118,7 @@ namespace TC2.Core.History
             if (splits > 0) befell.Add(Plural(splits, "split", "splits"));
             if (befell.Count > 0) sb.Append("The ledger keeps ").Append(string.Join(", ", befell.ToArray())).Append(". ");
             if (walled >= 0) sb.Append("Its palisade was finished in year ").Append(walled).Append(". ");
+            if (stoned >= 0) sb.Append("Its walls were finished in stone in year ").Append(stoned).Append(". ");
             ch.Para(sb.ToString().TrimEnd(), sid);
             all.RemoveAll(e => Ordinary(e.Kind));
             Best(all, 14);
@@ -1373,7 +1375,7 @@ namespace TC2.Core.History
                 case HistoryKind.PathogenAppeared: return "the first " + w.History.NameOf(e.Subject);
                 case HistoryKind.HeadmanRose: return w.History.NameOf(e.Subject) + "'s rise at " + at;
                 case HistoryKind.VillageSplit: return "the split of " + at;
-                case HistoryKind.WallPlanned: case HistoryKind.WallBuilt: return "the palisade of " + at;
+                case HistoryKind.WallPlanned: case HistoryKind.WallBuilt: return (e.ArgB == 2 ? "the stone walls of " : "the palisade of ") + at;
                 case HistoryKind.WorkBuilt: case HistoryKind.WorkBegun: return "a work at " + at;
                 case HistoryKind.Sworn: return "men sworn at " + at;
                 case HistoryKind.PersonDied: return "the death of " + w.History.NameOf(e.Subject);

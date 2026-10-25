@@ -111,8 +111,13 @@ namespace TC2.Core.History
                       .Append(HistoryText.Span(need > 0 ? food / need : 0)).Append(" on average, the harvest is ").Append(toHarvest).Append(toHarvest == 1 ? " day off.\n" : " days off.\n");
                 }
             }
-            if (s.Wall == 2) sb.Append("Walled: a palisade ").Append(F(2.0 * DMath.PI * (double)s.WallR, "0")).Append(" m round").Append(s.OldR > 0f ? ", an older ring inside" : "").Append(".\n");
-            else if (s.Wall == 1) sb.Append("Raising a palisade.\n");
+            // (C7.2) a ring of stone, a palisade being laid in stone, the old rings inside
+            string older = s.OldR > 0f ? (s.OldStone >= 1f ? ", an older ring of stone inside" : s.OldStone > 0f ? ", an older ring inside, part of it stone" : ", an older ring inside") : "";
+            if (s.Wall == 2 && s.StoneWall >= 1f) sb.Append("Walled in stone: a dry-stone curtain ").Append(F(2.0 * DMath.PI * (double)s.WallR, "0")).Append(" m round").Append(older).Append(".\n");
+            else if (s.Wall == 2 && s.StoneWall > 0f) sb.Append("Walled: a palisade ").Append(F(2.0 * DMath.PI * (double)s.WallR, "0")).Append(" m round, ").Append(F(100.0 * s.StoneWall, "0")).Append(" % of it laid in stone").Append(TC2.Core.Places.Construction.Laying(in s) ? " and the rest being laid" : "").Append(older).Append(".\n");
+            else if (s.Wall == 2) sb.Append("Walled: a palisade ").Append(F(2.0 * DMath.PI * (double)s.WallR, "0")).Append(" m round").Append(TC2.Core.Places.Construction.Laying(in s) ? ", its people beginning to lay it in stone" : "").Append(older).Append(".\n");
+            else if (s.Wall == 1) sb.Append("Raising a palisade").Append(older).Append(".\n");
+            else if (s.OldR > 0f && s.OldStone > 0f) sb.Append("An old ring of stone stands about it, its timber fallen.\n");
             // its streets and their core (C13.1-C13.3): rows of narrow town houses on the divided plots, the market place its traders widened
             if (s.StreetN > 0)
             {

@@ -97,6 +97,17 @@ namespace TC2.Core.Society
         public const double WallGuards = 0.5, WallLife = 15.0, LabourWorth = 0.25, WallYears = 30.0, MendShare = 0.3;
         /// <summary>A palisade sees takers this often (they must climb it or come by a gate), and doubles its defenders' ground when sound.</summary>
         public const double WallSeen = 0.6;
+        /// <summary>
+        /// (C7.2) A ring of dry stone: its people reckon it keeps three quarters of what would be lost (StoneGuards, against the palisade's half) for the
+        /// century it stands (StoneYears: it does not rot, and the timber is no longer felled and mended); behind it the defenders' ground is tripled
+        /// (StoneGround: a palisade's sound timber doubles it - a curtain a man's height and more of stone cannot be climbed, pulled down or fired).
+        /// </summary>
+        public const double StoneGuards = 0.75, StoneYears = 100.0, StoneGround = 1.0;
+        /// <summary>`--oldstonewalls`: no village walls its ring in stone (before C7.2), on the same binary.</summary>
+        public static bool StoneWallsOff;
+        /// <summary>Tools (`--stonetally`; null in the game): walled villages that weighed stone a day with rock at hand [0], the sum of what they lose a year [1],
+        /// of the curtain's worth over its century against its cost [2], those that began [3]; the cost (FU) of the curtains begun [4].</summary>
+        public static double[] StoneTally;
 
         // ---- tribute and lordship (D2-075)
         /// <summary>A tributary pays its lord this share of each harvest; it bows only to a neighbour this much stronger (by might: C10.5, C10.7a).</summary>
@@ -276,7 +287,7 @@ namespace TC2.Core.Society
         {
             ref var s = ref _w.Settlements.Get(o);
             double seen = SeenChance(o);
-            if (Walled(in s, out double wc)) seen = DMath.Max(seen, WallSeen * wc);   // (over a palisade, or through its gate: D2-074)
+            if (Walled(in s, out double wc)) seen = DMath.Max(seen, WallSeen * wc);   // (over a palisade or a stone curtain, or through its gate: D2-074)
             return s.Watcher != 0 ? DMath.Max(WatchSeen, seen) : seen;
         }
 
@@ -284,7 +295,15 @@ namespace TC2.Core.Society
         public double Ground(int o)
         {
             ref var s = ref _w.Settlements.Get(o);
-            return HomeGround * (Walled(in s, out double wc) ? 1.0 + wc : 1.0);
+            return HomeGround * (Walled(in s, out double wc) ? 1.0 + wc + StoneGround * StoneShare(in s) : 1.0);   // (and behind stone the more: C7.2)
+        }
+
+        /// <summary>The share of the ring that guards a village now that is stone (C7.2): its standing ring's, or while a larger one is raised the old ring's.</summary>
+        public static double StoneShare(in Settlement s)
+        {
+            if (s.Wall == 2) return s.StoneWall;
+            if (s.Wall == 1 && s.OldR > 0f) return s.OldStone;
+            return 0.0;
         }
 
         /// <summary>
@@ -293,8 +312,9 @@ namespace TC2.Core.Society
         /// </summary>
         public static bool Walled(in Settlement s, out double cond)
         {
-            if (s.Wall == 2) { cond = s.WallCond; return true; }
-            if (s.Wall == 1 && s.OldR > 0f && s.OldCond > 0f) { cond = s.OldCond; return true; }
+            // (C7.2) the stone stretches stay sound: only the timber between them rots
+            if (s.Wall == 2) { cond = (double)s.StoneWall + (1.0 - (double)s.StoneWall) * s.WallCond; return true; }
+            if (s.Wall == 1 && s.OldR > 0f && (s.OldCond > 0f || s.OldStone > 0f)) { cond = (double)s.OldStone + (1.0 - (double)s.OldStone) * s.OldCond; return true; }
             cond = 0; return false;
         }
 
@@ -1353,9 +1373,9 @@ namespace TC2.Core.Society
             {
                 // the old ring inside a grown town is not mended: it rots and is gone (C7.1)
                 s.OldCond = (float)DMath.Max(0.0, (double)s.OldCond - (double)days / (WallYears * 48.0));
-                if (s.OldCond <= 0f) { s.OldR = 0f; s.OldCond = 0f; }
+                if (s.OldCond <= 0f && s.OldStone <= 0f) { s.OldR = 0f; s.OldCond = 0f; }   // (an old ring of stone stands inside the town: C7.2)
             }
-            if (s.Wall == 2)
+            if (s.Wall == 2 && s.StoneWall < 1f)   // (a ring all of stone does not rot: C7.2)
             {
                 s.WallCond = (float)DMath.Max(0.0, (double)s.WallCond - (double)days / (WallYears * 48.0));   // (DEEP: the step's days of rot)
                 if (s.WallCond <= 0f)
@@ -1366,6 +1386,9 @@ namespace TC2.Core.Society
                         Kind = HistoryKind.WallFallen, Time = now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid),
                         Cause1 = s.WallEvent, Rel1 = CauseRel.PartOf, RootKind = RootKind.Nature,
                     });
+                    // (C7.2) the stretches laid in stone stand when the timber between them has fallen: an old ring of stone (a ruin's walls)
+                    if (s.StoneWall > 0f && (s.OldR <= 0f || s.OldStone <= 0f)) { s.OldR = s.WallR; s.OldCond = 0f; s.OldStone = s.StoneWall; }
+                    s.StoneWall = 0f; s.StoneWallEvent = 0;
                 }
             }
             if (!s.Inhabited) return;
@@ -1391,7 +1414,9 @@ namespace TC2.Core.Society
             if (s.Wall == 2)
             {
                 double cost = LabourWorth * (Construction.PalisadeHoursPerM + Construction.PalisadeWoodPerM) * 2.0 * DMath.PI * (double)s.WallR;
-                s.WallKeep = (byte)(guards > MendShare * cost ? 1 : 0);
+                // (C7.2) only its timber is mended; while its ring is being laid in stone the timber between is kept up
+                s.WallKeep = (byte)(guards > MendShare * cost * (1.0 - (double)s.StoneWall) || Construction.Laying(in s) ? 1 : 0);
+                if (!StoneWallsOff && s.StoneWallEvent == 0 && s.StoneCell > 0 && (double)s.StoneDist <= Places.Stone.Reach) WeighStone(sid, lost, latest);
                 // the town has grown past its ring: a larger one, if what it loses still outweighs its labour and timber (C7.1); the old ring
                 // stays inside, unmended, until it rots
                 int outside = Outside(sid, out int homes);
@@ -1405,7 +1430,8 @@ namespace TC2.Core.Society
                         double bigger = LabourWorth * (Construction.PalisadeHoursPerM + Construction.PalisadeWoodPerM) * 2.0 * DMath.PI * r * dry;
                         if (guards > bigger)
                         {
-                            s3.OldR = s3.WallR; s3.OldCond = s3.WallCond;
+                            s3.OldR = s3.WallR; s3.OldCond = s3.WallCond; s3.OldStone = s3.StoneWall;   // (its stone stays as the old ring's: C7.2)
+                            s3.StoneWall = 0f; s3.StoneWallEvent = 0;
                             s3.Wall = 1; s3.WallR = (float)r; s3.WallCond = 0f; s3.WallKeep = 1; s3.WallDry = (float)dry; s3.WorkBuild = 0f;
                             Places.Structures.Opened(w, sid);   // (C13.3)
                             s3.WallEvent = w.Record(new HistoryEvent
@@ -1418,6 +1444,34 @@ namespace TC2.Core.Society
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// (C7.2) A walled village that knows rock at hand weighs walling its ring in dry stone: what a curtain keeps beyond the palisade over the century it
+        /// stands - three quarters of what other villages' people cost it a year against the timber's half - and the timber it would no longer fell and mend
+        /// (a new palisade every `WallYears`), against the hours of cutting the stone at its rock, carrying it home a load at a time and laying it, as
+        /// `LabourWorth` values them. It begins when the curtain is worth more than it costs: the village's work lays it stretch by stretch after every other
+        /// work, the quarry cutting ahead of the layers. Never a count of raids: losses remembered against labour, as the palisade is weighed.
+        /// </summary>
+        void WeighStone(int sid, double lost, long latest)
+        {
+            var w = _w;
+            ref var s = ref w.Settlements.Get(sid);
+            double perim = Construction.RingLength(in s);
+            double cost = LabourWorth * Construction.StoneHoursPerM(w, in s) * perim;
+            double gain = (StoneGuards - WallGuards) * lost * StoneYears
+                        + LabourWorth * (Construction.PalisadeHoursPerM + Construction.PalisadeWoodPerM) * perim * StoneYears / WallYears;
+            if (StoneTally != null) { StoneTally[0]++; StoneTally[1] += lost; StoneTally[2] += cost > 0 ? gain / cost : 0; }
+            if (gain <= cost) return;
+            s.StoneWallEvent = w.Record(new HistoryEvent
+            {
+                Kind = HistoryKind.WallPlanned, Time = w.Now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid),
+                Cause1 = latest, Rel1 = CauseRel.InResponseTo, Cause2 = s.StoneEvent, Rel2 = CauseRel.EnabledBy, Magnitude = (float)lost,
+                ArgA = (int)DMath.Floor((double)s.StoneDist + 0.5), ArgB = 2, RootKind = RootKind.People,
+            });
+            s.WallKeep = 1;
+            w.Metrics.WallsPlanned++;
+            if (StoneTally != null) { StoneTally[3]++; StoneTally[4] += cost; }
         }
 
         /// <summary>`--nowallworks`: a ring is laid clear of homes only (before session 17), on the same binary.</summary>

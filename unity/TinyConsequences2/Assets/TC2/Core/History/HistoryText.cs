@@ -206,9 +206,12 @@ namespace TC2.Core.History
                         return band + " but was driven off (" + blows + (blows == 1 ? " blow" : " blows") + ").";
                     }
                 case HistoryKind.WallPlanned:
+                    if (e.ArgB == 2) return "The people of " + subj + " began to wall their palisade's ring in dry stone, stretch by stretch, with rock from " + (e.ArgA > 0 ? e.ArgA + " m off" : "beside the village") + ": other villages' people have cost them " + F(e.Magnitude, "0") + " days' food a year, and a stone curtain outlasts the timber.";
                     if (e.ArgB == 1) return "The people of " + subj + " began a larger palisade: " + e.ArgA + " of their homes stood outside the old one, and other villages' people cost them " + F(e.Magnitude, "0") + " days' food a year.";
                     return "The people of " + subj + " began a palisade round their homes: other villages' people have cost them " + F(e.Magnitude, "0") + " days' food a year.";
-                case HistoryKind.WallBuilt: return "The people of " + subj + " finished their palisade (" + e.ArgA + " m round): " + subj + " is a walled place.";
+                case HistoryKind.WallBuilt:
+                    if (e.ArgB == 2) return "The people of " + subj + " finished their walls of stone (" + e.ArgA + " m round): no timber is left in the ring to rot.";
+                    return "The people of " + subj + " finished their palisade (" + e.ArgA + " m round): " + subj + " is a walled place.";
                 case HistoryKind.WallFallen: return "The palisade of " + subj + " has rotted and fallen.";
                 case HistoryKind.TributeAgreed:
                     if (e.ArgB == 1)   // (for bread: C10.4)
@@ -365,8 +368,12 @@ namespace TC2.Core.History
                         ref var pb = ref w.Buildings.Get(w.Settlements.Get(p.Home).Project);
                         return "building for " + home + ": " + WorkWhy(pb.Kind, w.Settlements.Get(p.Home).Granaries);
                     }
-                    if (w.Settlements.Exists(p.Home) && (w.Settlements.Get(p.Home).Wall == 1 || (w.Settlements.Get(p.Home).Wall == 2 && TC2.Core.Places.Construction.NextWork(w.Settlements.Get(p.Home)) == TC2.Core.Places.Construction.Mend)))
+                    if (w.Settlements.Exists(p.Home) && (w.Settlements.Get(p.Home).Wall == 1 || (w.Settlements.Get(p.Home).Wall == 2 && (TC2.Core.Places.Construction.NextWork(w.Settlements.Get(p.Home)) == TC2.Core.Places.Construction.Mend || TC2.Core.Places.Construction.NextWork(w.Settlements.Get(p.Home)) == TC2.Core.Places.Construction.StoneWork))))
+                    {
+                        if (w.Settlements.Get(p.Home).Wall == 2 && TC2.Core.Places.Construction.NextWork(w.Settlements.Get(p.Home)) == TC2.Core.Places.Construction.StoneWork)
+                            return "laying stone in " + home + "'s walls, in place of the timber: other villages' people have cost it dear for years";   // (C7.2)
                         return "setting posts in " + home + "'s palisade: other villages' people have cost it dear";
+                    }
                     return "building for " + home + ": the village needs a well or a granary";
                 case ActivityKind.Train:
                     if (TC2.Core.Society.Retinue.SwornHere(w, in p))   // (C10.7b)
