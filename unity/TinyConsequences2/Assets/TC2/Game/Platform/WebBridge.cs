@@ -69,6 +69,17 @@ namespace TC2.Game
                 case "closebook": { var hud = Object.FindFirstObjectByType<Hud>(); if (hud != null) hud.CloseBook(); break; }
                 case "closepages": { var hud = Object.FindFirstObjectByType<Hud>(); if (hud != null) hud.ClosePages(); break; }   // (the book and every page closed)
                 case "names": Hud.Names = a.Length < 2 || a[1] == "on"; break;   // (session 25) places named on the map
+                case "setting":   // (F11.2) tests: a setting changed as the panel changes it, and kept
+                    {
+                        float v = float.Parse(a[2], inv);
+                        if (a[1] == "clouds") Settings.Clouds = Mathf.Clamp(v, 0f, 1.5f);
+                        else if (a[1] == "volume") AudioView.Volume = Mathf.Clamp01(v);
+                        else if (a[1] == "muted") AudioView.Muted = v > 0f;
+                        else if (a[1] == "lightshadows") Sky.ShadowLite = v > 0f;
+                        else if (a[1] == "detail") Settings.Detail = Mathf.Clamp(v, 0.5f, 1f);
+                        Settings.Apply(); Settings.Save();
+                        break;
+                    }
                 case "person":
                     {
                         // the person page (C12.1): "person PID [TAB]", or "person oldest" - the oldest living person
@@ -163,6 +174,8 @@ namespace TC2.Game
                 sb.Append(",\"interrupted\":").Append(w.Metrics.JourneysInterrupted);
                 int casts = 0; for (int ci = 0; ci < w.CommandLog.Count; ci++) { var ck = w.CommandLog[ci].Kind; if (ck != CommandKind.SetResolution && ck != CommandKind.SetStepDays && ck != CommandKind.Note) casts++; }
                 sb.Append(",\"casts\":").Append(casts);   // (the god's casts so far: F9.1)
+                sb.Append(",\"settings\":\"").Append("clouds=").Append(Settings.Clouds.ToString("0.00", CultureInfo.InvariantCulture)).Append(" volume=").Append(AudioView.Volume.ToString("0.00", CultureInfo.InvariantCulture))
+                  .Append(" muted=").Append(AudioView.Muted ? 1 : 0).Append(" lightshadows=").Append(Sky.ShadowLite ? 1 : 0).Append(" detail=").Append(Settings.Detail.ToString("0.00", CultureInfo.InvariantCulture)).Append('"');   // (F11.2)
             }
             sb.Append(",\"speed\":").Append(Host.SpeedIndex);
             sb.Append(",\"max\":").Append(Host.MaxSpeed ? "true" : "false");

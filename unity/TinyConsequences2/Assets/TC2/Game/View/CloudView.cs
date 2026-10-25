@@ -96,7 +96,7 @@ namespace TC2.Game
             Shader.SetGlobalFloat(ShellId, R + shell);
             // the forms' noise: whole tiles round each parallel (no seam), drawn out east-west by Look.CloudStretch
             float around = Mathf.Max(1f, Mathf.Round(2f * Mathf.PI * (R + shell) / (Mathf.Max(0.5f, Look.CloudStretch) * FormMetres)));
-            Shader.SetGlobalVector(FormId, new Vector4(Look.CloudDeck, Look.CloudCu, Look.CloudShade, around));
+            Shader.SetGlobalVector(FormId, new Vector4(Look.CloudDeck * Settings.Clouds, Look.CloudCu * Settings.Clouds, Look.CloudShade, around));   // (x the player's clouds: F11.2)
             Shader.SetGlobalVector(ScaleId, new Vector4(FormMetres, 2f * Mathf.PI * (R + shell) / around, R + shell, 0f));
         }
 
