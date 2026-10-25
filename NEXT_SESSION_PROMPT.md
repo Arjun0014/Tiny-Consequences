@@ -22,6 +22,12 @@ then god powers and player-facing gameplay.
    `tc2/out/tools/s25/results/stonewalls_*.txt` when it has run, and `tc2/out/tools/s25/c81_design.md` (why C8.1 waits).
 4. `git status`, `git log --oneline -15`, `git worktree list`, and the queue: `cat $Q/runq.log` (`Q` below) - which jobs ended, with what.
 
+## Session 25, third context (25 Oct 2026, from 07:34 IST) - C3.6g the land between villages landed (main b516bb1, sim 95; D2-176)
+- The acceptance's frozen map measured (`place --margins`): the room lay between villages, not on poorer land. Daughter villages now fill it on their
+  village's own margins (twice the places by ~300; people +16-33 %); joiners count those already on their way. Slow change after the infill.
+- Next: judge the queue's `D_a` (main's full suite) and `D_b` shots; then villages deserted in crises and refounded, measured first (SESSION_HANDOFF
+  "Session 25, third context").
+
 ## Session 25, second context (25 Oct 2026, 23:56 - ~02:45 IST) - four slices landed; the 1,000-year acceptance RUNNING in the queue
 - **On main (2935c9a and after; sim 94)**: C10.8 the asking (D2-168), C10.9 the lord's death (D2-173: bonds for peace lapse with the first among the lord's
   people; heirs win them back by asking - raids x0.64), **C10.10 the lord's peace** (D2-174: no bands within a realm, blood judged by the common lord;

@@ -112,7 +112,9 @@ hoeing a hectare where the land within reach is short, at falling returns - yiel
 ripens); ~~C3.6b household land~~ (done, D2-133: each household holds hectares of its village's fields); ~~C3.6c the harvest by land and
 labour~~ (done, D2-134: the landless live by their hands; hunger a person-year x0.74 - the preventive check from the households' economy); ~~C3.6d
 who leaves~~ (done, D2-135: each household by its own land; in full lands the land concentrates); ~~C3.6e the old hand on their holding~~ (done,
-D2-136: retirement to a child's household - the hoards go, landlessness falls); ~~the household's own year~~ (done, `26` §2h-§2k: C3.7a the garden
+D2-136: retirement to a child's household - the hoards go, landlessness falls); ~~C3.6g the land between villages~~ (done, D2-176: leavers who know no
+free good place and find no village to join found a daughter village on their own village's margins, beyond every village's fields - the room measured
+between villages, not on poorer land; the map settled twice as densely by year 300, people x1.16-1.33); ~~the household's own year~~ (done, `26` §2h-§2k: C3.7a the garden
 D2-143, C3.7b the threshing floor D2-149, C3.7c the muck D2-153, C3.7d the herds on the stubble and the fallow and each household's own part of the
 fields D2-155); service, a land market; C3.4 the mill; apprenticeship; C3.8 other workshops.
 
@@ -150,6 +152,10 @@ larger settlements, walls, realms in tiers that rise and fall (seed 4: Touldandh
 realms as reigns). **Does not hold**: after the land fills (~year 300) the map stops changing - 2-3 villages abandoned in 1,000 years, almost no foundings,
 no ruins or rebuilding, no town drawing in its hinterland; years 300 and 1,000 cannot be told apart from the picture. The next slice by this evidence:
 settlement change at the ceiling (measured first: why no village empties - the plague included - and why none is founded).
+**Second run (C3.6g, D2-176; sim 95; `_ac2`)**: the land between villages - 15-20 % of the arable land, inside the spacing and beyond every village's
+reach - fills with daughter villages before ~year 300 (seed 2 57 places at 300 against 28, seed 4 60 against 31, seed 7 20 against 10; 12,797 / 14,362 /
+2,707 people at 1,000 against 10,083 / 11,494 / 2,131); after the infill the map still changes slowly (300-999: 12, 21 and 2 foundings, 2, 4 and 1
+abandoned). Still lacking: villages deserted in crises and refounded, ruins - the next question, measured first (do small villages live worse?).
 
 ## 7. After the C-phases
 F9 (the god's powers beyond those that exist), F10 (art and presentation: animation of labour, UI art pass), F11 (platform).

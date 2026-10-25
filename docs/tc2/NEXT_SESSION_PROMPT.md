@@ -375,6 +375,13 @@ its ten seeds queued. SESSION_HANDOFF "Session 25" has the queue and the steps.
 
 **Where we are (session 25, second context, 25 Oct 2026, 23:56-~02:45 IST; context handoff with the 1,000-year acceptance running in the queue)**: on main (sim 94) **C10.8 the asking** (D2-168), **C10.9 the lord's death** (D2-173: bonds for peace lapse at the death of the first at a lord's seat; heirs win them back by asking - raids x0.64), **C10.10 the lord's peace** (D2-174: villages of one realm raise no bands against each other; blood between them is judged by their common lord - chosen over C8.1 because measuring found the war to be feud, 30-88 % of it inside realms; war moves to the realms' edges, famines a person-year x0.82, people x1.054 against its matched placebo twin, explained), **C11.1a a people's tongue** (D2-175: each first people's own speech, founders' tongues changed a sound at a time, places, families and the born named in it - names that read by descent; the book's Peoples) and **the wars on the realms map layer** (the last ten years' raids as dark spearheads). A fault in the job tooling was found and fixed (the gate helper clobbered a loop variable: test gates had passed on "0 passed"). In the queue: main's full suite, three 1,000-year worlds and their books, the stone-walls measure (C7.2), the Web build over them, the shots of every age - SESSION_HANDOFF "Session 25, second context".
 
+**Where we are (session 25, third context, 25 Oct 2026, from 07:34 IST)**: the 1,000-year acceptance (25 §6 "First run") found the map frozen after the
+land fills. Measured (`place --margins`): not poorer land - the room lay **between villages** (15-20 % of the arable land inside the spacing, beyond every
+village's reach). **C3.6g the land between villages landed** (D2-176, main b516bb1, sim 95): leavers who know no free good place and find no village to join
+found a daughter village on their own village's margins; joiners now count those already on their way. The map is settled twice as densely by ~300 and feeds
+16-33 % more people; after the infill it still changes slowly (25 §6 "Second run"). Next by that evidence: villages deserted in crises and refounded - measured
+first (do small villages live worse?). SESSION_HANDOFF "Session 25, third context" has the queue and the steps.
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.

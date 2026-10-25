@@ -1,5 +1,28 @@
 # TC2 Session handoff
 
+## Session 25, third context (25 Oct 2026, from 07:34 IST; after a compaction) - C3.6g the land between villages LANDED (sim 95)
+
+### Exact state
+- **main** b516bb1 (merge of `wip/marginal` 6da1ec5) + DECISIONS D2-176 (66a2362) + docs: **C3.6g the land between villages** (sim 95). Measured first
+  with `place --margins` (new): the handoff's marginal-land hypothesis refuted - the room was between villages. Notes: `tc2/out/tools/s25/c36g/design.md`,
+  draft `d2176.md`, job generators `make_c36g.sh`, `make_ac2.sh`, `make_land.sh`. Not ours: `.claude/launch.json`, `Assets/Resources.meta`.
+- **Validated on the branch**: MarginsTests 4/4, MigrationTests, HoldingsTests, GazetteerTests, HistoryBookTests, TongueTests, DeterminismTests, SaveLoad -
+  0 failed, 0 skipped; floatcheck clean; control `--oldmargins` = main's rules (`_m9`) byte for byte, annals and state hash; ten seeds `_mg2` against `_pc1`
+  (`results/cmp_pc1_mg2.txt`); 1,000-year worlds `_ac2` (seeds 2, 4, 7: `$O/s*_ac2/world_y{50,150,300,500,600,800,1000}.tc2`, books
+  `tc2/out/tools/s25/c36g/book_s*_ac2_y{600,1000}.md`, `results/margins_s*_ac2_y*.txt`). `_mg1` (before the join fix) dropped.
+- **The queue** (runner PID 9632, `tc2/out/tools/s23/runq.sh`; `Q` as below): `D_a_land_m10` (main: `unity.mjs cc`, headless bin_m10, floatcheck, the full
+  suite -> `fs_m10_ok`, `results/fullsuite_m10.txt`), then `D_b_shots_ac2_s2_v4_y{0300,0600,1000}` (real shots of the new world framed on village #4
+  Vivaiwick: `tc2/out/shots/s25n_ac2_s2_v4_y*`) - to compare with the old rules' `s25n_ac1_s2_v4_y{300,1000}` (done). Do not edit main's Game code while
+  a `D_b` Unity job runs.
+
+### Next, in order
+1. Judge `D_a` (0 failed, 0 skipped) and the `D_b` shots against `s25n_ac1_*` (region view: villages between villages, fields closing the gaps).
+2. **Next slice by the evidence: villages deserted in crises and refounded** (25 §6 still lacks ruins and rebuilding: after the infill 2-4 villages
+   abandoned in 700 years; a hamlet of 11-12 people lived 400 years). Measure first: do small villages live worse (hunger, deaths, births, leaving a
+   person-year by village size, from the `_ac2` saves' records)? If they do not, a desertion rule would be scripting; if they do, households should weigh it.
+3. Then: the war spears made legible; the trace of the shots' `ArgumentOutOfRangeException`; C7.2; great worlds in the browser (`14` §7 - now x2.2 the
+   villages' cost: a 1,000-year world 2,000-2,300 s headless); F9.
+
 ## Session 25, second context (25 Oct 2026, 23:56 - ~02:45 IST; Control Room run #78 session 2) - C10.8, C10.9, C10.10 and C11.1a LANDED (sim 94); the 1,000-year acceptance RUNNING in the queue
 
 **Update (~02:45)**: the peace's lean was judged against its matched placebo (the twins x1.029; the peace against its twin x1.054, t 2.69) and explained by its mechanism (raids within realms gone: seed 4 85 -> 0; war at the realms' edges) - **C10.10 landed** (955b497, sim 93; D2-174 e2b41b0); **C11.1a landed** after it (33fd336, sim 94; D2-175 80a1eaa); PROGRESS 2935c9a; root and standing NEXT_SESSION_PROMPTs updated. The queue now: `9_a_fullsuite_m8` (running), `9_b_ac1_s{2,4,7}` (1,000-year worlds on main's final rules, saved at 50/150/300/500/800/1,000; books at 300 and 1,000), `9_bx_stone_st0` (`place --stonewalls` on them: C7.2 measured first, worktree `C:/Game Dev/tc-stone`, branch `wip/c72-stone`), `9_bz_web` (Web `s25web2` over the year-1,000 and year-300 worlds), `9_c_shots_s{2,4}_*` (every age's real shots `s25m_*`). Generator: `tc2/out/tools/s25/accept/make_accept.sh`. The rest of this block below is the state at ~02:10 (kept for the record).
