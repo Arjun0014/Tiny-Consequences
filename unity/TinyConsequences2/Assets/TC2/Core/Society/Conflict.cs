@@ -1895,7 +1895,8 @@ namespace TC2.Core.Society
         /// standing [5]; the raided villages' homes standing, summed over the held raids [6]; held raids on walled villages [7]; held raids where the doers'
         /// homes would be all the village's [8]; blood deeds counted [9].</summary>
         public static double[] BurnTally;
-        public const int BurnTallyN = 10;
+        public const int BurnTallyN = 14;
+        readonly System.Collections.Generic.HashSet<int> _burnKill = new System.Collections.Generic.HashSet<int>();
         readonly System.Collections.Generic.HashSet<int> _burnHh = new System.Collections.Generic.HashSet<int>();
 
         void TallyBurn(int bandId, int at, int origin, byte outcome)
@@ -1908,8 +1909,8 @@ namespace TC2.Core.Society
             ref var b = ref w.Bands.Get(bandId);
             int holder = b.Motive == 2 && b.For != 0 ? b.For : origin;   // (whose wrong the band went for: its own, or the tributary's its lord answered)
             var known = w.DeedBook.KnownBy(holder);
-            _burnHh.Clear();
-            int blood = 0;
+            _burnHh.Clear(); _burnKill.Clear();
+            int blood = 0, kills = 0;
             if (known != null)
                 for (int i = 0; i < known.Count; i++)
                 {
@@ -1921,6 +1922,13 @@ namespace TC2.Core.Society
                     ref var p = ref w.People.Get(d.By);
                     if (!p.Alive || p.Home != at || !w.Households.Exists(p.Household)) continue;
                     _burnHh.Add(p.Household);
+                    if (d.Kind == DeedKind.Kill) _burnKill.Add(p.Household);
+                }
+            if (known != null)
+                for (int i = 0; i < known.Count; i++)
+                {
+                    ref var d = ref w.Deeds.Get(known[i].Deed);
+                    if (d.Kind == DeedKind.Kill && d.ByS == at && d.ToS == holder && (d.Flags & DeedKind.Made) == 0 && w.DeedBook.Weight(in d, w.Now) >= DeedBook.ForgetBelow) kills++;
                 }
             if (blood == 0) return;
             t[3]++; t[9] += blood;
@@ -1932,6 +1940,7 @@ namespace TC2.Core.Society
             t[4] += _burnHh.Count; t[5] += homes; t[6] += standing;
             if (w.Settlements.Get(at).Wall == 2) t[7]++;
             if (homes > 0 && homes >= standing) t[8]++;
+            if (kills > 0) { t[10]++; t[11] += kills; int kh = 0; foreach (int hid in _burnKill) if (w.Households.Get(hid).Building != 0) kh++; t[12] += kh; t[13] += _burnKill.Count; }
         }
         public const int RaidTallyN = 9;
 

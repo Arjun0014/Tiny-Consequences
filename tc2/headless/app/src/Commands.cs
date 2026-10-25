@@ -1040,7 +1040,7 @@ namespace TC2.Headless
                     if (bnt != null)   // (ravaging, measured first: whose homes a band holding the field could fire)
                         Console.WriteLine("burn: raids " + bnt[0] + " (unseen " + bnt[1] + "), the band holding the field " + bnt[2] + "; of those with blood the band's village knows against the raided's people " + bnt[3] +
                                           " (" + bnt[9] + " deeds; on walled villages " + bnt[7] + "); the doers' households there " + bnt[4] + ", with a home standing " + bnt[5] + " - of " + bnt[6] +
-                                          " homes standing in those villages; raids where they would be every home " + bnt[8]);
+                                          " homes standing in those villages; raids where they would be every home " + bnt[8] + "; held raids with a killing known " + bnt[10] + " (" + bnt[11] + " killings; the killers' households there " + bnt[13] + ", with a home standing " + bnt[12] + ")");
                     var szt = TC2.Core.Diagnostics.SizeTally.Sums;
                     if (szt != null)   // (villages deserted, measured first: how villages of each size live)
                     {
