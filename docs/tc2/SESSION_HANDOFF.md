@@ -15,7 +15,16 @@
   the hunters round Tamby 13 -> 1 -> 13 five years on (a respite, as wolves recolonise); the first bringing (best-suited kind) added only 10 to 570 - revised to
   the kind the land lacks most.
 - `K_b_ac3_s7` (the third run's seed 7 on sim 98) moved to `$Q/hold`: the fourth run on the final rules supersedes it.
-- Then: regenerate the fourth acceptance run (`bash tc2/out/tools/s26/make_ac4.sh $Q`) once the household and the cull have landed.
+- **C13.4 ruins reused** (`wip/ruins`, worktree `C:/Game Dev/tc-ruins`, on the cull + main; sim 107; draft `tc2/out/tools/s26/d2189.md`): measured first
+  (`place --ruins` on main, edcacb7; ten seeds at 300: 88-797 fallen homes' ruins kept their lots a world, >90 % inside the lived ring, while 20-36 % of
+  new homes went beyond it) - a household seeking a lot clears home ruins and builds there, their footing stone to the store. Checks: `0_zh_j` (ruin1:
+  RuinsTests + 7 classes), then after the household's chain `0_zl_0` (build ruin2 from tc-ruins as it is then - merge the cull with warmth into it
+  first), `0_zl_a` (`--oldruins` = `_hal1`), `0_zl_b` x10 `_rui1`, `0_zl_c` (`results/cmp_hal1_rui1.txt`).
+- **F11.2 the player's settings** (`wip/settings`, worktree `C:/Game Dev/tc-settings`, from main; view only; draft `d2188.md`): a Settings panel - sound
+  and volume, clouds, lighter shadows from high up, picture detail - kept in PlayerPrefs; never loaded in shots or batch runs; bridge `setting NAME V`
+  and published `settings`; the Web test checks it survives a reload. Check `0_zh_i` (cc).
+- Then: land in order (memory, ore, hall, cull, ruins; settings any time after its cc), regenerate the fourth acceptance run
+  (`bash tc2/out/tools/s26/make_ac4.sh $Q`; it now also writes `lordships --dependants` at 300 and 1,000) and judge it.
 
 ## Session 26 - HANDOFF (25 Oct 2026, 21:20 - ~23:25 IST; Control Room run #80 session 1) - rain, the harrying and the ways on main (sim 101); stone walls, the memory pass, the god's ore and the lord's household built, their checks RUNNING in the queue
 
