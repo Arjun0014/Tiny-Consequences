@@ -163,6 +163,25 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void RainFallsOnTheLandForItsDaysAndIsTold()
+        {
+            var w = TestWorlds.Make(617);
+            Coarse(w);
+            w.AdvanceTo(w.Now + SimTime.Days(2));
+            int cell = w.Settlements.Get(w.Settlements.First()).Cell;
+            w.Issue(new Command { Time = w.Now, Kind = CommandKind.GodRain, Cell = cell });
+            w.AdvanceTo(w.Now + SimTime.Hours(1));
+            Assert.IsTrue(w.RainBrought(cell), "the rain held over the land");
+            Assert.IsFalse(w.RainWithheld(cell));
+            for (int d = 0; d < World.RainDays - 1; d++) { w.AdvanceTo(w.Now + SimTime.Day); Assert.GreaterOrEqual(w.Planet.RainToday[cell], (float)World.RainFall - 1e-6f, "it rains there every day"); }
+            w.AdvanceTo(w.Now + SimTime.Days(3));
+            Assert.AreEqual(0, w.DrySpells.Count, "and stops after its days");
+            long rev = 0;
+            for (int i = 0; i < w.History.Count; i++) { var e = w.History.At(i); if (e.Kind == HistoryKind.RainBrought && e.RootKind == RootKind.You) { rev = e.Id; StringAssert.StartsWith("Rain came over the land", HistoryText.Describe(w, in e)); } }
+            Assert.AreNotEqual(0L, rev, "told, rooted in the cast");
+        }
+
+        [Test]
         public void WithNoCastTheWorldsHistoryIsItsOwn()
         {
             var w = TestWorlds.Make(612);

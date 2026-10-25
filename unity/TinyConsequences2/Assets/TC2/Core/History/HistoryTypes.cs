@@ -88,6 +88,7 @@ namespace TC2.Core.History
         BoatBuilt = 85,         // a household made a boat (Subject the household, Object the boat, Other who led the making; C9.1)
         Sworn = 98,             // a man swore to the one first among his village's people, whose household feeds him from its grain (Subject the man, Object the lord, Other the household; Magnitude a year's food FU; ArgA the men sworn to the lord now; Cause1 the harvest, Cause2 the last tribute paid there; C10.7b)
         SwornReleased = 99,     // a sworn man was released (Subject the man, Object the lord; ArgA 1 the grain could keep no more, 2 another first among the people, 3 past forty, 4 he and the lord no longer of one village, 5 the lord died; C10.7b)
+        RainBrought = 103,      // the god's rain came over a land (ArgA its days; Cause1 the cast: F9.5)
         MeteorStruck = 102,     // a meteor struck (ArgA buildings flattened, ArgB people killed; Cause1 the god's cast: F9.4)
         CropsBlighted = 101,    // a blight took most of a village's standing crop (Magnitude the share; Cause1 its cause - the god's blight: F9.3)
         TributeDemanded = 100,  // a village whose first among the people keeps sworn men asked a tenth of a weaker neighbour at its harvest (Subject the asker, Object the asked; Magnitude the tenth FU; ArgA 1 it bowed, 0 it refused - a wrong the asker holds; C10.8)
@@ -322,6 +323,7 @@ namespace TC2.Core.History
                 case HistoryKind.CropsFlattened: b = 5; break;
                 case HistoryKind.CropsBlighted: b = 5; break;
                 case HistoryKind.MeteorStruck: b = 25; break;
+                case HistoryKind.RainBrought: b = 4; break;
                 case HistoryKind.StormSurge: b = 20; break;
                 case HistoryKind.Speciation: b = 45; break;
                 case HistoryKind.Extinction: b = 40; break;

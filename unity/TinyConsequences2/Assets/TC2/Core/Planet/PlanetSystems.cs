@@ -188,7 +188,7 @@ namespace TC2.Core.Planet
                 double u = 0.7 * ub + 0.3 * uc;
                 double rain = u < pRain ? (pRain - u) / pRain * 1.6 : 0.0;
                 if (P.StormRain[c] > 0f) { rain += P.StormRain[c]; P.StormRain[c] = 0f; }  // what the storms brought
-                if (dry && w.RainWithheld(c)) rain = 0.0;   // (the god's drought: F9.4)
+                if (dry) { if (w.RainWithheld(c)) rain = 0.0; else if (w.RainBrought(c)) rain = DMath.Max(rain, TC2.Core.Simulation.World.RainFall); }   // (the god's drought and rain: F9.4, F9.5)
                 P.RainToday[c] = (float)rain;
                 _runoff[c] = 0;
                 if (!P.IsLand(c)) continue;
