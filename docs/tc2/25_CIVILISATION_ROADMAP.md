@@ -166,6 +166,22 @@ The siege was measured on these worlds and set aside (`tc2/out/tools/s25/siege/d
 Seed 4 (`_ac3`, 41 min): **its map keeps changing after the infill** - places 65 at 300, 66 at 500, 74 at 700, 80 at 900, 81 at 990 (55 daughter villages
 in all); people 12,159 at 300, 16,215 at 900, 14,576 at 990; 398 homes burnt in 53 villages. Seed 7 in the queue.
 
+**Fourth run (main's final rules, sim 107: stone walls, the memory pass, the god's ore and bounty, the lord's household, the cull/bringing/warmth/cold
+uncast, ruins reused; `_ac4`; books, measures `tc2/out/tools/s26/accept/`; session 26) - the worlds and books judged; shots and the Web build partly run (the
+queue's runner was stopped for low memory at 05:14).** Main's full suite 507/0/0. **Seed 2** (26 min): places 54 at 300, 53 at 600, 56, 62, **66 at 1,000**
+(third run 55 -> 62; 65 founded, 5 abandoned); people 11,386 at 300, 12,371 at 1,000 (no great pox this time: chaos); the ways spread by lines of descent
+(Thamford's line 29 villages over 18.8 km); stone: 6 rings at 300, 27 at 600, **38 of 54 walled villages in stone at 1,000** with 10 old rings inside towns;
+2,469 ruins cleared for new homes and 39,808 loads of footing stone carried back. **Seed 4** (38 min): places 66 -> 67 -> 69 -> 77 -> **82 at 900-1,000**;
+people 13,946 at 1,000 (third run 9,821), raids 979 (1,857), sickness deaths 16,495 (33,156) - one seed; Trostrimford's realm 63 villages in five tiers at
+year 999, three lords take tribute from 76 of 82 villages. **Seed 7** (6 min): a small world, 20-22 villages, ~2,500 people steady; one lord over all 20.
+**The books** (`book4_s*_y1000.md`) read as history: sixteen ages a world, twelve great realms and the lesser lordships, fourteen named wars and 128 lesser,
+23 plagues, the places as towns of 300-700 people. **Shots** (seed 2, village #4 at 300): the village in its ring by the sea, a river, the plain's fields;
+at the region view **two shadow cascades above 3 km (ShadowLite) cannot be told from four**. Still to judge: years 600 and 1,000 in shots, the villages
+most walled in stone, realms, the meteor, the god's ore, the Web build (the heap at 1,000 after the memory pass; the frame pass's pairs; the book's pages
+with the realm maps). **Seen to look at next**: hunger is every world's great killer (46,072 hunger deaths in seed 4's millennium against 16,495 of
+sickness); by 1,000 realms hold nearly every village (the "kingdoms" of §6); in metal worlds smelting reaches every village while few know ore (C5.3c
+prospecting, built).
+
 ## 7. After the C-phases
 F9 (the god's powers beyond those that exist), F10 (art and presentation: animation of labour, UI art pass), F11 (platform).
 
