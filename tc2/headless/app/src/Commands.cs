@@ -243,7 +243,9 @@ namespace TC2.Headless
             if (a.Has("oldharry")) TC2.Core.Society.Conflict.HarryOff = true;   // (C8.1a off: no band harries the fields outside the walls)
             if (a.Has("harrytally")) TC2.Core.Society.Conflict.HarryTally = new double[7];   // (C8.1a: bands broken on walls and the crops outside them)
             if (a.Has("oldstonewalls")) TC2.Core.Society.Conflict.StoneWallsOff = true;   // (C7.2 off: no village walls its ring in stone)
-            if (a.Has("oldcompact")) TC2.Core.History.HistoryLedger.CompactOff = true;   // (the memory pass off: old events kept by importance alone, every name kept)
+            if (a.Has("oldcompact")) TC2.Core.History.HistoryLedger.CompactOff = true;
+            if (a.Has("oldhall")) TC2.Core.Society.Hall.Off = true;   // (C10.11 off: no first household keeps dependants)
+            if (a.Has("halltally")) TC2.Core.Society.Hall.Tally = new double[TC2.Core.Society.Hall.TallyN];   // (C10.11: households taken in, let go, fed)   // (the memory pass off: old events kept by importance alone, every name kept)
             if (a.Has("stonetally")) { TC2.Core.Society.Conflict.StoneTally = new double[5]; TC2.Core.Places.Construction.StoneTally = new double[3]; }   // (C7.2: stone weighed, begun, laid)
             if (a.Has("burntally")) TC2.Core.Society.Conflict.BurnTally = new double[TC2.Core.Society.Conflict.BurnTallyN];   // (ravaging, measured first)
             if (a.Has("sizetally")) TC2.Core.Diagnostics.SizeTally.Sums = new double[TC2.Core.Diagnostics.SizeTally.Classes * TC2.Core.Diagnostics.SizeTally.Stride];   // (villages deserted, measured first: how villages of each size live)
@@ -1073,6 +1075,13 @@ namespace TC2.Headless
                     if (hyt != null)   // (C8.1a: the harrying)
                         Console.WriteLine("harry: bands driven off " + hyt[0] + ", by a standing wall " + hyt[1] + ", with a crop standing " + hyt[2] + " (the harvest at stake " + F(hyt[3], "0") + " FU, " + hyt[4] +
                                           " raiders); harried " + hyt[5] + " (" + F(hyt[6], "0") + " FU of harvest burnt)");
+                    var hlt = TC2.Core.Society.Hall.Tally;
+                    if (hlt != null)   // (C10.11: the lord's household)
+                    {
+                        int keptNow = 0, keptSeat = 0; for (int hi = w.Households.First(); hi != 0; hi = w.Households.Next(hi)) { ref var hh = ref w.Households.Get(hi); if (hh.Keeper == 0 || hh.Dissolved != 0) continue; keptNow++; if (w.Settlements.Exists(hh.Settlement) && w.Conflict.PolitySize(hh.Settlement) > 0) keptSeat++; }
+                        Console.WriteLine("hall: taken in at home " + hlt[0] + ", from the realm " + hlt[1] + " (could not go " + hlt[9] + "); let go - the grain short " + hlt[2] + ", another first " + hlt[3] + ", land of their own " + hlt[4] +
+                                          "; FU given " + F(hlt[5], "0") + " (" + hlt[6] + " household-years); the most kept by one " + hlt[7] + "; village-harvests weighed " + hlt[8] + "; kept now " + keptNow + " (at lords' seats " + keptSeat + ")");
+                    }
                     var stw = TC2.Core.Society.Conflict.StoneTally; var stl = TC2.Core.Places.Construction.StoneTally;
                     if (stw != null && stl != null)   // (C7.2: walls of stone weighed, begun and laid)
                     {

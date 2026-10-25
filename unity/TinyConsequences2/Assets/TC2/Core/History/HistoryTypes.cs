@@ -91,6 +91,8 @@ namespace TC2.Core.History
         FieldsHarried = 104,    // a band broken on a village's walls burned and trampled its standing crop outside them (Magnitude the share; Cause1 the raid: C8.1a)
         OreRevealed = 105,      // the god laid bare a body of ore (ArgA its kind, Magnitude kg; Cause1 the cast: F9.6)
         SoilRenewed = 106,      // a village's fields renewed as when first broken (Magnitude the tiredness taken away; Cause1 the cast: F9.7)
+        TakenIn = 107,          // a first household took a landless household into its keep (Subject the household, Object the first; Other its village when it came from another; ArgA 1 summoned from the realm; C10.11)
+        LetGo = 108,            // a kept household let go (Subject the household, Object its keeper; ArgA 1 the grain short, 2 another first, 3 land of its own; C10.11)
         RainBrought = 103,      // the god's rain came over a land (ArgA its days; Cause1 the cast: F9.5)
         MeteorStruck = 102,     // a meteor struck (ArgA buildings flattened, ArgB people killed; Cause1 the god's cast: F9.4)
         CropsBlighted = 101,    // a blight took most of a village's standing crop (Magnitude the share; Cause1 its cause - the god's blight: F9.3)
@@ -287,6 +289,8 @@ namespace TC2.Core.History
                 case HistoryKind.TakingSeen: return Tier.Local;
                 case HistoryKind.Struck: return Tier.Local;
                 case HistoryKind.WatchSet: return Tier.Local;
+                case HistoryKind.TakenIn: return Tier.Local;
+                case HistoryKind.LetGo: return Tier.Local;
                 case HistoryKind.AmendsMade: return Tier.Local;
                 case HistoryKind.ClaimRefused: return Tier.Local;
                 case HistoryKind.BandRaised: return Tier.Local;
@@ -332,6 +336,8 @@ namespace TC2.Core.History
                 case HistoryKind.RainBrought: b = 4; break;
                 case HistoryKind.OreRevealed: b = 12; break;
                 case HistoryKind.SoilRenewed: b = 6; break;
+                case HistoryKind.TakenIn: b = 4; break;
+                case HistoryKind.LetGo: b = 3; break;
                 case HistoryKind.FieldsHarried: b = 5; break;
                 case HistoryKind.StormSurge: b = 20; break;
                 case HistoryKind.Speciation: b = 45; break;

@@ -144,6 +144,7 @@ namespace TC2.Core.Places
                 int hid = hhs[i];
                 ref var hh = ref w.Households.Get(hid);
                 if (hh.Party != 0 || !Mobile(hid)) continue;
+                if (hh.Keeper != 0 && !TC2.Core.Society.Hall.Off) continue;   // (kept by its first household and fed: it does not weigh leaving - C10.11)
                 double ph = own ? Pressure(in s, hid, unheldEach) : pressure;
                 double chance = DMath.Clamp(1.1 * ph - 0.12, 0.0, 0.45) * (w.Now - hh.Formed < SimTime.Years(6) ? 1.4 : 1.0);
                 if (Weighs != null) Weighs[6]++;
@@ -328,6 +329,22 @@ namespace TC2.Core.Places
             party.Event = cause;   // (its setting out is recorded with this as its cause)
             for (int i = 0; i < _scratch.Count; i++) w.Households.Get(_scratch[i]).Party = pid;
             w.Settlements.Get(sid).Lore.Forget(site);
+            return true;
+        }
+
+        /// <summary>
+        /// (C10.11) A household sets out to live in a village whose first household took it into its keep: a party of its own, as a household that chose to
+        /// go there would, its setting out recorded with `cause`. False when it cannot go (on the move, there already, no way on foot).
+        /// </summary>
+        public bool Summon(int hid, int dest, long cause)
+        {
+            var w = _w;
+            if (!w.Households.Exists(hid) || !w.Settlements.Exists(dest)) return false;
+            ref var hh = ref w.Households.Get(hid);
+            if (hh.Party != 0 || hh.Dissolved != 0 || hh.Settlement == dest || w.Routes.Get(w, hh.Settlement, dest) == null) return false;
+            int pid = NewParty(hh.Settlement, -1, dest);
+            w.Parties.Get(pid).Event = cause;
+            w.Households.Get(hid).Party = pid;
             return true;
         }
 

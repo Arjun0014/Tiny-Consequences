@@ -49,6 +49,12 @@ namespace TC2.Core.History
                     }
                 case HistoryKind.MeteorStruck: return "A stone fell from the sky " + At(place) + (e.ArgA > 0 || e.ArgB > 0 ? ": " + (e.ArgA > 0 ? e.ArgA + (e.ArgA == 1 ? " building" : " buildings") + " flattened" : "") + (e.ArgA > 0 && e.ArgB > 0 ? ", " : "") + (e.ArgB > 0 ? e.ArgB + (e.ArgB == 1 ? " dead" : " dead") : "") : "") + ".";
                 case HistoryKind.RainBrought: return "Rain came over the land round " + place + (e.ArgA > 0 ? " for " + e.ArgA + " days" : "") + ".";
+                case HistoryKind.TakenIn: return "The " + Plural(obj) + " of " + place + " took the " + Plural(subj) + " into their keep" + (e.ArgA == 1 ? ", landless in " + other + ": they came to live at their hall" : ": landless, fed from their grain") + ".";
+                case HistoryKind.LetGo:
+                    {
+                        string why = e.ArgA == 1 ? "their grain could keep them no longer" : e.ArgA == 2 ? "another household is first in " + place + " now" : "they hold land of their own";
+                        return "The " + Plural(subj) + " of " + place + " left the keep of the " + Plural(obj) + ": " + why + ".";
+                    }
                 case HistoryKind.SoilRenewed: return "The fields of " + subj + " were renewed as when first broken: " + F(100.0 * e.Magnitude, "0") + " % of their strength given back.";
                 case HistoryKind.OreRevealed: return "Copper ore lay bare " + At(place) + ": green and blue stone where the rock breaks, " + F(e.Magnitude / 1000.0, "0") + " tonnes of it, for whoever comes to see it.";
                 case HistoryKind.Drought: return "A drought came over the land round " + place + (e.ArgA > 0 ? ": no rain for " + e.ArgA + " days" : "") + ".";
