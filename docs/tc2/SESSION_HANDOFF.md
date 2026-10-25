@@ -39,9 +39,13 @@ save-answer fixes are right but not this fault's root. Next: in the Web test, ri
 'tiny-consequences-2', store 'saves', key 'world' -> the header's WorldTime at byte 18 and CatchUpTarget at byte 35, `realmsperf.mjs` reads the same header) and
 again after the reload; find which save wrote a catch-up target and why the explicit save is not what is read (a later write? another key? the title?).
 
+**Update (~17:00)**: **the reload fault traced - the test harness, not the game** (`tc2/scripts/saveprobe.mjs` reads the stored save's header at each step):
+saves and reloads work; the test read the published state before the game had done its `save` command (commands run at the next frame) and saw the save
+before's `saveOk`. The bridge publishes `saves` (stored), the test waits for it to rise (main 728bd0e). `0_za_web_s25web6` (queued next) should show 8/8.
+
 ### Next, in order
-1. **The reload fault above** (a player could lose the latest world on reload) - the first task. Then append D2-182 (`frame/d2182.md`, its "Open" line resolved).
-   If a cull shows pop-in or missing villages in real shots (`K_d`), fix forward.
+1. Judge `0_za` (8/8 expected), then append D2-182 (`tc2/out/tools/s25/frame/d2182.md`) to DECISIONS. If a cull shows pop-in or missing villages in real shots
+   (`K_d`), fix forward.
 2. **The frame and memory passes, next steps**: buildings are still the largest layer - villages in front of the limb but outside the view, the buildings' draws
    by colour group (each a draw a camera and a shadow cascade), shadows cast only near; the heap grows with the record - **measured** (`run --load F
    --statesizes`, main 44b12bc; `tc2/out/tools/s25/frame/statesizes_s2_ac3_y{300,1000}.txt`): seed 2's state 33.7 MB at 300 -> 106.8 at 1,000; **the history

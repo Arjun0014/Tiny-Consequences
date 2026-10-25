@@ -24,7 +24,7 @@ then god powers and player-facing gameplay.
 
 ## Session 25, fourth context (25 Oct 2026, from 14:10 IST) - the frame pass on main; C11.1b built (sim 101); the siege set aside
 - Read SESSION_HANDOFF's top block **"Session 25, fourth context"** first: the exact state, the queue and "Next, in order".
-- **On main (31234dc, sim 98, no sim change)**: the frame pass (people beyond the limb or outside the view unposed; villages beyond the limb unbuilt), the
+- **On main (728bd0e, sim 98, no sim change)**: a save streamed both ways (the heap -243 MB at year 1,000), the reload test fixed (it read a stale saveOk - the harness, not the game), the frame pass (people beyond the limb or outside the view unposed; villages beyond the limb unbuilt), the
   reload fault fixed (`SaveNow` unsets `saveOk` while a save is in flight), the power's aim only over open ground, the Web test closing the pages before it
   aims; the .meta files Unity made (sounds, Hud.Powers, Hud.Title, AudioView).
 - **Measured**: layer costs of a great world (buildings ~half the frame, people a quarter, shadows redraw both); the heap 1.3-1.5 GB (the memory pass is
