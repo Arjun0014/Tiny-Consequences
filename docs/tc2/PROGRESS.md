@@ -11,7 +11,7 @@
   ends its bond; found when the lord's household's worlds read "tribute from five villages" against the world's four. (3) **F9.8-F9.9** (`wip/cull`, sim
   106): the cull (nine in ten of the hunting kinds round a place: played, the hunters round Tamby 13 -> 1 -> 13 in five years), the bringing (the game the
   land lacks most by weight, to the kind's typical stocking over its range - a first rule brought the single densest cell's thickness: 570 -> 14,308 game
-  that starved back to 865 and cost the herds a third), warm and cold air (a summer 5 C over 4 km); the power bar in two rows. (4) **C13.4 ruins reused**
+  that starved back to 865 in five years; at the most peopled village the revised rule adds 30, its land near its kinds' stocking), warm and cold air (a summer 5 C over 4 km); the power bar in two rows. (4) **C13.4 ruins reused**
   (`wip/ruins`, sim 107), measured first (`place --ruins`): living villages kept 88-797 fallen homes' ruins on their lots at 300, >90 % inside the lived
   ring, while 20-36 % of new homes went beyond it - a household seeking a lot now clears home ruins and builds there, their footing stone to the store.
   (5) **F11.2 the player's settings landed** (885e540, D2-188): sound and volume, clouds, lighter shadows, picture detail - kept between visits.
