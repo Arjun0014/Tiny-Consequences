@@ -25,8 +25,10 @@ then god powers and player-facing gameplay.
 ## Session 25, third context (25 Oct 2026, from 07:34 IST) - C3.6g the land between villages landed (main b516bb1, sim 95; D2-176)
 - The acceptance's frozen map measured (`place --margins`): the room lay between villages, not on poorer land. Daughter villages now fill it on their
   village's own margins (twice the places by ~300; people +16-33 %); joiners count those already on their way. Slow change after the infill.
-- Next: judge the queue's `D_a` (main's full suite) and `D_b` shots; then villages deserted in crises and refounded, measured first (SESSION_HANDOFF
-  "Session 25, third context").
+- Then (main 67a2cd8, sim 97): small villages measured to live better (no desertion rule); **C8.0 the burning-in** (D2-177); **F9.1-F9.3 the god's
+  powers as play and F11.1 the opening** (D2-178: the power bar, Your Actions, a sickness and a blight, the title).
+- Next: the queue's final run (`make_final.sh`: full suite, the third 1,000-year run `_ac3`, Web `s25web3`, layer costs, shots) - judge it; then the
+  frame pass by its layer costs, more powers, 25 §6 judged (SESSION_HANDOFF "Session 25, third context", its update ~13:15).
 
 ## Session 25, second context (25 Oct 2026, 23:56 - ~02:45 IST) - four slices landed; the 1,000-year acceptance RUNNING in the queue
 - **On main (2935c9a and after; sim 94)**: C10.8 the asking (D2-168), C10.9 the lord's death (D2-173: bonds for peace lapse with the first among the lord's
