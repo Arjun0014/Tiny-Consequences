@@ -55,6 +55,8 @@ namespace TC2.Core.History
                         string why = e.ArgA == 1 ? "their grain could keep them no longer" : e.ArgA == 2 ? "no household is first in " + place + " to keep them now" : "they hold land of their own";
                         return "The " + Plural(subj) + " of " + place + " left the keep of the " + Plural(obj) + ": " + why + ".";
                     }
+                case HistoryKind.BeastsCulled: return "Nine in ten of the " + subj + " kind " + (e.ArgA == 1 ? "in the waters off " : "round ") + place + " were culled: " + F(e.Magnitude, "0") + " beasts.";
+                case HistoryKind.BeastsBrought: return F(e.Magnitude, "0") + " of the " + subj + " kind were brought to " + (e.ArgA == 1 ? "the waters off " : "the land round ") + place + ", as thick as they live where they do best.";
                 case HistoryKind.SoilRenewed: return "The fields of " + subj + " were renewed as when first broken: " + F(100.0 * e.Magnitude, "0") + " % of their strength given back.";
                 case HistoryKind.OreRevealed: return "Copper ore lay bare " + At(place) + ": green and blue stone where the rock breaks, " + F(e.Magnitude / 1000.0, "0") + " tonnes of it, for whoever comes to see it.";
                 case HistoryKind.Drought: return "A drought came over the land round " + place + (e.ArgA > 0 ? ": no rain for " + e.ArgA + " days" : "") + ".";
@@ -263,6 +265,8 @@ namespace TC2.Core.History
                         case CommandKind.GodRain: return "You brought rain " + At(place) + ".";
                         case CommandKind.GodOre: return "You laid bare a vein of copper " + At(place) + ".";
                         case CommandKind.GodBounty: return "You renewed the land " + At(place) + ".";
+                        case CommandKind.GodCull: return (e.ArgB == 1 ? "You culled the hunters of the sea " : "You culled the hunting beasts ") + At(place) + ".";
+                        case CommandKind.GodBring: return (e.ArgB == 1 ? "You brought a shoal " : "You brought game ") + At(place) + ".";
                         default: return "You reached down near " + place + ".";
                     }
                 default: return e.Kind + " at " + place;

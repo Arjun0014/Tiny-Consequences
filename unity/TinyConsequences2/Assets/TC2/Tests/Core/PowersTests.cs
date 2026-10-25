@@ -251,6 +251,110 @@ namespace TC2.Tests.Core
             Assert.Greater(w.Settlements.Get(sid).Tired, 0.0, "tiring again");
         }
 
+        /// <summary>The animals of the species matching a test within a god's reach of a cell, in that cell's habitat.</summary>
+        static double Within(World w, int cell, System.Func<Species, bool> which)
+        {
+            var P = w.Planet; double sum = 0; var at = P.Grid.Center[cell]; bool land = P.IsLand(cell);
+            for (int s = 0; s < P.Species.Count; s++)
+            {
+                if (!which(P.Species[s])) continue;
+                for (int q = 0; q < P.Cells; q++)
+                    if (P.IsLand(q) == land && Vec3d.ArcDistance(at, P.Grid.Center[q], P.Radius) <= World.GodReach) sum += P.Abund[s * P.Cells + q];
+            }
+            return sum;
+        }
+
+        [Test]
+        public void ACullTakesNineInTenOfTheHuntersRoundThePlaceAndMoreWanderIn()
+        {
+            var w = TestWorlds.Make(618);
+            Coarse(w);
+            w.AdvanceTo(w.Now + SimTime.Days(2));
+            int sid = w.Settlements.First(), cell = w.Settlements.Get(sid).Cell;
+            System.Func<Species, bool> hunters = sp => sp.Habitat == 0 && sp.Gone == 0 && sp.Prey != 0;
+            System.Func<Species, bool> game = sp => sp.Habitat == 0 && sp.Gone == 0 && sp.Prey == 0;
+            double h0 = Within(w, cell, hunters), g0 = Within(w, cell, game);
+            Assert.Greater(h0, 1.0, "premise: hunting beasts round the village");
+            w.Issue(new Command { Time = w.Now, Kind = CommandKind.GodCull, Cell = cell });
+            w.AdvanceTo(w.Now + SimTime.Hours(1));
+            double h1 = Within(w, cell, hunters);
+            Assert.AreEqual(h0 * (1.0 - World.CullShare), h1, h0 * 0.02, "nine in ten of them taken");
+            Assert.AreEqual(g0, Within(w, cell, game), g0 * 1e-6 + 1e-6, "the game left as it was");
+            long cast = 0; int told = 0; double took = 0;
+            for (int i = 0; i < w.History.Count; i++)
+            {
+                var e = w.History.At(i);
+                if (e.Kind == HistoryKind.GodCommand && e.ArgA == (int)CommandKind.GodCull) { cast = e.Id; StringAssert.StartsWith("You culled the hunting beasts", HistoryText.Describe(w, in e)); }
+                if (e.Kind != HistoryKind.BeastsCulled) continue;
+                told++; took += e.Magnitude;
+                Assert.AreEqual(cast, e.Cause1, "caused by the cast"); Assert.AreEqual(RootKind.You, e.RootKind);
+                StringAssert.StartsWith("Nine in ten of the", HistoryText.Describe(w, in e));
+            }
+            Assert.Greater(told, 0, "each kind's cull told");
+            Assert.AreEqual(h0 - h1, took, (h0 - h1) * 0.01 + 1.0, "as many as were taken");
+            Assert.Greater(new HistoryBook.Writer(w).Part(8).Chapters.Count, 0, "in Your Actions");
+            // and the hunters beyond the reach wander in, as the world's own laws move them
+            w.AdvanceTo(w.Now + SimTime.Years(2));
+            Assert.Greater(Within(w, cell, hunters), h1 * 1.5, "more wandered in");
+        }
+
+        [Test]
+        public void BringingBringsTheGameThePlaceSuitsBestAndAtSeaAShoal()
+        {
+            var w = TestWorlds.Make(619);
+            Coarse(w);
+            w.AdvanceTo(w.Now + SimTime.Days(2));
+            var P = w.Planet;
+            int sid = w.Settlements.First(), cell = w.Settlements.Get(sid).Cell;
+            // the game the place suits best (it hunts nothing; two kilos or more)
+            int best = -1; double bs = 0;
+            for (int s = 0; s < P.Species.Count; s++)
+            {
+                var sp = P.Species[s];
+                if (sp.Habitat != 0 || sp.Gone != 0 || sp.Prey != 0 || sp.Mass < 2f) continue;
+                double su = Ecology.Suitability(P, sp, cell);
+                if (su > bs + 1e-12) { bs = su; best = s; }
+            }
+            Assert.GreaterOrEqual(best, 0, "premise: game the place suits");
+            int bid = P.Species[best].Id;
+            System.Func<Species, bool> it = sp => sp.Id == bid;
+            System.Func<Species, bool> others = sp => sp.Id != bid;
+            double b0 = Within(w, cell, it), o0 = Within(w, cell, others);
+            w.Issue(new Command { Time = w.Now, Kind = CommandKind.GodBring, Cell = cell });
+            w.AdvanceTo(w.Now + SimTime.Hours(1));
+            double b1 = Within(w, cell, it);
+            Assert.Greater(b1, b0 + 1.0, "brought");
+            Assert.AreEqual(o0, Within(w, cell, others), o0 * 1e-6 + 1e-6, "no other kind brought");
+            int told = 0;
+            for (int i = 0; i < w.History.Count; i++)
+            {
+                var e = w.History.At(i);
+                if (e.Kind != HistoryKind.BeastsBrought) continue;
+                told++;
+                Assert.AreEqual(new EntityRef(EntityKind.Species, bid), e.Subject, "the kind the place suits best");
+                Assert.AreEqual(b1 - b0, e.Magnitude, (b1 - b0) * 0.01 + 1.0, "as many as came");
+                Assert.AreEqual(RootKind.You, e.RootKind);
+                StringAssert.Contains("as thick as they live where they do best", HistoryText.Describe(w, in e));
+            }
+            Assert.AreEqual(1, told, "told once");
+            // at sea: a shoal of a kind that hunts nothing, in the waters off the coast
+            int sea = -1;
+            for (int q = 0; q < P.Cells && sea < 0; q++)
+            {
+                if (P.IsLand(q)) continue;
+                for (int s = 0; s < P.Species.Count; s++) { var sp = P.Species[s]; if (sp.Habitat == 1 && sp.Gone == 0 && sp.Prey == 0 && Ecology.Suitability(P, sp, q) > 0.3) { sea = q; break; } }
+            }
+            Assert.GreaterOrEqual(sea, 0, "premise: a sea some shoal suits");
+            System.Func<Species, bool> fish = sp => sp.Habitat == 1 && sp.Prey == 0;
+            double f0 = Within(w, sea, fish);
+            w.Issue(new Command { Time = w.Now, Kind = CommandKind.GodBring, Cell = sea });
+            w.AdvanceTo(w.Now + SimTime.Hours(1));
+            Assert.Greater(Within(w, sea, fish), f0, "a shoal brought");
+            bool seaTold = false;
+            for (int i = 0; i < w.History.Count; i++) { var e = w.History.At(i); if (e.Kind == HistoryKind.BeastsBrought && e.ArgA == 1) { seaTold = true; StringAssert.Contains("the waters off", HistoryText.Describe(w, in e)); } }
+            Assert.IsTrue(seaTold, "the shoal told");
+        }
+
         [Test]
         public void WithNoCastTheWorldsHistoryIsItsOwn()
         {
