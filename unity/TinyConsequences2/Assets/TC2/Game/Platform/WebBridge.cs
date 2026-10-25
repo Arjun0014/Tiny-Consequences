@@ -67,6 +67,7 @@ namespace TC2.Game
                 case "bookat": { var hud = Object.FindFirstObjectByType<Hud>(); if (hud != null) hud.OpenBookAt(int.Parse(a[1], inv), a.Length > 2 ? int.Parse(a[2], inv) : 0); break; }   // (session 25) a part and chapter (-1: the preface)
                 case "aim": { var hud = Object.FindFirstObjectByType<Hud>(); if (hud != null) hud.Aim(int.Parse(a[1], inv)); break; }   // tests: aim a power as its button does (F9.1)
                 case "closebook": { var hud = Object.FindFirstObjectByType<Hud>(); if (hud != null) hud.CloseBook(); break; }
+                case "closepages": { var hud = Object.FindFirstObjectByType<Hud>(); if (hud != null) hud.ClosePages(); break; }   // (the book and every page closed)
                 case "names": Hud.Names = a.Length < 2 || a[1] == "on"; break;   // (session 25) places named on the map
                 case "person":
                     {
@@ -123,6 +124,8 @@ namespace TC2.Game
             if (what == "names") { Hud.Names = on; return; }        // (places, works and people named: D2-172)
             if (what == "cover") { TerrainLod.CoverOff = !on; return; }   // (the ground cover near the camera: D2-081)
             if (what == "covershadow") { TerrainLod.CoverShadows = on; return; }   // (shrubs' and boulders' shadows)
+            if (what == "peoplecull") { WorldObjectsView.PeopleCull = on; return; }   // (people beyond the limb and outside the view left unposed: 14 §7)
+            if (what == "placescull") { WorldObjectsView.PlacesCull = on; return; }   // (villages beyond the limb left unbuilt: 14 §7)
             int part = what == "trees" ? 1 : what == "people" ? 2 : what == "buildings" ? 4 : 0;
             if (part != 0) { WorldObjectsView.Off = on ? WorldObjectsView.Off & ~part : WorldObjectsView.Off | part; return; }
             string prefix = what == "terrain" ? "Patch" : what == "planet" ? "Face" : what == "sea" ? "Sea" : what == "air" ? "Atmosphere" : what == "clouds" ? "Clouds" : what == "rivers" ? "Rivers" : null;

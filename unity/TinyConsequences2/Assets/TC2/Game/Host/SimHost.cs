@@ -262,6 +262,9 @@ namespace TC2.Game
             _lastSaveRealMs = now;
             LastSaveBytes = length;
             LastSaveMs = (float)sw.Elapsed.TotalMilliseconds;
+            // (the flag tells whether the latest save is in the store: unset while it is written - it stood true from the save before, and a page
+            // reloaded on it loaded that older save: the Web test of s25web3)
+            LastSaveOk = false;
             Store.Save("world", _saveScratch.Out.Buffer, length, ok => { LastSaveOk = ok; done?.Invoke(ok); });
         }
 
