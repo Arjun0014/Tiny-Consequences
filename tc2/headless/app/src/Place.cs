@@ -57,6 +57,7 @@ namespace TC2.Headless
             if (a.Has("ways")) { PeoplesWays(w); return 0; }
             if (a.Has("stonewalls")) { StoneWalls(w); return 0; }
             if (a.Has("ruins")) { Ruins(w, a.Int("show", 15)); return 0; }
+            if (a.Has("ore")) { OreReach(w, a.Int("show", 15)); return 0; }
             if (a.Has("ceiling")) { Ceiling(w); return 0; }
             if (a.Has("margins")) { Margins(w, a.Int("show", 20)); return 0; }
             if (a.Has("heirs")) { Heirs(w); return 0; }
@@ -730,6 +731,60 @@ namespace TC2.Headless
         /// (a house's ruin lasts ~300 years, on stone footings half again); how many ruins lie inside the ring its lived homes make (the nearest four
         /// fifths of them), and where the homes raised in the last 30 years went - inside that ring or beyond it, while ruins kept lots inside.
         /// </summary>
+        /// <summary>
+        /// (C5.3, the resource town - measured first) Each living village's metal: whether its people smelt copper or iron, the ore it knows within a
+        /// day's work (`Mining.Reach`) and its mine; the villages that smelt but know no body within reach (`Mining.Lacks`), and how far the nearest body
+        /// lies by the ground's own rule (known or not) - and whether another village lives within reach of it. The room for distant work and a mining
+        /// hamlet: smiths with no ore near, ore with nobody near.
+        /// </summary>
+        static void OreReach(World w, int show)
+        {
+            var P = w.Planet; long now = w.Now;
+            var cu = new List<int>(); var fe = new List<int>();
+            for (int c = 0; c < P.Cells; c++) { if (!P.IsLand(c)) continue; if (TC2.Core.Places.Mining.CopperAt(w, c)) cu.Add(c); if (TC2.Core.Places.Mining.BogAt(w, c)) fe.Add(c); }
+            int villages = 0;
+            var rows = new List<(int sid, byte kind, double near, bool other, double share)>();
+            int[] smelt = new int[3], know = new int[3], mines = new int[3], lack = new int[3];
+            var bins = new int[3, 5];   // the lacking villages' nearest body: within 2, 2-3, 3-5, 5-8, beyond 8 km
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                ref var s = ref w.Settlements.Get(sid);
+                if (!s.Inhabited) continue;
+                villages++;
+                for (byte k = TC2.Core.Places.Mining.Copper; k <= TC2.Core.Places.Mining.Iron; k++)
+                {
+                    bool sm = (k == TC2.Core.Places.Mining.Iron ? s.BestIron : s.BestMetal) >= TC2.Core.Places.Mining.Smelter;
+                    if (!sm) continue;
+                    smelt[k]++;
+                    if (TC2.Core.Places.Mining.CellOf(in s, k) != 0) know[k]++;
+                    if (TC2.Core.Places.Mining.Mine(w, sid, k) != 0) mines[k]++;
+                    if (!TC2.Core.Places.Mining.Lacks(in s, k)) continue;
+                    lack[k]++;
+                    double near = double.MaxValue; int nc = -1;
+                    foreach (int c in (k == TC2.Core.Places.Mining.Iron ? fe : cu)) { double d = Vec3d.ArcDistance(s.Anchor, P.Grid.Center[c], P.Radius); if (d < near) { near = d; nc = c; } }
+                    bool other = false;
+                    if (nc >= 0)
+                        for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
+                            if (o != sid && w.Settlements.Get(o).Inhabited && Vec3d.ArcDistance(w.Settlements.Get(o).Anchor, P.Grid.Center[nc], P.Radius) <= TC2.Core.Places.Mining.Reach) { other = true; break; }
+                    double km = near / 1000.0;
+                    bins[k, km <= 2 ? 0 : km <= 3 ? 1 : km <= 5 ? 2 : km <= 8 ? 3 : 4]++;
+                    rows.Add((sid, k, near, other, TC2.Core.Knowledge.Tech.ToolShare(in s)));
+                }
+            }
+            Console.WriteLine("ore: villages " + villages + "; bodies by the ground's rule: copper " + cu.Count + " cells, bog ore " + fe.Count + " cells");
+            for (byte k = TC2.Core.Places.Mining.Copper; k <= TC2.Core.Places.Mining.Iron; k++)
+                Console.WriteLine("  " + (k == TC2.Core.Places.Mining.Iron ? "iron:  " : "copper:") + " villages smelting " + smelt[k] + ", knowing ore within reach " + know[k] + ", with a mine " + mines[k] +
+                                  "; smelting but knowing none (lacking) " + lack[k] + " - their nearest body within 2 km " + bins[k, 0] + ", 2-3 km " + bins[k, 1] + ", 3-5 km " + bins[k, 2] + ", 5-8 km " + bins[k, 3] + ", farther " + bins[k, 4]);
+            rows.Sort((x, y) => x.near.CompareTo(y.near));
+            Console.WriteLine("  village                 metal   people  tools   nearest body km  another village near it");
+            for (int i = 0; i < Math.Min(show, rows.Count); i++)
+            {
+                var r = rows[i];
+                Console.WriteLine("  " + w.History.NameOf(EntityRef.Settlement(r.sid)).PadRight(22) + (r.kind == TC2.Core.Places.Mining.Iron ? "iron" : "copper").PadLeft(7) + w.Settlements.Get(r.sid).Population.ToString().PadLeft(9) +
+                                  (100.0 * r.share).ToString("0").PadLeft(6) + " %" + (r.near / 1000.0).ToString("0.0").PadLeft(17) + (r.other ? "yes" : "no").PadLeft(25));
+            }
+        }
+
         static void Ruins(World w, int show)
         {
             long now = w.Now;
