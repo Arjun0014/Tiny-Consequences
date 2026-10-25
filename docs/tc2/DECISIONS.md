@@ -5712,3 +5712,28 @@ process names stay; twin worlds with the pass off and on live the same 75 years,
 HistoryBook, Chronicle, Biography, Gazetteer 0 failed. The queue's checks (session 26): mem1 ok (MemoryPassTests 3, HistoryBook 5, Chronicle 3, Biography 4, Determinism 7, SaveLoad 8; floatcheck, Unity C#);
 **control** `--oldcompact` = the stone walls' rules (`_stw1`, seed 4, 300 years) byte for byte, same state hash; **the pass on: the annals = `_stw1` byte
 for byte** - it changes no history.
+
+## D2-185 — 2026-10-25 — The god's ore and bounty: a vein of copper laid bare, found and worked by the world's own rules; tired fields renewed (F9.6, F9.7)
+
+**Context.** 25 §8's powers that act through the world's own systems named "a strange stone of ore"; the resource town (25 §4: a mine, smiths, a town at
+the ore) is the record's answer to metal found. A body of ore enters the world only when someone sees it (C5.1); nothing could put one where the
+geology had none.
+
+**Decision.** The power "Ore" (20 years): a body of rich copper ore (`Mining.GodOreKg` 40 t, twice the ground's richest) laid bare at a place of dry land -
+a body in the ground from then (`Deposit.Event`: its laying, hashed when set), unknown until someone goes there and sees it, as any ore (`Mining.Saw`: a
+god-laid body is there where the geology's rule does not hold; the ground's own bodies are found by the rule as before). Its finding (`OreFound`, enabled
+by `OreRevealed`, caused by the cast) and all that follows - the mine, the smelting, the trade, a village drawn to it - run back to the cast (Your Actions).
+Where a body lies already its ore is renewed. **The ore seen**: every body kept in the world while ore is left is drawn where it lies - copper's green and
+blue stones where the rock breaks, bog iron's rust-red lumps - more the more ore is left (presentation of state that was never drawn). Shots `--ore M`;
+`run --castore Y`.
+
+**The bounty (F9.7).** The power "Bounty" (10 years): the fields of every village within a walk of the place (`GodReach` 2.5 km) renewed as when first
+broken - their tiredness (C3.6f, `Settlement.Tired`) gone - tiring again by the soil's own law as they are cropped; each renewal told (`SoilRenewed`, the
+tiredness taken away) and rooted in the cast. A full land's tired fields (D2-139) are what holds its harvests down: the bounty gives a crowded valley a
+generation's harvests at once, and what it feeds - births, foundings, a lord's tenth - follows by the world's own rules.
+
+**Evidence.** PowersTests 9/9 (the bounty: a village's fields tired to 0.6 renewed to 0, their heart full, told and rooted in the cast, tiring again within
+three years; the ore: laid bare, unknown, found by someone who goes there, the finding enabled by the laying and rooted in the cast, told in Your
+Actions, kept by a save); MiningTests 6, IronTests 8, HistoryBookTests 5; Unity C# compiles. Played: seed 4, copper laid bare at year 100 beside Tamby
+(141 people, smelting copper, knowing none): a mine by year 160, 1,829 kg dug, 7 records rooted in the cast. The queue's checks (session 26): ore1 ok (PowersTests 9, Mining 6, Iron 8, Determinism 7, SaveLoad 8; floatcheck, Unity C#); **uncast = the memory
+pass's rules (`_mem1`, seed 4, 300 years) byte for byte, same state hash**.
