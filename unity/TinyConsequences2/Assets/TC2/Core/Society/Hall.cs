@@ -68,8 +68,8 @@ namespace TC2.Core.Society
                 if (hh.Land >= 0.05) { LetGo(w, hhs[i], 3, harvest); continue; }
                 _kept.Add(hhs[i]);
             }
-            // (and those on their way here, or still at home in a tributary, summoned: kept all the same)
-            if (first != 0)
+            // (and those on their way here from a tributary, summoned: kept all the same - only a lord summons, so only a lord looks)
+            if (first != 0 && w.Conflict.PolitySize(sid) > 0)
                 for (int hid = w.Households.First(); hid != 0; hid = w.Households.Next(hid))
                 {
                     ref var hh = ref w.Households.Get(hid);
