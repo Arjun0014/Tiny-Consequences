@@ -1088,6 +1088,8 @@ namespace TC2.Core.Society
             int deed = w.DeedBook.Record(DeedKind.Raid, b2.Leader, origin, 0, at, Trade.Grain, loot, loot + RaidFright, ev);
             w.DeedBook.Learn(at, deed, isSeen ? KnownHow.Saw : KnownHow.Found);
             w.DeedBook.Learn(origin, deed, KnownHow.Own);
+            // (C8.0) a band that holds the field over blood fires the homes of those who killed its people - the burning-in; the raid weighs that more
+            if (outcome == 1 && !BurnOff) { double burnt = BurnIn(bandId, at, origin, ev); if (burnt > 0) w.DeedBook.AddWorth(deed, 0.0, burnt); }
             // (what it carries home answers the wrong it went for: its village's own, or the tributary's its lord answered - once: D2-108)
             if (b2.Motive != 0 && loot > 0) w.DeedBook.SettleBy(b2.Motive == 2 && b2.For != 0 ? b2.For : origin, at, loot);
             w.Metrics.Raids++;
@@ -1895,6 +1897,62 @@ namespace TC2.Core.Society
         /// standing [5]; the raided villages' homes standing, summed over the held raids [6]; held raids on walled villages [7]; held raids where the doers'
         /// homes would be all the village's [8]; blood deeds counted [9].</summary>
         public static double[] BurnTally;
+
+        /// <summary>`--oldburn`: no band fires a home (before C8.0), on the same binary.</summary>
+        public static bool BurnOff;
+        readonly System.Collections.Generic.List<int> _burnList = new System.Collections.Generic.List<int>(), _burnKills = new System.Collections.Generic.List<int>(),
+            _burnKiller = new System.Collections.Generic.List<int>();
+
+        /// <summary>
+        /// (C8.0) The burning-in: a band that holds the field fires the homes of the raided village's people who killed people of the village whose wrong
+        /// it went for - killings it knows by name, not made good, still weighed - each home once; the household's larder, its food made ready, its pots and
+        /// half its gear burn with it, and its people go out to an empty home of the village or a camp, as a household whose home is lost (`Homes.Burnt`).
+        /// The vengeance answers each killing it was for (`DeedBook.Avenged`: it leaves the avengers' sums). Returns what the burnt homes were worth to their
+        /// people - the labour that raised them and the food that burned - by which the raid weighs more against the band's village.
+        /// </summary>
+        double BurnIn(int bandId, int at, int origin, long raidEv)
+        {
+            var w = _w;
+            ref var b = ref w.Bands.Get(bandId);
+            int holder = b.Motive == 2 && b.For != 0 ? b.For : origin;   // (whose wrong the band went for: its own, or the tributary's its lord answered)
+            var known = w.DeedBook.KnownBy(holder);
+            if (known == null) return 0;
+            _burnList.Clear(); _burnKills.Clear(); _burnKiller.Clear();
+            for (int i = 0; i < known.Count; i++)
+            {
+                var k = known[i];
+                if (k.How != KnownHow.Saw && k.How != KnownHow.Told) continue;   // (the killer known by name)
+                ref var d = ref w.Deeds.Get(k.Deed);
+                if (d.Kind != DeedKind.Kill || d.ByS != at || d.ToS != holder || DeedBook.Settled(in d)) continue;
+                if (w.DeedBook.Weight(in d, w.Now) < DeedBook.ForgetBelow) continue;
+                if (d.By == 0 || !w.People.Exists(d.By)) continue;
+                ref var p = ref w.People.Get(d.By);
+                if (!p.Alive || p.Home != at || !w.Households.Exists(p.Household)) continue;
+                ref var hh = ref w.Households.Get(p.Household);
+                if (hh.Dissolved != 0 || hh.Building == 0 || !w.Buildings.Exists(hh.Building) || Homes.Fallen(in w.Buildings.Get(hh.Building), w.Now)) continue;
+                _burnKills.Add(k.Deed);
+                if (!_burnList.Contains(p.Household)) { _burnList.Add(p.Household); _burnKiller.Add(d.By); }
+            }
+            if (_burnList.Count == 0) return 0;
+            double worth = 0;
+            ref var t = ref w.Settlements.Get(at);
+            for (int i = 0; i < _burnList.Count; i++)
+            {
+                int hid = _burnList[i];
+                worth += Homes.Burnt(w, hid);
+                // the killing it was for (the first of the household's killings this band avenges)
+                long killEv = 0;
+                for (int j = 0; j < _burnKills.Count && killEv == 0; j++) { ref var kd = ref w.Deeds.Get(_burnKills[j]); if (kd.By != 0 && w.People.Exists(kd.By) && w.People.Get(kd.By).Household == hid) killEv = kd.Event; }
+                w.Record(new HistoryEvent
+                {
+                    Kind = HistoryKind.BuildingBurned, Time = w.Now, Cell = t.Cell, Settlement = at, Subject = EntityRef.Household(hid), Object = EntityRef.Settlement(origin),
+                    Other = EntityRef.Person(_burnKiller[i]), Cause1 = raidEv, Rel1 = CauseRel.PartOf, Cause2 = killEv, Rel2 = killEv != 0 ? CauseRel.InResponseTo : CauseRel.None,
+                    ArgA = 1, RootKind = RootKind.People,
+                });
+            }
+            for (int j = 0; j < _burnKills.Count; j++) w.DeedBook.Avenged(_burnKills[j]);
+            return worth;
+        }
         public const int BurnTallyN = 14;
         readonly System.Collections.Generic.HashSet<int> _burnKill = new System.Collections.Generic.HashSet<int>();
         readonly System.Collections.Generic.HashSet<int> _burnHh = new System.Collections.Generic.HashSet<int>();

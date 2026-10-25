@@ -417,6 +417,31 @@ namespace TC2.Core.Places
             }
         }
 
+        /// <summary>
+        /// (C8.0) A household's home burnt (a band's burning-in): the building falls at once, a ruin that fades as any; its larder, the food made ready, its
+        /// pots and half its gear burn with it; the household takes an empty home of its village or camps on the innermost free lot and raises its own again.
+        /// Returns what was lost to them in FU: the labour that raised the home (`Conflict.LabourWorth` an hour) and the food that burned.
+        /// </summary>
+        public static double Burnt(World w, int hid)
+        {
+            ref var hh = ref w.Households.Get(hid);
+            int bid = hh.Building;
+            double worth = 0;
+            if (bid != 0 && w.Buildings.Exists(bid))
+            {
+                ref var b = ref w.Buildings.Get(bid);
+                worth += (double)b.Hours * Society.Conflict.LabourWorth;
+                b.Household = 0; b.Left = w.Now - DMath.ToLong(FallYears(in b) * SimTime.Year) - 1;   // (burnt: fallen at once)
+            }
+            ref var h2 = ref w.Households.Get(hid);
+            worth += h2.Larder + h2.Ready;
+            h2.Larder = 0; h2.Ready = 0; h2.Pots = 0f; h2.Gear *= 0.5f; if (h2.Wares > h2.Gear) h2.Wares = h2.Gear;
+            h2.Building = 0; h2.Shelter = Construction.Camp; h2.Build = 0f; h2.Rebuild = 0;
+            int sid = h2.Settlement;
+            if (!TakeEmpty(w, hid)) { FreeLot(w, sid, hid, out float x, out float y); ref var h3 = ref w.Households.Get(hid); h3.HomeX = x; h3.HomeY = y; }
+            return worth;
+        }
+
         static readonly System.Collections.Generic.List<int> _gone = new System.Collections.Generic.List<int>();
 
         /// <summary>Ruins gone into the land leave the table (yearly housekeeping).</summary>

@@ -271,6 +271,16 @@ namespace TC2.Core.Society
             return wt;
         }
 
+        /// <summary>(C8.0) A killing avenged by a burning-in: it leaves the avengers' sums as amends would, and is not claimed or avenged again.</summary>
+        public void Avenged(int deedId)
+        {
+            ref var d = ref _w.Deeds.Get(deedId);
+            if (Settled(in d)) return;
+            if (Knows(d.ToS, deedId, out byte how) && Counts(d.ToS, in d, how)) AddSum(d.ToS, in d, -1.0);
+            ref var d2 = ref _w.Deeds.Get(deedId);
+            d2.Flags |= DeedKind.Made;
+        }
+
         /// <summary>Whether a wrong was made good (amends answered it).</summary>
         public static bool Settled(in Deed d) => (d.Flags & DeedKind.Made) != 0;
 

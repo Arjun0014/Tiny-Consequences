@@ -238,6 +238,7 @@ namespace TC2.Headless
             if (a.Has("oldnames")) TC2.Core.Places.Migration.TonguesOff = true;   // (C11.1 off: every name from the one speech of before)
             if (a.Has("oldmargins")) TC2.Core.Places.Migration.MarginsOff = true;   // (C3.6g off: no daughter villages on the margins)
             if (a.Has("margintally")) TC2.Core.Places.Migration.MarginTally = new double[4];   // (C3.6g: the leavers who looked to their village's margins)
+            if (a.Has("oldburn")) TC2.Core.Society.Conflict.BurnOff = true;   // (C8.0 off: no band fires a home)
             if (a.Has("burntally")) TC2.Core.Society.Conflict.BurnTally = new double[TC2.Core.Society.Conflict.BurnTallyN];   // (ravaging, measured first)
             if (a.Has("sizetally")) TC2.Core.Diagnostics.SizeTally.Sums = new double[TC2.Core.Diagnostics.SizeTally.Classes * TC2.Core.Diagnostics.SizeTally.Stride];   // (villages deserted, measured first: how villages of each size live)
             if (a.Has("demandtally")) TC2.Core.Society.Conflict.DemandTally = new double[TC2.Core.Society.Conflict.DemandTallyN];   // (C10.8: the askings and their answers)
@@ -1041,6 +1042,13 @@ namespace TC2.Headless
                         Console.WriteLine("burn: raids " + bnt[0] + " (unseen " + bnt[1] + "), the band holding the field " + bnt[2] + "; of those with blood the band's village knows against the raided's people " + bnt[3] +
                                           " (" + bnt[9] + " deeds; on walled villages " + bnt[7] + "); the doers' households there " + bnt[4] + ", with a home standing " + bnt[5] + " - of " + bnt[6] +
                                           " homes standing in those villages; raids where they would be every home " + bnt[8] + "; held raids with a killing known " + bnt[10] + " (" + bnt[11] + " killings; the killers' households there " + bnt[13] + ", with a home standing " + bnt[12] + ")");
+                    if (bnt != null)
+                    {
+                        int burnt = 0; var byV = new System.Collections.Generic.Dictionary<int, int>();
+                        for (int hi = 0; hi < w.History.Count; hi++) { var he = w.History.At(hi); if (he.Kind != TC2.Core.History.HistoryKind.BuildingBurned || he.Subject.Kind != TC2.Core.Foundation.EntityKind.Household) continue; burnt++; byV.TryGetValue(he.Settlement, out int nb); byV[he.Settlement] = nb + 1; }
+                        int most = 0; foreach (var kv in byV) if (kv.Value > most) most = kv.Value;
+                        Console.WriteLine("burnt: homes burnt in the burning-in " + burnt + " in " + byV.Count + " villages (the most in one village " + most + ")");
+                    }
                     var szt = TC2.Core.Diagnostics.SizeTally.Sums;
                     if (szt != null)   // (villages deserted, measured first: how villages of each size live)
                     {
