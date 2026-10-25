@@ -5356,3 +5356,64 @@ else (the state hash differs by the tongues themselves). Its year-300 world (`pl
 changes from Stoby's speech); Trelton's line - Trelton, Bruldnelton, Foindmere, Brimere, Fainddoldton; Trailby's - Trailby, Nairthorpe, Dounvostead,
 Gounthaby: names that read by descent.
 **Landed** (session 25, 25 Oct 2026, sim 94, after C10.10).
+
+## D2-176 — 2026-10-25 — The land between villages: daughter villages on their village's own margins (C3.6g)
+
+**Context.** The 1,000-year acceptance's first run (25 §6, session 25) found that after the land fills (~year 300) the map stops changing: 2-3 villages
+abandoned in 1,000 years and almost no foundings. Measured: no village knows a free good place (`place --ceiling`), and households choose to leave ~400-530
+times a year but find no village to join (`run --jointally`: at seed 4's ceiling 70,528 of 72,054 found none - refused for no land to spare and for being
+as pressed as home). The handoff's hypothesis was marginal land: poorer sites below `Sites.MinQuality`, taken under pressure.
+
+**Measured first** (`place --margins`, a new tool: every land cell by its distance to the nearest living village; for cells beyond the spacing, the site's
+worth and the factor that holds it short; `tc2/out/tools/s25/results/margins_*.txt`; the 1,000-year worlds `_ac1`, seeds 2, 4, 7). **The hypothesis is
+refuted**: beyond the 1,900 m spacing the land is ice or lake, too cold or too dry (seed 4 at year 1,000: 117 arable ha of 2,007; of 1,050 cells short of
+0.25, 515 cold or hot, 389 dry or marsh, 38 without water, none short of arable land), and lowering the bar adds 0-1 villages a world. **The room is between
+the villages**: 1,164-1,425 ha of free arable land - 15-20 % of the world's arable land - inside the spacing, where no village may be founded, and beyond
+every village's 950 m fields' reach, where none can claim it, while every village is short of land (land/need 0.44-0.80 at seed 4's year 1,000). Packed on
+the villages' own margins (houses beyond every village's fields, 1,053 m; nearer to the mother than to any other; worth 0.25 with that room kept) it holds
+25-40 daughter villages in seeds 2 and 4 (6 in seed 7's small world), bread for ~2,300-2,800 people.
+
+**The record.** The high-medieval expansion filled the land between the older villages: assarts from the waste and the wood at a township's edge, hamlets
+and farmsteads on its outlying land, secondary settlements of an older village (the Danelaw's -thorpes beside the -bys they came from; Newtons; woodland
+-ley and -field hamlets between the nucleated villages, Roberts and Wrathmell's dispersed settlement) - founded by the mother village's land-short on land
+its people already worked and walked, not found by scouts sent far; and in the fourteenth century's crises such late, small settlements were among the
+first deserted (Beresford, Dyer).
+
+**Decision.** (Sim version 95.) In the yearly weighing (`Migration.Weigh`) households that chose to leave and know no free good place beyond the spacing
+look, each, for a village to join as before; **those who find none, if enough to make a village (2 households, 5 people), set out together to found a
+daughter village on their own village's margins** (`Migration.MarginSite`): a cell inside the mother's spacing and nearer to it than to any other living
+village - land its own people walk beyond their fields, known without a scout - whose houses stand beyond every village's fields (`MarginGap`: the fields'
+reach and the claims' slack of 0.75 cell), on no field or village ground, worth `Sites.MinQuality` by the same worth with that room kept (`Sites.Quality(w,
+c, scratch, spacing)`: the free arable land within its own reach), reached by a way on foot; the most habitable first. The party (`Party.Kind` 1, saved)
+arrives as any founding party; the founding is told as a daughter's ("founded on the margins of X's land, between its fields and its neighbours'"; the
+gazetteer "by people of X on the margins of its land"); its speech and its building tradition its mother's. **And a village's land to spare now counts the
+people already on their way to join it** (`Migration.Coming`, read from the parties' households at each weighing): before, every household weighing on one
+day saw a new village's free land as its own - a flaw the old rules seldom met, since at the ceiling no village had land to spare - and the first built
+daughters took in up to five times what their land fed (land/need 0.36-0.42 at seed 4's year 300). The order holds: a known place beyond the spacing first
+(full room), then a village with land to spare (vacant holdings after a plague), then the margins. `--oldmargins` is the rule of before on the same binary;
+`--margintally` counts it; `place --margins` measures the land. Not in this slice: factions splitting (C10.3) still go only beyond the spacing; a village
+too small to keep itself emptying into its neighbours.
+
+**Evidence.** MarginsTests 4/4 (leavers with nowhere to go found a daughter on the margins - beyond every village's fields, on the mother's side, told as a
+daughter's, speaking as its mother's people, a save with the party gathering continuing identically; with the rule off they stay; a margin site keeps its
+room, is worth living on and is reached on foot; joiners bound for a village fit in its spare land), MigrationTests 9/9, HoldingsTests 12/12,
+GazetteerTests 2/2, HistoryBookTests 5/5, TongueTests 4/4, DeterminismTests 7/7, SaveLoad 8/8, floatcheck clean. **Control**: seed 4's 300 years with
+`--oldmargins` equal main's (`_m9`) byte for byte - annals and the state hash. **Ten seeds against main** (`results/cmp_pc1_mg2.txt`): villages founded
+x2.8 (t 4.20) - seed 4 at year 300 60 places against 31 (37 daughters, 36 living, 4,210 people), seed 2 57 against 28 (34, all living, 4,983 people), seed 6
+26 against 14; people at year 300 x1.19 (t 3.20), over years 200-299 x1.16 (t 4.98), over 100-199 x1.06 (t 1.23) - the slice's intended lean, explained
+by its mechanism: the free arable land between villages farmed (seed 4 1,164 -> 139 ha, seed 2 1,425 -> 103 ha at year 300; `margins_s*_mg2_y300.txt`)
+and far beyond the twins' spread earlier placebos measured (x1.005-1.029; no placebo run); per-person rates at par or better - births x0.99, deaths x0.96
+(t -2.09), hunger x0.59 (t -1.34), famines x1.07; raids x1.01, wounds a person-year x0.90, loot x1.42; walls x1.30; bonds agreed x1.55 and the greatest
+realm x2.06 (t 4.21: twice the villages to gather); the sim's cost x1.34 (more villages). By year 300 the margins are nearly taken (seed 4: 2 of 60
+villages with a site left).
+**1,000 years** (`_ac2`, seeds 2, 4, 7 on the new rules, against the acceptance's `_ac1`; annals by century; `place --margins` at 300/500/800/1,000;
+books at 600 and 1,000 in `tc2/out/tools/s25/c36g/`): **the land between villages fills before ~year 300 - the map settled twice as densely** (seed 2: 57
+places at 300 against 28, 42 foundings in 200-299 against 11; seed 4: 60 against 31; seed 7: 20 against 10) and **more people live on it** (at 1,000: seed
+2 12,797 against 10,083, seed 4 14,362 against 11,494, seed 7 2,707 against 2,131). After the infill the map still changes slowly: 300-999 brought 12
+foundings and 2 abandonments in seed 2 (5 and 0 before), 21 and 4 in seed 4 (4 and 1), 2 and 1 in seed 7 (2 and 0) - a fuller map, then a slow one; few
+villages ever empty (a hamlet of 11-12 people lived 400 years, seed 2's Irthouford; seed 4's sickness of the 800s, 10,191 dead, emptied two). The books
+tell each daughter ("Treindby was founded on the margins of Nondtreby's land" - a -by of a -by; Deimere a daughter's daughter). The cost: a 1,000-year
+world takes x2.2-2.5 the time (seed 2 2,001 s against 910, seed 4 2,336 against 1,045) - twice the villages. Seed 2's great plague of the first run (people
+-52 % over 450-600) did not come in its new world (the sicknesses of the 400s took 4,496 against 3,919 + 5,187): a world parted at year 26 meets its
+epidemics otherwise. What 25 §6 still lacks after the infill - villages deserted in crises and refounded, ruins - is the next slice's question.
+**Landed** (session 25, 25 Oct 2026, sim 95).
