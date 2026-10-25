@@ -29,6 +29,7 @@ namespace TC2.Game
         public static TC2.Core.Foundation.Vec3d MuckLargestAt;
         readonly Dictionary<int, float> _muckShare = new Dictionary<int, float>();   // (each household's share of its village's muck, by the grass its beasts eat)
         Instancer _people, _granaries, _wells, _ricks, _flames, _huts, _tents, _ruins, _beached, _afloat, _walls, _woodpiles;
+        Instancer _stoneWalls, _towers;   // (C7.2: rings laid in stone, their gate and wall towers)
         Instancer _floors;   // (a threshing floor in use: the sheaves laid out while people thresh there - C3.7b)
         readonly HashSet<int> _floorsUsed = new HashSet<int>();
         Instancer _beachedP, _afloatP;   // plank boats on the beach and out on the water (C9.2b); _beached/_afloat are the dugouts
@@ -146,6 +147,8 @@ namespace TC2.Game
             _stonePiles = new Instancer(Models.Get("stone_pile", ProcMeshes.Granary), _mat, true);
             _granaries = new Instancer(Models.Get("granary", ProcMeshes.Granary), _mat, true);
             _walls = new Instancer(Models.Get("palisade", ProcMeshes.Palisade), _mat, true);   // walled villages (D2-074)
+            _stoneWalls = new Instancer(Models.Get("stone_curtain", ProcMeshes.StoneCurtain), _mat, true);   // rings laid in stone (C7.2)
+            _towers = new Instancer(Models.Get("wall_tower", ProcMeshes.WallTower), _mat, true);
             _huts = new Instancer(Models.Get("hut_round", ProcMeshes.House), _mat, true);
             _tents = new Instancer(Models.Get("tent", ProcMeshes.House), _mat, true);   // camps: hides over poles
             _ruins = new Instancer(Models.Get("ruin", ProcMeshes.House), _mat, true);   // the houses of abandoned villages (D2-052)
@@ -321,7 +324,7 @@ namespace TC2.Game
                 _chimneys.Draw(cam); _plinths.Draw(cam); _outshuts.Draw(cam); _pens.Draw(cam); _stalls.Draw(cam); _gardens.Draw(cam); _gardensBare.Draw(cam); _hurdles.Draw(cam); _tenters.Draw(cam); _clayPits.Draw(cam); _jars.Draw(cam); _ware.Draw(cam); _handcarts.Draw(cam); _oxcarts.Draw(cam); _cartLoads.Draw(cam); _oxen.Draw(cam); _parked.Draw(cam); _parkedOx.Draw(cam);
                 _stonePiles.Draw(cam);
                 for (int i = 0; i < _works.Length; i++) _works[i]?.Draw(cam);
-                _ricks.Draw(cam); _graves.Draw(cam); _gravesOld.Draw(cam); _standards.Draw(cam); _muck.Draw(cam); _huts.Draw(cam); _tents.Draw(cam); _ruins.Draw(cam); _walls.Draw(cam); _woodpiles.Draw(cam);
+                _ricks.Draw(cam); _graves.Draw(cam); _gravesOld.Draw(cam); _standards.Draw(cam); _muck.Draw(cam); _huts.Draw(cam); _tents.Draw(cam); _ruins.Draw(cam); _walls.Draw(cam); _stoneWalls.Draw(cam); _towers.Draw(cam); _woodpiles.Draw(cam);
             }
             if ((Off & 1) == 0) for (int i = 0; i < _trees.Length; i++) _trees[i].Draw(cam);
             _flames.Draw(cam);
@@ -351,7 +354,9 @@ namespace TC2.Game
 
         /// <summary>
         /// A village's palisade (D2-074): stretches of posts round the ring its people laid out, with gates where the roads leave
-        /// for its neighbours; while being built, as many stretches as the work has set; the timber greys as it rots.
+        /// for its neighbours; while being built, as many stretches as the work has set; the timber greys as it rots. Where its people
+        /// have laid it in stone (C7.2), that share of its stretches is a stone curtain - from the gates outward, towers flanking each gate
+        /// and along the curtain - and the stone of an old ring stands inside a grown town when its timber has gone.
         /// </summary>
         void DrawWall(TC2.Core.Simulation.World w, PlanetState P, in Settlement s, int sid, float ex)
         {
@@ -361,11 +366,13 @@ namespace TC2.Game
                 Construction.WorkCost(Construction.Palisade, in s, out double need, out _);
                 share = Construction.NextWork(in s) == Construction.Palisade && need > 0 ? Mathf.Clamp01((float)(s.WorkBuild / need)) : 0.0;
             }
-            if (s.Wall == 1 || s.Wall == 2) DrawRing(w, P, in s, sid, ex, s.WallR, s.Wall == 2 ? s.WallCond : 1f, share);
-            if (s.OldR > 0f) DrawRing(w, P, in s, sid, ex, s.OldR, s.OldCond, 1.0);   // (the old ring inside a grown town, rotting: C7.1)
+            if (s.Wall == 1 || s.Wall == 2) DrawRing(w, P, in s, sid, ex, s.WallR, s.Wall == 2 ? s.WallCond : 1f, share, s.Wall == 2 ? s.StoneWall : 0.0);
+            if (s.OldR > 0f) DrawRing(w, P, in s, sid, ex, s.OldR, s.OldCond, 1.0, s.OldStone);   // (the old ring inside a grown town, rotting - its stone standing: C7.1, C7.2)
         }
 
-        void DrawRing(TC2.Core.Simulation.World w, PlanetState P, in Settlement s, int sid, float ex, double r, float condition, double share)
+        readonly System.Collections.Generic.List<double> _gateDist = new System.Collections.Generic.List<double>();
+
+        void DrawRing(TC2.Core.Simulation.World w, PlanetState P, in Settlement s, int sid, float ex, double r, float condition, double share, double stone)
         {
             if (r < 5.0) return;
             int stretches = Mathf.Max(8, (int)(2.0 * System.Math.PI * r / 2.0));
@@ -408,19 +415,38 @@ namespace TC2.Game
             double gateHalf = 3.0 / r;   // (a gate some six metres wide)
             float cond = condition;
             Color timber = Color.Lerp(new Color(0.62f, 0.62f, 0.60f, 1f), Color.white, cond);
+            // (C7.2) the share laid in stone, from the gates outward (the gate towers first, as walls were built): each stretch's angle from its nearest gate,
+            // and the stretches nearest the gates in stone up to the share laid
+            _gateDist.Clear();
+            double far = 0.0;
+            for (int k = 0; k < set; k++)
+            {
+                double a = 2.0 * System.Math.PI * (k + 0.5) / stretches, dg = System.Math.PI;
+                for (int g = 0; g < _gates.Count; g++) dg = System.Math.Min(dg, System.Math.Abs(System.Math.IEEERemainder(a - _gates[g], 2.0 * System.Math.PI)));
+                _gateDist.Add(dg);
+                if (dg > far) far = dg;
+            }
+            double stoneTo = stone >= 1.0 ? double.MaxValue : stone * far;
+            int towerEvery = Mathf.Max(8, (int)(45.0 / 2.0));   // (a wall tower every ~45 m of curtain)
             for (int k = 0; k < set; k++)
             {
                 double a = 2.0 * System.Math.PI * (k + 0.5) / stretches;
-                bool gate = false;
-                for (int g = 0; g < _gates.Count && !gate; g++)
-                {
-                    double d = System.Math.Abs(System.Math.IEEERemainder(a - _gates[g], 2.0 * System.Math.PI));
-                    if (d < gateHalf) gate = true;
-                }
+                bool gate = _gateDist[k] < gateHalf;
+                bool inStone = stone > 0.0 && _gateDist[k] <= stoneTo;
                 if (gate) continue;
                 if (!Structures.RingDry(w, in s, r, a)) continue;   // (no posts in the sea or a lake: C1.6)
+                if (!inStone && cond <= 0f) continue;   // (the timber of an old ring all rotted away, its stone standing)
                 double x = s.SquareX + r * System.Math.Cos(a), y = s.SquareY + r * System.Math.Sin(a);
                 float yaw = Mathf.Atan2((float)(s.SquareX - x), (float)(s.SquareY - y)) * Mathf.Rad2Deg;
+                if (inStone)
+                {
+                    float tone = 0.94f + 0.06f * (((k * 7) % 5) / 4f);   // (rubble a little uneven from stretch to stretch)
+                    _stoneWalls.Add(0, new Color(tone, tone, tone * 0.98f, 1f), Place(P, s, x, y, yaw, ex));
+                    // towers: either side of each gate, and along the curtain
+                    bool byGate = _gateDist[k] < gateHalf + 2.0 / r;
+                    if (byGate || k % towerEvery == 0) _towers.Add(0, Color.white, Place(P, s, s.SquareX + (r + 0.6) * System.Math.Cos(a), s.SquareY + (r + 0.6) * System.Math.Sin(a), yaw, ex));
+                    continue;
+                }
                 // (old palisades lean a little as the posts rot)
                 float lean = (1f - cond) * 0.25f * (((k * 13) % 5) - 2);
                 _walls.Add(0, timber, Place(P, s, x, y, yaw, ex) * Matrix4x4.Rotate(Quaternion.Euler(lean * 10f, 0f, 0f)));
@@ -546,7 +572,7 @@ namespace TC2.Game
             _chimneys.Clear(); _plinths.Clear(); _outshuts.Clear(); _pens.Clear(); _stalls.Clear(); _gardens.Clear(); _gardensBare.Clear(); _hurdles.Clear(); _tenters.Clear(); _clayPits.Clear(); _jars.Clear(); _ware.Clear(); _parked.Clear(); _parkedOx.Clear();
             _stonePiles.Clear();
             for (int i = 0; i < _works.Length; i++) _works[i]?.Clear();
-            _ricks.Clear(); _graves.Clear(); _gravesOld.Clear(); _standards.Clear(); _muck.Clear(); _huts.Clear(); _tents.Clear(); _ruins.Clear(); _beached.Clear(); _beachedP.Clear(); _walls.Clear(); _woodpiles.Clear();
+            _ricks.Clear(); _graves.Clear(); _gravesOld.Clear(); _standards.Clear(); _muck.Clear(); _huts.Clear(); _tents.Clear(); _ruins.Clear(); _beached.Clear(); _beachedP.Clear(); _walls.Clear(); _stoneWalls.Clear(); _towers.Clear(); _woodpiles.Clear();
             _smoke.Clear(); _lights.Clear(); _watch.Clear();
             MuckHeaps = 0; MuckLargestKg = 0;   // (tools: the heaps drawn, and where the largest stands - the "muck" shot views)
             // (the frame pass, 14 §7) a village wholly beyond the planet's limb is not built: none of its buildings, lights or smoke can be seen - its
