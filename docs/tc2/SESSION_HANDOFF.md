@@ -21,12 +21,22 @@
   `0_x_heap_s25web4` (the wasm heap loading seed 2's worlds of every age: engine vs per-person), `0_y_ways_ctl2`, `K_b_ac3_s4`, `K_b_ac3_s7`, `K_ba_siege_s47`,
   `K_d` shots (village #4 at 300/600/1,000), `K_e` realms, `K_f` meteor/drought, `L_a_rain_rn1`, `M_*` (the harrying), `N_a_ways_s2`.
 
+**Update (~16:20)**: `0_w` (Web `s25web4`): the click casts; the culls x1.22/x1.57 (people) and x1.21/x1.51 (places) at region/village; with both the
+year-1,000 frame ~108/126 ms (from ~155/225); buildings still x0.44-0.46 (~60-67 ms), shadows x0.53-0.69, people x0.87-0.92 (`14` §7). The reload still lost
+the save - traced: `WebSaveStore` kept one answer slot a key, so an autosave's completion answered the test's later save; fixed (answers in order, `saveOk` set
+by the latest save only) and **the save streamed both ways** (`wip/savestream`, SaveStreamTests 3/3; seed 2's year-1,000 save loads and lives two days to main's
+hash) - both on main (8a83dd7, no state change). `0_x` the heap by age before it: 247/428 MB at year 50 ... 1,198/1,297 at 1,000 - it grows with the world's
+record, not its people. **C11.1b's second control ok** (`--oldhouseways` = `_hyr` byte for byte, hash too; ways on: annals = `_hyr`); the rule revised by its
+measure (`Conform` 0.6: households as their first household 55 %, tributaries' first households as their lord's 73 %) - `ways/d2181.md` complete but for
+`N_a`. Drafts: `tc2/out/tools/s25/frame/d2182.md`. Main c013107. Running: `0_z_web_s25web5` (Web build of main with the save fixes: the test's reload, the heap at
+50/300/1,000 against `0_x`).
+
 ### Next, in order
-1. Judge `0_w`: webtest 8/8 (the cast and the reload), and the culls' paired ratios (`peoplecull`, `placescull`) against `s25web3`'s layer costs; write the frame
-   pass into `14` §7 (and D2-182 with the Web fixes). If a cull shows pop-in or missing villages in real shots (`K_d`), fix forward.
-2. **The memory pass** (`0_x` first): the heap was 1,297 MB loaded at year 1,000 (headless managed 304 MB). Candidate measured by reading: `SaveFile` keeps
-   Body (the whole uncompressed state, ~124 MB), Deflated and Out (a copy) for the session, and a load inflates the whole state into one buffer (~110 MB) -
-   a streaming save (hash and deflate in 1 MB chunks, multiples of 8; no `BeginLength` is used in the state) and a streaming load would cut ~270 MB of peak.
+1. Judge `0_z`: webtest 8/8 (the reload), the heap after the streamed save against `0_x` (expected ~230 MB less at year 1,000); append D2-182 (`frame/d2182.md`).
+   If a cull shows pop-in or missing villages in real shots (`K_d`), fix forward.
+2. **The frame and memory passes, next steps**: buildings are still the largest layer - villages in front of the limb but outside the view, the buildings' draws
+   by colour group (each a draw a camera and a shadow cascade), shadows cast only near; the heap grows with the record (history ledger 126k events at 300,
+   505k at 1,000; deeds, graves, ruins) - measure the managed state by store at 300 and 1,000 headless before choosing what to keep less of.
 3. Land in order once `K_d`-`K_f` are done (they need sim-98 saves): rain (`L_a`), the harrying (`M_*`; D2-180), then C11.1b (`0_y` ok; D2-181; merge main
    into `wip/c111b-ways` first - the version line 99, 100, 101).
 4. Judge the third acceptance run (25 §6 "Third run": `_ac3` seeds 2/4/7, books, `K_d` shots) and write it up.
