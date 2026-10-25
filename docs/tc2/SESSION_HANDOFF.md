@@ -1,5 +1,37 @@
 # TC2 Session handoff
 
+## Session 25, fourth context (25 Oct 2026, from 14:10 IST; Control Room run #78 session 3) - main 31234dc (sim 98): the frame pass and two Web fixes landed; C11.1b built; the siege set aside
+
+### Exact state
+- **main 31234dc, sim 98** (not ours: `.claude/launch.json`, `Assets/Resources.meta`). Landed this context (no sim change): **the frame pass** (merge 3e3f64c of
+  `wip/frame` b91a8c2: people beyond the limb or outside the view unposed - `WorldObjectsView.PeopleCull`; villages wholly beyond the limb unbuilt, rebuilt at
+  once when the camera moves - `PlacesCull`, `PlacesReach` 2.5 km; bridge `on/off peoplecull|placescull`), **`SaveNow` unsets `LastSaveOk` while a save is in
+  flight** (the reload test had loaded an older save), **the power's aim drawn only over open ground** + bridge `closepages` + the Web test closes the pages
+  before it aims; Unity's .meta files for the 71 sounds (4a745a3) and for Hud.Powers/Hud.Title/AudioView (31234dc). Main's Game code compiled (`cc --src`);
+  **not yet built for the Web** - job `0_w` does it.
+- **Measured and set aside: C8.1b the siege** (`tc2/out/tools/s25/siege/design.md`; tool `run --siegetally` on `wip/siege-tally` ca6c3ec, main + a reading
+  tally, worktree `C:/Game Dev/tc-sgtally`; results `tc2/out/tools/s25/results/siege_s*_ac3_y*.txt`): no band the walls held off could stand a sally by the
+  walled village on open ground, in any world measured. `K_ba_siege_s47` adds seeds 4 and 7 (expected the same).
+- **Built, in evaluation: C11.1b a people's ways carried and copied** - `wip/c111b-ways` 1069a6d (worktree `C:/Game Dev/tc-bways`, on `wip/harry`, **sim 101**;
+  draft `tc2/out/tools/s25/ways/d2181.md` - update its rule text: Conform 0.6 replaced HeadCopy 0.3, BrideCopy 0.1 from another village only). Checks:
+  `0_v` (first control) ran with the clashing `--oldways` (D2-160's) and differed - renamed `--oldhouseways`; ways on: annals = `_hyr` byte for byte;
+  `0_y_ways_ctl2` reruns the control (`bw_ctl_ok`) and measures the revised rule (`ways/ways_s4_bw2_y300.txt`: want most households of a village in its way,
+  tributaries' first households toward their lords); `N_a_ways_s2` (1,000 years, needs `bw_ctl_ok`) at the queue's end.
+- **The queue** (runner PID 9632, `Q` as below; generators `tc2/out/tools/s25/siege/make_measure.sh`, `ways/make_ways.sh`): running `0_w_web_s25web4`, then
+  `0_x_heap_s25web4` (the wasm heap loading seed 2's worlds of every age: engine vs per-person), `0_y_ways_ctl2`, `K_b_ac3_s4`, `K_b_ac3_s7`, `K_ba_siege_s47`,
+  `K_d` shots (village #4 at 300/600/1,000), `K_e` realms, `K_f` meteor/drought, `L_a_rain_rn1`, `M_*` (the harrying), `N_a_ways_s2`.
+
+### Next, in order
+1. Judge `0_w`: webtest 8/8 (the cast and the reload), and the culls' paired ratios (`peoplecull`, `placescull`) against `s25web3`'s layer costs; write the frame
+   pass into `14` §7 (and D2-182 with the Web fixes). If a cull shows pop-in or missing villages in real shots (`K_d`), fix forward.
+2. **The memory pass** (`0_x` first): the heap was 1,297 MB loaded at year 1,000 (headless managed 304 MB). Candidate measured by reading: `SaveFile` keeps
+   Body (the whole uncompressed state, ~124 MB), Deflated and Out (a copy) for the session, and a load inflates the whole state into one buffer (~110 MB) -
+   a streaming save (hash and deflate in 1 MB chunks, multiples of 8; no `BeginLength` is used in the state) and a streaming load would cut ~270 MB of peak.
+3. Land in order once `K_d`-`K_f` are done (they need sim-98 saves): rain (`L_a`), the harrying (`M_*`; D2-180), then C11.1b (`0_y` ok; D2-181; merge main
+   into `wip/c111b-ways` first - the version line 99, 100, 101).
+4. Judge the third acceptance run (25 §6 "Third run": `_ac3` seeds 2/4/7, books, `K_d` shots) and write it up.
+
+
 ## Session 25, third context - HANDOFF (25 Oct 2026, ~14:10 IST; Control Room run #78 session 2) - main 9bd2814 (sim 98); the final run RUNNING in the queue
 
 ### Exact state

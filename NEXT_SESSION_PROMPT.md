@@ -16,11 +16,22 @@ then god powers and player-facing gameplay.
 
 ## Read first (this order), then work autonomously
 1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the standing prompt (architecture, rules, every direction; "Where we are (session 25, second context)").
-2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 25, third context - HANDOFF"**: the exact state, the job queue, the branches to land, "Next, in order".
+2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 25, fourth context"** (then "Session 25, third context - HANDOFF" below it): the exact state, the job queue, the branches to land, "Next, in order".
 3. `docs/tc2/DECISIONS.md` newest (D2-176 the land between villages, D2-177 the burning-in, D2-178 the god's powers and the opening, D2-179 the meteor, the drought and the sound; before them D2-168, D2-173-D2-175); `docs/tc2/PROGRESS.md`
    CURRENT STATE (session 25, second context); `docs/tc2/25_CIVILISATION_ROADMAP.md` §8 (the plan to a finished core); the C7.2 measure in
    `tc2/out/tools/s25/results/stonewalls_*.txt` when it has run, and `tc2/out/tools/s25/c81_design.md` (why C8.1 waits).
 4. `git status`, `git log --oneline -15`, `git worktree list`, and the queue: `cat $Q/runq.log` (`Q` below) - which jobs ended, with what.
+
+## Session 25, fourth context (25 Oct 2026, from 14:10 IST) - the frame pass on main; C11.1b built (sim 101); the siege set aside
+- Read SESSION_HANDOFF's top block **"Session 25, fourth context"** first: the exact state, the queue and "Next, in order".
+- **On main (31234dc, sim 98, no sim change)**: the frame pass (people beyond the limb or outside the view unposed; villages beyond the limb unbuilt), the
+  reload fault fixed (`SaveNow` unsets `saveOk` while a save is in flight), the power's aim only over open ground, the Web test closing the pages before it
+  aims; the .meta files Unity made (sounds, Hud.Powers, Hud.Title, AudioView).
+- **Measured**: layer costs of a great world (buildings ~half the frame, people a quarter, shadows redraw both); the heap 1.3-1.5 GB (the memory pass is
+  next - SaveFile's kept buffers are the first candidate); **the siege has no room** (no band the walls held off could stand a sally - `siege/design.md`).
+- **Built**: C11.1b a people's ways carried and copied (`wip/c111b-ways`, worktree `tc-bways`, sim 101): households build as they were raised to, couples
+  mostly as their village, tributaries' first households toward their lords; its control is `--oldhouseways`.
+- Land after the queue's shots: rain (99), the harrying (100), the ways (101).
 
 ## Session 25, third context (25 Oct 2026, from 07:34 IST) - C3.6g the land between villages landed (main b516bb1, sim 95; D2-176)
 - The acceptance's frozen map measured (`place --margins`): the room lay between villages, not on poorer land. Daughter villages now fill it on their
