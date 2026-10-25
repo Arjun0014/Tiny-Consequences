@@ -1,5 +1,42 @@
 # TC2 Session handoff
 
+## Session 26 (25 Oct 2026, from 21:20 IST; Control Room) - rain on main (sim 99); the harrying, the ways, stone walls and the memory pass in the queue
+
+### Exact state (keep this block current)
+- **main**: b9ab94e (rain, sim 99) + ee11391 (flames on dry ground only) + 4919446 (shot tunable `ShadowLite`) + docs. Not ours: `.claude/launch.json`,
+  `Assets/Resources.meta`. Old sim-98 saves (`_ac3`, `_pv1`...) no longer load in main's Unity: shots need sim-matching saves (the fourth run makes them).
+- **Branches to land, in order** (each carries the one before; each changes the sim version):
+  1. **C8.1a the harrying** - `wip/harry` 8bb3dca (sim 100). Ten seeds done (`tc2/out/tools/s25/results/cmp_bn1_hy1.txt`, lean in sickness/people: see
+     PROGRESS session 26). Its **matched placebo** `0_zfa_hyp_*` + `0_zfb_cmp_hyp` (`results/cmp_bn1_hyp.txt`, `cmp_hyp_hy1.txt`, `lean_*.txt`) decides:
+     land if the placebo spreads as wide (the harrying against its placebo twin inside the noise) or the mechanism explains it. Write D2-180 (rain + the
+     harrying + the siege set aside: `tc2/out/tools/s25/siege/design.md`).
+  2. **C11.1b a people's ways** - `wip/c111b-ways` d401d43 (= the ways + the harrying + rain + main; sim 101). Checks `0_zg_a` (build bw3, tests), `0_zg_b`
+     (control `--oldhouseways` = `_hy1` byte for byte; ways on: annals = `_hy1`), `0_zg_c` (**one full suite over everything to land**: `fs_bw3_ok`).
+     D2-181 from `tc2/out/tools/s25/ways/d2181.md` (its "[centuries]" from the fourth acceptance run's `ways4_s2_y*.txt`).
+     Land both: `git merge --no-ff wip/c111b-ways` (brings the harrying) once 1 and 2 hold; then `git merge main` into the next branches if main moved.
+  3. **C7.2 stone walls** - `wip/c72-stonewalls` (worktree `C:/Game Dev/tc-stonewall`, sim 102; draft `tc2/out/tools/s26/d2183.md`). Checks `0_zh_a` (build
+     bin_sw1, tests), `0_zh_b` (control `--oldstonewalls` = `_bw3`), `0_zh_c` ten seeds `_stw1`, `0_zh_d` (`tc2/out/tools/s26/results/cmp_hy1_stw1.txt` + the
+     `stonewalls:` tally per seed). Land after the ways if the seeds hold.
+  4. **The memory pass** - `wip/memory` (worktree `C:/Game Dev/tc-memory`, sim 103; `tc2/out/tools/s26/memory.md`). Checks `0_zi_a` (build bin_mem1, tests),
+     `0_zi_b` (control `--oldcompact` = `_stw1`; the pass on: annals = `_stw1` byte for byte; state sizes at 300). Land after stone walls; D2-184.
+- **Then**: `bash tc2/out/tools/s26/make_ac4.sh $Q` - main's build and full suite (bin_m14), the fourth 1,000-year acceptance run (`_ac4`, seeds 2, 4, 7, books,
+  ways and stone walls by century) and real shots (`s26a_*`: village #4 at 300/600/1,000 with `ShadowLite` beside, the villages most walled in stone, realms,
+  the meteor again). Add one seed-2 run with `--oldcompact` for the memory measure at 1,000 if wanted (statesizes against `_ac4`).
+- **The queue**: `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q` (the old
+  session's scratchpad, still live; `lib.sh`'s `S`/`N` point there); runner `bash tc2/out/tools/s23/runq.sh` in the background (this session's task); held:
+  `K_ba_siege_s47`, `N_a_ways_s2` (superseded by the fourth run). Job generators this session: `make_sw.sh`, `make_mem.sh` (in this session's scratchpad),
+  `tc2/out/tools/s26/make_ac4.sh`.
+- **Measure tools on branches**: `wip/statesizes` (worktree `tc-statesizes`, sim 98) a30d401 - `run --load F --statesizes` with the ledger by kind and the
+  names by kind (loads the `_ac3` saves).
+
+### Next, in order
+1. Judge the placebo; land the harrying and the ways (D2-180, D2-181); land stone walls (D2-183) and the memory pass (D2-184) by their checks.
+2. The fourth acceptance run and its shots (25 §6 "Fourth run"): the map at 300/600/1,000, stone walls where war was and rock lay near, the ways by century,
+   `ShadowLite` judged, the meteor's flames on land. Seed 7's third run (`K_b_ac3_s7`) for the third run's write-up.
+3. Great worlds in the browser: the Web heap with the memory pass (realmsperf heap at year 1,000 against `s25web5`'s 955 MB); the frame pass on buildings
+   (batches are per-instance coloured and culled by their bounds - spatially coherent batches or a smaller far LOD, measured in the browser first).
+4. Then F9's remaining powers (warmth, a bounty, a strange stone of ore) and F11 (packaging, settings).
+
 ## Session 25, fourth context - END (25 Oct 2026, ~17:45 IST; stopped at Arjun's word) - main (sim 98) clean of ours; the queue stopping after rain's checks
 
 ### Exact state

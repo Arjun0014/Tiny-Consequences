@@ -4,6 +4,26 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 26 (25 Oct 2026, from 21:20 IST; Control Room) - rain landed; the harrying in its placebo; C7.2 stone walls and the memory pass built.**
+  (1) **F9.5 the rain landed** (main b9ab94e, sim 99): its checks (rn1 ok) and its uncast control rerun (cut off at the last stop) = `_pv1` byte for byte.
+  (2) **C8.1a the harrying, ten seeds** (`results/cmp_bn1_hy1.txt`, `lean_*`): control `--oldharry` = `_rn1` byte for byte; hunger x0.80, raids x0.80,
+  wounds x0.90, but people at 300 x0.91 (t -2.5) with sickness x3.9 (t 3.0) - the pooled rise is seeds 4 and 42's epidemics (+3,890, +3,318 of +8,612;
+  deaths a person-year x1.018, t 1.1): a lottery of rare spillovers (`Disease.SpillPerDay` 6e-6) after the worlds part - its **matched placebo** (`_hyp`,
+  `--oldharry --nudge` at each world's parting year) decides; queued. (3) **C7.2 stone walls built** (`wip/c72-stonewalls`, worktree `C:/Game Dev/tc-stonewall`,
+  sim 102; draft `tc2/out/tools/s26/d2183.md`): a walled village with rock within a quarry's reach weighs a dry-stone curtain (three quarters of its losses
+  kept over the century it stands, and the timber no longer felled and mended, against cutting, carrying and laying 150 loads a metre); its people lay it
+  stretch by stretch after every other work from the quarry's rubble; stone does not rot and triples the defenders' ground; the stretches stand as an old ring
+  when the timber falls or the town outgrows them; drawn as a curtain from the gates outward with towers at the gates and every ~45 m; `--oldstonewalls`,
+  `--stonetally`, `place --stonewalls` tells the rings in stone, shots `--village stone`. StoneWallTests 5/5 and eight neighbouring classes 0 failed.
+  (4) **The memory pass built** (`wip/memory`, worktree `C:/Game Dev/tc-memory`, sim 103; measured first in `tc2/out/tools/s26/memory.md`): at seed 2's
+  year 1,000, 214k of the ledger's 509k events were the night's deeds and the ordinary kept for ever by their kinds' size (a sworn man's year of food scored
+  14), 148k of them led to nothing; the registry named all 310k people who ever lived, 193k by nothing kept. Now past the Local window those kinds are kept
+  for what they led to, and the names nothing kept can show leave the registry - behaviour-neutral (`--oldcompact`; MemoryPassTests 3/3: twin worlds with
+  the pass off and on live the same 75 years, 4,579 names checked, none lost). (5) **The view**: a burning coastal cell's flames stood in the sea (the meteor
+  shot) - flames on dry ground only (main ee11391); a shot view may set `ShadowLite` (main 4919446). Seen: the realms' war spears read (edged pale).
+  The queue (`Q` as below): the ways' build, control and one full suite over everything to land (`0_zg_*`), the placebo (`0_zfa_*`, `0_zfb`), the stone
+  walls (`0_zh_*`: build, control, ten seeds `_stw1` against `_hy1`), the memory pass (`0_zi_*`), seed 7's third run (`K_b_ac3_s7`); then the fourth acceptance
+  run on the final rules (`tc2/out/tools/s26/make_ac4.sh`). SESSION_HANDOFF "Session 26".
 - **Session 25, fourth context - END (~17:45 IST, stopped at Arjun's word)**: since the entry below - the streamed save landed (the heap of a year-1,000
   world 1,198/1,297 -> 955/1,054 MB loaded/after the views), the reload fault traced to the Web test's harness (it read a stale `saveOk` before the game had
   done its `save`; the bridge publishes `saves`, the test waits for it to rise) - **Web `s25web6` 8/8**; D2-182 appended; `shadowlite` measured x1.21 at the
