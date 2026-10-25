@@ -238,6 +238,7 @@ namespace TC2.Headless
             if (a.Has("oldnames")) TC2.Core.Places.Migration.TonguesOff = true;   // (C11.1 off: every name from the one speech of before)
             if (a.Has("oldmargins")) TC2.Core.Places.Migration.MarginsOff = true;   // (C3.6g off: no daughter villages on the margins)
             if (a.Has("margintally")) TC2.Core.Places.Migration.MarginTally = new double[4];   // (C3.6g: the leavers who looked to their village's margins)
+            if (a.Has("burntally")) TC2.Core.Society.Conflict.BurnTally = new double[TC2.Core.Society.Conflict.BurnTallyN];   // (ravaging, measured first)
             if (a.Has("sizetally")) TC2.Core.Diagnostics.SizeTally.Sums = new double[TC2.Core.Diagnostics.SizeTally.Classes * TC2.Core.Diagnostics.SizeTally.Stride];   // (villages deserted, measured first: how villages of each size live)
             if (a.Has("demandtally")) TC2.Core.Society.Conflict.DemandTally = new double[TC2.Core.Society.Conflict.DemandTallyN];   // (C10.8: the askings and their answers)
             if (a.Has("raidtally")) TC2.Core.Society.Conflict.RaidTally = new double[TC2.Core.Society.Conflict.RaidTallyN];   // (C8.1 measured first: bands weighed over a wrong)
@@ -1035,6 +1036,11 @@ namespace TC2.Headless
                     if (rt != null)   // (C8.1 measured first: bands weighed over a wrong, and the walls that kept them home)
                         Console.WriteLine("raidtally: bands weighed over a wrong " + rt[0] + " (against walled villages " + rt[1] + "); too few would go " + rt[2] + "; too weak for the defence they expect " + rt[3] +
                                           " (against walled villages " + rt[4] + ", of which would have dared without the wall " + rt[5] + "); raised " + rt[6] + " (against walled villages " + rt[7] + "), " + rt[8] + " people");
+                    var bnt = TC2.Core.Society.Conflict.BurnTally;
+                    if (bnt != null)   // (ravaging, measured first: whose homes a band holding the field could fire)
+                        Console.WriteLine("burn: raids " + bnt[0] + " (unseen " + bnt[1] + "), the band holding the field " + bnt[2] + "; of those with blood the band's village knows against the raided's people " + bnt[3] +
+                                          " (" + bnt[9] + " deeds; on walled villages " + bnt[7] + "); the doers' households there " + bnt[4] + ", with a home standing " + bnt[5] + " - of " + bnt[6] +
+                                          " homes standing in those villages; raids where they would be every home " + bnt[8]);
                     var szt = TC2.Core.Diagnostics.SizeTally.Sums;
                     if (szt != null)   // (villages deserted, measured first: how villages of each size live)
                     {

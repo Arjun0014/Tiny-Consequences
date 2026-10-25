@@ -1094,6 +1094,7 @@ namespace TC2.Core.Society
             Diagnostics.ScaleTally.Pair(w, Diagnostics.ScaleTally.Raid, origin, at);
             w.Metrics.RaidLoot += loot;
             if (outcome == 2) w.Metrics.RaidsBeaten++;
+            if (BurnTally != null) TallyBurn(bandId, at, origin, outcome);
             // COARSE: home at once with what they carry
             if (w.Resolution == Resolution.Coarse)
                 for (int i = 0; i < n; i++) { ref var q = ref w.People.Get(raiders[i]); if (q.CargoQty > 0f) w.Trade.Unload(ref q, q.Home); q.Band = 0; }   // (to their own homes: a tributary's people too, C10.1)
@@ -1888,6 +1889,50 @@ namespace TC2.Core.Society
         /// walled village; [2] too few would go; [3] too weak for the defence they expect, [4] of them against a walled village, [5] of those that would have
         /// dared without the wall; [6] raised, [7] against a walled village, [8] their people; null in the game.</summary>
         public static double[] RaidTally;
+
+        /// <summary>Tools (ravaging, measured first: `--burntally`; null in the game): raids [0], unseen [1], the band holding the field [2], of those with
+        /// blood the band's village knows against people of the raided (unsettled, still weighed) [3]; the doers' households living there [4], with a home
+        /// standing [5]; the raided villages' homes standing, summed over the held raids [6]; held raids on walled villages [7]; held raids where the doers'
+        /// homes would be all the village's [8]; blood deeds counted [9].</summary>
+        public static double[] BurnTally;
+        public const int BurnTallyN = 10;
+        readonly System.Collections.Generic.HashSet<int> _burnHh = new System.Collections.Generic.HashSet<int>();
+
+        void TallyBurn(int bandId, int at, int origin, byte outcome)
+        {
+            var w = _w; var t = BurnTally;
+            t[0]++;
+            if (outcome == 0) { t[1]++; return; }
+            if (outcome != 1) return;
+            t[2]++;
+            ref var b = ref w.Bands.Get(bandId);
+            int holder = b.Motive == 2 && b.For != 0 ? b.For : origin;   // (whose wrong the band went for: its own, or the tributary's its lord answered)
+            var known = w.DeedBook.KnownBy(holder);
+            _burnHh.Clear();
+            int blood = 0;
+            if (known != null)
+                for (int i = 0; i < known.Count; i++)
+                {
+                    ref var d = ref w.Deeds.Get(known[i].Deed);
+                    if (!DeedKind.Blood(d.Kind) || d.ByS != at || d.ToS != holder || (d.Flags & DeedKind.Made) != 0) continue;
+                    if (w.DeedBook.Weight(in d, w.Now) < DeedBook.ForgetBelow) continue;
+                    blood++;
+                    if (d.By == 0 || !w.People.Exists(d.By)) continue;
+                    ref var p = ref w.People.Get(d.By);
+                    if (!p.Alive || p.Home != at || !w.Households.Exists(p.Household)) continue;
+                    _burnHh.Add(p.Household);
+                }
+            if (blood == 0) return;
+            t[3]++; t[9] += blood;
+            int homes = 0;
+            foreach (int hid in _burnHh) if (w.Households.Get(hid).Building != 0) homes++;
+            int standing = 0;
+            var hl = w.HouseholdsOf(at);
+            for (int i = 0; i < hl.Count; i++) if (w.Households.Get(hl[i]).Building != 0) standing++;
+            t[4] += _burnHh.Count; t[5] += homes; t[6] += standing;
+            if (w.Settlements.Get(at).Wall == 2) t[7]++;
+            if (homes > 0 && homes >= standing) t[8]++;
+        }
         public const int RaidTallyN = 9;
 
         /// <summary>`--oldpeace`: no lord's peace - villages of one realm raise bands against each other and answer each other's claims as free villages do
