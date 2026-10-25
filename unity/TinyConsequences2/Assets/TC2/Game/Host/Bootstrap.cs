@@ -76,6 +76,8 @@ namespace TC2.Game
             hud.Host = host; hud.Rig = rig; hud.Objects = objects;
             var bridge = gameObject.AddComponent<WebBridge>();
             bridge.Host = host; bridge.Rig = rig;
+            // (F11.2) the player's settings kept from the last visit - never in shots or batch runs, whose pictures and numbers stay their own
+            if (ShotRunner.Arg("-tc2shots") == null && !Application.isBatchMode) Settings.Load();
             if (ShotRunner.Arg("-tc2shots") != null)
             {
                 var shots = gameObject.AddComponent<ShotRunner>();

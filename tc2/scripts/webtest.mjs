@@ -148,6 +148,8 @@ try {
   await cmd('speed 0'); await page.waitForTimeout(800);
   // (the save is done at the game's next frame, and the state published before it still shows the save before: wait for one more save stored -
   // s25web3-5 reloaded on the stale saveOk and lost the save)
+  // (F11.2) a setting changed as the panel changes it is kept in the browser's store for the next visit
+  await cmd('setting clouds 0.4'); await page.waitForTimeout(1200);
   const saves0 = (await state()).saves || 0;
   await cmd('save');
   await waitFor((n) => window.__TC2 && window.__TC2.saves > n && window.__TC2.saveOk === true, saves0, 60000);
@@ -158,6 +160,8 @@ try {
   const after = await state();
   const sameWorld = after.seed === before.seed && after.now >= before.now && after.now - before.now < 4147200;
   check('reload continues the saved world', sameWorld, `seed ${before.seed}/${after.seed} now ${before.now} -> ${after.now} (catching up: ${after.catchingUp})`);
+  check('the settings are kept for the next visit', String(after.settings || '').includes('clouds=0.40'), `settings after the reload: ${after.settings}`);
+  await cmd('setting clouds 1');
 
   if (!flag('--skip-away')) {
     // come back a day later (Living: ~96 world years), watch the catch-up

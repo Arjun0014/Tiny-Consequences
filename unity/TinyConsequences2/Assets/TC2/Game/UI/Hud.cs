@@ -27,6 +27,7 @@ namespace TC2.Game
         GUIStyle _box, _label, _small, _title, _btn;
         float _scale = 1f;
         Rect _left, _right, _bottom, _toggles, _ticker;
+        bool _settings; Rect _settingsRect; float _settingsDirty; bool _lastMuted;   // (the player's settings: F11.2)
         float _fps; int _frames; float _fpsT;
         bool _info, _history, _worldPanel, _hidden, _book;
         // the person page (C12.1): a person's life in sections, from the world's state and its ledger (Core/History/Biography)
@@ -487,7 +488,7 @@ namespace TC2.Game
             GUILayout.EndArea();
 
             // top-right: toggles for the panels
-            _toggles = new Rect(sw - 440, 10, 430, 40);
+            _toggles = new Rect(sw - 530, 10, 520, 40);
             GUILayout.BeginArea(_toggles, _box);
             GUILayout.BeginHorizontal();
             _info = GUILayout.Toggle(_info, "Info", _btn);
@@ -496,6 +497,7 @@ namespace TC2.Game
             _worldPanel = GUILayout.Toggle(_worldPanel, "World", _btn);
             RealmsView.On = GUILayout.Toggle(RealmsView.On, "Realms", _btn);
             AudioView.Muted = !GUILayout.Toggle(!AudioView.Muted, "Sound", _btn);   // (the world's sound: F10.1; M)
+            _settings = GUILayout.Toggle(_settings, "Settings", _btn);   // (F11.2)
             GUILayout.EndHorizontal();
             GUILayout.EndArea();
 
@@ -572,8 +574,11 @@ namespace TC2.Game
             else if (_building != 0 && w.Buildings.Exists(_building)) { showInsp = true; BuildingPage(insp, w); }
             _powersRect = Rect.zero;
             if (!_book) PowerBar(w, sw, sh);   // (the god's powers: F9.1)
+            _settingsRect = Rect.zero;
+            if (_settings) SettingsPanel(sw);
+            KeepSettings();
             Vector2 m = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y) / _scale;
-            PointerOverUi = _powersRect.Contains(m) || _left.Contains(m) || _toggles.Contains(m) || _right.Contains(m) || worldRect.Contains(m) || realmsRect.Contains(m) || _bottom.Contains(m) || _ticker.Contains(m) || (showInsp && insp.Contains(m)) || (_book && _bookRect.Contains(m)) || _pageRect.Contains(m);
+            PointerOverUi = _settingsRect.Contains(m) || _powersRect.Contains(m) || _left.Contains(m) || _toggles.Contains(m) || _right.Contains(m) || worldRect.Contains(m) || realmsRect.Contains(m) || _bottom.Contains(m) || _ticker.Contains(m) || (showInsp && insp.Contains(m)) || (_book && _bookRect.Contains(m)) || _pageRect.Contains(m);
             if (!_book) HoverTag(w, sw, sh);
         }
 
@@ -1243,6 +1248,40 @@ namespace TC2.Game
             if (s >= SimTime.Day) return (s / SimTime.Day).ToString("0.0", CultureInfo.InvariantCulture) + " days/s";
             if (s >= SimTime.Hour) return (s / SimTime.Hour).ToString("0.0", CultureInfo.InvariantCulture) + " h/s";
             return s.ToString("0", CultureInfo.InvariantCulture) + "x";
+        }
+
+        /// <summary>(F11.2) The player's settings: the sound and its loudness, the clouds, lighter shadows from high up, the picture's detail - kept
+        /// for the next visit. Drawn over the panels at the top right.</summary>
+        void SettingsPanel(float sw)
+        {
+            _settingsRect = new Rect(sw - 350, 56, 340, 226);
+            GUILayout.BeginArea(_settingsRect, _box);
+            GUILayout.Label("<b>Settings</b>   kept for your next visit", _label);
+            bool muted = AudioView.Muted, lite = Sky.ShadowLite; float vol = AudioView.Volume, clouds = Settings.Clouds, detail = Settings.Detail;
+            GUILayout.BeginHorizontal();
+            AudioView.Muted = !GUILayout.Toggle(!AudioView.Muted, "Sound", _btn, GUILayout.Width(72));
+            GUILayout.BeginVertical(); GUILayout.Space(10); AudioView.Volume = GUILayout.HorizontalSlider(AudioView.Volume, 0f, 1f); GUILayout.EndVertical();
+            GUILayout.EndHorizontal();
+            GUILayout.Label("Clouds: " + (Settings.Clouds < 0.05f ? "none" : Settings.Clouds < 0.75f ? "thin" : Settings.Clouds > 1.2f ? "thick" : "as the weather makes them"), _small);
+            Settings.Clouds = GUILayout.HorizontalSlider(Settings.Clouds, 0f, 1.5f);
+            Sky.ShadowLite = GUILayout.Toggle(Sky.ShadowLite, "Lighter shadows from high up (faster)", _btn);
+            GUILayout.Label("Picture detail: " + (Settings.Detail * 100f).ToString("0", CultureInfo.InvariantCulture) + " %" + (Application.isEditor ? " (in the built game)" : ""), _small);
+            Settings.Detail = GUILayout.HorizontalSlider(Settings.Detail, 0.5f, 1f);
+            GUILayout.EndArea();
+            if (muted != AudioView.Muted || lite != Sky.ShadowLite || vol != AudioView.Volume || clouds != Settings.Clouds || detail != Settings.Detail)
+            {
+                Settings.Apply();
+                _settingsDirty = Time.unscaledTime;
+            }
+        }
+
+        /// <summary>(F11.2) Keeps the settings half a second after they last changed (a slider is not written every frame); the Sound toggle and
+        /// the M key change them too. Only in play: shots and batch runs never load or keep them.</summary>
+        void KeepSettings()
+        {
+            if (!Settings.Loaded) return;
+            if (AudioView.Muted != _lastMuted) { _lastMuted = AudioView.Muted; if (_settingsDirty == 0f) _settingsDirty = Time.unscaledTime; }
+            if (_settingsDirty > 0f && Time.unscaledTime - _settingsDirty > 0.5f) { Settings.Save(); _settingsDirty = 0f; }
         }
     }
 }
