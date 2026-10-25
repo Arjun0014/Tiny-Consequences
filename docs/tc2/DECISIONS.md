@@ -5481,3 +5481,28 @@ back to the cast; with no cast the part says so), HistoryBookTests 5/5 (nine par
 SaveLoad 8/8, the Unity C# compiled; **control**: with no cast the powers' binary lives seed 4's 300 years as main's rules byte for byte (annals and the
 state hash). The Web test casts lightning by a real click on the planet after aiming it and checks the world logged it; it shows Your Actions and the
 title (to be run on main's Web build: `make_final.sh`). **Landed** (session 25, 25 Oct 2026, sim 97).
+
+## D2-179 — 2026-10-25 — The god's meteor and drought; the powers seen; the world's sound (F9.4, F10.1)
+
+**Context.** The vision names four interventions - a bolt, a drought, a plague, a meteor (`00`); D2-178 gave the bar, lightning, storm, quake, eruption,
+a sickness and a blight. Two remained, and the powers were heard and seen only through their consequences: TC2 had no sound at all and drew no bolt.
+
+**Decision.** (1) **A meteor (sim 98)**: a stone from the sky at the place aimed at - every building within 140 m falls at once (homes as burnt: the
+household to an empty home or a camp, its larder and half its gear lost; works lost), those at home within 70 m die ("when the stone fell from the sky",
+death cause 14), the rest of the blast's people are hurt; it lights a strong fire where it falls and shakes the ground (a quake of magnitude 5) - one
+`MeteorStruck` record holding the buildings flattened and the dead, every consequence rooted in the cast. Recharge 20 years. (2) **A drought (sim 98)**:
+the rain withheld from the land within 4 km for 16 days (a third of the year: a summer) - `World.DrySpells` (saved; hashed while one is held, so a world
+with none hashes as before), withheld in the weather's own day (`PlanetSystems.Weather`) and let go when its time is past; the soil dries, crops wilt
+and fire takes more readily by the world's own laws; a `Drought` record caused by the cast, and the crops standing under it name it as their harm (a
+failed harvest's causes run back to the cast). Recharge 2 years. (3) **The powers seen**: every lightning strike (the world's and yours) draws its bolt -
+a jagged line of light and a flash at the ground for under a second; a stone falls at a slant with its trail, flashes where it strikes and raises a
+cloud of dust and smoke (`FxKind.Bolt`, `Stone`: the view's ring, never saved, hashed or read by the world). (4) **The world's sound (F10.1)**: an
+observer (`AudioView`) - fifteen beds mixed by what the camera looks at (wind from on high; the woods by day and by night; the shore; a river; rain and
+storm; a village by day and by night with its herds; a fire near; a burning forest; an erupting volcano; the open sea; the cold) and single sounds from
+the world's happenings near where it looks (thunder at a strike, the quake felt there, a house falling - burnt, drowned or under a stone - a raid's
+shout) and a cue at each cast; a soft chime at the world's historical moments; M mutes. The library is TC1's generated sounds (credits: the project
+owner's ElevenLabs account; commercial use needs a paid plan). Shots: `--meteor M`, `--godrought D`.
+
+**Evidence.** PowersTests 6/6 (the meteor flattens what stood near the square - fewer stand, its dead told and rooted in the cast; the drought held, no
+rain under it, the soil drier, saved and continued identically, let go after its days, told), floatcheck clean, the Unity C# compiled; control: with
+no cast seed 4's 300 years equal main's rules byte for byte (`_pw3`). Main's full suite before it 471/471 (0 skipped). **Landed** (session 25, 25 Oct 2026, sim 98; the sound with it, presentation).
