@@ -31,8 +31,16 @@ measure (`Conform` 0.6: households as their first household 55 %, tributaries' f
 `N_a`. Drafts: `tc2/out/tools/s25/frame/d2182.md`. Main c013107. Running: `0_z_web_s25web5` (Web build of main with the save fixes: the test's reload, the heap at
 50/300/1,000 against `0_x`).
 
+**Update (~16:50)**: `0_z` (Web `s25web5`, main c013107 with the streamed save and the save-answer fixes): **the heap at year 1,000 955 MB loaded / 1,054
+after the views (-243 MB against `0_x`)**, year 300 616 / 713 (-100). **The reload still fails (7/8)**: the reloaded game loaded a save written at day 1
+06:11 that carried a catch-up target of day 2 01:57 (it caught up to 93,423 s) - not the explicit save at ~281,777 s, whose own answer did come (the seq fix).
+`s25web2` "passed" with 22,359 -> 44,666, a world caught up past its saved time: probably the same fault, masked by the numbers. **Not yet understood** - the
+save-answer fixes are right but not this fault's root. Next: in the Web test, right after `save` and its answer, read the store (`page.evaluate`: IndexedDB
+'tiny-consequences-2', store 'saves', key 'world' -> the header's WorldTime at byte 18 and CatchUpTarget at byte 35, `realmsperf.mjs` reads the same header) and
+again after the reload; find which save wrote a catch-up target and why the explicit save is not what is read (a later write? another key? the title?).
+
 ### Next, in order
-1. Judge `0_z`: webtest 8/8 (the reload), the heap after the streamed save against `0_x` (expected ~230 MB less at year 1,000); append D2-182 (`frame/d2182.md`).
+1. **The reload fault above** (a player could lose the latest world on reload) - the first task. Then append D2-182 (`frame/d2182.md`, its "Open" line resolved).
    If a cull shows pop-in or missing villages in real shots (`K_d`), fix forward.
 2. **The frame and memory passes, next steps**: buildings are still the largest layer - villages in front of the limb but outside the view, the buildings' draws
    by colour group (each a draw a camera and a shadow cascade), shadows cast only near; the heap grows with the record - **measured** (`run --load F
