@@ -127,6 +127,22 @@ try {
   await cmd('place big 0'); await shot('5e_place', 2500);
   await cmd('place big 3'); await shot('5f_place_land', 2500);
 
+  // (F9.1-F9.2) the god's powers: lightning aimed as its button aims it, a real click on the planet casts it (the ray to the ground, a command);
+  // a world-day on, the book's last part tells it and what came of it
+  await cmd('speed 0'); await cmd('village 0 6000'); await page.waitForTimeout(1500);
+  const casts0 = (await state()).casts || 0;
+  await cmd('aim 0'); await page.waitForTimeout(400);
+  const cv = await page.locator('canvas').first().boundingBox();
+  await page.mouse.move(cv.x + cv.width * 0.5, cv.y + cv.height * 0.55); await page.waitForTimeout(700);
+  await shot('5g_power_aimed', 300);
+  await page.mouse.down(); await page.waitForTimeout(150); await page.mouse.up();
+  let casts1 = casts0;
+  for (let i = 0; i < 40 && casts1 === casts0; i++) { await page.waitForTimeout(250); casts1 = (await state()).casts || 0; }
+  const fed = ((await state()).feed || []).join(' | ');
+  check('a power aimed and clicked is cast', casts1 > casts0, `casts ${casts0} -> ${casts1}; feed: ${fed.slice(-200)}`);
+  await cmd('speed 6'); await page.waitForTimeout(3000); await cmd('speed 0');
+  await cmd('bookat 8 0'); await shot('5h_your_actions', 3000); await cmd('closebook');
+
   // save to IndexedDB, reload, the same world continues
   await cmd('speed 0'); await page.waitForTimeout(800);
   await cmd('save');
@@ -174,6 +190,13 @@ try {
     await cmd('person oldest 5'); await shot('9_person_life', 2500);
     report.afterAway = back;
   }
+  // (F11.1) the opening: a player's plain address shows the title over the world, held still beneath it (?menu=1 here: the test's own address)
+  await page.goto(`${base}?menu=1${gfxParam}`);
+  await waitFor(() => window.__TC2 && window.__TC2.ready === true, null, 300000);
+  await page.waitForTimeout(2500);
+  const tsa = await state();
+  await shot('10_title', 500);
+  check('the title holds the world still', tsa.catchingUp || tsa.speed === 0, `speed ${tsa.speed}`);
 } catch (e) {
   check('no exception in the test', false, String(e));
 }

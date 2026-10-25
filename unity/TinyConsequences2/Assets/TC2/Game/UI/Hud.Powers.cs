@@ -36,6 +36,9 @@ namespace TC2.Game
         Rect _powersRect;
         GUIStyle _powerOn, _powerOff, _aimLabel;
 
+        /// <summary>Aims a power as its button does (-1 stops aiming): the tests' way in (F9.1).</summary>
+        public void Aim(int k) { _aim = k >= 0 && k < Powers.Length ? k : -1; }
+
         /// <summary>Game seconds until a power can be used again (0: ready) - from the last command of its kind in the world's log.</summary>
         static long Recharging(World w, int k)
         {
