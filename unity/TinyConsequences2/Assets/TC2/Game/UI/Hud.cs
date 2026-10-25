@@ -471,7 +471,7 @@ namespace TC2.Game
             if (_hidden) { PointerOverUi = false; return; }
             if (!_book) { MapNames(w, sw, sh); WorkNames(w, sw, sh); PeopleNames(w, sw, sh); }
             // top-left: a slim bar - the date and the speeds
-            _left = new Rect(10, 10, Mathf.Min(sw - 390, 900), 40);
+            _left = new Rect(10, 10, Mathf.Min(sw - 450, 900), 40);
             GUILayout.BeginArea(_left, _box);
             GUILayout.BeginHorizontal();
             GUILayout.Label(SimTime.Format(w.Now), _title, GUILayout.Width(318));
@@ -485,7 +485,7 @@ namespace TC2.Game
             GUILayout.EndArea();
 
             // top-right: toggles for the panels
-            _toggles = new Rect(sw - 380, 10, 370, 40);
+            _toggles = new Rect(sw - 440, 10, 430, 40);
             GUILayout.BeginArea(_toggles, _box);
             GUILayout.BeginHorizontal();
             _info = GUILayout.Toggle(_info, "Info", _btn);
@@ -493,6 +493,7 @@ namespace TC2.Game
             _book = GUILayout.Toggle(_book, "Book", _btn);
             _worldPanel = GUILayout.Toggle(_worldPanel, "World", _btn);
             RealmsView.On = GUILayout.Toggle(RealmsView.On, "Realms", _btn);
+            AudioView.Muted = !GUILayout.Toggle(!AudioView.Muted, "Sound", _btn);   // (the world's sound: F10.1; M)
             GUILayout.EndHorizontal();
             GUILayout.EndArea();
 
