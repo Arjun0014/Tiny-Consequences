@@ -5506,3 +5506,48 @@ owner's ElevenLabs account; commercial use needs a paid plan). Shots: `--meteor 
 **Evidence.** PowersTests 6/6 (the meteor flattens what stood near the square - fewer stand, its dead told and rooted in the cast; the drought held, no
 rain under it, the soil drier, saved and continued identically, let go after its days, told), floatcheck clean, the Unity C# compiled; control: with
 no cast seed 4's 300 years equal main's rules byte for byte (`_pw3`). Main's full suite before it 471/471 (0 skipped). **Landed** (session 25, 25 Oct 2026, sim 98; the sound with it, presentation).
+
+## D2-182 — 2026-10-25 — Great worlds in the browser: what the camera cannot see is not posed or built; a save streamed; each save answered by its own completion (14 §7)
+
+**Context.** A year-1,000 world (seed 2 `_ac3`: 12,698 people in 62 places) drew 6.4 fps at the region view and 4.4 at the village view in the Web
+build, and held a 1,297 MB heap once loaded (1,491 MB after the layer pairs; headless managed 304 MB) - past `14` §1's 1 GB and on the way to wasm32's
+2 GB. Measured first by paired layer counts (`realmsperf --layer`, `s25web3`): buildings x0.53-0.54 of the frame (~76-106 ms), people x0.75 (~40-66 ms),
+shadows x0.63-0.73 (redrawing both), terrain x0.90; trees, ground cover and the HUD ~x1. Read in the code: every frame posed every living person in the
+world (two positions, two ground samples, `Presence`) - on a 6 km planet the camera sees a tenth (village view) to a quarter (region view) of the globe -
+and every half second the buildings of every village were built into the instanced draws, wherever they stood; the save kept the whole uncompressed state
+(~124 MB at year 1,000) and a copy of the save for the session, and a load inflated the whole state at once (~110 MB) - in a heap that only grows.
+The Web test (`s25web3` 6/8) also found two faults in the opening's build: a power's click fell on the place page left open (a click over a page is the
+page's; the aim's ring and words were drawn over it), and a reload loaded an older save.
+
+**Decision.** (1) People beyond the planet's limb, or outside the view by more than their drawn place's margin, are not posed (`PeopleCull`). (2) A
+village wholly beyond the limb - its farthest work within 2.5 km of its anchor - is not built; the places are built again at once when the camera has moved
+a quarter of that or its height by 15 % (`PlacesCull`, `PlacesMoved`). Nothing visible is left out: presentation of what can be seen is unchanged.
+(3) A save is streamed both ways: the state hashed and deflated a chunk (1 MB) at a time as it is written (`BinWriter.Sink`), inflated a chunk at a time
+as it is read (`BinReader` over a stream), its length and hash checked when all is read - the payload hash, the length and the state as before; the save
+keeps a chunk, not the whole state. (4) Each save is answered by its own completion: the Web store keeps a key's answers in order (its readwrite
+transactions on one store complete in order; one slot a key let an earlier save's completion answer a later one - a page reloaded on it lost the latest),
+and `saveOk` is unset while a save is written and set by the latest save's answer only. (5) The power's ring and words only over open ground; the bridge's
+`closepages`, `peoplecull`, `placescull`.
+
+**Evidence.** Paired on the year-1,000 world (`s25web4`): the people cull x1.22 at the region view (140 -> 112 ms) and x1.57 at the village view (178 -> 118
+ms); the places cull x1.21 and x1.51; with both, the frame ~108 ms at the region view and ~126 at the village view (from ~155 and ~225: x1.4-1.8).
+What remains (culls on): buildings x0.44-0.46 (~60-67 ms; the frame without them 48-59 ms), shadows x0.53-0.69, people x0.87-0.92 (from x0.75) - next:
+villages in front of the limb but outside the view, the buildings' draws by colour group, shadows cast only near. Web test `s25web4` 7/8: the power cast
+by a click (0 -> 1); the reload still lost the save - traced to the store's one answer slot a key (4). The heap by age before (`0_x`, `s25web4`; loaded / after the
+village view): year 50 (237 people) 247 / 428 MB, 150 (1,019) 297 / 428, 300 (10,977) 713 / 817, 500 (10,801) 836 / 951, 800 (12,655) 1,025 / 1,124,
+1,000 (12,698) 1,198 / 1,297 - it grows with the world's age (its record: 126k events kept at 300, 505k at 1,000), not its people; the engine and the
+views ~250-430 MB. **After the streamed save** (`0_z`, `s25web5`): year 1,000 955 / 1,054 MB (-243 MB), year 300 616 / 713 (-97 / -104), year 50 247 /
+356. The state by part (`run --statesizes`): 33.7 MB at 300 -> 106.8 at 1,000 - the history ledger 12.8 -> 63.9 MB (114k -> 509k events), dissolved
+households kept (68,066 rows at 1,000), the dead kept (47,527 people, 12,698 living): the next levers. **The reload fault traced** (`tc2/scripts/saveprobe.mjs`:
+the stored save's header read from IndexedDB at each step): the game saves and reloads correctly - an explicit save is in the store within two seconds and a
+reload loads it (a Living reload then advances the world by the seconds away, 4 years an hour, by design); the Web test read the bridge's state right after
+giving `save`, but a command is done at the game's next frame and the state published before it still showed the save before's `saveOk` - the test reloaded
+before its save was made. The bridge now publishes `saves` (stored) and the test waits for it to rise (`s25web6`).
+SaveStreamTests 3/3 (the streamed payload hash and length equal the unstreamed; the same world loaded and continued; the body a chunk; a damaged or
+truncated save refused), SaveLoad 8, Determinism 7; seed 2's year-1,000 save loaded by the streaming reader lives two days to main's binary's hash
+(86fd086baf24d66f). No state change: sim 98.
+**Landed** (main: the culls 3e3f64c, the streamed save and the store's answers 8a83dd7, the test's wait 728bd0e; no sim change, sim 98). **Web `s25web6` 8/8**
+(the reload continues the saved world: 286,094 -> 321,769 s, its seconds away lived; the power cast by a click). Measured, not chosen: the bridge's
+`shadowlite` (above 3 km two cascades over twice the camera's height) x1.21 at the region view (119 -> 104 ms), ~x1 at orbit - to judge in real shots before
+it becomes the default.
+
