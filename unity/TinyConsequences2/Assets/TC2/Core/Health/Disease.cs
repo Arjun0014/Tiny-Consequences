@@ -393,7 +393,7 @@ namespace TC2.Core.Health
         /// A new pathogen appears in a village (from its animals, or a premise's outbreak): its lineage, its name, its history, its
         /// first host latent from now, and the outbreak there (D2-066).
         /// </summary>
-        void Appear(int id, int sid, int firstHost, double beta, double latent, double infectious, double virulence, double immunity, bool animals)
+        void Appear(int id, int sid, int firstHost, double beta, double latent, double infectious, double virulence, double immunity, bool animals, long cause = 0)
         {
             var w = _w;
             long now = w.Now;
@@ -409,7 +409,8 @@ namespace TC2.Core.Health
             g2.Event = w.Record(new HistoryEvent
             {
                 Kind = HistoryKind.PathogenAppeared, Time = now, Cell = s.Cell, Settlement = sid, Subject = new EntityRef(EntityKind.Pathogen, id),
-                Object = EntityRef.Settlement(sid), ArgA = animals ? 1 : 0, Magnitude = (float)virulence, RootKind = RootKind.Nature,
+                Object = EntityRef.Settlement(sid), ArgA = animals ? 1 : 0, Magnitude = (float)virulence, RootKind = cause != 0 ? RootKind.Unknown : RootKind.Nature,
+                Cause1 = cause, Rel1 = cause != 0 ? CauseRel.CausedBy : CauseRel.None,   // (a god's pestilence: F9.3)
             });
             w.Metrics.PathogensBorn++;
             ref var p = ref w.People.Get(firstHost);
@@ -431,6 +432,29 @@ namespace TC2.Core.Health
             if (first == 0) return 0;
             int id = w.Ids.Next(EntityKind.Pathogen);
             Appear(id, sid, first, beta, latent, infectious, virulence, immunity, false);
+            return id;
+        }
+
+        /// <summary>
+        /// (F9.3) The god's pestilence: a new sickness breaks out in a village, its traits drawn from the ranges of the sicknesses of farming peoples as one
+        /// from the animals is, but deadlier (a pestilence: virulence 0.05-0.4, infecting 0.4-1.5 contacts a day) - one of its people at home its first
+        /// host, its appearance caused by the cast. Returns the pathogen (0: nobody at home to take it).
+        /// </summary>
+        public int Pestilence(int sid, long cause)
+        {
+            var w = _w;
+            var res = w.Residents(sid);
+            int first = 0;
+            for (int i = 0; i < res.Count && first == 0; i++) { ref var q = ref w.People.Get(res[i]); if (q.Alive && q.At == sid && q.Sick == 0) first = res[i]; }
+            if (first == 0) return 0;
+            int id = w.Ids.Next(EntityKind.Pathogen);
+            var rs = new RandomSequence(KeyedRng.Hash(w.Seed, RngStream.Disease, (ulong)id, 79));
+            double beta = 0.4 * DMath.Exp(rs.NextUnit() * DMath.Log(3.75));             // 0.4-1.5 infecting contacts a day
+            double latent = 2.0 + 8.0 * rs.NextUnit();                                  // 2-10 days
+            double virulence = 0.05 * DMath.Exp(rs.NextUnit() * DMath.Log(8.0));        // 0.05-0.4
+            double infectious = (4.0 + 10.0 * rs.NextUnit()) * (1.0 - 0.5 * virulence); // the deadlier, the shorter
+            double immunity = rs.NextUnit() < 0.5 ? ForLife : 2.0 + 40.0 * rs.NextUnit();
+            Appear(id, sid, first, beta, latent, infectious, virulence, immunity, false, cause);
             return id;
         }
 

@@ -14,6 +14,9 @@ namespace TC2.Core.History
     {
         static string F(double v, string fmt = "0.#") => v.ToString(fmt, CultureInfo.InvariantCulture);
 
+        /// <summary>Where, as a place name reads after a deed: at a village, on the land beyond it, in the wilds (`World.PlaceName`).</summary>
+        public static string At(string place) => place == "the wilds" ? "in the wilds" : place.StartsWith("the land", System.StringComparison.Ordinal) ? "on " + place : "at " + place;
+
         public static string Describe(World w, in HistoryEvent e)
         {
             var H = w.History;
@@ -38,6 +41,7 @@ namespace TC2.Core.History
                 case HistoryKind.Wildfire: return "A wildfire spread near " + place + " (" + F(e.Magnitude, "0") + " cells burnt so far).";
                 case HistoryKind.FireOut: return "The fire near " + place + " burnt out after " + e.ArgA + " hours (" + F(e.Magnitude, "0") + " cells).";
                 case HistoryKind.FieldsBurned: return "The fields of " + subj + " burned.";
+                case HistoryKind.CropsBlighted: return "A blight took the crop of " + subj + ".";
                 case HistoryKind.BuildingBurned:   // (C8.0: a band's burning-in)
                     if (e.Subject.Kind == EntityKind.Household)
                         return "The band from " + obj + " burned the home of the " + Plural(subj) + " in " + place + (e.Other.IsNone ? "" : ", for a killing by " + other) + ".";
@@ -226,7 +230,17 @@ namespace TC2.Core.History
                 case HistoryKind.ColdHomes:
                     return "The homes of " + subj + " were cold (" + F(e.Magnitude, "0") + (e.Magnitude >= 1.5 ? " households" : " household") + ", " + e.ArgB + " C outside)" +
                            (e.ArgA == 1 ? ": the woodstore ran short." : ": camps and huts in the frost.");
-                case HistoryKind.GodCommand: return "You reached down near " + place + ".";
+                case HistoryKind.GodCommand:   // (what the god did: F9.1)
+                    switch ((CommandKind)e.ArgA)
+                    {
+                        case CommandKind.GodLightning: return "You struck lightning " + At(place) + ".";
+                        case CommandKind.GodStorm: return "You raised a storm " + At(place) + ".";
+                        case CommandKind.GodQuake: return "You shook the ground " + At(place) + ".";
+                        case CommandKind.GodEruption: return "You split the earth " + At(place) + ".";
+                        case CommandKind.GodPlague: return "You sent a sickness " + At(place) + ".";
+                        case CommandKind.GodBlight: return "You blighted the fields " + At(place) + ".";
+                        default: return "You reached down near " + place + ".";
+                    }
                 default: return e.Kind + " at " + place;
             }
         }

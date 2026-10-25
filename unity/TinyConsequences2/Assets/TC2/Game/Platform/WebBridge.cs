@@ -65,6 +65,7 @@ namespace TC2.Game
                 case "catchupalt": CameraRig.CatchUpAltitude = double.Parse(a[1], CultureInfo.InvariantCulture); break;   // tools: the camera's height while catching up
                 case "book": { var hud = Object.FindFirstObjectByType<Hud>(); if (hud != null) hud.OpenBook(a.Length > 1 ? int.Parse(a[1], inv) : -1); break; }   // the History Book (D2-077)
                 case "bookat": { var hud = Object.FindFirstObjectByType<Hud>(); if (hud != null) hud.OpenBookAt(int.Parse(a[1], inv), a.Length > 2 ? int.Parse(a[2], inv) : 0); break; }   // (session 25) a part and chapter (-1: the preface)
+                case "aim": { var hud = Object.FindFirstObjectByType<Hud>(); if (hud != null) hud.Aim(int.Parse(a[1], inv)); break; }   // tests: aim a power as its button does (F9.1)
                 case "closebook": { var hud = Object.FindFirstObjectByType<Hud>(); if (hud != null) hud.CloseBook(); break; }
                 case "names": Hud.Names = a.Length < 2 || a[1] == "on"; break;   // (session 25) places named on the map
                 case "person":
@@ -155,6 +156,8 @@ namespace TC2.Game
                 sb.Append(",\"history\":").Append(w.History.Count);
                 sb.Append(",\"fires\":").Append(w.Fire.Active.Count);
                 sb.Append(",\"interrupted\":").Append(w.Metrics.JourneysInterrupted);
+                int casts = 0; for (int ci = 0; ci < w.CommandLog.Count; ci++) { var ck = w.CommandLog[ci].Kind; if (ck != CommandKind.SetResolution && ck != CommandKind.SetStepDays && ck != CommandKind.Note) casts++; }
+                sb.Append(",\"casts\":").Append(casts);   // (the god's casts so far: F9.1)
             }
             sb.Append(",\"speed\":").Append(Host.SpeedIndex);
             sb.Append(",\"max\":").Append(Host.MaxSpeed ? "true" : "false");

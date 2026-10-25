@@ -98,7 +98,7 @@ namespace TC2.Core.History
         static string House(World w, EntityRef household) => HistoryText.Plural(w.History.NameOf(household));
 
         /// <summary>The parts' titles, in order (a reader's contents before any part is written).</summary>
-        public static readonly string[] PartTitles = { "The Ages of the World", "Realms and Rulers", "Wars and Feuds", "Famine, Plague and Disaster", "Places", "Lives", "Threads of Cause", "A Chronology" };
+        public static readonly string[] PartTitles = { "The Ages of the World", "Realms and Rulers", "Wars and Feuds", "Famine, Plague and Disaster", "Places", "Lives", "Threads of Cause", "A Chronology", "Your Actions" };
 
         /// <summary>Writes the whole book of the world as it stands.</summary>
         public static WorldBook Write(World w)
@@ -172,6 +172,7 @@ namespace TC2.Core.History
                     case 4: p = Places(_c); break;
                     case 5: p = Lives(_c); break;
                     case 6: p = Threads(_c); break;
+                    case 8: p = YourActions(_c); break;   // (F9.2)
                     default: p = Chronology(_c); break;
                 }
                 LastMs = t.Elapsed.TotalMilliseconds;
@@ -1340,6 +1341,98 @@ namespace TC2.Core.History
                 case HistoryKind.PersonDied: return "the death of " + w.History.NameOf(e.Subject);
                 case HistoryKind.HouseholdMoved: return "the " + House(w, e.Subject) + "' leaving";
                 default: return "year " + YearOf(e.Time) + (at.Length > 0 ? " at " + at : "");
+            }
+        }
+
+        // ================================================================== IX. your actions (F9.2)
+        /// <summary>
+        /// (F9.2) What you did and what came of it: each of your casts (its `GodCommand` record), newest first, and the records whose causes run back to it
+        /// (the ledger's `Root`) - counted by what they were (the dead, the fires, homes and fields lost, the earth's and the sky's work) and the weightiest
+        /// told in order. Nothing here that the ledger does not hold.
+        /// </summary>
+        static BookPart YourActions(Ctx c)
+        {
+            var w = c.W;
+            var part = new BookPart { Title = "Your Actions", Intro = "What you did to the world, and what came of it: every record whose causes run back to your hand." };
+            int n = w.History.Count;
+            var casts = new List<int>();
+            var byRoot = new Dictionary<long, List<int>>();
+            for (int i = 0; i < n; i++)
+            {
+                var e = w.History.At(i);
+                if (e.Kind == HistoryKind.GodCommand) { casts.Add(i); continue; }
+                if (e.RootKind != RootKind.You || e.Root == 0) continue;
+                if (!byRoot.TryGetValue(e.Root, out var l)) byRoot[e.Root] = l = new List<int>();
+                l.Add(i);
+            }
+            if (casts.Count == 0)
+            {
+                var none = new BookChapter { Title = "Nothing yet" };
+                none.Para("You have not reached into the world. Its history so far is its own.");
+                part.Chapters.Add(none);
+                return part;
+            }
+            var counts = new Dictionary<HistoryKind, int>();
+            var order = new List<HistoryKind>();
+            var best = new List<int>();
+            for (int k = casts.Count - 1; k >= 0 && part.Chapters.Count < 40; k--)
+            {
+                var ce = w.History.At(casts[k]);
+                string what = HistoryText.Describe(w, in ce);
+                if (what.StartsWith("You ", System.StringComparison.Ordinal)) what = char.ToUpperInvariant(what[4]) + what.Substring(5);
+                var ch = new BookChapter { Title = what.TrimEnd('.'), Sub = "year " + YearOf(ce.Time), Settlement = ce.Settlement };
+                ch.Line(w, in ce);
+                byRoot.TryGetValue(ce.Id, out var fol);
+                if (fol == null || fol.Count == 0) { ch.Para("Nothing has come of it that the world remembers."); part.Chapters.Add(ch); continue; }
+                counts.Clear(); order.Clear();
+                for (int j = 0; j < fol.Count; j++) { var e = w.History.At(fol[j]); if (!counts.TryGetValue(e.Kind, out int m)) order.Add(e.Kind); counts[e.Kind] = m + 1; }
+                var parts = new List<string>();
+                foreach (var kind in order) { string s = Followed(kind, counts[kind]); if (s != null) parts.Add(s); }
+                int last = YearOf(w.History.At(fol[fol.Count - 1]).Time);
+                ch.Para("What came of it" + (last > YearOf(ce.Time) ? ", to year " + last : "") + ": " + (parts.Count > 0 ? Join(parts) : Plural(fol.Count, "record", "records")) + ".", ce.Settlement);
+                // the weightiest of what followed, told in order
+                best.Clear(); best.AddRange(fol);
+                best.Sort((p, q) => { int x = w.History.At(q).Importance.CompareTo(w.History.At(p).Importance); return x != 0 ? x : p.CompareTo(q); });
+                if (best.Count > 12) best.RemoveRange(12, best.Count - 12);
+                best.Sort();
+                for (int j = 0; j < best.Count; j++) ch.Line(w, w.History.At(best[j]));
+                if (fol.Count > best.Count) ch.Fact("... and " + Plural(fol.Count - best.Count, "record", "records") + " more.");
+                part.Chapters.Add(ch);
+            }
+            return part;
+        }
+
+        /// <summary>What a kind of record is, counted, in "What came of it" (null: not told by count).</summary>
+        static string Followed(HistoryKind k, int n)
+        {
+            switch (k)
+            {
+                case HistoryKind.PersonDied: return Plural(n, "death", "deaths");
+                case HistoryKind.FireStarted: return Plural(n, "fire", "fires");
+                case HistoryKind.Wildfire: return Plural(n, "wildfire", "wildfires");
+                case HistoryKind.FieldsBurned: return Plural(n, "village's fields burned", "villages' fields burned");
+                case HistoryKind.BuildingBurned: return Plural(n, "home burned", "homes burned");
+                case HistoryKind.HomesDrowned: return Plural(n, "village's homes drowned", "villages' homes drowned");
+                case HistoryKind.CropsFlattened: return Plural(n, "village's crop flattened", "villages' crops flattened");
+                case HistoryKind.CropsBlighted: return Plural(n, "village's crop blighted", "villages' crops blighted");
+                case HistoryKind.PathogenAppeared: return Plural(n, "new sickness", "new sicknesses");
+                case HistoryKind.EpidemicArrived: return Plural(n, "village struck by sickness", "villages struck by sickness");
+                case HistoryKind.StormLandfall: return Plural(n, "landfall", "landfalls");
+                case HistoryKind.StormSurge: return Plural(n, "surge from the sea", "surges from the sea");
+                case HistoryKind.Quake: return Plural(n, "quake", "quakes");
+                case HistoryKind.Landslides: return Plural(n, "landslide", "landslides");
+                case HistoryKind.Tsunami: return Plural(n, "great wave", "great waves");
+                case HistoryKind.Eruption: return Plural(n, "eruption", "eruptions");
+                case HistoryKind.AshFall: return Plural(n, "fall of ash", "falls of ash");
+                case HistoryKind.VentBorn: return Plural(n, "new vent", "new vents");
+                case HistoryKind.StoresSpoiled: return Plural(n, "store spoiled", "stores spoiled");
+                case HistoryKind.HarvestFailed: return Plural(n, "failed harvest", "failed harvests");
+                case HistoryKind.Hunger: case HistoryKind.Famine: return Plural(n, "time of hunger", "times of hunger");
+                case HistoryKind.SettlementAbandoned: return Plural(n, "village abandoned", "villages abandoned");
+                case HistoryKind.PartySetOut: return Plural(n, "party setting out", "parties setting out");
+                case HistoryKind.HouseholdMoved: return Plural(n, "household leaving", "households leaving");
+                case HistoryKind.SettlementFounded: return Plural(n, "village founded", "villages founded");
+                default: return null;
             }
         }
 

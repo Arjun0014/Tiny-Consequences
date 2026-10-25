@@ -16,7 +16,7 @@ namespace TC2.Game
     /// saves, absences, new worlds) - H hides everything. Places named on the map (N), a tag on the person or building under the pointer
     /// close in. The catch-up screen and a person inspector with their "why". Reads the world; actions go through the host.
     /// </summary>
-    public sealed class Hud : MonoBehaviour
+    public sealed partial class Hud : MonoBehaviour
     {
         public SimHost Host;
         public CameraRig Rig;
@@ -78,6 +78,7 @@ namespace TC2.Game
             if (_fpsT > 0.5f) { _fps = _frames / _fpsT; _frames = 0; _fpsT = 0; }
             var w = Host.World;
             if (w == null || Host.CatchingUp) return;
+            if (_titleOn) return;   // (the title holds the world still: F11.1)
             if (!_bookAsked) { _bookAsked = true; if (Browser.Param("book") != null) OpenBook(-1); }   // (?book=1: open at the present age)
             if (Input.GetKeyDown(KeyCode.B)) _book = !_book;
             if (Input.GetKeyDown(KeyCode.Space)) Host.SpeedIndex = Host.SpeedIndex == 0 ? 3 : 0;
@@ -88,7 +89,7 @@ namespace TC2.Game
             _newsAge += Time.unscaledDeltaTime;
             for (int i = 0; i < SimHost.Speeds.Length && i < 8; i++) if (Input.GetKeyDown(KeyCode.Alpha1 + i)) { Host.SpeedIndex = i; Host.MaxSpeed = false; }
             if (Input.GetKeyDown(KeyCode.Alpha9)) Host.MaxSpeed = !Host.MaxSpeed;
-            if (Input.GetMouseButtonUp(0) && !PointerOverUi) Pick();
+            if (!PowersInput() && Input.GetMouseButtonUp(0) && !PointerOverUi) Pick();   // (a click while aiming a power casts it: F9.1)
             // following: the camera keeps over the person as they go about their day (its height as the player left it)
             var fw = Host.World;
             if (_follow != 0 && fw != null)
@@ -465,6 +466,7 @@ namespace TC2.Game
             var w = Host.World;
             if (w == null) { GUI.Label(new Rect(20, 20, 600, 40), Host.StatusLine, _title); return; }
             if (Host.CatchingUp) { CatchUpScreen(sw, sh); PointerOverUi = true; return; }
+            if (Title(sw, sh)) return;   // (the opening: F11.1)
 
             if (_hidden) { PointerOverUi = false; return; }
             if (!_book) { MapNames(w, sw, sh); WorkNames(w, sw, sh); PeopleNames(w, sw, sh); }
@@ -565,8 +567,10 @@ namespace TC2.Game
             if (_placeSid != 0 && w.Settlements.Exists(_placeSid)) { float pw = Mathf.Min(600, sw - 430); _pageRect = new Rect(Mathf.Max(10, sw - 410 - pw), 60, pw, sh - 130); PlacePage(_pageRect, w); }
             else if (_personPage && _selected != 0 && w.People.Exists(_selected)) { float pw = Mathf.Min(600, sw - 430); _pageRect = new Rect(Mathf.Max(10, sw - 410 - pw), 60, pw, sh - 130); PersonPage(_pageRect, w); }
             else if (_building != 0 && w.Buildings.Exists(_building)) { showInsp = true; BuildingPage(insp, w); }
+            _powersRect = Rect.zero;
+            if (!_book) PowerBar(w, sw, sh);   // (the god's powers: F9.1)
             Vector2 m = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y) / _scale;
-            PointerOverUi = _left.Contains(m) || _toggles.Contains(m) || _right.Contains(m) || worldRect.Contains(m) || realmsRect.Contains(m) || _bottom.Contains(m) || _ticker.Contains(m) || (showInsp && insp.Contains(m)) || (_book && _bookRect.Contains(m)) || _pageRect.Contains(m);
+            PointerOverUi = _powersRect.Contains(m) || _left.Contains(m) || _toggles.Contains(m) || _right.Contains(m) || worldRect.Contains(m) || realmsRect.Contains(m) || _bottom.Contains(m) || _ticker.Contains(m) || (showInsp && insp.Contains(m)) || (_book && _bookRect.Contains(m)) || _pageRect.Contains(m);
             if (!_book) HoverTag(w, sw, sh);
         }
 
@@ -608,7 +612,7 @@ namespace TC2.Game
             if (legend.Count > shown) GUILayout.Label("and " + (legend.Count - shown) + " more", _small);
             // the wars of the last ten years (dark spearheads toward the raided): how many raids, between how many pairs, and how many pairs of one realm
             if (wars)
-                GUILayout.Label("Dark spears: " + RealmsView.FeudRaids + (RealmsView.FeudRaids == 1 ? " raid" : " raids") + " in the last ten years between " + RealmsView.FeudPairs +
+                GUILayout.Label("Dark spears edged pale: " + RealmsView.FeudRaids + (RealmsView.FeudRaids == 1 ? " raid" : " raids") + " in the last ten years between " + RealmsView.FeudPairs +
                                 (RealmsView.FeudPairs == 1 ? " pair of villages" : " pairs of villages") + (RealmsView.FeudsWithin > 0 ? ", " + RealmsView.FeudsWithin + " of one realm" : ", none of one realm"), _small);
             GUILayout.EndArea();
             return r;
