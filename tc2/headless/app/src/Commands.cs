@@ -383,12 +383,37 @@ namespace TC2.Headless
             string snapDir = a.Get("snapdir", Path.Combine("tc2", "out", "ages", "s" + w.Seed));
             // (--nudge Y: a placebo - one FU more in the first village's store Y years in, so the world's chaos alone can be measured)
             long nudgeAt = a.Has("nudge") ? start0 + SimTime.Years(a.Double("nudge", 150)) : 0;
+            // (--castore Y: F9.6 played - at year Y the god lays copper bare 300-900 m from the most peopled village whose people can smelt copper and know no
+            // body of it; the run's end tells what became of it: found, dug, a mine, metal)
+            long oreAt = a.Has("castore") ? start0 + SimTime.Years(a.Double("castore", 100)) : 0;
+            int oreCell = -1, oreSid = 0;
             while (w.Now < end || (snapAt.Count > 0 && snapAt[0] <= w.Now))
             {
                 long next = Math.Min(end, w.Now + report);
                 bool snapNow = snapAt.Count > 0 && snapAt[0] <= next;
                 if (snapNow) next = snapAt[0];
                 w.AdvanceTo(next);
+                if (oreAt > 0 && w.Now >= oreAt)
+                {
+                    oreAt = 0;
+                    int bp = -1;
+                    for (int v = w.Settlements.First(); v != 0; v = w.Settlements.Next(v))
+                    {
+                        ref var sv = ref w.Settlements.Get(v);
+                        if (sv.Inhabited && sv.OreCell == 0 && sv.BestMetal >= TC2.Core.Places.Mining.Smelter && sv.Population > bp) { bp = sv.Population; oreSid = v; }
+                    }
+                    if (oreSid != 0)
+                    {
+                        var near = new List<int>(); w.Hazards.CellsWithin(w, w.Settlements.Get(oreSid).Cell, 900.0, near);
+                        foreach (int c in near)
+                        {
+                            double d = TC2.Core.Foundation.Vec3d.ArcDistance(w.Settlements.Get(oreSid).Anchor, w.Planet.Grid.Center[c], w.Planet.Radius);
+                            if (d >= 300 && w.Planet.IsLand(c) && TC2.Core.Planet.Shore.Dry(w.Planet, w.Planet.Grid.Center[c]) && w.SettlementAtCell(c) == 0 && w.Planet.FieldOwner[c] == 0) { oreCell = c; break; }
+                        }
+                    }
+                    if (oreCell >= 0) w.Issue(new Command { Time = w.Now, Kind = CommandKind.GodOre, Cell = oreCell });
+                    Console.WriteLine("castore: " + (oreCell >= 0 ? "copper laid bare at cell " + oreCell + " by " + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(oreSid)) + " (" + w.Settlements.Get(oreSid).Population + " people)" : "no village smelting copper without ore"));
+                }
                 if (nudgeAt > 0 && w.Now >= nudgeAt)
                 {
                     for (int ns = w.Settlements.First(); ns != 0; ns = w.Settlements.Next(ns)) if (w.Settlements.Get(ns).Inhabited) { w.Settlements.Get(ns).Granary += 1.0; break; }
@@ -1289,6 +1314,13 @@ namespace TC2.Headless
                     if (dp.Alive || w.Now - dp.Died < 30 * SimTime.Year) recent++; else other++;
                 }
                 Console.WriteLine("deaths kept: important " + imp + ", under two years " + young + ", subject recent " + recent + ", subject pruned " + gone + ", other " + other + ", other tiers " + tiers);
+            }
+            if (oreCell >= 0)
+            {
+                int odi = w.Deposits.IndexAt(oreCell, TC2.Core.Places.Mining.Copper);
+                int knowing = 0, mines = 0; for (int v = w.Settlements.First(); v != 0; v = w.Settlements.Next(v)) { ref var sv = ref w.Settlements.Get(v); if (!sv.Inhabited || sv.OreCell != oreCell + 1) continue; knowing++; if (sv.Mine != 0) mines++; }
+                int rooted = 0; for (int hi = 0; hi < w.History.Count; hi++) { var he = w.History.At(hi); if (he.RootKind == TC2.Core.History.RootKind.You) rooted++; }
+                Console.WriteLine("castore at the end: the body " + (odi >= 0 ? F(w.Deposits.Get(odi).Ore, "0") + " kg left, " + F(w.Deposits.Get(odi).Taken, "0") + " kg dug" : "gone") + "; villages knowing it " + knowing + ", with a mine " + mines + "; records rooted in the cast " + rooted);
             }
             Console.WriteLine("state hash " + w.StateHash().ToString("x16"));
             Console.WriteLine("process ids used " + w.Ids.Peek(EntityKind.Process) + "  (herds now " + w.Herds.Count + ", fires' highest id " + w.Fire.Procs.MaxId +

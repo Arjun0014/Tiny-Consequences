@@ -1,6 +1,9 @@
 using NUnit.Framework;
 using TC2.Core.Foundation;
 using TC2.Core.History;
+using TC2.Core.Persistence;
+using TC2.Core.Places;
+using TC2.Core.Planet;
 using TC2.Core.Simulation;
 
 namespace TC2.Tests.Core
@@ -179,6 +182,73 @@ namespace TC2.Tests.Core
             long rev = 0;
             for (int i = 0; i < w.History.Count; i++) { var e = w.History.At(i); if (e.Kind == HistoryKind.RainBrought && e.RootKind == RootKind.You) { rev = e.Id; StringAssert.StartsWith("Rain came over the land", HistoryText.Describe(w, in e)); } }
             Assert.AreNotEqual(0L, rev, "told, rooted in the cast");
+        }
+
+        [Test]
+        public void TheGodsOreLiesUnknownUntilSomeoneSeesItAndItsFindingRunsBackToTheCast()
+        {
+            var w = TestWorlds.Make(617);
+            Coarse(w);
+            w.AdvanceTo(w.Now + SimTime.Days(2));
+            var P = w.Planet;
+            // a village that knows no copper, and a place of dry land a few hundred metres from it where the ground holds none of its own
+            int sid = 0, cell = -1;
+            var near = new System.Collections.Generic.List<int>();
+            for (int v = w.Settlements.First(); v != 0 && cell < 0; v = w.Settlements.Next(v))
+            {
+                if (!w.Settlements.Get(v).Inhabited || w.Settlements.Get(v).OreCell != 0) continue;
+                w.Hazards.CellsWithin(w, w.Settlements.Get(v).Cell, 900.0, near);
+                foreach (int c in near)
+                {
+                    double d = Vec3d.ArcDistance(w.Settlements.Get(v).Anchor, P.Grid.Center[c], P.Radius);
+                    if (d >= 250 && P.IsLand(c) && Shore.Dry(P, P.Grid.Center[c]) && !Mining.CopperAt(w, c) && w.SettlementAtCell(c) == 0) { sid = v; cell = c; break; }
+                }
+            }
+            Assume.That(cell >= 0, "dry land near a village that knows no copper");
+            w.Issue(new Command { Time = w.Now, Kind = CommandKind.GodOre, Cell = cell });
+            w.AdvanceTo(w.Now + SimTime.Hours(1));
+            int di = w.Deposits.IndexAt(cell, Mining.Copper);
+            Assert.GreaterOrEqual(di, 0, "a body of copper lies there");
+            Assert.AreEqual(Mining.GodOreKg, w.Deposits.Get(di).Ore, 1e-6, "rich ore");
+            long laid = w.Deposits.Get(di).Event;
+            Assert.IsTrue(w.History.TryGet(laid, out var le) && le.Kind == HistoryKind.OreRevealed && le.RootKind == RootKind.You, "laid bare by the cast");
+            StringAssert.StartsWith("Copper ore lay bare", HistoryText.Describe(w, in le));
+            Assert.AreEqual(0, w.Settlements.Get(sid).OreCell, "nobody knows it yet");
+            // someone of the village goes there and sees it, as a hunter or a gatherer would
+            int seer = w.Residents(sid)[0];
+            Mining.Saw(w, sid, seer, cell);
+            Assert.AreEqual(cell + 1, w.Settlements.Get(sid).OreCell, "now the village knows it");
+            long found = 0;
+            for (int i = 0; i < w.History.Count; i++) { var e = w.History.At(i); if (e.Kind == HistoryKind.OreFound && e.Settlement == sid && e.ArgA == Mining.Copper && e.Cell == cell) { found = e.Id; Assert.AreEqual(laid, e.Cause1, "found because it was laid bare"); Assert.AreEqual(RootKind.You, e.RootKind, "its root the cast"); } }
+            Assert.AreNotEqual(0L, found, "the finding is told");
+            var part = new HistoryBook.Writer(w).Part(8);
+            Assert.IsTrue(part.Chapters.Count > 0 && part.Chapters[0].Title.Contains("copper"), "Your Actions tells it");
+            // and a save keeps it
+            var copy = SaveFile.Load(SaveFile.Save(w, 0, OfflineMode.Paused, 0, 0, ""), out _);
+            Assert.AreEqual(w.StateHash(), copy.StateHash());
+            Assert.AreEqual(laid, copy.Deposits.Get(copy.Deposits.IndexAt(cell, Mining.Copper)).Event);
+        }
+
+        [Test]
+        public void ABountyRenewsTheTiredFieldsRoundThePlaceAndTheyTireAgain()
+        {
+            var w = TestWorlds.Make(617);
+            Coarse(w);
+            w.AdvanceTo(w.Now + SimTime.Days(2));
+            int sid = w.Settlements.First();
+            // premise: the village's fields long cropped (tired, as a full land's are)
+            w.Settlements.Get(sid).Tired = 0.6;
+            double heart0 = TC2.Core.Places.SettlementSystem.Heart(in w.Settlements.Get(sid));
+            w.Issue(new Command { Time = w.Now, Kind = CommandKind.GodBounty, Cell = w.Settlements.Get(sid).Cell });
+            w.AdvanceTo(w.Now + SimTime.Hours(1));
+            Assert.AreEqual(0.0, w.Settlements.Get(sid).Tired, 1e-12, "renewed as when first broken");
+            Assert.Greater(TC2.Core.Places.SettlementSystem.Heart(in w.Settlements.Get(sid)), heart0, "its fields' heart full");
+            long rev = 0;
+            for (int i = 0; i < w.History.Count; i++) { var e = w.History.At(i); if (e.Kind == HistoryKind.SoilRenewed && e.Settlement == sid) { rev = e.Id; Assert.AreEqual(RootKind.You, e.RootKind); StringAssert.StartsWith("The fields of", HistoryText.Describe(w, in e)); } }
+            Assert.AreNotEqual(0L, rev, "told, rooted in the cast");
+            // and the fields tire again as they are cropped, by the soil's own law
+            w.AdvanceTo(w.Now + SimTime.Years(3));
+            Assert.Greater(w.Settlements.Get(sid).Tired, 0.0, "tiring again");
         }
 
         [Test]

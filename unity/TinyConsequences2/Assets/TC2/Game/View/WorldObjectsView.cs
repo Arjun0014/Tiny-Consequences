@@ -30,6 +30,7 @@ namespace TC2.Game
         readonly Dictionary<int, float> _muckShare = new Dictionary<int, float>();   // (each household's share of its village's muck, by the grass its beasts eat)
         Instancer _people, _granaries, _wells, _ricks, _flames, _huts, _tents, _ruins, _beached, _afloat, _walls, _woodpiles;
         Instancer _stoneWalls, _towers;   // (C7.2: rings laid in stone, their gate and wall towers)
+        Instancer _ore;   // (C5.1, F9.6: the ore bodies people have seen or the god laid bare - green and blue stone, rust-red lumps)
         Instancer _floors;   // (a threshing floor in use: the sheaves laid out while people thresh there - C3.7b)
         readonly HashSet<int> _floorsUsed = new HashSet<int>();
         Instancer _beachedP, _afloatP;   // plank boats on the beach and out on the water (C9.2b); _beached/_afloat are the dugouts
@@ -178,6 +179,7 @@ namespace TC2.Game
             _stalls = new Instancer(Models.Get("market_stall", ProcMeshes.Granary), _mat, true);
             _cross = new Instancer(Models.Get("market_cross", ProcMeshes.Granary), _mat, true);
             _stonePiles = new Instancer(Models.Get("stone_pile", ProcMeshes.Granary), _mat, true);
+            _ore = new Instancer(Models.Get("boulder", ProcMeshes.Person), _mat, true);
             _granaries = new Instancer(Models.Get("granary", ProcMeshes.Granary), _mat, true);
             _walls = new Instancer(Models.Get("palisade", ProcMeshes.Palisade), _mat, true);   // walled villages (D2-074)
             _stoneWalls = new Instancer(Models.Get("stone_curtain", ProcMeshes.StoneCurtain), _mat, true);   // rings laid in stone (C7.2)
@@ -355,7 +357,7 @@ namespace TC2.Game
                 for (int i = 0; i < _homes.Length; i++) _homes[i].Draw(cam);
                 for (int i = 0; i < _frames.Length; i++) _frames[i].Draw(cam);
                 _chimneys.Draw(cam); _plinths.Draw(cam); _outshuts.Draw(cam); _pens.Draw(cam); _stalls.Draw(cam); _gardens.Draw(cam); _gardensBare.Draw(cam); _hurdles.Draw(cam); _tenters.Draw(cam); _clayPits.Draw(cam); _jars.Draw(cam); _ware.Draw(cam); _handcarts.Draw(cam); _oxcarts.Draw(cam); _cartLoads.Draw(cam); _oxen.Draw(cam); _parked.Draw(cam); _parkedOx.Draw(cam);
-                _stonePiles.Draw(cam);
+                _stonePiles.Draw(cam); _ore.Draw(cam);
                 for (int i = 0; i < _works.Length; i++) _works[i]?.Draw(cam);
                 _ricks.Draw(cam); _graves.Draw(cam); _gravesOld.Draw(cam); _standards.Draw(cam); _muck.Draw(cam); _huts.Draw(cam); _tents.Draw(cam); _ruins.Draw(cam); _walls.Draw(cam); _stoneWalls.Draw(cam); _towers.Draw(cam); _woodpiles.Draw(cam);
             }
@@ -597,14 +599,49 @@ namespace TC2.Game
             return System.Math.Sqrt(dx * dx + dz * dz);
         }
 
+        /// <summary>
+        /// The ore bodies kept in the world (C5.1, F9.6): those someone has seen and the ones the god laid bare, while ore is left - a cluster of stones where
+        /// the body lies, more of them the more ore is left: copper's green and blue (malachite, azurite) where the rock breaks, bog iron's rust-red lumps in
+        /// the wet ground. Drawn only near enough to read (within 3 km of the camera).
+        /// </summary>
+        void DrawOre(TC2.Core.Simulation.World w, PlanetState P)
+        {
+            if (w.Deposits.Count == 0 || Rig == null || Rig.Cam == null) return;
+            Vector3 cam = Rig.Cam.transform.position;
+            for (int i = 0; i < w.Deposits.Count; i++)
+            {
+                var d = w.Deposits.Get(i);
+                if (d.GaveOut != 0 || d.Ore <= 0) continue;
+                Vec3d ctr = P.Grid.Center[d.Cell];
+                Vector3 at = PlanetGeo.Surface(P, ctr);
+                if ((at - cam).sqrMagnitude > 3000f * 3000f) continue;
+                bool copper = d.Kind == Mining.Copper;
+                int n = Mathf.Clamp(2 + (int)(d.Ore / (copper ? 4000.0 : 1500.0)), 2, 12);
+                Settlement.Frame(ctr, out Vec3d east, out Vec3d north);
+                float ex = Exaggeration(at, 2.5f);
+                for (int k = 0; k < n; k++)
+                {
+                    ulong h = KeyedRng.Hash(29, RngStream.None, (ulong)d.Cell, (ulong)k);
+                    double r = 4.0 + 26.0 * KeyedRng.Unit(h), a = 2.0 * DMath.PI * KeyedRng.Unit(KeyedRng.Mix(h));
+                    Vec3d dir = (ctr * P.Radius + east * (r * DMath.Cos(a)) + north * (r * DMath.Sin(a))).Normalized;
+                    if (!Shore.Dry(P, dir)) continue;
+                    Vector3 pos = PlanetGeo.Surface(P, dir);
+                    float size = (copper ? 0.7f : 0.45f) + 0.6f * (float)KeyedRng.Unit(KeyedRng.Mix(h + 3));
+                    Color c = copper ? (k % 3 == 0 ? new Color(0.22f, 0.40f, 0.78f) : new Color(0.20f, 0.66f, 0.52f)) : new Color(0.58f, 0.27f, 0.12f);
+                    _ore.Add(0, c, Matrix4x4.TRS(pos, PlanetGeo.Upright(pos, k * 47f), new Vector3(size, size * (copper ? 0.8f : 0.45f), size) * ex));
+                }
+            }
+        }
+
         void RebuildPlaces(TC2.Core.Simulation.World w)
         {
             var P = w.Planet;
             for (int i = 0; i < _homes.Length; i++) _homes[i].Clear();
             for (int i = 0; i < _frames.Length; i++) _frames[i].Clear();
             _chimneys.Clear(); _plinths.Clear(); _outshuts.Clear(); _pens.Clear(); _stalls.Clear(); _gardens.Clear(); _gardensBare.Clear(); _hurdles.Clear(); _tenters.Clear(); _clayPits.Clear(); _jars.Clear(); _ware.Clear(); _parked.Clear(); _parkedOx.Clear();
-            _stonePiles.Clear();
+            _stonePiles.Clear(); _ore.Clear();
             for (int i = 0; i < _works.Length; i++) _works[i]?.Clear();
+            DrawOre(w, P);
             _ricks.Clear(); _graves.Clear(); _gravesOld.Clear(); _standards.Clear(); _muck.Clear(); _huts.Clear(); _tents.Clear(); _ruins.Clear(); _beached.Clear(); _beachedP.Clear(); _walls.Clear(); _stoneWalls.Clear(); _towers.Clear(); _woodpiles.Clear();
             _smoke.Clear(); _lights.Clear(); _watch.Clear();
             MuckHeaps = 0; MuckLargestKg = 0;   // (tools: the heaps drawn, and where the largest stands - the "muck" shot views)

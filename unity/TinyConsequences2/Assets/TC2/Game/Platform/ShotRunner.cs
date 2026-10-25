@@ -301,6 +301,17 @@ namespace TC2.Game
                 w.AdvanceTo(w.Now + 2 * SimTime.Minute, ref bm);
                 Debug.Log("[TC2] meteor: fires " + w.Fire.Active.Count);
             }
+            string ore = Arg("-tc2ore");
+            if (ore != null && sid != 0)
+            {
+                // (F9.6) the god lays copper bare a little way off the framed village's square (metres east, as given): a logged command
+                var so = w.Settlements.Get(sid);
+                int cell = w.Planet.Grid.CellOf(so.LocalToSphere(Parse(ore, 150), 0, w.Planet.Radius));
+                w.Issue(new Command { Time = w.Now, Kind = CommandKind.GodOre, Cell = cell });
+                var bo = Budget.Unlimited;
+                w.AdvanceTo(w.Now + 2 * SimTime.Minute, ref bo);
+                Debug.Log("[TC2] ore: laid bare at cell " + cell + ", body " + w.Deposits.IndexAt(cell, TC2.Core.Places.Mining.Copper));
+            }
             string drought = Arg("-tc2drought");
             if (drought != null && sid != 0)
             {
