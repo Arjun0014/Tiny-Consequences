@@ -2,29 +2,18 @@
 
 ## Session 26, second context (26 Oct 2026, from 23:43 IST 25 Oct; Control Room run #80 session 2) - stone walls LANDED (sim 102); the book's bonds fixed; F9.8-F9.9 the cull, bringing, warmth and cold built; the queue RUNNING
 
-### Exact state (keep current)
-- **main**: f95b233 merge C7.2 stone walls (sim 102; D2-183 appended e78147c), 77a5bae the book's fix (a village that pays no longer pays when it is
-  abandoned - the lord's household's worlds counted an abandoned tributary as paying; an observer's fix, HistoryBookTests 6/6 with a premise test).
-- **Still to land, in order** (their checks in the queue): the memory pass (`0_zi_*`), the ore and bounty (`0_zj_a`), the lord's household (`0_zk_*`), then
-  **F9.8-F9.9** (`wip/cull`, worktree `C:/Game Dev/tc-cull`, on `wip/hall` + main; sim 106; draft `tc2/out/tools/s26/d2187.md`): the cull (nine in ten of
-  the hunting kinds round a place), the bringing (the game the land lacks most by weight, as thick as it lives where it is thickest; at sea a shoal), warm and
-  cold air (a summer 5 C warmer or colder over 4 km: `World.AirShift`, read by the fast climate and `PlanetSystems.DayMean` through `PlanetSystems.Owner`;
-  spells `DrySpell.Kind` 2/3); the power bar in two rows (Lightning first: the Web test aims power 0). Checks: `0_zh_e` (cull1: Powers 11, Ecology,
-  Livestock, WildFood, Determinism, SaveLoad ok; HistoryBookTests failed on the household's world - the book's fault, fixed on main), `0_zh_g` (cull2 with
-  warmth and the fix: its classes, the bringing played again), `0_zk_e` (uncast = `_hal1` byte for byte). Played cull (seed 4, `results/castcull_s4.txt`):
-  the hunters round Tamby 13 -> 1 -> 13 five years on (a respite, as wolves recolonise); the first bringing (best-suited kind) added only 10 to 570 - revised to
-  the kind the land lacks most.
-- `K_b_ac3_s7` (the third run's seed 7 on sim 98) moved to `$Q/hold`: the fourth run on the final rules supersedes it.
-- **C13.4 ruins reused** (`wip/ruins`, worktree `C:/Game Dev/tc-ruins`, on the cull + main; sim 107; draft `tc2/out/tools/s26/d2189.md`): measured first
-  (`place --ruins` on main, edcacb7; ten seeds at 300: 88-797 fallen homes' ruins kept their lots a world, >90 % inside the lived ring, while 20-36 % of
-  new homes went beyond it) - a household seeking a lot clears home ruins and builds there, their footing stone to the store. Checks: `0_zh_j` (ruin1:
-  RuinsTests + 7 classes), then after the household's chain `0_zl_0` (build ruin2 from tc-ruins as it is then - merge the cull with warmth into it
-  first), `0_zl_a` (`--oldruins` = `_hal1`), `0_zl_b` x10 `_rui1`, `0_zl_c` (`results/cmp_hal1_rui1.txt`).
-- **F11.2 the player's settings** (`wip/settings`, worktree `C:/Game Dev/tc-settings`, from main; view only; draft `d2188.md`): a Settings panel - sound
-  and volume, clouds, lighter shadows from high up, picture detail - kept in PlayerPrefs; never loaded in shots or batch runs; bridge `setting NAME V`
-  and published `settings`; the Web test checks it survives a reload. Check `0_zh_i` (cc).
-- Then: land in order (memory, ore, hall, cull, ruins; settings any time after its cc), regenerate the fourth acceptance run
-  (`bash tc2/out/tools/s26/make_ac4.sh $Q`; it now also writes `lordships --dependants` at 300 and 1,000) and judge it.
+### Exact state (keep current; ~02:25 IST 26 Oct)
+- **main** (sim 106): landed this context - **C7.2 stone walls** (f95b233, D2-183), **the book's bonds end with an
+  abandoned village** (77a5bae), **the memory pass** (8086ced, D2-184), **F9.6-F9.7 the ore and bounty** (fd4eae6, D2-185), **C10.11 the lord's household**
+  (f176a84, D2-186: its ten seeds' one lean - the greatest realm x0.69 - was chaos by its matched placebo `_hlp`), **F11.2 the player's settings** (885e540,
+  D2-188), **the book's realm maps** (1825a61), tools `place --ruins` (edcacb7), bookshots' timeline name (896fe11).
+- **F9.8-F9.9 the cull, bringing, warmth and cold landed** (ecedf12, D2-187; sim 106 on main).
+- **C13.4 ruins reused** (`wip/ruins`, tc-ruins 6538886, sim 107; draft `d2189.md`): `0_zl_a` control (`--oldruins` = `_hal1`), `0_zl_b` x10 `_rui1`,
+  `0_zl_c` compare (`results/cmp_hal1_rui1.txt`, `place --ruins` at 300 per seed `results/ruins_s*_rui1_y300.txt`). Land if the seeds hold (a lean: a matched
+  placebo `--oldruins --nudge Y`).
+- Then: **the fourth acceptance run** - `bash tc2/out/tools/s26/make_ac4.sh $Q` (now also `lordships --dependants` and the book's pages in the browser,
+  `s26book1`); judge it in shots and books; 25 §6 "Fourth run" and the verdict on the finished core (25 §8).
+- `K_b_ac3_s7` is in `$Q/hold` (superseded by the fourth run).
 
 ## Session 26 - HANDOFF (25 Oct 2026, 21:20 - ~23:25 IST; Control Room run #80 session 1) - rain, the harrying and the ways on main (sim 101); stone walls, the memory pass, the god's ore and the lord's household built, their checks RUNNING in the queue
 

@@ -5782,3 +5782,46 @@ and none against main (x0.94, t -0.3), in the household's direction (the hungry 
 worlds: 2,269 households taken in at home and 10,210 summoned from realms to seats; 9,777 let go when the grain ran short; 8,880 taken over by a new
 first household. **The seats at 300** (`results/seats_s*_{hal1,hlp}.txt`): the greatest realms' seats 571-820 people (Komdal, Vindford, Drandthorpe)
 against 526-612 in the twins (a village ~185) - the household feeds the landless more than it builds capitals.
+
+## D2-187 — 2026-10-26 — The god's cull and bringing, warmth and cold: the last of F9's powers that act through the world's own systems (F9.8, F9.9)
+
+**Context.** `17` F9 names the powers that write physical state: lightning, rain, drought, warmth, cull, bring, plague, blight, meteor, stir a mountain,
+strain a fault. Built before this: lightning, a storm, a quake, an eruption, a sickness, a blight, a drought, a meteor (D2-178, D2-179), the rain (D2-180),
+the ore and the bounty (D2-185). Not yet: warmth, cull, bring. TC1's R7 (`docs/v3/70_R7_GOD_POWERS.md`) had them as v1 powers: cull (wolves | deer) -> pens
+safe, deer boom -> grazing; bring (wolves | deer | fish); warm and cold air.
+
+**What the world holds.** Animals are an abundance field per species and cell (`PlanetState.Abund`, with each population's condition, coat and lineage) - the
+herds and packs near villages are read from it every day (`HerdSystem`), the wolves round a pasture take its beasts by their numbers (`Livestock.WolfRisk`),
+hunters kill from the herds (WildFood), wild grazers and the herds eat the same grass (`Ecology`, `Livestock`). A hunting kind's young find room only where
+its packs are few (`Territory`). The day's air (`P.Temp`, set by the fast climate) grows the crops (3-13 C rising, 31-39 C falling), dries the soil, and
+`PlanetSystems.DayMean` tells the frost that keeps herds in, the grazing and the homes' cold.
+
+**Decision.** (1) **Cull** (5 years): nine in ten (`CullShare`) of every living kind that hunts (`Prey != 0`: wolves, foxes, bears; on the sea seals, cod,
+tuna) taken from every cell of the place's habitat within a walk of it (`GodReach` 2.5 km); each kind's cull told (`BeastsCulled`, the species its subject,
+the animals taken) and caused by the cast. (2) **Bring** (5 years): of the living kinds of the place's habitat that hunt nothing (game of 2 kg or more; at
+sea the shoaling fish), the one the land within the reach lacks most by weight is brought to every cell of the habitat there, filled to the kind's
+typical stocking (`World.Stocking`: its animals over its range per hectare of suitability, the cells it suits by 0.3 or more where it lives) as far as each
+cell suits it - with the coats and lineage of its thickest population, well fed (condition 0.8, mixed with any there); told (`BeastsBrought`). A herd
+hunted out comes back; a land already stocked gets little. (3) **Warmth** and **cold** (2 years each): a summer's air (`AirDays` 16, as the
+drought) over the land within `AirReach` 4 km warmer or colder by `AirBy` 5 C - the day's air (`P.Temp`, in the fast climate) and the day's mean
+(`DayMean`) both; held as a spell (`DrySpell.Kind` 2, 3: saved, hashed) and read by `World.AirShift`; told (`WarmAir`, `ColdAir`); under the cold the crops
+standing name it as their harm, as under a drought (`CropCause`). Everything after is the world's own: pens safer while the wolves are few, game thicker
+and the grass grazed harder where game was brought, hunters back from beyond the reach and from the young of the few left; crops faster where it is cold
+and slower where it is hot under warm air, slower or failing where it is cool under cold; the soil drying faster in warmth; homes burning less or more
+wood; the frost lifted or keeping the herds in. The power bar in two rows (the sky's and the ground's; life's and the land's). `run --castcull Y`,
+`--castbring Y`.
+
+**What changes in the picture.** The herds and packs drawn near a village read the field: a culled land's packs vanish and come back over a few years; a
+land given game shows more herds; a sea given a shoal fills its fishers' boats. Warmth and cold show in the crops' growth and the harvests' records.
+
+**Evidence.** PowersTests 13/13 (a cull takes 0.9 of the hunters round the place and nothing else, each kind told and rooted in the cast, in Your
+Actions; more wander in within two years; bringing brings the kind the land lacks most by weight - the deer hunted out round a village - nothing else, told once, and at sea a shoal; warm air 5 C over
+its reach and not beyond, the day's air 5 C warmer than an uncast twin's, a save under it continues identically, the air as it was after its days, told;
+cold air 5 C colder, told, the standing crop naming it). cull1-cull3 ok (Powers 13, HistoryBook 6, Climate 7, Ecology 6, Livestock 16, WildFood 11, Determinism 7, SaveLoad 8; floatcheck,
+Unity C#); **uncast = the lord's household's rules (`_hal1`, seed 4, 300 years) byte for byte, same state hash**.. **Played** (seed 4, cast at year 100, `results/castcull_s4.txt`, `castbring_s4.txt`):
+the cull at Tamby (149 people, the most hunters round any village) took the hunting beasts round it from 13 to 1 - **13 again five years on** (the few
+left breed into the empty range and others wander in: a cull is a respite, not an end, as wolves recolonise a cleared land). **The bringing revised by
+its play**: a first rule - the kind the place suits best, as thick as at its single densest cell - added 10 game to Stoby's 570 (the best-suited kind
+already near its ceiling there), and the next - the kind lacking most, to its densest cell's thickness - 13,738 (570 -> 14,308) that starved back to 865
+within five years; the rule kept brings the kind lacking most to its typical stocking: +30 at Stoby (its land near what its kinds keep), 17.9 t of deer
+back where the deer were hunted out (PowersTests). The herds round Stoby fell 86 -> 60 in those five years in every run, cast or not.
