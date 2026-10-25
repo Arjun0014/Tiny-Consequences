@@ -401,6 +401,13 @@ let go - must change no history), **F9.6-F9.7 the god's ore and bounty** (104), 
 households of their realms, who come to the seat - measured first: surplus beside want). Measured, not built: C8.2 flight from war. Then the fourth 1,000-year
 acceptance run on the final rules with real shots and the Web heap (`tc2/out/tools/s26/make_ac4.sh`). SESSION_HANDOFF "Session 26 - HANDOFF".
 
+**Where we are (session 26, second context, 26 Oct 2026, 23:43-~03:10 IST; Control Room run #80 session 2)**: **everything built LANDED on main (sim 107)**:
+C7.2 stone walls (D2-183), the memory pass (D2-184), F9.6-F9.7 the god's ore and bounty (D2-185), C10.11 the lord's household (D2-186 - its one lean was chaos
+by its matched placebo), F9.8-F9.9 the god's cull, bringing, warmth and cold (D2-187: F9's powers complete), C13.4 ruins reused (D2-189, measured first:
+living villages kept centuries of ruins in their hearts), F11.2 the player's settings (D2-188), the book's bonds ending with an abandoned village and its
+realm maps. **The fourth 1,000-year acceptance run** was generated at 03:06 and runs in the job queue (~4 hours): judge it in its shots, books and measures
+and write 25 §6 "Fourth run" with the verdict on the finished core (25 §8). SESSION_HANDOFF "Session 26, second context".
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.

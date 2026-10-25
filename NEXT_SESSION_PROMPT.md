@@ -23,32 +23,19 @@ then god powers and player-facing gameplay.
    `c1011_household.md`, `c82_flight.md`, `make_ac4.sh`, `make_hall.sh`, `results/`).
 4. `git status`, `git log --oneline -15`, `git worktree list`, and the queue: `cat $Q/runq.log` (`Q` below) - which jobs ended, with what; `ls $Q/todo`.
 
-## Session 26 (25 Oct 2026, 21:20 - ~23:25 IST; Control Room run #80) - rain, the harrying and the ways on main (sim 101); four slices built, their checks RUNNING
-- **On main** (45d4461 + docs): F9.5 the rain; C8.1a the harrying - its ten seeds leaned (people x0.91, sickness x3.9) and **its matched placebo showed chaos**
-  (a one-FU nudge of the old rules gives the same pattern: main's ten worlds were a draw with few epidemics; the harrying against its placebo twin people x1.04,
-  t 0.5); C11.1b a people's ways. **One full suite over all of it: 484/0/0.** View: flames on dry ground only (the meteor's stood in the sea), `ShadowLite` per
-  shot, bridge `sortplaces` (off until measured).
-- **Built, to land in order** (worktrees; each carries the one before; each changes the sim version): **C7.2 stone walls** (`wip/c72-stonewalls`, sim 102),
-  **the memory pass** (`wip/memory`, 103 - must change no history: its check requires annals byte for byte), **F9.6-F9.7 the god's ore and bounty** (`wip/ore`,
-  104), **C10.11 the lord's household** (`wip/hall`, 105 - measured first: lords' surplus for 1,260-1,907 people's food a year beside 312-1,387 landless
-  people in their realms; a first household keeps landless households from its grain, a lord's realm's come to its seat; a new first takes them over).
-- **The queue was running at the handoff** (runner = this session's background task `bj4o96476`, `bash tc2/out/tools/s23/runq.sh`; `Q` =
-  `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`, the scratchpad `lib.sh`'s `S`/`N`
-  point at; if the runner has stopped and jobs remain in `$Q/todo`, restart it in the background): stone walls' tests
-  (`0_zh_a2`), control and ten seeds; the memory pass's control and annals check (`0_zi_*`); the ore's control (`0_zj_a`); the household's build, control and
-  ten seeds (`0_zk_*`); then seed 7's third acceptance run (`K_b_ac3_s7`). ~2 hours from 23:22.
-- **Measured, not built**: C8.2 flight from war - harm concentrates on small frontier hamlets, but at the ceiling no village within reach has land to spare
-  (`tc2/out/tools/s26/c82_flight.md`); the household slice is the first answer (the landless drawn to a lord's surplus, not to land).
+## Session 26, second context (26 Oct 2026, 23:43 - IST; Control Room run #80 session 2) - everything built landed (main sim 107); the fourth acceptance RUNNING
+- **On main**: C7.2 stone walls (D2-183), the memory pass (D2-184), the god's ore and bounty (D2-185), the lord's household (D2-186), the cull, bringing,
+  warmth and cold (D2-187), ruins reused (D2-189), the player's settings (D2-188), the book's realm maps and its bonds' end at abandonment.
+- **Running**: the fourth 1,000-year acceptance run in the job queue (runner `tc2/out/tools/s23/runq.sh`, `Q` =
+  `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`; jobs `M_a`-`M_e`: main's full
+  suite, seeds 2/4/7 `_ac4` for 1,000 years with books and measures into `tc2/out/tools/s26/accept/`, real shots `s26a_*`, the Web build `s26web1` with the
+  book's pages `s26book1`). If the runner has stopped and `$Q/todo` still holds jobs, restart it in the background.
 
 ## Do next, in order
-1. Read each check's result (`$Q/log/<job>.log`, `tc2/out/tools/s26/results/`) and land in order: stone walls (D2-183), the memory pass and the ore (D2-184,
-   D2-185), the lord's household (D2-186 if its ten seeds hold - a lean past |t| 2: its matched placebo `--oldhall --nudge Y` at each world's parting year,
-   `tc2/out/tools/s24/lean.py`). Append the drafts to `docs/tc2/DECISIONS.md` with the numbers; build after any merge.
-2. The fourth 1,000-year acceptance run on the final rules: `bash tc2/out/tools/s26/make_ac4.sh $Q` (main's build and full suite `bin_m14`; seeds 2/4/7 `_ac4`
-   with books, the ways and stone walls by century; real shots `s26a_*` incl. `ShadowLite` beside, the villages most walled in stone, realms, the meteor's
-   flames, the god's ore; the Web build `s26web1`: test, heap at year 1,000 against 955 MB, `sortplaces`/`shadowlite` paired). Regenerate it after the household
-   lands (its `M_*` jobs build main at run time). Judge in the shots and books; write 25 §6 "Fourth run" and whether the core is finished (25 §8).
-3. Then: the frame pass by the Web measures; F9's remaining powers (warmth needs a temperature overlay in `PlanetSystems.DayMean`) and F11 (packaging, settings).
+1. Read each acceptance job's result (`$Q/log/M_*.log`, `tc2/out/tools/s26/accept/`, `tc2/out/shots/s26a_*`, `tc2/out/webtest/s26web1*`, `s26book1`):
+   the full suite must be 0 failed; judge the worlds in the shots (every age), the books and the measures (ways, stone walls, ruins, the lords' households
+   by century); the Web heap at year 1,000 against 955 MB; the frame pass's pairs. Write 25 §6 "Fourth run" and whether the core is finished (25 §8).
+2. Then the next slice by that evidence (the C-phases' "done when", 25 §1), the frame pass's defaults, W-FOREST pass 3, F11 packaging.
 
 ## Rules that bite
 - **Never retag job files with a broad `sed`** (session 26: `s/_sw1"/_stw1"/` also renamed a build job's binary dir, so its tests ran a missing binary and the
