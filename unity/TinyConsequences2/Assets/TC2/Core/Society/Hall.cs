@@ -19,10 +19,11 @@ namespace TC2.Core.Society
         /// <summary>`--oldhall`: no first household keeps dependants (before C10.11), on the same binary.</summary>
         public static bool Off;
         /// <summary>Tools (`--halltally`; null in the game): [0] households taken in at home, [1] from the realm (summoned to the seat), [2] let go - the grain
-        /// short, [3] another first, [4] land of their own, [5] FU given, [6] household-years fed, [7] the most kept by one household, [8] village-harvests
-        /// weighed with dependants kept or keepable, [9] summoned households that could not go (no way on foot).</summary>
+        /// short, [3] no first household (or it became the first), [4] land of their own, [5] FU given, [6] household-years fed, [7] the most kept by one
+        /// household, [8] village-harvests weighed with dependants kept or keepable, [9] summoned households that could not go (no way on foot), [10] taken over
+        /// by a new first household.</summary>
         public static double[] Tally;
-        public const int TallyN = 10;
+        public const int TallyN = 11;
 
         static readonly List<int> _kept = new List<int>();
         static readonly List<(double days, int hid, int sid)> _cand = new List<(double, int, int)>();
@@ -57,15 +58,21 @@ namespace TC2.Core.Society
             if (!s.Inhabited) return;
             long now = w.Now;
             int first = Leaders.First(in s);
-            // the households this village's first households keep or kept: let go those kept by a household that is no longer its first, or holding land now
+            // the households this village's first households keep or kept: let go those holding land now; a new first household takes over its predecessor's
+            // dependants (the hall's people pass with the hall), kept or let go below by what its own grain keeps
             _kept.Clear();
             var hhs = w.HouseholdsOf(sid);
             for (int i = 0; i < hhs.Count; i++)
             {
                 ref var hh = ref w.Households.Get(hhs[i]);
                 if (hh.Keeper == 0 || hh.Dissolved != 0) continue;
-                if (hh.Keeper != first) { LetGo(w, hhs[i], 2, harvest); continue; }
                 if (hh.Land >= 0.05) { LetGo(w, hhs[i], 3, harvest); continue; }
+                if (hh.Keeper != first)
+                {
+                    if (first == 0 || hhs[i] == first) { LetGo(w, hhs[i], 2, harvest); continue; }
+                    hh.Keeper = first;   // (taken over: since when it was first kept)
+                    if (Tally != null) Tally[10] += 1;
+                }
                 _kept.Add(hhs[i]);
             }
             // (and those on their way here from a tributary, summoned: kept all the same - only a lord summons, so only a lord looks)
@@ -161,7 +168,7 @@ namespace TC2.Core.Society
             });
         }
 
-        /// <summary>A kept household let go (history; `why` 1 the grain short, 2 another first among the people, 3 land of its own).</summary>
+        /// <summary>A kept household let go (history; `why` 1 the grain short, 2 no first household to keep it - or it is the first now, 3 land of its own).</summary>
         static void LetGo(World w, int hid, byte why, long cause)
         {
             ref var hh = ref w.Households.Get(hid);

@@ -52,7 +52,7 @@ namespace TC2.Core.History
                 case HistoryKind.TakenIn: return "The " + Plural(obj) + " of " + place + " took the " + Plural(subj) + " into their keep" + (e.ArgA == 1 ? ", landless in " + other + ": they came to live at their hall" : ": landless, fed from their grain") + ".";
                 case HistoryKind.LetGo:
                     {
-                        string why = e.ArgA == 1 ? "their grain could keep them no longer" : e.ArgA == 2 ? "another household is first in " + place + " now" : "they hold land of their own";
+                        string why = e.ArgA == 1 ? "their grain could keep them no longer" : e.ArgA == 2 ? "no household is first in " + place + " to keep them now" : "they hold land of their own";
                         return "The " + Plural(subj) + " of " + place + " left the keep of the " + Plural(obj) + ": " + why + ".";
                     }
                 case HistoryKind.SoilRenewed: return "The fields of " + subj + " were renewed as when first broken: " + F(100.0 * e.Magnitude, "0") + " % of their strength given back.";

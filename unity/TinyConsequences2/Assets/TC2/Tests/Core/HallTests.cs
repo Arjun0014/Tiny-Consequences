@@ -114,6 +114,28 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void ANewFirstHouseholdTakesOverItsPredecessorsDependants()
+        {
+            Hall.Off = false;
+            var w = Settled(out int a, out _);
+            int first = Leaders.First(in w.Settlements.Get(a));
+            var landless = MakeLandless(w, a, 2);
+            w.Households.Get(first).Grain += 50000; w.Settlements.Get(a).Granary += 50000;
+            Hall.Harvest(w, a, 0);
+            Assume.That(w.Households.Get(landless[0]).Keeper == first, "kept");
+            // premise: another household of the village becomes its first (as a following grows), rich enough to keep them
+            int next = 0;
+            var hhs = w.HouseholdsOf(a);
+            for (int i = 0; i < hhs.Count && next == 0; i++) if (hhs[i] != first && !landless.Contains(hhs[i]) && w.Members(hhs[i]).Count > 0) next = hhs[i];
+            Assume.That(next != 0, "another household");
+            w.Settlements.Get(a).HeadHh = next;
+            w.Households.Get(next).Grain += 50000; w.Settlements.Get(a).Granary += 50000;
+            Hall.Harvest(w, a, 0);
+            Assert.AreEqual(next, w.Households.Get(landless[0]).Keeper, "the hall's people pass with the hall");
+            Assert.AreEqual(next, w.Households.Get(landless[1]).Keeper);
+        }
+
+        [Test]
         public void NoKeepWithTheRuleOff()
         {
             Hall.Off = true;

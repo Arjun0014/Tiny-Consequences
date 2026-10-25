@@ -1079,7 +1079,7 @@ namespace TC2.Headless
                     if (hlt != null)   // (C10.11: the lord's household)
                     {
                         int keptNow = 0, keptSeat = 0; for (int hi = w.Households.First(); hi != 0; hi = w.Households.Next(hi)) { ref var hh = ref w.Households.Get(hi); if (hh.Keeper == 0 || hh.Dissolved != 0) continue; keptNow++; if (w.Settlements.Exists(hh.Settlement) && w.Conflict.PolitySize(hh.Settlement) > 0) keptSeat++; }
-                        Console.WriteLine("hall: taken in at home " + hlt[0] + ", from the realm " + hlt[1] + " (could not go " + hlt[9] + "); let go - the grain short " + hlt[2] + ", another first " + hlt[3] + ", land of their own " + hlt[4] +
+                        Console.WriteLine("hall: taken in at home " + hlt[0] + ", from the realm " + hlt[1] + " (could not go " + hlt[9] + "); let go - the grain short " + hlt[2] + ", no first " + hlt[3] + ", land of their own " + hlt[4] + "; taken over by a new first " + hlt[10] +
                                           "; FU given " + F(hlt[5], "0") + " (" + hlt[6] + " household-years); the most kept by one " + hlt[7] + "; village-harvests weighed " + hlt[8] + "; kept now " + keptNow + " (at lords' seats " + keptSeat + ")");
                     }
                     var stw = TC2.Core.Society.Conflict.StoneTally; var stl = TC2.Core.Places.Construction.StoneTally;
