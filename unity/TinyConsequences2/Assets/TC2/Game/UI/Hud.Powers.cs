@@ -29,6 +29,10 @@ namespace TC2.Game
                         Help = "a new pestilence breaks out in the nearest village: it spreads as sicknesses do" },
             new Power { Name = "Blight", Doing = "Blight the fields", Kind = CommandKind.GodBlight, Recharge = SimTime.Year, Reach = World.GodReach,
                         Help = "the standing crop of the villages round it fails (nothing when the fields are bare)" },
+            new Power { Name = "Drought", Doing = "Withhold the rain", Kind = CommandKind.GodDrought, Recharge = 2 * SimTime.Year, Reach = World.DroughtReach,
+                        Help = "no rain for a summer on the land round it: the soil dries, crops wilt, fire takes more readily" },
+            new Power { Name = "Meteor", Doing = "Throw down a stone", Kind = CommandKind.GodMeteor, Recharge = 20 * SimTime.Year, Reach = World.BlastM,
+                        Help = "a stone from the sky: what stands near it falls, those at home there die, it burns and the ground shakes" },
         };
 
         int _aim = -1;                 // the power being aimed (-1 none)
@@ -113,7 +117,7 @@ namespace TC2.Game
                 _powerOff = new GUIStyle(_btn) { fontSize = 13, padding = new RectOffset(10, 10, 5, 5) };
                 _aimLabel = new GUIStyle(_label) { fontSize = 13, alignment = TextAnchor.UpperLeft };
             }
-            float bw = 640f, bh = 40f;
+            float bw = 820f, bh = 40f;
             _powersRect = new Rect((sw - bw) * 0.5f, sh - bh - 46f, bw, bh);
             GUILayout.BeginArea(_powersRect, _box);
             GUILayout.BeginHorizontal();
