@@ -19,6 +19,10 @@
      `stonewalls:` tally per seed). Land after the ways if the seeds hold.
   4. **The memory pass** - `wip/memory` (worktree `C:/Game Dev/tc-memory`, sim 103; `tc2/out/tools/s26/memory.md`). Checks `0_zi_a` (build bin_mem1, tests),
      `0_zi_b` (control `--oldcompact` = `_stw1`; the pass on: annals = `_stw1` byte for byte; state sizes at 300). Land after stone walls; D2-184.
+  5. **F9.6-F9.7 the god's ore and bounty** - `wip/ore` (worktree `C:/Game Dev/tc-ore`, sim 104, on the memory pass; draft `tc2/out/tools/s26/d2184_185.md`):
+     a vein of copper laid bare at a place (40 t), unknown until someone sees it, its chain rooted in the cast (`run --castore Y`: seed 4 at 100, a mine by
+     160); the fields round a place renewed (tiredness 0); the ore bodies drawn (copper's green and blue stones, bog iron's rust); shots `--ore M`. Check
+     `0_zj_a_ore1` (build, PowersTests 9 and the rest, the uncast control = `_mem1` byte for byte). Land after the memory pass.
 - **Then**: `bash tc2/out/tools/s26/make_ac4.sh $Q` - main's build and full suite (bin_m14), the fourth 1,000-year acceptance run (`_ac4`, seeds 2, 4, 7, books,
   ways and stone walls by century) and real shots (`s26a_*`: village #4 at 300/600/1,000 with `ShadowLite` beside, the villages most walled in stone, realms,
   the meteor again). Add one seed-2 run with `--oldcompact` for the memory measure at 1,000 if wanted (statesizes against `_ac4`).
