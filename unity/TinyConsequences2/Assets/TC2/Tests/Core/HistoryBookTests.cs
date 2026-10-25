@@ -119,6 +119,38 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void ABondEndsWhenTheVillagePayingIsAbandoned()
+        {
+            // premise (by hand, as the ledger would hold it): villages 2 and 3 bow to village 1; village 3 is later abandoned - no harvest of its own
+            // tells its bond's end, so the book must read its abandonment as the end: today village 1 takes tribute from one village, not two
+            Conflict.DemandOff = true;
+            try
+            {
+                var w = TestWorlds.Make(622);
+                Coarse(w);
+                Years(w, 2);
+                Rec(w, HistoryKind.TributeAgreed, 2, 1);
+                Rec(w, HistoryKind.TributeAgreed, 3, 1);
+                Years(w, 3);
+                w.Record(new HistoryEvent { Kind = HistoryKind.SettlementAbandoned, Time = w.Now, Settlement = 3, Cell = -1, Subject = EntityRef.Settlement(3) });
+                Years(w, 2);
+                var book = HistoryBook.Write(w);
+                string pre = string.Join(" ", book.Preface.ToArray());
+                Console.WriteLine(pre);
+                bool other = false;   // (the world's own bonds in its first years, if any, would share the preface)
+                for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid)) if (w.Settlements.Get(sid).Lord != 0) other = true;
+                if (!other)
+                {
+                    StringAssert.Contains("two villages paid it tribute", pre, "both paid at its height");
+                    StringAssert.Contains("Today one lord takes tribute from one village.", pre, "the abandoned village pays no more");
+                }
+                var realm = book.Parts[1].Chapters.Find(x => x.Blocks.Exists(bl => bl.Text != null && bl.Text.Contains("when the village paying it was abandoned")));
+                Assert.IsNotNull(realm, "the realm's chapter tells the bond that ended with its village");
+            }
+            finally { Conflict.DemandOff = false; }
+        }
+
+        [Test]
         public void RaidsAreOneWarUntilABowOrTwelveQuietYears()
         {
             // premise: raids and a bow between villages 1 and 2 written by hand - the world's own askings (C10.8) are off, or a refusal
