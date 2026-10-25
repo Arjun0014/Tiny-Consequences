@@ -42,6 +42,19 @@ namespace TC2.Core.History
         readonly Dictionary<int, LongList> _byPlace = new Dictionary<int, LongList>();
         long _compactedThrough; // events with id <= this have been examined by compaction at least once
         public long Dropped;     // total events dropped by compaction (statistics)
+        /// <summary>Names dropped by `PruneNames` since this world began or was loaded (statistics; not saved).</summary>
+        public long NamesDropped;
+
+        /// <summary>`--oldcompact`: past the Local window an event is kept by its importance alone and every name is kept (before the memory pass), on
+        /// the same binary.</summary>
+        public static bool CompactOff;
+        /// <summary>
+        /// (The memory pass, 14 §7) What an old event of an ordinary kind must have gained from what it led to - its importance beyond its own kind's and
+        /// size's (`HistoryKinds.BaseImportance`) - to be kept past the Local window: a blow or a taking that a raid, a claim or a feud answered.
+        /// </summary>
+        public const double KeepRaised = 4.0;
+        /// <summary>Years a process's name is kept when no kept event names it (a party, a band, a fire, a spell: all over long before).</summary>
+        public const int ProcessNameYears = 50;
 
         public int Count => _n;
         public HistoryEvent At(int index) => _ev[index];
@@ -237,12 +250,65 @@ namespace TC2.Core.History
                 // a structure's own story is kept while the structure stands or its ruin lasts (C1.6: a 300-year-old town's buildings
                 // keep their histories)
                 if (e.Object.Kind == EntityKind.Building && subjectKept != null && subjectKept(e.Object)) return true;
+                // (the memory pass) the night's deeds and the ordinary - recorded by the thousand, their size alone over the keep line (a sworn man's
+                // year of food scored 14, every blow 10): past the window kept only for what they led to. At year 1,000 of seed 2, 214k of the ledger's
+                // 509k events were these, kept for ever; 148k of them had led to nothing
+                if (!CompactOff && Ordinary(e.Kind)) return (double)e.Importance - (double)HistoryKinds.BaseImportance(e.Kind, e.Magnitude) >= KeepRaised;
                 return e.Importance >= 10f;
             }
             // personal
             if (e.Importance >= 5f) return true;
             if (age < 2 * SimTime.Year) return true;
             return subjectKept != null && subjectKept(e.Subject);
+        }
+
+        /// <summary>The Local kinds a village records by the thousand (the memory pass): blows, takings and their sight, sworn men and their release, the
+        /// tenth paid, claims refused, amends, the watch, a harvest, a cart made, a house rebuilt, lightning.</summary>
+        static bool Ordinary(HistoryKind k)
+        {
+            switch (k)
+            {
+                case HistoryKind.Struck: case HistoryKind.TakingSeen: case HistoryKind.Taken: case HistoryKind.Sworn: case HistoryKind.SwornReleased:
+                case HistoryKind.TributePaid: case HistoryKind.ClaimRefused: case HistoryKind.AmendsMade: case HistoryKind.WatchSet:
+                case HistoryKind.Harvest: case HistoryKind.CartMade: case HistoryKind.HomeRebuilt: case HistoryKind.LightningStrike:
+                    return true;
+            }
+            return false;
+        }
+
+        readonly HashSet<long> _cited = new HashSet<long>();
+        readonly List<long> _dropNames = new List<long>();
+
+        /// <summary>
+        /// (The memory pass, 14 §7) Drops the names no kept record can show: an ended person's, and a process's of more than `ProcessNameYears`, when no
+        /// kept event names it, it is not notable and the world keeps nothing that does (`nameKept`: a person row, a kept row's kin, a building's
+        /// leader, a deed's doer). Never a settlement's, a household's (families are named by them), a pathogen's or another kind's. At year 1,000 the
+        /// registry held the name of every one of 310k people who had ever lived - 193k named by nothing kept. Returns how many were dropped.
+        /// </summary>
+        public int PruneNames(long now, Func<EntityRef, bool> nameKept)
+        {
+            if (CompactOff) return 0;
+            _cited.Clear();
+            for (int i = 0; i < _n; i++)
+            {
+                if (!_ev[i].Subject.IsNone) _cited.Add(_ev[i].Subject.Packed);
+                if (!_ev[i].Object.IsNone) _cited.Add(_ev[i].Object.Packed);
+                if (!_ev[i].Other.IsNone) _cited.Add(_ev[i].Other.Packed);
+            }
+            _dropNames.Clear();
+            foreach (var kv in _entities)   // (each name weighed on its own: the order never matters, and saves write the names sorted)
+            {
+                var r = EntityRef.FromPacked(kv.Key);
+                if (r.Kind == EntityKind.Person) { if (kv.Value.Ended == 0) continue; }
+                else if (r.Kind == EntityKind.Process) { if (now - kv.Value.Created < ProcessNameYears * SimTime.Year) continue; }
+                else continue;
+                if (kv.Value.Notable || _cited.Contains(kv.Key) || (nameKept != null && nameKept(r))) continue;
+                _dropNames.Add(kv.Key);
+            }
+            for (int i = 0; i < _dropNames.Count; i++) _entities.Remove(_dropNames[i]);
+            NamesDropped += _dropNames.Count;
+            _cited.Clear();
+            return _dropNames.Count;
         }
 
         void RebuildIndex()

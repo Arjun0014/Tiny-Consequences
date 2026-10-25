@@ -243,6 +243,7 @@ namespace TC2.Headless
             if (a.Has("oldharry")) TC2.Core.Society.Conflict.HarryOff = true;   // (C8.1a off: no band harries the fields outside the walls)
             if (a.Has("harrytally")) TC2.Core.Society.Conflict.HarryTally = new double[7];   // (C8.1a: bands broken on walls and the crops outside them)
             if (a.Has("oldstonewalls")) TC2.Core.Society.Conflict.StoneWallsOff = true;   // (C7.2 off: no village walls its ring in stone)
+            if (a.Has("oldcompact")) TC2.Core.History.HistoryLedger.CompactOff = true;   // (the memory pass off: old events kept by importance alone, every name kept)
             if (a.Has("stonetally")) { TC2.Core.Society.Conflict.StoneTally = new double[5]; TC2.Core.Places.Construction.StoneTally = new double[3]; }   // (C7.2: stone weighed, begun, laid)
             if (a.Has("burntally")) TC2.Core.Society.Conflict.BurnTally = new double[TC2.Core.Society.Conflict.BurnTallyN];   // (ravaging, measured first)
             if (a.Has("sizetally")) TC2.Core.Diagnostics.SizeTally.Sums = new double[TC2.Core.Diagnostics.SizeTally.Classes * TC2.Core.Diagnostics.SizeTally.Stride];   // (villages deserted, measured first: how villages of each size live)
