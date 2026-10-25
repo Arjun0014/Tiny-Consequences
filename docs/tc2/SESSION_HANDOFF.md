@@ -1,5 +1,40 @@
 # TC2 Session handoff
 
+## Session 25, third context - HANDOFF (25 Oct 2026, ~14:10 IST; Control Room run #78 session 2) - main 9bd2814 (sim 98); the final run RUNNING in the queue
+
+### Exact state
+- **main 9bd2814, sim 98, clean** (not ours: `.claude/launch.json`, `Assets/Resources.meta`). Landed this context: **C3.6g the land between villages**
+  (D2-176), **C8.0 the burning-in** (D2-177), **F9.1-F9.4 the god's powers** (D2-178, D2-179: the power bar - lightning, storm, quake, eruption,
+  sickness, blight, drought, meteor; Your Actions, the book's ninth part; the bolt and the falling stone drawn), **F11.1 the opening** (title and guide),
+  **F10.1 the world's sound** (`AudioView`, 71 clips under `Game/Resources/Audio`, credits), a Sound toggle; tools `place --margins`, `run --sizetally`,
+  `--burntally`, `--margintally`; shots `--meteor`, `--godrought`. **Main's full suite 473 passed, 0 failed, 0 skipped** (9d3c1c2 = main's code).
+- **Measured, not built**: small villages live better, not worse (`run --sizetally`) - no desertion rule. The shots' `ArgumentOutOfRangeException` is
+  Unity's own editor search indexing at startup - closed. War now (`results/war_s*_ac2_y*.txt`): between realms (898 raids a century at seed 4's year
+  1,000 against 26 within a realm), half broken on walls - `tc2/out/tools/s25/c81_design.md`.
+- **Two branches built, waiting to land in order** (each changes the sim version - never land while a queued job needs a sim-98 save):
+  1. **F9.5 the rain** - `wip/rain` e1782f0 (worktree `C:/Game Dev/tc-rain`, sim 99; PowersTests 7/7, floatcheck, cc ok). Its checks and its uncast
+     control (= `_pv1`) are job `L_a_rain_rn1`. Land: `git merge --no-ff wip/rain` when `L_a` says `rn1 ok` and `seed 4: F9.5 uncast = _pv1 byte-identical`.
+  2. **C8.1a the harrying** - `wip/harry` 1090933 (worktree `C:/Game Dev/tc-harry`, on wip/rain, sim 100; HarryTests 2/2): a band driven off by a
+     village's standing palisade burns 3 % of its standing crop a raider (at most 60 %), caused by the raid. Evaluation `M_a`-`M_d` (control `--oldharry`
+     = `_rn1`, which also measures the old rules with `--harrytally`; ten seeds `_hy1` against `_bn1`; `results/cmp_bn1_hy1.txt`). Land after rain if
+     the ten seeds hold (a lean past |t| 2 in people: a matched placebo or a mechanism); write D2-180.
+- **The queue** (runner PID 9632, `tc2/out/tools/s23/runq.sh`; `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`;
+  generators in `tc2/out/tools/s25/c36g/`: `make_final.sh`, `make_c81a.sh`): running **`K_b_ac3_s2`** (since 14:03; ~40 min), then `K_b_ac3_s4`, `K_b_ac3_s7`
+  (the third 1,000-year run on main's final rules: `$O/s*_ac3/world_y{50,150,300,500,600,800,1000}.tc2`, books `tc2/out/tools/s25/accept/book3_*`),
+  `K_c_web_s25web3` (Web build of main; webtest with the power cast by a real click, Your Actions and the title; bookshots over `s2_ac3` y1,000; realmsperf
+  `--layer` people/buildings/trees/cover/shadows/terrain/Hud -> `$N/perf_*_s25web3.txt`), `K_d` shots of village #4 at 300/600/1,000 (`tc2/out/shots/s25o_ac3_s2_v4_y*`),
+  `K_e` realms at 1,000 (the spears edged pale), `K_f` a meteor and a drought (`s25o_meteor`, `s25o_drought`), then `L_a` (rain), `M_*` (the harrying).
+  No monitor survives the clear: arm one (`tail -n 0 -F $Q/runq.log | grep --line-buffered -E "^end |runner stopped"`).
+- **After Unity first opens main** (the `K_c` Web build), it will create `.meta` files for the 71 new `.ogg` under `Game/Resources/Audio`: commit them.
+
+### Next, in order
+1. Judge `K_b` (25 §6 on `_ac3`: villages, burnt homes, realms, the map after the infill; the books), `K_c` (webtest checks incl. "a power aimed and clicked
+   is cast" and the title; the layer costs), `K_d`-`K_f` shots (fixed village by age; the spears; the meteor and the drought seen). Write 25 §6's third run.
+2. Land rain (`L_a`), then the harrying (`M_*`) - D2-180, docs.
+3. The frame pass by the layer costs (`14` §7): first candidate - `WorldObjectsView.RebuildPeople` computes every living person's position and height each
+   frame within 6 km of the camera, before any culling.
+4. Then: C8.1 the siege proper (a blockade - `c81_design.md`), more powers (warmth, cull, bring), F11 platform (packaging, settings), W-FOREST.
+
 ## Session 25, third context (25 Oct 2026, from 07:34 IST; after a compaction) - C3.6g the land between villages LANDED (sim 95)
 
 ### Exact state

@@ -16,8 +16,8 @@ then god powers and player-facing gameplay.
 
 ## Read first (this order), then work autonomously
 1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the standing prompt (architecture, rules, every direction; "Where we are (session 25, second context)").
-2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 25, second context"**: the exact state, the job queue, "Next, in order".
-3. `docs/tc2/DECISIONS.md` newest (D2-168 the asking, D2-173 the lord's death, D2-174 the lord's peace, D2-175 a people's tongue); `docs/tc2/PROGRESS.md`
+2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 25, third context - HANDOFF"**: the exact state, the job queue, the branches to land, "Next, in order".
+3. `docs/tc2/DECISIONS.md` newest (D2-176 the land between villages, D2-177 the burning-in, D2-178 the god's powers and the opening, D2-179 the meteor, the drought and the sound; before them D2-168, D2-173-D2-175); `docs/tc2/PROGRESS.md`
    CURRENT STATE (session 25, second context); `docs/tc2/25_CIVILISATION_ROADMAP.md` §8 (the plan to a finished core); the C7.2 measure in
    `tc2/out/tools/s25/results/stonewalls_*.txt` when it has run, and `tc2/out/tools/s25/c81_design.md` (why C8.1 waits).
 4. `git status`, `git log --oneline -15`, `git worktree list`, and the queue: `cat $Q/runq.log` (`Q` below) - which jobs ended, with what.
@@ -27,8 +27,13 @@ then god powers and player-facing gameplay.
   village's own margins (twice the places by ~300; people +16-33 %); joiners count those already on their way. Slow change after the infill.
 - Then (main 67a2cd8, sim 97): small villages measured to live better (no desertion rule); **C8.0 the burning-in** (D2-177); **F9.1-F9.3 the god's
   powers as play and F11.1 the opening** (D2-178: the power bar, Your Actions, a sickness and a blight, the title).
-- Next: the queue's final run (`make_final.sh`: full suite, the third 1,000-year run `_ac3`, Web `s25web3`, layer costs, shots) - judge it; then the
-  frame pass by its layer costs, more powers, 25 §6 judged (SESSION_HANDOFF "Session 25, third context", its update ~13:15).
+- Also landed: **F9.4 the meteor and the drought** and **F10.1 the world's sound** (D2-179, sim 98; main 9bd2814; full suite 473/0/0).
+- **Running at the handoff (~14:10)**: the queue's final run (`make_final.sh`: the third 1,000-year run `_ac3` - seed 2 since 14:03 -, Web `s25web3`
+  with its power-click and title checks and the layer costs, shots), then `L_a` (rain's checks) and `M_*` (the harrying's evaluation).
+- **Two branches to land in order after it**: `wip/rain` (F9.5, sim 99) then `wip/harry` (C8.1a the harrying, sim 100: a band broken on walls burns the
+  crop outside them). Never land a sim change while a queued job needs a sim-98 save.
+- Next: judge the final run (25 §6 third run), land rain and the harrying (D2-180), the frame pass by the layer costs, then the siege, more powers, F11.
+  Exact steps: SESSION_HANDOFF "Session 25, third context - HANDOFF".
 
 ## Session 25, second context (25 Oct 2026, 23:56 - ~02:45 IST) - four slices landed; the 1,000-year acceptance RUNNING in the queue
 - **On main (2935c9a and after; sim 94)**: C10.8 the asking (D2-168), C10.9 the lord's death (D2-173: bonds for peace lapse with the first among the lord's
