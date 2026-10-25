@@ -170,6 +170,7 @@ namespace TC2.Game
             sb.Append(",\"catchUpTarget\":").Append(Host.CatchUpTarget);
             sb.Append(",\"saveBytes\":").Append(Host.LastSaveBytes);
             sb.Append(",\"saveOk\":").Append(Host.LastSaveOk ? "true" : "false");
+            sb.Append(",\"saves\":").Append(Host.SavesStored);   // (saves stored: a tool waits for it to rise after its save)
             sb.Append(",\"gfx\":\"").Append(SystemInfo.graphicsDeviceType).Append('"');
             sb.Append(",\"fps\":").Append((1f / Mathf.Max(0.0001f, Time.smoothDeltaTime)).ToString("0.#", inv));
             sb.Append(",\"cpuMs\":").Append(FrameClock.CpuMs.ToString("0.##", inv));

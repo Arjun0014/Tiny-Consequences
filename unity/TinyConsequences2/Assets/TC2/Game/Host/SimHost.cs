@@ -266,11 +266,14 @@ namespace TC2.Game
             // save still being written answered for it, and a page reloaded on that lost the latest: the Web tests of s25web3 and s25web4)
             LastSaveOk = false;
             int seq = ++_saveSeq;
-            Store.Save("world", _saveScratch.Out.Buffer, length, ok => { if (seq == _saveSeq) LastSaveOk = ok; done?.Invoke(ok); });
+            Store.Save("world", _saveScratch.Out.Buffer, length, ok => { if (seq == _saveSeq) { LastSaveOk = ok; if (ok) SavesStored++; } done?.Invoke(ok); });
         }
 
         public int LastSaveBytes; public float LastSaveMs; public bool LastSaveOk;
         int _saveSeq;
+        /// <summary>Saves stored, each the latest when its answer came (the tools wait for it to rise: a command given now is done at the next frame, and the
+        /// state published before it still shows the save before - the Web test reloaded on that and lost its save, s25web3-5).</summary>
+        public int SavesStored;
         SaveFile.Scratch _saveScratch = new SaveFile.Scratch();   // (sized for the world at each load: its first save grows nothing by doubling)
 
         /// <summary>Reloads the saved world as if returning after <paramref name="absenceMs"/> (debug and tests).</summary>
