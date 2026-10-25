@@ -5551,3 +5551,70 @@ truncated save refused), SaveLoad 8, Determinism 7; seed 2's year-1,000 save loa
 `shadowlite` (above 3 km two cascades over twice the camera's height) x1.21 at the region view (119 -> 104 ms), ~x1 at orbit - to judge in real shots before
 it becomes the default.
 
+## D2-180 — 2026-10-25 — The god's rain; the harrying; the siege set aside (F9.5, C8.1a, C8.1b)
+
+**Context.** 25 §8 item 3 after C8.0 (the burning-in): C8.1 the campaign and the siege. The war measured (`tc2/out/tools/s25/c81_design.md`): after the lord's
+peace (D2-174) the war is between realms, half of it broken on walls - a band driven off by a palisade went home having cost the walled village one
+night and nothing more. And the god's powers lacked the drought's counterpart.
+
+**Decision.** (1) **F9.5 the rain** (sim 99): a soaking rain over the land within 3 km for 5 days - a spell of the drought's kind (`DrySpell.Kind` 1): the soil
+drinks, the crops take it, fires go out by the world's own laws (rain damps a fire and its spread); its record (`RainBrought`) caused by the cast; on the power
+bar (half a year). (2) **C8.1a the harrying** (sim 100): a band broken on a village's standing palisade burns and tramples the crop standing outside the walls
+as it goes - 3 % of it a raider, at most 60 % - the loss caused by the raid (`FieldsHarried`) and weighing on the raid's deed (ASC 893: "burned all the corn
+... all over the surrounding area"); nothing behind no wall or with no crop standing; `--oldharry`, `--harrytally`. (3) **C8.1b the siege, measured and set
+aside** (`run --siegetally`, `tc2/out/tools/s25/siege/design.md`): of the bands a palisade alone held off, not one could have stood a sally by the walled
+village's people on open ground (bands of 13-35 against towns of 150-330) - a blockade needs a host many times a raiding band, and this world raises none
+(the asking coerces: every asking bowed). Revisit when hosts exist.
+
+**Evidence.** Rain: PowersTests 7/7, its checks (`rn1 ok`: Disease, Burn, HistoryBook, Climate, Determinism, SaveLoad) and its uncast control = main's rules
+(`_pv1`) byte for byte, annals and state hash. Landed (main b9ab94e, sim 99). The harrying: HarryTests 2/2; control `--oldharry` = `_rn1` byte for byte;
+ten seeds against main's rules (`tc2/out/tools/s25/results/cmp_bn1_hy1.txt`): hunger x0.80, raids x0.80, wounds x0.90, blows x0.92 (t -2.3), people at 300
+x0.91 (t -2.5) with sickness x3.9 (t 3.0) and epidemics x2.6 (t 3.1) - the pooled rise in sickness (+8,612) is seeds 4 and 42's epidemics (+3,890, +3,318),
+deaths a person-year x1.018 (t 1.1). **Its matched placebo** (`_hyp`: the old rules nudged one FU at each world's parting year; `cmp_bn1_hyp.txt`,
+`cmp_hyp_hy1.txt`, `lean_*.txt`): **the same pattern from a nudge alone** - the placebo against main's rules: people at 300 x0.875 (t -1.4), sickness pooled
+1,556 -> 7,487, epidemics x2.2, blows x0.93 (t -2.2): main's ten worlds were a draw with few epidemics, and any parting brings more on average (a lottery of
+rare spillovers, `Disease.SpillPerDay`); **the harrying against its placebo twin**: people at 300 x1.04 (t 0.5), 200-299 x1.05 (t 0.8), deaths a person-year
+x1.004 (t 0.2), sickness x2.8 (t 1.1), epidemics x1.24 (t 0.4), raids x0.90 (t -1.0), wounds a person-year x0.92 (t -1.0) - all inside the noise. Chaos, not
+the harrying. Landed with C11.1b after one full suite over everything to land (`fullsuite_bw3.txt`).
+
+## D2-181 — 2026-10-25 — A people's ways carried and copied: each household builds as it was raised to (C11.1b)
+
+**Context.** C11's done-when: regions look and act differently with no factions; 25 §6's last line: at year 1,000 an architectural landscape visibly the
+result of its history. D2-114 gave each village a building tradition - a roof form and a shade - carried by its founders and changed a trait at a
+founding now and then; nothing changed it afterwards. Measured first (`place --ways`, seed 2's year-1,000 world of the acceptance's third run `_ac3`):
+62 villages in five founding lines, nine ways within the largest (from founders' drift alone), **every one of 6,615 recorded buildings roofed in its
+village's way** - for 1,000 years each village built as it was founded, whoever came to live in it and whoever it paid.
+
+**The record.** Migrants build in the way they were raised to (the Scandinavian settlers' long halls in the Danelaw and Iceland, the Anglo-Saxon
+sunken-featured buildings beside Romano-British ones); a household's craft is learned in the house one grows up in and passed with marriage; elites'
+buildings are imitated down their hierarchies (the hall's form copied in its village, a royal or episcopal seat's in its region - the Carolingian and
+Ottonian halls); so styles blend where people move and converge under a common lordship, while each house keeps the form it was raised in.
+
+**Decision.** (1) Each household carries a way (`Household.Way`, saved; hashed when set): the first households their village's; a couple's new household
+the way of the house the groom grew up in (they make their home in his village, under his family's name - D2-129); founders take their village's way at
+its founding, which descends from the way the party's first household brought (`TraditionAt(.., from)`; changed a trait now and then as before,
+`Drift` 0.3); a household that moves or joins another village keeps its own. (2) Copied: at a marriage the couple builds as its village builds - its
+first household's way, roof and shade - more often than not (`Conform` 0.6: houses are raised with the village's hands, materials and custom), and a bride
+from another village brings one of her household's ways now and then (`BrideCopy` 0.1); each year (at the day households weigh leaving) the first
+household of a tributary may take one way of its lord's first household where they differ (`LordCopy` 0.1), a way at a time. (3) Homes are
+raised and rebuilt in their household's way (`HomeForm`); village works as the first household builds (`VillageWay`). Each building keeps the form it was
+raised in (D2-114), so a town's houses tell when and by whom they were built. (4) The book's Peoples count the roofs standing (not the founders' way);
+a present realm's chapter tells its houses (how many of the villages paying it build as its seat's first house does); the building page tells whether a
+house is roofed as its village's founders built or in its builders' own way. `--oldhouseways` the control; `place --ways` by household, realm and century.
+
+**What changes in the picture.** Villages that drew households from elsewhere, or brides, show more than one roof form and shade; over generations the
+houses of a realm come to be roofed as its lord's seat; old houses keep the old ways beside new ones.
+
+**Evidence.** BuildingWaysTests 5/5 (a household builds in the way it carries, its village's with `--oldhouseways`; a couple's way is the groom's house's,
+the first household's taken 0.30 of the time and the bride's 0.15; a tributary's first household takes its lord's two ways by year 21 and a free one
+none; founders bring their first household's way, 0.705 unchanged; after 90 years every household carries a way, 5 villages already mixed);
+ArchitectureTests, HistoryBookTests, TongueTests, HouseholdFormationTests, MigrationTests, MarginsTests, DeterminismTests, SaveLoad - 0 failed,
+0 skipped; floatcheck clean; the Unity C# compiles. **Control** `--oldhouseways` (its own switch: `--oldways` is D2-160's, and the first control ran
+both) = the harrying's rules (`_hyr`) byte for byte, annals and state hash (seed 4, 300 years); **with the ways on, seed 4's annals = `_hyr` byte for byte**
+(ways change no history). **The rule revised by its measure** (`place --ways`, seed 4 at year 300): a first form - the young taking one way of the first
+household at a time (0.3), every bride one of hers (0.15) - made every village a mosaic (households as their first household 21 %, as their founders 15 %;
+homes in the founders' way 44 %); now a couple builds as its village (its first household's way) 0.6 of the time and only a bride from another village
+brings one of hers (0.1): households as their first household 55 %, homes in the founders' way 60 % (shade 84 %), 59 of 63 villages with a minority way
+(joiners, brides); tributaries' first households building as their lord's 73 % (58 % before); neighbouring pairs sharing roof and shade 20 % (chance ~6 %).
+Open: bonds churn (~11 years), so first households chase a succession of lords - a candidate refinement is to copy a lord only after the bond has stood a
+generation (`Settlement.LordSince`). **On the harrying's tip** (session 26, `wip/c111b-ways` with the harrying, rain and main merged): control `--oldhouseways` = `_hy1` byte for byte, annals and state hash; ways on: annals = `_hy1` byte for byte; seed 4 at 300: households as their village's founders 29 %, as its first household 55 %, 59 of 63 villages building more than one way, tributaries' first households as their lord's 73 % (`tc2/out/tools/s25/ways/ways_s4_bw3_y300.txt`). Landed with the harrying after one full suite over both (`fullsuite_bw3.txt`). The ways over centuries: the fourth acceptance run (`ways4_s*_y*.txt`).
