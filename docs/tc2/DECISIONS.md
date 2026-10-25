@@ -5665,3 +5665,19 @@ t -1.3). **The stone tally at year 300**: begun 2-23 a world (cost 15,535-210,00
 villages: more than the measure's "few" - seeds 11 and 6, rocky and warlike, wall a quarter of their villages, as Ireland's and Scotland's stony lands
 did), part laid 0-3, **old rings of stone inside grown towns 0-6**; a curtain's worth against its cost on the days weighed x0.24-0.50 (most weighing says
 no). Judged in the fourth acceptance run's shots (`s26a_ac4_s*_stone_y*`).
+
+## D2-188 — 2026-10-26 — The player's settings, kept for the next visit (F11.2)
+
+**Context.** `17` F11: "Wavedash cloud saves and init; itch packaging (threads on); phones; settings". The game had one setting, the Sound toggle (M),
+lost at every reload; the frame pass's candidates (two shadow cascades above 3 km, `Sky.ShadowLite`: x1.21 at the region view, D2-182) and the clouds
+(the heaviest pass on a slow machine) could be changed only by tools.
+
+**Decision.** A Settings panel (the toolbar's "Settings"): the world's sound and its loudness (`AudioView.Muted`, `Volume`), the clouds' thickness
+(x the weather's own: none, thin, as the weather makes them, thick - `Settings.Clouds` read by `CloudView`), lighter shadows from high up
+(`Sky.ShadowLite`), the picture's detail (URP render scale 0.5-1, in the built game only: the editor keeps its asset). Kept in PlayerPrefs (on the
+Web the browser's own store) half a second after the last change, read at start (`Settings.Load` in `Bootstrap`) - never in shots or batch runs, so
+their pictures and numbers stay their own. The view only: nothing touches the world. The bridge's `setting NAME V` (tests) and its published
+`settings`.
+
+**Evidence.** The Unity C# compiles (`unity.mjs cc`); the Web test's new check - a setting changed before the reload is there after it ("the settings
+are kept for the next visit") [in `s26web1`].
