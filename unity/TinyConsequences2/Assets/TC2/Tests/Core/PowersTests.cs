@@ -1,3 +1,4 @@
+using System;
 using NUnit.Framework;
 using TC2.Core.Foundation;
 using TC2.Core.History;
@@ -249,6 +250,174 @@ namespace TC2.Tests.Core
             // and the fields tire again as they are cropped, by the soil's own law
             w.AdvanceTo(w.Now + SimTime.Years(3));
             Assert.Greater(w.Settlements.Get(sid).Tired, 0.0, "tiring again");
+        }
+
+        /// <summary>The animals of the species matching a test within a god's reach of a cell, in that cell's habitat.</summary>
+        static double Within(World w, int cell, System.Func<Species, bool> which)
+        {
+            var P = w.Planet; double sum = 0; var at = P.Grid.Center[cell]; bool land = P.IsLand(cell);
+            for (int s = 0; s < P.Species.Count; s++)
+            {
+                if (!which(P.Species[s])) continue;
+                for (int q = 0; q < P.Cells; q++)
+                    if (P.IsLand(q) == land && Vec3d.ArcDistance(at, P.Grid.Center[q], P.Radius) <= World.GodReach) sum += P.Abund[s * P.Cells + q];
+            }
+            return sum;
+        }
+
+        [Test]
+        public void ACullTakesNineInTenOfTheHuntersRoundThePlaceAndMoreWanderIn()
+        {
+            var w = TestWorlds.Make(618);
+            Coarse(w);
+            w.AdvanceTo(w.Now + SimTime.Days(2));
+            int sid = w.Settlements.First(), cell = w.Settlements.Get(sid).Cell;
+            System.Func<Species, bool> hunters = sp => sp.Habitat == 0 && sp.Gone == 0 && sp.Prey != 0;
+            System.Func<Species, bool> game = sp => sp.Habitat == 0 && sp.Gone == 0 && sp.Prey == 0;
+            double h0 = Within(w, cell, hunters), g0 = Within(w, cell, game);
+            Assert.Greater(h0, 1.0, "premise: hunting beasts round the village");
+            w.Issue(new Command { Time = w.Now, Kind = CommandKind.GodCull, Cell = cell });
+            w.AdvanceTo(w.Now + SimTime.Hours(1));
+            double h1 = Within(w, cell, hunters);
+            Assert.AreEqual(h0 * (1.0 - World.CullShare), h1, h0 * 0.02, "nine in ten of them taken");
+            Assert.AreEqual(g0, Within(w, cell, game), g0 * 1e-6 + 1e-6, "the game left as it was");
+            long cast = 0; int told = 0; double took = 0;
+            for (int i = 0; i < w.History.Count; i++)
+            {
+                var e = w.History.At(i);
+                if (e.Kind == HistoryKind.GodCommand && e.ArgA == (int)CommandKind.GodCull) { cast = e.Id; StringAssert.StartsWith("You culled the hunting beasts", HistoryText.Describe(w, in e)); }
+                if (e.Kind != HistoryKind.BeastsCulled) continue;
+                told++; took += e.Magnitude;
+                Assert.AreEqual(cast, e.Cause1, "caused by the cast"); Assert.AreEqual(RootKind.You, e.RootKind);
+                StringAssert.StartsWith("Nine in ten of the", HistoryText.Describe(w, in e));
+            }
+            Assert.Greater(told, 0, "each kind's cull told");
+            Assert.AreEqual(h0 - h1, took, (h0 - h1) * 0.01 + 1.0, "as many as were taken");
+            Assert.Greater(new HistoryBook.Writer(w).Part(8).Chapters.Count, 0, "in Your Actions");
+            // and the hunters beyond the reach wander in, as the world's own laws move them
+            w.AdvanceTo(w.Now + SimTime.Years(2));
+            Assert.Greater(Within(w, cell, hunters), h1 * 1.5, "more wandered in");
+        }
+
+        [Test]
+        public void BringingBringsTheGameTheLandLacksMostAndAtSeaAShoal()
+        {
+            var w = TestWorlds.Make(619);
+            Coarse(w);
+            w.AdvanceTo(w.Now + SimTime.Days(2));
+            var P = w.Planet;
+            int sid = w.Settlements.First(), cell = w.Settlements.Get(sid).Cell;
+            // premise: the deer round the village hunted out (none left within the reach) - the land lacks them most
+            int deer = -1;
+            for (int s = 0; s < P.Species.Count; s++) if (P.Species[s].Kind == 0 && P.Species[s].Gone == 0 && P.Species[s].Habitat == 0) { deer = s; break; }
+            Assert.GreaterOrEqual(deer, 0, "premise: deer in the world");
+            for (int q = 0; q < P.Cells; q++)
+                if (P.IsLand(q) && Vec3d.ArcDistance(P.Grid.Center[cell], P.Grid.Center[q], P.Radius) <= World.GodReach) P.Abund[deer * P.Cells + q] = 0f;
+            // the rule: the kind with the most kilos lacking within the reach - each cell short of as thick as the kind lives over its range for what
+            // the land offers it (World.Stocking), as far as the cell suits it
+            int expect = -1; double most = 0;
+            for (int s = 0; s < P.Species.Count; s++)
+            {
+                var sp = P.Species[s];
+                if (sp.Habitat != 0 || sp.Gone != 0 || sp.Prey != 0 || sp.Mass < 2f) continue;
+                double stock = w.Stocking(sp, s, out int src);
+                if (stock <= 0 || src < 0) continue;
+                double lack = 0;
+                for (int q = 0; q < P.Cells; q++)
+                {
+                    if (!P.IsLand(q) || Vec3d.ArcDistance(P.Grid.Center[cell], P.Grid.Center[q], P.Radius) > World.GodReach) continue;
+                    double want = stock * P.AreaHa(q) * Ecology.Suitability(P, sp, q), a = System.Math.Max(0.0, P.Abund[s * P.Cells + q]);
+                    if (want > a) lack += (want - a) * sp.Mass;
+                }
+                if (lack > most + 1e-9) { most = lack; expect = s; }
+            }
+            Assert.GreaterOrEqual(expect, 0, "premise: game the land lacks");
+            Console.WriteLine("the land lacks most: " + Ecology.KindName(P.Species[expect].Kind) + " (" + most.ToString("0") + " kg); the deer hunted out");
+            int bid = P.Species[expect].Id;
+            System.Func<Species, bool> it = sp => sp.Id == bid;
+            System.Func<Species, bool> others = sp => sp.Id != bid;
+            double b0 = Within(w, cell, it), o0 = Within(w, cell, others);
+            w.Issue(new Command { Time = w.Now, Kind = CommandKind.GodBring, Cell = cell });
+            w.AdvanceTo(w.Now + SimTime.Hours(1));
+            double b1 = Within(w, cell, it);
+            Assert.Greater(b1, b0 + 1.0, "brought");
+            Assert.AreEqual(o0, Within(w, cell, others), o0 * 1e-6 + 1e-6, "no other kind brought");
+            int told = 0;
+            for (int i = 0; i < w.History.Count; i++)
+            {
+                var e = w.History.At(i);
+                if (e.Kind != HistoryKind.BeastsBrought) continue;
+                told++;
+                Assert.AreEqual(new EntityRef(EntityKind.Species, bid), e.Subject, "the kind the land lacks most by weight");
+                Assert.AreEqual(b1 - b0, e.Magnitude, (b1 - b0) * 0.01 + 1.0, "as many as came");
+                Assert.AreEqual(RootKind.You, e.RootKind);
+                StringAssert.Contains("as thick as they live where they do best", HistoryText.Describe(w, in e));
+            }
+            Assert.AreEqual(1, told, "told once");
+            // at sea: a shoal of a kind that hunts nothing, in the waters off the coast
+            int sea = -1;
+            for (int q = 0; q < P.Cells && sea < 0; q++)
+            {
+                if (P.IsLand(q)) continue;
+                for (int s = 0; s < P.Species.Count; s++) { var sp = P.Species[s]; if (sp.Habitat == 1 && sp.Gone == 0 && sp.Prey == 0 && Ecology.Suitability(P, sp, q) > 0.3) { sea = q; break; } }
+            }
+            Assert.GreaterOrEqual(sea, 0, "premise: a sea some shoal suits");
+            System.Func<Species, bool> fish = sp => sp.Habitat == 1 && sp.Prey == 0;
+            double f0 = Within(w, sea, fish);
+            w.Issue(new Command { Time = w.Now, Kind = CommandKind.GodBring, Cell = sea });
+            w.AdvanceTo(w.Now + SimTime.Hours(1));
+            Assert.Greater(Within(w, sea, fish), f0, "a shoal brought");
+            bool seaTold = false;
+            for (int i = 0; i < w.History.Count; i++) { var e = w.History.At(i); if (e.Kind == HistoryKind.BeastsBrought && e.ArgA == 1) { seaTold = true; StringAssert.Contains("the waters off", HistoryText.Describe(w, in e)); } }
+            Assert.IsTrue(seaTold, "the shoal told");
+        }
+
+        [Test]
+        public void WarmAirWarmsTheLandForItsDaysAndASaveKeepsIt()
+        {
+            var w = TestWorlds.Make(620);
+            var twin = TestWorlds.Make(620);
+            Coarse(w); Coarse(twin);
+            w.AdvanceTo(w.Now + SimTime.Days(2)); twin.AdvanceTo(w.Now);
+            int sid = w.Settlements.First(), cell = w.Settlements.Get(sid).Cell;
+            var P = w.Planet;
+            int far = -1;
+            for (int q = 0; q < P.Cells && far < 0; q++) if (Vec3d.ArcDistance(P.Grid.Center[cell], P.Grid.Center[q], P.Radius) > 2 * World.AirReach) far = q;
+            double season = PlanetSystems.Season(w.Now);
+            double t0 = w.PlanetSys.DayMean(cell, season), f0 = w.PlanetSys.DayMean(far, season);
+            w.Issue(new Command { Time = w.Now, Kind = CommandKind.GodWarm, Cell = cell });
+            w.AdvanceTo(w.Now + SimTime.Hours(1));
+            Assert.AreEqual(t0 + World.AirBy, w.PlanetSys.DayMean(cell, season), 1e-9, "the summer's air warmer there by its degrees");
+            Assert.AreEqual(f0, w.PlanetSys.DayMean(far, season), 1e-12, "and not beyond its reach");
+            var w2 = SaveFile.Load(SaveFile.Save(w, 0, OfflineMode.Living), out _);
+            w.AdvanceTo(w.Now + SimTime.Days(3)); twin.AdvanceTo(w.Now);
+            Assert.AreEqual(twin.Planet.Temp[cell] + World.AirBy, w.Planet.Temp[cell], 1e-3, "the day's air warmer than the uncast twin's");
+            Assert.AreEqual(twin.Planet.Temp[far], w.Planet.Temp[far], 1e-6, "the far air as the twin's");
+            w2.AdvanceTo(w.Now);
+            Assert.AreEqual(w.StateHash(), w2.StateHash(), "a save under the warm air continues as if never saved");
+            w.AdvanceTo(w.Now + SimTime.Days(World.AirDays));
+            Assert.AreEqual(0.0, w.AirShift(cell), 1e-12, "the air as it was after its days");
+            long aev = 0;
+            for (int i = 0; i < w.History.Count; i++) { var e = w.History.At(i); if (e.Kind == HistoryKind.WarmAir) { aev = e.Id; Assert.AreEqual(RootKind.You, e.RootKind); StringAssert.StartsWith("Warm air came over the land", HistoryText.Describe(w, in e)); } }
+            Assert.AreNotEqual(0L, aev, "told, rooted in the cast");
+        }
+
+        [Test]
+        public void ColdAirChillsTheLandAndItsStandingCropsNameIt()
+        {
+            var w = TestWorlds.Make(621);
+            Coarse(w);
+            w.AdvanceTo(w.Now + SimTime.Days(2));
+            int sid = w.Settlements.First(), cell = w.Settlements.Get(sid).Cell;
+            w.Settlements.Get(sid).CropCause = 0;
+            double season = PlanetSystems.Season(w.Now), t0 = w.PlanetSys.DayMean(cell, season);
+            w.Issue(new Command { Time = w.Now, Kind = CommandKind.GodCold, Cell = cell });
+            w.AdvanceTo(w.Now + SimTime.Hours(1));
+            Assert.AreEqual(t0 - World.AirBy, w.PlanetSys.DayMean(cell, season), 1e-9, "colder by its degrees");
+            long aev = 0;
+            for (int i = 0; i < w.History.Count; i++) { var e = w.History.At(i); if (e.Kind == HistoryKind.ColdAir) { aev = e.Id; StringAssert.StartsWith("Cold air came over the land", HistoryText.Describe(w, in e)); } }
+            Assert.AreNotEqual(0L, aev, "told");
+            Assert.AreEqual(aev, w.Settlements.Get(sid).CropCause, "its standing crop names the cold as its harm, as under a drought");
         }
 
         [Test]

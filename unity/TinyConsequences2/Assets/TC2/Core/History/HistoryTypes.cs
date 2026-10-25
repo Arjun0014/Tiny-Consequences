@@ -93,6 +93,10 @@ namespace TC2.Core.History
         SoilRenewed = 106,      // a village's fields renewed as when first broken (Magnitude the tiredness taken away; Cause1 the cast: F9.7)
         TakenIn = 107,          // a first household took a landless household into its keep (Subject the household, Object the first; Other its village when it came from another; ArgA 1 summoned from the realm; C10.11)
         LetGo = 108,            // a kept household let go (Subject the household, Object its keeper; ArgA 1 the grain short, 2 another first, 3 land of its own; C10.11)
+        BeastsCulled = 109,     // the god culled a hunting kind round a place (Subject the species; Magnitude the animals taken; ArgA 1 at sea; Cause1 the cast: F9.8)
+        BeastsBrought = 110,    // the god brought game (or a shoal) to the land or the waters round a place (Subject the species; Magnitude the animals; ArgA 1 at sea; Cause1 the cast: F9.8)
+        WarmAir = 111,          // the god's warm air over a land (ArgA its days, Magnitude the degrees; Cause1 the cast: F9.9)
+        ColdAir = 112,          // the god's cold air over a land (ArgA its days, Magnitude the degrees; Cause1 the cast: F9.9)
         RainBrought = 103,      // the god's rain came over a land (ArgA its days; Cause1 the cast: F9.5)
         MeteorStruck = 102,     // a meteor struck (ArgA buildings flattened, ArgB people killed; Cause1 the god's cast: F9.4)
         CropsBlighted = 101,    // a blight took most of a village's standing crop (Magnitude the share; Cause1 its cause - the god's blight: F9.3)
@@ -236,6 +240,10 @@ namespace TC2.Core.History
                 case HistoryKind.GodCommand:
                 case HistoryKind.OreRevealed:
                 case HistoryKind.SoilRenewed:
+                case HistoryKind.BeastsCulled:
+                case HistoryKind.BeastsBrought:
+                case HistoryKind.WarmAir:
+                case HistoryKind.ColdAir:
                 case HistoryKind.Drought: return Tier.Historical;
                 case HistoryKind.LightningStrike:
                 case HistoryKind.FireStarted:
@@ -336,6 +344,10 @@ namespace TC2.Core.History
                 case HistoryKind.RainBrought: b = 4; break;
                 case HistoryKind.OreRevealed: b = 12; break;
                 case HistoryKind.SoilRenewed: b = 6; break;
+                case HistoryKind.BeastsCulled: b = 5; break;
+                case HistoryKind.BeastsBrought: b = 5; break;
+                case HistoryKind.WarmAir: b = 4; break;
+                case HistoryKind.ColdAir: b = 4; break;
                 case HistoryKind.TakenIn: b = 4; break;
                 case HistoryKind.LetGo: b = 3; break;
                 case HistoryKind.FieldsHarried: b = 5; break;

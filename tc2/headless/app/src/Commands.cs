@@ -14,6 +14,28 @@ namespace TC2.Headless
 {
     public static partial class Commands
     {
+        /// <summary>(F9.8 played) The land's hunting beasts (or its game) within a god's reach of a cell.</summary>
+        static double BeastsRound(World w, int cell, bool hunters)
+        {
+            var P = w.Planet; double sum = 0; var at = P.Grid.Center[cell];
+            var near = new List<int>(); w.Hazards.CellsWithin(w, cell, World.GodReach, near);
+            for (int sp = 0; sp < P.Species.Count; sp++)
+            {
+                var k = P.Species[sp];
+                if (k.Habitat != 0 || k.Gone != 0 || (k.Prey != 0) != hunters || (!hunters && k.Mass < 2f)) continue;
+                foreach (int q in near) if (P.IsLand(q)) sum += P.Abund[sp * P.Cells + q];
+            }
+            return sum;
+        }
+
+        static string BeastsLine(World w, int sid)
+        {
+            int cell = w.Settlements.Get(sid).Cell, beasts = 0;
+            for (byte k = 0; k < TC2.Core.Places.Livestock.Kinds; k++) beasts += w.Stock.CountOf(sid, k);
+            return "hunting beasts round it " + F(BeastsRound(w, cell, true), "0") + ", game " + F(BeastsRound(w, cell, false), "0") + ", its herds' beasts " + beasts +
+                   ", people " + w.Settlements.Get(sid).Population + "; beasts taken by wolves in all " + w.Metrics.BeastsTaken;
+        }
+
         static string F(double v, string f = "0.00") => v.ToString(f, CultureInfo.InvariantCulture);
 
         public static WorldConfig ConfigFrom(Args a)
@@ -389,6 +411,11 @@ namespace TC2.Headless
             // body of it; the run's end tells what became of it: found, dug, a mine, metal)
             long oreAt = a.Has("castore") ? start0 + SimTime.Years(a.Double("castore", 100)) : 0;
             int oreCell = -1, oreSid = 0;
+            // (--castcull Y / --castbring Y: F9.8 played - at year Y the god culls the hunting beasts round the village with the most of them round it, or
+            // brings game to the most peopled village; each report then tells the hunters and the game round it and its herds' beasts)
+            long cullAt = a.Has("castcull") ? start0 + SimTime.Years(a.Double("castcull", 100)) : 0;
+            long bringAt = a.Has("castbring") ? start0 + SimTime.Years(a.Double("castbring", 100)) : 0;
+            int beastSid = 0; long beastCast = 0;
             while (w.Now < end || (snapAt.Count > 0 && snapAt[0] <= w.Now))
             {
                 long next = Math.Min(end, w.Now + report);
@@ -416,6 +443,29 @@ namespace TC2.Headless
                     if (oreCell >= 0) w.Issue(new Command { Time = w.Now, Kind = CommandKind.GodOre, Cell = oreCell });
                     Console.WriteLine("castore: " + (oreCell >= 0 ? "copper laid bare at cell " + oreCell + " by " + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(oreSid)) + " (" + w.Settlements.Get(oreSid).Population + " people)" : "no village smelting copper without ore"));
                 }
+                if ((cullAt > 0 && w.Now >= cullAt) || (bringAt > 0 && w.Now >= bringAt))
+                {
+                    bool cull = cullAt > 0 && w.Now >= cullAt;
+                    if (cull) cullAt = 0; else bringAt = 0;
+                    double bestV = -1; beastSid = 0;
+                    for (int v = w.Settlements.First(); v != 0; v = w.Settlements.Next(v))
+                    {
+                        ref var sv = ref w.Settlements.Get(v);
+                        if (!sv.Inhabited) continue;
+                        double val = cull ? BeastsRound(w, sv.Cell, true) : sv.Population;
+                        if (val > bestV) { bestV = val; beastSid = v; }
+                    }
+                    if (beastSid != 0)
+                    {
+                        Console.WriteLine((cull ? "castcull" : "castbring") + ": at " + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(beastSid)) + " (" + w.Settlements.Get(beastSid).Population + " people) - before: " + BeastsLine(w, beastSid));
+                        w.Issue(new Command { Time = w.Now, Kind = cull ? CommandKind.GodCull : CommandKind.GodBring, Cell = w.Settlements.Get(beastSid).Cell });
+                        w.AdvanceTo(w.Now + SimTime.Hours(1));
+                        beastCast = w.Now;
+                        Console.WriteLine("  just after: " + BeastsLine(w, beastSid));
+                    }
+                }
+                else if (beastSid != 0 && w.Now > beastCast && w.Now - beastCast <= 40 * SimTime.Year)
+                    Console.WriteLine("  " + F((w.Now - beastCast) / (double)SimTime.Year, "0.0") + " years on: " + BeastsLine(w, beastSid));
                 if (nudgeAt > 0 && w.Now >= nudgeAt)
                 {
                     for (int ns = w.Settlements.First(); ns != 0; ns = w.Settlements.Next(ns)) if (w.Settlements.Get(ns).Inhabited) { w.Settlements.Get(ns).Granary += 1.0; break; }

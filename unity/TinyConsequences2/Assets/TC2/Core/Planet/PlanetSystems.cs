@@ -106,7 +106,15 @@ namespace TC2.Core.Planet
         public static double Season(long t) => DMath.Sin(DMath.TwoPi * (SimTime.YearFraction(t) - 0.25));
 
         /// <summary>A cell's mean temperature over the day at a season's phase (without the hours' swing).</summary>
-        public double DayMean(int c, double season) => _base[c] + _amp[c] * season;
+        public double DayMean(int c, double season)
+        {
+            double t = _base[c] + _amp[c] * season;
+            if (Owner != null && Owner.DrySpells.Count > 0) { double air = Owner.AirShift(c); if (air != 0.0) t += air; }   // (the god's warmth or cold: F9.9)
+            return t;
+        }
+
+        /// <summary>(F9.9) The world whose god may warm or chill the air (its spells are read; never written). Null: no god (tools, tests of the planet).</summary>
+        public TC2.Core.Simulation.World Owner;
 
         public void Tick(World w, int system)
         {
@@ -139,6 +147,8 @@ namespace TC2.Core.Planet
             var T = P.Temp;
             for (int c = 0; c < T.Length; c++)
                 T[c] = (float)(_base[c] + _amp[c] * season + _dAmp[c] * (ca * _cosPh[c] - sa * _sinPh[c]));
+            if (w.DrySpells.Count > 0)   // (the god's warmth or cold over a land: F9.9)
+                for (int c = 0; c < T.Length; c++) { double air = w.AirShift(c); if (air != 0.0) T[c] = (float)(_base[c] + _amp[c] * season + _dAmp[c] * (ca * _cosPh[c] - sa * _sinPh[c]) + air); }
         }
 
         // 1/(1+e^(-1.702 z)) tabulated over z in [-8, 8] (32 per unit) and interpolated: basic IEEE operations only,
