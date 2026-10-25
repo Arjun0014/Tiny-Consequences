@@ -4,6 +4,28 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 26 (25 Oct 2026, 21:20 - ~23:25 IST; Control Room; context handoff with the queue running) - rain, the harrying and the ways landed (main
+  sim 101, one full suite 484/0/0); C7.2 stone walls, the memory pass, the god's ore and bounty, and C10.11 the lord's household built and in the queue.**
+  (1) **Landed**: F9.5 the rain (uncast = main byte for byte); C8.1a the harrying - its ten seeds leaned (people x0.91, sickness x3.9) and **its matched placebo
+  showed chaos** (a nudge alone gives the same against main's rules: main's ten worlds were a draw with few epidemics; the harrying against its placebo twin
+  people x1.04, t 0.5); C11.1b a people's ways (control byte for byte, annals unchanged). D2-180, D2-181. (2) **C7.2 stone walls** (`wip/c72-stonewalls`,
+  sim 102): a walled village with rock at hand that loses much weighs a dry-stone curtain over the century it stands; laid stretch by stretch after every other
+  work from the quarry's rubble; stone does not rot and triples the defenders' ground; old rings of stone stand; drawn with towers. (3) **The memory pass**
+  (`wip/memory`, sim 103, measured first in `tc2/out/tools/s26/memory.md`): at year 1,000 214k of 509k events were the ordinary kept for ever by their size
+  (148k led to nothing) and 310k people were named (193k by nothing kept) - past 200 years the ordinary is kept only for what it led to, and names nothing kept
+  can show are let go; behaviour-neutral by construction (its check: annals byte for byte). (4) **F9.6-F9.7 the god's ore and bounty** (`wip/ore`, sim 104): a vein
+  of copper laid bare and found, mined and traded by the world's own rules (seed 4: a mine 60 years on); tired fields renewed; the ore bodies drawn. (5) **C10.11
+  the lord's household** (`wip/hall`, sim 105): measured first - lords' surplus for 1,260-1,907 people's food a year beside 312-1,387 landless people in their
+  realms (`results/deps_*`); a first household keeps landless households from its grain, a lord's realm's coming to its seat; a new first takes them over.
+  (6) **Measured, not built**: C8.2 flight from war (no land to spare within reach at the ceiling: `c82_flight.md`). (7) **The view**: flames on dry ground only
+  (the meteor's stood in the sea); `ShadowLite` per shot; `sortplaces` (spatially coherent batches) as a bridge toggle. The realms' war spears judged readable.
+  SESSION_HANDOFF "Session 26 - HANDOFF" has the queue, the order of landing and the fourth acceptance run's generator.
+- **Session 25, fourth context - END (~17:45 IST, stopped at Arjun's word)**: since the entry below - the streamed save landed (the heap of a year-1,000
+  world 1,198/1,297 -> 955/1,054 MB loaded/after the views), the reload fault traced to the Web test's harness (it read a stale `saveOk` before the game had
+  done its `save`; the bridge publishes `saves`, the test waits for it to rise) - **Web `s25web6` 8/8**; D2-182 appended; `shadowlite` measured x1.21 at the
+  region view (off by default, to judge in shots); seed 4's third run (65 -> 81 places over 300-990); the state by part (`run --statesizes`: the history
+  ledger 64 of 107 MB at year 1,000). Rain and the harrying carry main and wait to land (rain's checks were running at the stop); the queue stops after them.
+  SESSION_HANDOFF "Session 25, fourth context - END".
 - **Session 25, fourth context (25 Oct 2026, from 14:10 IST; Control Room run #78 session 3) - the siege measured and set aside; C11.1b built; the frame
   pass and two Web fixes on main (no sim change).** (1) **C8.1b the siege measured first** (`run --siegetally`, `wip/siege-tally`; `tc2/out/tools/s25/siege/design.md`):
   of the bands a walled village's palisade alone held off - kept home or broken on it - **not one could have stood a sally by the walled village's people

@@ -163,6 +163,8 @@ the queue**: 1,000 years in 29 min; people ~10,000 by 310, held 9,400-11,700 to 
 ages: feuds and raids, the walls, the lords, the pox, ruin - quakes and great waves). **Still**: places 55-56 from 290 to 630 and 62 at 1,000 - founded and
 abandoned 0 in most ages after the infill: the map's settlement pattern stays as it was at ~300 (the realms and the record change; the villages do not).
 The siege was measured on these worlds and set aside (`tc2/out/tools/s25/siege/design.md`: no band the walls held off could stand a sally).
+Seed 4 (`_ac3`, 41 min): **its map keeps changing after the infill** - places 65 at 300, 66 at 500, 74 at 700, 80 at 900, 81 at 990 (55 daughter villages
+in all); people 12,159 at 300, 16,215 at 900, 14,576 at 990; 398 homes burnt in 53 villages. Seed 7 in the queue.
 
 ## 7. After the C-phases
 F9 (the god's powers beyond those that exist), F10 (art and presentation: animation of labour, UI art pass), F11 (platform).

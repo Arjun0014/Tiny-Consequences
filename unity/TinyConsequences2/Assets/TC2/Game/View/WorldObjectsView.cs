@@ -72,6 +72,39 @@ namespace TC2.Game
             if (_placesCamR <= 0f || Mathf.Abs(cr - _placesCamR) > 0.15f * Mathf.Max(1f, _placesCamR - R)) return true;
             return Vector3.Angle(c, _placesCam) * Mathf.Deg2Rad * R > 0.25f * PlacesReach;
         }
+        /// <summary>
+        /// Tools (the frame pass, 14 §7; the bridge's `sortplaces`): whether the villages are built in an order that keeps neighbours together (a Morton code of
+        /// their anchors), so each draw's batch of up to 1,023 instances holds villages that stand together and its bounds are small - the camera and every
+        /// shadow cascade then skip the batches they cannot see. Else in the order they were founded: a batch held villages from all over the planet, its bounds
+        /// the half of it in front of the limb, and was drawn into every view. Off until measured.
+        /// </summary>
+        public static bool SortPlaces;
+        readonly List<int> _placesOrder = new List<int>();
+        readonly List<(ulong key, int sid)> _placesKeys = new List<(ulong, int)>();
+
+        /// <summary>The villages in the order they are built this time (`SortPlaces`).</summary>
+        void PlacesInOrder(TC2.Core.Simulation.World w)
+        {
+            _placesOrder.Clear();
+            if (!SortPlaces) { for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid)) _placesOrder.Add(sid); return; }
+            _placesKeys.Clear();
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid)) _placesKeys.Add((Morton(PlanetGeo.ToVector(w.Settlements.Get(sid).Anchor)), sid));
+            _placesKeys.Sort((a, b) => a.key != b.key ? a.key.CompareTo(b.key) : a.sid.CompareTo(b.sid));
+            for (int i = 0; i < _placesKeys.Count; i++) _placesOrder.Add(_placesKeys[i].sid);
+        }
+
+        /// <summary>A Morton code of a direction: its x, y, z on [-1, 1] at 10 bits each, interleaved (neighbours on the sphere get near codes).</summary>
+        static ulong Morton(Vector3 d)
+        {
+            ulong Spread(float v)
+            {
+                ulong x = (ulong)Mathf.Clamp((int)((v * 0.5f + 0.5f) * 1023f), 0, 1023);
+                x = (x | (x << 16)) & 0x030000FFUL; x = (x | (x << 8)) & 0x0300F00FUL; x = (x | (x << 4)) & 0x030C30C3UL; x = (x | (x << 2)) & 0x09249249UL;
+                return x;
+            }
+            return Spread(d.x) | (Spread(d.y) << 1) | (Spread(d.z) << 2);
+        }
+
         /// <summary>Tools (webperf, the bridge's `peoplecull`): whether people beyond the limb and outside the view are skipped (else all are posed).</summary>
         public static bool PeopleCull = true;
         readonly Plane[] _peoplePlanes = new Plane[6];
@@ -628,8 +661,10 @@ namespace TC2.Game
             }
             Vector3 camDir = cullFar ? camAt.normalized : Vector3.up;
             PlacesCulled = 0;
-            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            PlacesInOrder(w);
+            for (int oi = 0; oi < _placesOrder.Count; oi++)
             {
+                int sid = _placesOrder[oi];
                 ref var s = ref w.Settlements.Get(sid);
                 if (cullFar && Vector3.Dot(PlanetGeo.ToVector(s.Anchor), camDir) < cosFar) { PlacesCulled++; continue; }
                 Vector3 center = PlanetGeo.Surface(P, s.Anchor);
@@ -1715,6 +1750,7 @@ namespace TC2.Game
                     ulong h = KeyedRng.Hash(11, RngStream.None, (ulong)c, (ulong)k);
                     double ox = (KeyedRng.Unit(h) * 2 - 1) * P.CellSize * 0.45, oy = (KeyedRng.Unit(KeyedRng.Mix(h)) * 2 - 1) * P.CellSize * 0.45;
                     Vec3d d = (ctr * P.Radius + east * ox + north * oy).Normalized;
+                    if (!Shore.Dry(P, d)) continue;   // (a coastal cell's flames on its dry ground only: the meteor's fires stood in the sea - s25o_meteor)
                     Vector3 pos = PlanetGeo.Surface(P, d);
                     float flicker = 0.75f + 0.25f * Mathf.Sin(t * 7f + k * 1.7f + c);
                     float hgt = (8f + 22f * inten) * flicker * Exaggeration(pos, 6f);

@@ -5506,3 +5506,162 @@ owner's ElevenLabs account; commercial use needs a paid plan). Shots: `--meteor 
 **Evidence.** PowersTests 6/6 (the meteor flattens what stood near the square - fewer stand, its dead told and rooted in the cast; the drought held, no
 rain under it, the soil drier, saved and continued identically, let go after its days, told), floatcheck clean, the Unity C# compiled; control: with
 no cast seed 4's 300 years equal main's rules byte for byte (`_pw3`). Main's full suite before it 471/471 (0 skipped). **Landed** (session 25, 25 Oct 2026, sim 98; the sound with it, presentation).
+
+## D2-182 — 2026-10-25 — Great worlds in the browser: what the camera cannot see is not posed or built; a save streamed; each save answered by its own completion (14 §7)
+
+**Context.** A year-1,000 world (seed 2 `_ac3`: 12,698 people in 62 places) drew 6.4 fps at the region view and 4.4 at the village view in the Web
+build, and held a 1,297 MB heap once loaded (1,491 MB after the layer pairs; headless managed 304 MB) - past `14` §1's 1 GB and on the way to wasm32's
+2 GB. Measured first by paired layer counts (`realmsperf --layer`, `s25web3`): buildings x0.53-0.54 of the frame (~76-106 ms), people x0.75 (~40-66 ms),
+shadows x0.63-0.73 (redrawing both), terrain x0.90; trees, ground cover and the HUD ~x1. Read in the code: every frame posed every living person in the
+world (two positions, two ground samples, `Presence`) - on a 6 km planet the camera sees a tenth (village view) to a quarter (region view) of the globe -
+and every half second the buildings of every village were built into the instanced draws, wherever they stood; the save kept the whole uncompressed state
+(~124 MB at year 1,000) and a copy of the save for the session, and a load inflated the whole state at once (~110 MB) - in a heap that only grows.
+The Web test (`s25web3` 6/8) also found two faults in the opening's build: a power's click fell on the place page left open (a click over a page is the
+page's; the aim's ring and words were drawn over it), and a reload loaded an older save.
+
+**Decision.** (1) People beyond the planet's limb, or outside the view by more than their drawn place's margin, are not posed (`PeopleCull`). (2) A
+village wholly beyond the limb - its farthest work within 2.5 km of its anchor - is not built; the places are built again at once when the camera has moved
+a quarter of that or its height by 15 % (`PlacesCull`, `PlacesMoved`). Nothing visible is left out: presentation of what can be seen is unchanged.
+(3) A save is streamed both ways: the state hashed and deflated a chunk (1 MB) at a time as it is written (`BinWriter.Sink`), inflated a chunk at a time
+as it is read (`BinReader` over a stream), its length and hash checked when all is read - the payload hash, the length and the state as before; the save
+keeps a chunk, not the whole state. (4) Each save is answered by its own completion: the Web store keeps a key's answers in order (its readwrite
+transactions on one store complete in order; one slot a key let an earlier save's completion answer a later one - a page reloaded on it lost the latest),
+and `saveOk` is unset while a save is written and set by the latest save's answer only. (5) The power's ring and words only over open ground; the bridge's
+`closepages`, `peoplecull`, `placescull`.
+
+**Evidence.** Paired on the year-1,000 world (`s25web4`): the people cull x1.22 at the region view (140 -> 112 ms) and x1.57 at the village view (178 -> 118
+ms); the places cull x1.21 and x1.51; with both, the frame ~108 ms at the region view and ~126 at the village view (from ~155 and ~225: x1.4-1.8).
+What remains (culls on): buildings x0.44-0.46 (~60-67 ms; the frame without them 48-59 ms), shadows x0.53-0.69, people x0.87-0.92 (from x0.75) - next:
+villages in front of the limb but outside the view, the buildings' draws by colour group, shadows cast only near. Web test `s25web4` 7/8: the power cast
+by a click (0 -> 1); the reload still lost the save - traced to the store's one answer slot a key (4). The heap by age before (`0_x`, `s25web4`; loaded / after the
+village view): year 50 (237 people) 247 / 428 MB, 150 (1,019) 297 / 428, 300 (10,977) 713 / 817, 500 (10,801) 836 / 951, 800 (12,655) 1,025 / 1,124,
+1,000 (12,698) 1,198 / 1,297 - it grows with the world's age (its record: 126k events kept at 300, 505k at 1,000), not its people; the engine and the
+views ~250-430 MB. **After the streamed save** (`0_z`, `s25web5`): year 1,000 955 / 1,054 MB (-243 MB), year 300 616 / 713 (-97 / -104), year 50 247 /
+356. The state by part (`run --statesizes`): 33.7 MB at 300 -> 106.8 at 1,000 - the history ledger 12.8 -> 63.9 MB (114k -> 509k events), dissolved
+households kept (68,066 rows at 1,000), the dead kept (47,527 people, 12,698 living): the next levers. **The reload fault traced** (`tc2/scripts/saveprobe.mjs`:
+the stored save's header read from IndexedDB at each step): the game saves and reloads correctly - an explicit save is in the store within two seconds and a
+reload loads it (a Living reload then advances the world by the seconds away, 4 years an hour, by design); the Web test read the bridge's state right after
+giving `save`, but a command is done at the game's next frame and the state published before it still showed the save before's `saveOk` - the test reloaded
+before its save was made. The bridge now publishes `saves` (stored) and the test waits for it to rise (`s25web6`).
+SaveStreamTests 3/3 (the streamed payload hash and length equal the unstreamed; the same world loaded and continued; the body a chunk; a damaged or
+truncated save refused), SaveLoad 8, Determinism 7; seed 2's year-1,000 save loaded by the streaming reader lives two days to main's binary's hash
+(86fd086baf24d66f). No state change: sim 98.
+**Landed** (main: the culls 3e3f64c, the streamed save and the store's answers 8a83dd7, the test's wait 728bd0e; no sim change, sim 98). **Web `s25web6` 8/8**
+(the reload continues the saved world: 286,094 -> 321,769 s, its seconds away lived; the power cast by a click). Measured, not chosen: the bridge's
+`shadowlite` (above 3 km two cascades over twice the camera's height) x1.21 at the region view (119 -> 104 ms), ~x1 at orbit - to judge in real shots before
+it becomes the default.
+
+## D2-180 — 2026-10-25 — The god's rain; the harrying; the siege set aside (F9.5, C8.1a, C8.1b)
+
+**Context.** 25 §8 item 3 after C8.0 (the burning-in): C8.1 the campaign and the siege. The war measured (`tc2/out/tools/s25/c81_design.md`): after the lord's
+peace (D2-174) the war is between realms, half of it broken on walls - a band driven off by a palisade went home having cost the walled village one
+night and nothing more. And the god's powers lacked the drought's counterpart.
+
+**Decision.** (1) **F9.5 the rain** (sim 99): a soaking rain over the land within 3 km for 5 days - a spell of the drought's kind (`DrySpell.Kind` 1): the soil
+drinks, the crops take it, fires go out by the world's own laws (rain damps a fire and its spread); its record (`RainBrought`) caused by the cast; on the power
+bar (half a year). (2) **C8.1a the harrying** (sim 100): a band broken on a village's standing palisade burns and tramples the crop standing outside the walls
+as it goes - 3 % of it a raider, at most 60 % - the loss caused by the raid (`FieldsHarried`) and weighing on the raid's deed (ASC 893: "burned all the corn
+... all over the surrounding area"); nothing behind no wall or with no crop standing; `--oldharry`, `--harrytally`. (3) **C8.1b the siege, measured and set
+aside** (`run --siegetally`, `tc2/out/tools/s25/siege/design.md`): of the bands a palisade alone held off, not one could have stood a sally by the walled
+village's people on open ground (bands of 13-35 against towns of 150-330) - a blockade needs a host many times a raiding band, and this world raises none
+(the asking coerces: every asking bowed). Revisit when hosts exist.
+
+**Evidence.** Rain: PowersTests 7/7, its checks (`rn1 ok`: Disease, Burn, HistoryBook, Climate, Determinism, SaveLoad) and its uncast control = main's rules
+(`_pv1`) byte for byte, annals and state hash. Landed (main b9ab94e, sim 99). The harrying: HarryTests 2/2; control `--oldharry` = `_rn1` byte for byte;
+ten seeds against main's rules (`tc2/out/tools/s25/results/cmp_bn1_hy1.txt`): hunger x0.80, raids x0.80, wounds x0.90, blows x0.92 (t -2.3), people at 300
+x0.91 (t -2.5) with sickness x3.9 (t 3.0) and epidemics x2.6 (t 3.1) - the pooled rise in sickness (+8,612) is seeds 4 and 42's epidemics (+3,890, +3,318),
+deaths a person-year x1.018 (t 1.1). **Its matched placebo** (`_hyp`: the old rules nudged one FU at each world's parting year; `cmp_bn1_hyp.txt`,
+`cmp_hyp_hy1.txt`, `lean_*.txt`): **the same pattern from a nudge alone** - the placebo against main's rules: people at 300 x0.875 (t -1.4), sickness pooled
+1,556 -> 7,487, epidemics x2.2, blows x0.93 (t -2.2): main's ten worlds were a draw with few epidemics, and any parting brings more on average (a lottery of
+rare spillovers, `Disease.SpillPerDay`); **the harrying against its placebo twin**: people at 300 x1.04 (t 0.5), 200-299 x1.05 (t 0.8), deaths a person-year
+x1.004 (t 0.2), sickness x2.8 (t 1.1), epidemics x1.24 (t 0.4), raids x0.90 (t -1.0), wounds a person-year x0.92 (t -1.0) - all inside the noise. Chaos, not
+the harrying. Landed with C11.1b after one full suite over everything to land (`fullsuite_bw3.txt`).
+
+## D2-181 — 2026-10-25 — A people's ways carried and copied: each household builds as it was raised to (C11.1b)
+
+**Context.** C11's done-when: regions look and act differently with no factions; 25 §6's last line: at year 1,000 an architectural landscape visibly the
+result of its history. D2-114 gave each village a building tradition - a roof form and a shade - carried by its founders and changed a trait at a
+founding now and then; nothing changed it afterwards. Measured first (`place --ways`, seed 2's year-1,000 world of the acceptance's third run `_ac3`):
+62 villages in five founding lines, nine ways within the largest (from founders' drift alone), **every one of 6,615 recorded buildings roofed in its
+village's way** - for 1,000 years each village built as it was founded, whoever came to live in it and whoever it paid.
+
+**The record.** Migrants build in the way they were raised to (the Scandinavian settlers' long halls in the Danelaw and Iceland, the Anglo-Saxon
+sunken-featured buildings beside Romano-British ones); a household's craft is learned in the house one grows up in and passed with marriage; elites'
+buildings are imitated down their hierarchies (the hall's form copied in its village, a royal or episcopal seat's in its region - the Carolingian and
+Ottonian halls); so styles blend where people move and converge under a common lordship, while each house keeps the form it was raised in.
+
+**Decision.** (1) Each household carries a way (`Household.Way`, saved; hashed when set): the first households their village's; a couple's new household
+the way of the house the groom grew up in (they make their home in his village, under his family's name - D2-129); founders take their village's way at
+its founding, which descends from the way the party's first household brought (`TraditionAt(.., from)`; changed a trait now and then as before,
+`Drift` 0.3); a household that moves or joins another village keeps its own. (2) Copied: at a marriage the couple builds as its village builds - its
+first household's way, roof and shade - more often than not (`Conform` 0.6: houses are raised with the village's hands, materials and custom), and a bride
+from another village brings one of her household's ways now and then (`BrideCopy` 0.1); each year (at the day households weigh leaving) the first
+household of a tributary may take one way of its lord's first household where they differ (`LordCopy` 0.1), a way at a time. (3) Homes are
+raised and rebuilt in their household's way (`HomeForm`); village works as the first household builds (`VillageWay`). Each building keeps the form it was
+raised in (D2-114), so a town's houses tell when and by whom they were built. (4) The book's Peoples count the roofs standing (not the founders' way);
+a present realm's chapter tells its houses (how many of the villages paying it build as its seat's first house does); the building page tells whether a
+house is roofed as its village's founders built or in its builders' own way. `--oldhouseways` the control; `place --ways` by household, realm and century.
+
+**What changes in the picture.** Villages that drew households from elsewhere, or brides, show more than one roof form and shade; over generations the
+houses of a realm come to be roofed as its lord's seat; old houses keep the old ways beside new ones.
+
+**Evidence.** BuildingWaysTests 5/5 (a household builds in the way it carries, its village's with `--oldhouseways`; a couple's way is the groom's house's,
+the first household's taken 0.30 of the time and the bride's 0.15; a tributary's first household takes its lord's two ways by year 21 and a free one
+none; founders bring their first household's way, 0.705 unchanged; after 90 years every household carries a way, 5 villages already mixed);
+ArchitectureTests, HistoryBookTests, TongueTests, HouseholdFormationTests, MigrationTests, MarginsTests, DeterminismTests, SaveLoad - 0 failed,
+0 skipped; floatcheck clean; the Unity C# compiles. **Control** `--oldhouseways` (its own switch: `--oldways` is D2-160's, and the first control ran
+both) = the harrying's rules (`_hyr`) byte for byte, annals and state hash (seed 4, 300 years); **with the ways on, seed 4's annals = `_hyr` byte for byte**
+(ways change no history). **The rule revised by its measure** (`place --ways`, seed 4 at year 300): a first form - the young taking one way of the first
+household at a time (0.3), every bride one of hers (0.15) - made every village a mosaic (households as their first household 21 %, as their founders 15 %;
+homes in the founders' way 44 %); now a couple builds as its village (its first household's way) 0.6 of the time and only a bride from another village
+brings one of hers (0.1): households as their first household 55 %, homes in the founders' way 60 % (shade 84 %), 59 of 63 villages with a minority way
+(joiners, brides); tributaries' first households building as their lord's 73 % (58 % before); neighbouring pairs sharing roof and shade 20 % (chance ~6 %).
+Open: bonds churn (~11 years), so first households chase a succession of lords - a candidate refinement is to copy a lord only after the bond has stood a
+generation (`Settlement.LordSince`). **On the harrying's tip** (session 26, `wip/c111b-ways` with the harrying, rain and main merged): control `--oldhouseways` = `_hy1` byte for byte, annals and state hash; ways on: annals = `_hy1` byte for byte; seed 4 at 300: households as their village's founders 29 %, as its first household 55 %, 59 of 63 villages building more than one way, tributaries' first households as their lord's 73 % (`tc2/out/tools/s25/ways/ways_s4_bw3_y300.txt`). Landed with the harrying after one full suite over both (`fullsuite_bw3.txt`). The ways over centuries: the fourth acceptance run (`ways4_s*_y*.txt`).
+
+## D2-183 — 2026-10-25 — Stone walls: a walled village with rock at hand that loses much walls its ring in dry stone (C7.2)
+
+**Context.** C7's done-when: fortifications differ by region and history; walls ring what is guarded. 25 §8 item 4. Every wall in every world was a
+palisade (D2-074) - timber that rots in ~30 years unmended, kept while what it guards outweighs a third of its cost, raised again when it falls. The 1,000-year
+acceptance (25 §6) found years 300 and 1,000 hard to tell apart in the picture; nothing a village built outlasted the generation that built it.
+**Measured first** (`place --stonewalls`, `tc2/out/tools/s25/c72_design.md`, `results/stonewalls_s*_y*.txt`; the `_ac1` worlds at 300, 500, 1,000): seed 2 had
+24-28 walled villages, 14-20 knowing rock at hand (an outcrop seen, a quarry); the heaviest losers lost ~1,000-1,500 FU a year at year 300 (others' takings,
+raids, blows - as `Conflict.Defence` weighs them), ~200-770 at 1,000 (war moved to the realms' edges, D2-174); a dry-stone curtain ~1.5 m high and 1 m thick
+asks ~150 loads of 25 kg a metre - cut (3 an hour), carried home a load at a time, laid (~8 an hour): 27,000-85,000 work-hours a ring where the rock is
+0-750 m off (6,900-21,300 FU at `LabourWorth`). Real but narrow room: a few villages a world - those that both lose heavily and have stone at hand.
+
+**The record.** Early medieval fortifications were earth and timber almost everywhere (Anglo-Saxon burhs' banks and palisades, Slav grods, motte-and-bailey);
+stone came where it was at hand and where a place was rich and threatened enough to spend decades of labour on it - the burhs refaced in stone (Wareham,
+Cricklade in the 10th-11th c.), Roman circuits refurbished, the Irish and Scottish cashels and duns of dry stone where the rock lay on the surface. Town
+walls were built stretch by stretch over decades, gates and their towers first; a stone circuit outlived the needs that raised it - old walls stood
+inside towns grown past them, and in deserted places.
+
+**Decision.** (1) A walled village whose people know rock within a quarry's reach (`Stone.Reach` 1 km) weighs, day by day as its palisade is weighed, walling
+its ring in dry stone: the curtain's worth - what it keeps beyond the palisade over the century it stands (`StoneGuards` 0.75 of the year's losses against
+the palisade's `WallGuards` 0.5, over `StoneYears` 100: stone does not rot) and the timber no longer felled and mended (a palisade every `WallYears`) -
+against its cost - the hours of cutting at its rock, carrying home and laying, `Construction.StoneLoadsPerM` 150 and `StoneLayPerHour` 8 at `LabourWorth`.
+It begins when the curtain is worth more (`WallPlanned` ArgB 2, in response to its latest harm, enabled by the rock its people found). (2) Its people lay it
+as a village work after every other (`Construction.StoneWork`: the share laid `Settlement.StoneWall`), from the store's rubble; the village wants a few
+metres of curtain cut ahead (`Stone.WallAheadM` 3) beside its footings, so its quarry - opened if it has none - cuts and carries it in their free hours;
+the timber between is mended while the stone goes up. (3) Behind stone the defenders' ground is tripled (a sound palisade doubles it; `StoneGround`), and the
+stretches laid stay sound. (4) When the last stretch is laid (`WallBuilt` ArgB 2) no timber is left to rot or mend. The stretches laid stand when the timber
+between them falls, and when a grown town raises a larger ring the old ring's stone stays inside it (`Settlement.OldStone`) - an old wall in the town, a
+ruin's walls where the village is gone. `--oldstonewalls` the control, `--stonetally`.
+
+**What changes in the picture.** A few villages a world - where war was heaviest and rock lay near - stand behind grey dry-stone curtains with towers at their
+gates and along the circuit (drawn from the gates outward as the share laid grows); they keep them for centuries, and old stone rings stand inside towns
+that grew past them and about deserted places. Regions with no rock near keep timber.
+
+**Evidence.** StoneWallTests 5/5 (a heavily raided village with rock 200 m off begins, its first works and quarry first, lays a 274 m ring in ~3.5 years
+of its free hours from the store's rubble, its ground x3.6 = 3 x `HomeGround`, sound a year on; no rock, small losses or the rule off: none; the villagers
+lay the stone themselves - "laying stone in X's walls, in place of the timber"; the stretches laid stand as an old ring when the timber falls; a save while
+laying continues identically); Defence, Stone, Structures, Harry, Gazetteer, Footprints, Streets, Training tests 0 failed. The queue's checks
+(session 26): its classes again on the built binary (`sw1 ok`); **control** `--oldstonewalls` = the ways' rules (`_bw3`, seed 4, 300 years) byte for byte,
+annals and state hash; **ten seeds** `_stw1` against `_hy1` (main's annals; `tc2/out/tools/s26/results/cmp_hy1_stw1.txt`): people at 300 x1.085 (t 1.8),
+raids x0.66 (t -1.9), wounds a person-year x0.82 (t -1.4), births, deaths, hunger, famines, tribute and the greatest realm at par. One lean past |t| 2,
+**walls x1.23 (t 2.9), by construction**: the column counts rings completed, and a ring finished in stone is one - the extra per seed follows the stone rings
+finished (seed 11 +25 with 22, seed 6 +14 with 16, seed 42 +15 with 13, seed 8 +9 with 10); less them, palisades raised are as before (paired -2.9 a world,
+t -1.3). **The stone tally at year 300**: begun 2-23 a world (cost 15,535-210,008 FU of labour), finished 2-22, **rings of stone standing 2-17** (of ~55-65
+villages: more than the measure's "few" - seeds 11 and 6, rocky and warlike, wall a quarter of their villages, as Ireland's and Scotland's stony lands
+did), part laid 0-3, **old rings of stone inside grown towns 0-6**; a curtain's worth against its cost on the days weighed x0.24-0.50 (most weighing says
+no). Judged in the fourth acceptance run's shots (`s26a_ac4_s*_stone_y*`).
