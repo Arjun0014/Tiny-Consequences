@@ -238,6 +238,7 @@ namespace TC2.Headless
             if (a.Has("oldnames")) TC2.Core.Places.Migration.TonguesOff = true;   // (C11.1 off: every name from the one speech of before)
             if (a.Has("oldmargins")) TC2.Core.Places.Migration.MarginsOff = true;   // (C3.6g off: no daughter villages on the margins)
             if (a.Has("margintally")) TC2.Core.Places.Migration.MarginTally = new double[4];   // (C3.6g: the leavers who looked to their village's margins)
+            if (a.Has("sizetally")) TC2.Core.Diagnostics.SizeTally.Sums = new double[TC2.Core.Diagnostics.SizeTally.Classes * TC2.Core.Diagnostics.SizeTally.Stride];   // (villages deserted, measured first: how villages of each size live)
             if (a.Has("demandtally")) TC2.Core.Society.Conflict.DemandTally = new double[TC2.Core.Society.Conflict.DemandTallyN];   // (C10.8: the askings and their answers)
             if (a.Has("raidtally")) TC2.Core.Society.Conflict.RaidTally = new double[TC2.Core.Society.Conflict.RaidTallyN];   // (C8.1 measured first: bands weighed over a wrong)
             if (a.Has("oldpeace")) TC2.Core.Society.Conflict.PeaceOff = true;   // (C10.10 off: villages of one realm feud as free villages do)
@@ -1034,6 +1035,22 @@ namespace TC2.Headless
                     if (rt != null)   // (C8.1 measured first: bands weighed over a wrong, and the walls that kept them home)
                         Console.WriteLine("raidtally: bands weighed over a wrong " + rt[0] + " (against walled villages " + rt[1] + "); too few would go " + rt[2] + "; too weak for the defence they expect " + rt[3] +
                                           " (against walled villages " + rt[4] + ", of which would have dared without the wall " + rt[5] + "); raised " + rt[6] + " (against walled villages " + rt[7] + "), " + rt[8] + " people");
+                    var szt = TC2.Core.Diagnostics.SizeTally.Sums;
+                    if (szt != null)   // (villages deserted, measured first: how villages of each size live)
+                    {
+                        Console.WriteLine("sizes: village size   village-years  mean people  births  deaths  hunger  sickness  wounds  (a thousand person-years)  hh out  hh in  parties (a thousand village-years: hh moving, parties)  famines /100 vy  ration  land/need  store y  short years");
+                        for (int k = 0; k < TC2.Core.Diagnostics.SizeTally.Classes; k++)
+                        {
+                            int o = k * TC2.Core.Diagnostics.SizeTally.Stride;
+                            double vy = szt[o], py = szt[o + 1];
+                            if (vy <= 0) continue;
+                            double kpy = py / 1000.0, kvy = vy / 1000.0;
+                            Console.WriteLine("sizes:   " + TC2.Core.Diagnostics.SizeTally.Names[k].PadRight(12) + F(vy, "0").PadLeft(14) + F(py / vy, "0").PadLeft(13) + F(szt[o + 6] / kpy, "0.0").PadLeft(8) + F(szt[o + 7] / kpy, "0.0").PadLeft(8) +
+                                              F(szt[o + 8] / kpy, "0.0").PadLeft(8) + F(szt[o + 9] / kpy, "0.0").PadLeft(10) + F(szt[o + 10] / kpy, "0.0").PadLeft(8) + "".PadLeft(26) + F(szt[o + 13] / kvy, "0").PadLeft(8) + F(szt[o + 14] / kvy, "0").PadLeft(7) +
+                                              F(szt[o + 15] / kvy, "0").PadLeft(9) + "".PadLeft(48) + F(100.0 * szt[o + 17] / vy, "0.0").PadLeft(10) + F(szt[o + 2] / vy, "0.00").PadLeft(8) + F(szt[o + 3] / vy, "0.00").PadLeft(11) + F(szt[o + 4] / vy, "0.00").PadLeft(9) + F(szt[o + 5] / vy, "0.00").PadLeft(13));
+                        }
+                        Console.WriteLine("sizes: villages abandoned " + szt[TC2.Core.Diagnostics.SizeTally.Abandoned]);
+                    }
                     var mgt = TC2.Core.Places.Migration.MarginTally;
                     if (mgt != null)   // (C3.6g: daughter villages on the land between villages)
                     {
