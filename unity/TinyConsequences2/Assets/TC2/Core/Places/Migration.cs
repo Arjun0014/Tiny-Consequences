@@ -515,6 +515,7 @@ namespace TC2.Core.Places
             if (!w.Parties.Exists(pid)) return;
             var party = w.Parties.Get(pid);
             int dest = party.Dest;
+            bool founded = false;
             if (party.Site >= 0)
             {
                 // the place may have been taken meanwhile (another party, a village grown near): a party on the land does not turn back
@@ -541,12 +542,12 @@ namespace TC2.Core.Places
                         Rel1 = party.Event != 0 ? CauseRel.CausedBy : CauseRel.None, ArgA = households, ArgB = people, RootKind = RootKind.People,
                     });
                 }
-                else dest = FoundAt(party.Site, party.Event, party.Origin, party.Kind);
+                else { dest = FoundAt(party.Site, party.Event, party.Origin, party.Kind, LeadWay(pid, party.Origin)); founded = true; }
             }
             if (dest == 0 || !w.Settlements.Exists(dest) || !w.Settlements.Get(dest).Inhabited)
             {
                 // (the village they went to is gone: they make camp where it stood - a village again)
-                if (dest != 0 && w.Settlements.Exists(dest)) dest = FoundAt(w.Settlements.Get(dest).Cell, party.Event, party.Origin);
+                if (dest != 0 && w.Settlements.Exists(dest)) { dest = FoundAt(w.Settlements.Get(dest).Cell, party.Event, party.Origin, 0, LeadWay(pid, party.Origin)); founded = true; }
                 else { for (int hid = w.Households.First(); hid != 0; hid = w.Households.Next(hid)) if (w.Households.Get(hid).Party == pid) w.Households.Get(hid).Party = 0; w.Parties.Remove(pid); return; }
             }
             ref var d = ref w.Settlements.Get(dest);
@@ -559,6 +560,9 @@ namespace TC2.Core.Places
                 hh.Party = 0;
                 if (hh.Dissolved != 0) continue;
                 Rehome(hid, dest);
+                // (C11.1b) the founders of a new village build alike there, as its first household brought the way - a little changed now and then
+                // (the founder effect, D2-114); a party that joins a village keeps its own ways among its new neighbours
+                if (founded && !Architecture.WaysOff) w.Households.Get(hid).Way = w.Settlements.Get(dest).Tradition;
                 _arrived.Add(hid);
             }
             w.Holdings.Arrive(dest, _arrived, party.Food);   // (the food they carried is theirs at their new home: C3.3)
@@ -567,6 +571,20 @@ namespace TC2.Core.Places
 
         /// <summary>Tools: a party founds its village at its place even where one now stands (`--nojoin`, before D2-137).</summary>
         public static bool JoinOff;
+
+        /// <summary>The way a party's first household builds in (C11.1b: the way its founders bring), 0 with `--oldways` or none.</summary>
+        int LeadWay(int pid, int origin)
+        {
+            var w = _w;
+            if (Architecture.WaysOff) return 0;
+            for (int hid = w.Households.First(); hid != 0; hid = w.Households.Next(hid))
+            {
+                ref var ph = ref w.Households.Get(hid);
+                if (ph.Party != pid || ph.Dissolved != 0) continue;
+                return w.Settlements.Exists(ph.Settlement) ? Architecture.WayOf(w, hid, in w.Settlements.Get(ph.Settlement)) : ph.Way;
+            }
+            return 0;
+        }
 
         /// <summary>The inhabited village nearest a place within the room a new village keeps (`Sites.Spacing`, a daughter's `MarginGap`), where no village
         /// may be founded (ties to the lower id), 0 none.</summary>
@@ -635,7 +653,7 @@ namespace TC2.Core.Places
         public static bool TonguesOff;
 
         /// <summary>A village is founded at a place (at a party's arrival): its frame, its ground, no houses or works yet.</summary>
-        public int FoundAt(int cell, long cause, int origin, int how = 0)   // (how 1: a daughter village on its village's margins - C3.6g)
+        public int FoundAt(int cell, long cause, int origin, int how = 0, int way = 0)   // (how 1: a daughter village on its village's margins - C3.6g; way: its founders' own, C11.1b)
         {
             var w = _w; var P = w.Planet;
             int sid = w.Ids.Next(EntityKind.Settlement);
@@ -666,7 +684,7 @@ namespace TC2.Core.Places
             if (wl < 1) { wx = 0; wy = 200; wl = 200; }
             s.WoodX = (float)(wx / wl * 210); s.WoodY = (float)(wy / wl * 210);
             s.WellX = 8f; s.WellY = -6f;
-            s.Tradition = Architecture.TraditionAt(w, sid, origin);   // (how its founders build: the tradition they bring, D2-114)
+            s.Tradition = Architecture.TraditionAt(w, sid, origin, way);   // (how its founders build: the tradition they bring, D2-114 - their own way, C11.1b)
             s.Tongue = TongueAt(w, sid, origin);   // (and how they speak: C11.1)
             w.Settlements.Add(sid, s);
             w.IndexSettlementCells(sid);

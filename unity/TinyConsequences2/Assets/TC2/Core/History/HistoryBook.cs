@@ -590,6 +590,34 @@ namespace TC2.Core.History
                 ch.Para("Won back after their bonds lapsed, these bowed again to " + seat + ": " + Join(parts) +
                         (againOrder.Count > 6 ? ", and " + Plural(againOrder.Count - 6, "village", "villages") + " more" : "") + ".", r.Seat);
             }
+            // (C11.1b) its houses today: how many of the villages paying it build as its seat's first household does - its way taken up, a way at a
+            // time, by the first households of the villages that pay it, and from them by their own people
+            if (present && !TC2.Core.Places.Architecture.WaysOff && w.Settlements.Exists(r.Seat))
+            {
+                ref var ss = ref w.Settlements.Get(r.Seat);
+                if (ss.HeadHh != 0 && w.Households.Exists(ss.HeadHh))
+                {
+                    int sway = TC2.Core.Places.Architecture.WayOf(w, ss.HeadHh, in ss);
+                    int pay = 0, alike = 0, asFounders = 0;
+                    for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+                    {
+                        if (sid == r.Seat) continue;
+                        ref var ts = ref w.Settlements.Get(sid);
+                        if (!ts.Inhabited || ts.HeadHh == 0 || !w.Households.Exists(ts.HeadHh) || !w.Conflict.Under(sid, r.Seat)) continue;
+                        pay++;
+                        int tw = TC2.Core.Places.Architecture.WayOf(w, ts.HeadHh, in ts);
+                        if (TC2.Core.Places.Architecture.Alike(tw, sway)) alike++;
+                        else if (TC2.Core.Places.Architecture.Alike(tw, ts.Tradition)) asFounders++;
+                    }
+                    if (pay > 0)
+                    {
+                        ch.Heading("Its houses");
+                        ch.Para("The first house of " + seat + " raises " + TC2.Core.Places.Architecture.RoofName(TC2.Core.Places.Architecture.TraditionRoof(sway)) + " roofs. Of the " +
+                                Plural(pay, "village that pays", "villages that pay") + " it today, the first houses of " + Num(alike) + " build as it does" +
+                                (asFounders > 0 ? ", " + Num(asFounders) + " still as their own founders did" : "") + ".", r.Seat);
+                    }
+                }
+            }
             // (C10.10) the peace its seat kept: the claims for blood between villages it was lord over that it judged
             var judged = new List<HistoryEvent>();
             foreach (var j in c.Judgments) if (j.ArgB == r.Seat) judged.Add(j);
@@ -988,7 +1016,17 @@ namespace TC2.Core.History
                     ref var s = ref w.Settlements.Get(sid);
                     if (s.Inhabited) living++;
                     int fy = YearOf(s.Founded); y0 = System.Math.Min(y0, fy); y1 = System.Math.Max(y1, fy);
-                    roofs[TC2.Core.Places.Architecture.TraditionRoof(s.Tradition)]++;
+                    // (C11.1b) the roofs its homes stand under today - its households build as they were raised to; before, as their founders did
+                    if (TC2.Core.Places.Architecture.WaysOff || !s.Inhabited) roofs[TC2.Core.Places.Architecture.TraditionRoof(s.Tradition)]++;
+                    else
+                    {
+                        var bl = w.BuildingsOf(sid);
+                        for (int i = 0; i < bl.Count; i++)
+                        {
+                            ref var b = ref w.Buildings.Get(bl[i]);
+                            if (TC2.Core.Places.Structures.IsHome(b.Kind) && TC2.Core.Places.Architecture.Has(b.Form) && b.Left == 0) roofs[TC2.Core.Places.Architecture.RoofOf(b.Form)]++;
+                        }
+                    }
                     foreach (var e in TC2.Core.Worldgen.Names.EndsOf(s.Tongue)) { if (!ends.ContainsKey(e)) { ends[e] = 0; endOrder.Add(e); } ends[e]++; }
                 }
                 endOrder.Sort((a, b) => ends[b] != ends[a] ? ends[b].CompareTo(ends[a]) : string.CompareOrdinal(a, b));

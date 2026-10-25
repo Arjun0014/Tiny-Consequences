@@ -41,14 +41,15 @@ namespace TC2.Core.Places
         /// A village's building tradition at its founding (C11's first trait, D2-114): the way its founders carried from the village they came
         /// from - and as a few people carry a way of building somewhere new, now and then they build it a little differently (a founder
         /// effect: one trait, the roof's form or the walls' shade, changes with a chance `Drift`); the first peoples each their own. Packed:
-        /// roof form bits 0-1, shade 2-4, its line (the first village it descends from) above.
+        /// roof form bits 0-1, shade 2-4, its line (the first village it descends from) above. Since C11.1b the way they carry is their own: the
+        /// way the party's first household builds (`from`), where it has one; else their village's.
         /// </summary>
-        public static int TraditionAt(World w, int sid, int origin)
+        public static int TraditionAt(World w, int sid, int origin, int from = 0)
         {
             ulong h = KeyedRng.Hash(w.Seed, RngStream.Traits, (ulong)sid, 9001);
-            if (origin != 0 && w.Settlements.Exists(origin) && w.Settlements.Get(origin).Tradition != 0)
+            if (from != 0 || (origin != 0 && w.Settlements.Exists(origin) && w.Settlements.Get(origin).Tradition != 0))
             {
-                int t = w.Settlements.Get(origin).Tradition;
+                int t = from != 0 ? from : w.Settlements.Get(origin).Tradition;
                 if (KeyedRng.Unit(w.Seed, RngStream.Traits, (ulong)sid, 9002) >= Drift) return t;
                 if ((h & 1UL) == 0) return (t & ~3) | (int)((((ulong)(t & 3)) + 1UL + ((h >> 1) & 1UL)) % 3UL);   // (another roof form)
                 return (t & ~(7 << 2)) | (int)((((ulong)((t >> 2) & 7)) + 1UL + ((h >> 1) % 5UL)) % 6UL) << 2;   // (another shade)
@@ -64,6 +65,86 @@ namespace TC2.Core.Places
         public static int TraditionPalette(int tradition) => ((tradition >> 2) & 7) % 6;
         /// <summary>The first village a tradition descends from.</summary>
         public static int Line(int tradition) => tradition >> 5;
+
+        // ---- a people's ways carried and copied (C11.1b)
+        /// <summary>`--oldways`: every house built in its village's way (D2-114) - no household carries one of its own - on the same binary.</summary>
+        public static bool WaysOff;
+        /// <summary>
+        /// At a marriage, the chance the new household takes one way of its village's first household where theirs differ (the leading house's way
+        /// copied by the young: the hall's form imitated in its village's houses), and one of the household the bride grew up in (she brings her
+        /// mother's ways with her).
+        /// </summary>
+        public const double HeadCopy = 0.3, BrideCopy = 0.15;
+        /// <summary>A year's chance the first household of a tributary takes one way of its lord's first household where they differ (the lord's
+        /// seat imitated by the households that lead the villages paying it).</summary>
+        public const double LordCopy = 0.1;
+
+        /// <summary>The way a household builds in (C11.1b): the one it carries - from the house its people grew up in, the village its founders came
+        /// from or the one it came from itself - else (none recorded; `--oldways`) its village's.</summary>
+        public static int WayOf(World w, int hid, in Settlement s)
+        {
+            if (!WaysOff && hid != 0 && w.Households.Exists(hid))
+            {
+                int way = w.Households.Get(hid).Way;
+                if (way != 0) return way;
+            }
+            return s.Tradition != 0 ? s.Tradition : TraditionAt(w, s.Id, 0);
+        }
+
+        /// <summary>A village's way as its works are raised (C11.1b): its first household's, whose lead its people build them under; else its founders'.</summary>
+        public static int VillageWay(World w, in Settlement s) => !WaysOff && s.HeadHh != 0 ? WayOf(w, s.HeadHh, in s) : (s.Tradition != 0 ? s.Tradition : TraditionAt(w, s.Id, 0));
+
+        /// <summary>Whether two ways build alike: the same roof form and shade.</summary>
+        public static bool Alike(int a, int b) => TraditionRoof(a) == TraditionRoof(b) && TraditionPalette(a) == TraditionPalette(b);
+
+        /// <summary>One way of `from` that `to` builds otherwise, taken by `to` (its roof form or its shade - which, by a keyed draw, when both differ);
+        /// the line `to` descends from is kept.</summary>
+        public static int Take(int to, int from, ulong h)
+        {
+            bool roof = TraditionRoof(to) != TraditionRoof(from), shade = TraditionPalette(to) != TraditionPalette(from);
+            if (!roof && !shade) return to;
+            if (roof && (!shade || (h & 1UL) == 0)) return (to & ~3) | (from & 3);
+            return (to & ~(7 << 2)) | (from & (7 << 2));
+        }
+
+        /// <summary>
+        /// The way a couple's new household builds in (C11.1b): the way of the house the groom grew up in (they make their home in his village, under
+        /// his family's name); now and then one way of their village's first household (`HeadCopy`) and one of the bride's own household's
+        /// (`BrideCopy`), each where it differs.
+        /// </summary>
+        public static int WayAtMarriage(World w, int sid, int hid, int groomHh, int brideHh)
+        {
+            if (WaysOff) return 0;
+            ref var s = ref w.Settlements.Get(sid);
+            int way = WayOf(w, groomHh, in s);
+            int head = s.HeadHh;
+            if (head != 0 && head != groomHh && w.Households.Exists(head) && KeyedRng.Unit(w.Seed, RngStream.Traits, (ulong)hid, 9101) < HeadCopy)
+                way = Take(way, WayOf(w, head, in s), KeyedRng.Hash(w.Seed, RngStream.Traits, (ulong)hid, 9102));
+            if (brideHh != 0 && brideHh != groomHh && w.Households.Exists(brideHh) && KeyedRng.Unit(w.Seed, RngStream.Traits, (ulong)hid, 9103) < BrideCopy)
+            {
+                int bs = w.Households.Get(brideHh).Settlement;
+                if (w.Settlements.Exists(bs)) way = Take(way, WayOf(w, brideHh, in w.Settlements.Get(bs)), KeyedRng.Hash(w.Seed, RngStream.Traits, (ulong)hid, 9104));
+            }
+            return way;
+        }
+
+        /// <summary>
+        /// A village's year of ways (C11.1b; at the day households weigh leaving): the first household of a tributary may take one way of its lord's
+        /// first household where they differ (`LordCopy`) - so over generations the houses of a realm come to be built as its lord's seat builds,
+        /// and the realms' lands look different where their peoples' descent alone made them alike.
+        /// </summary>
+        public static void Year(World w, int sid)
+        {
+            if (WaysOff) return;
+            ref var s = ref w.Settlements.Get(sid);
+            if (s.Lord == 0 || s.HeadHh == 0 || !w.Households.Exists(s.HeadHh) || !w.Settlements.Exists(s.Lord)) return;
+            ref var l = ref w.Settlements.Get(s.Lord);
+            if (l.HeadHh == 0 || !w.Households.Exists(l.HeadHh)) return;
+            int mine = WayOf(w, s.HeadHh, in s), theirs = WayOf(w, l.HeadHh, in l);
+            if (Alike(mine, theirs)) return;
+            if (KeyedRng.Unit(w.Seed, RngStream.Traits, (ulong)s.HeadHh, (ulong)w.Now, 9105) >= LordCopy) return;
+            w.Households.Get(s.HeadHh).Way = Take(mine, theirs, KeyedRng.Hash(w.Seed, RngStream.Traits, (ulong)s.HeadHh, (ulong)w.Now, 9106));
+        }
 
         /// <summary>
         /// What a household could put into a house now - a measure for its house, not a wealth anything else reads: its beasts (a head of cattle 1,
@@ -173,7 +254,7 @@ namespace TC2.Core.Places
             int rank = Rank(w, sid, hid, means);
             bool rich = means >= RichMeans && rank <= System.Math.Max(1, w.HouseholdsOf(sid).Count / 10);
             Materials(w, in s, means, rich, out int cover, out int walls, out bool chimney);
-            int tradition = s.Tradition != 0 ? s.Tradition : TraditionAt(w, sid, 0);
+            int tradition = WayOf(w, hid, in s);   // (the household's own way: C11.1b)
             int roof = TraditionRoof(tradition);
             if (w.Planet.TMean[s.Cell] < 2.0 && roof == Hipped) roof = HalfHip;   // (snow slides off the steep gables of the cold)
             int plan;
@@ -303,7 +384,7 @@ namespace TC2.Core.Places
         {
             ref var s = ref w.Settlements.Get(sid);
             Materials(w, in s, 1.5, false, out int cover, out int walls, out _);
-            int tradition = s.Tradition != 0 ? s.Tradition : TraditionAt(w, sid, 0);
+            int tradition = VillageWay(w, in s);   // (as its first household builds: C11.1b)
             int palette = (TraditionPalette(tradition) + (int)(KeyedRng.Mix((ulong)bid * 31UL + 7) % 3UL)) % 8;
             return Pack(0, TraditionRoof(tradition), cover, walls, false, palette);
         }

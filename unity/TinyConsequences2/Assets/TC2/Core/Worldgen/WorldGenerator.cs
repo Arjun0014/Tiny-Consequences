@@ -328,7 +328,8 @@ namespace TC2.Core.Worldgen
                 int hid = w.Ids.Next(EntityKind.Household);
                 ref var srr = ref w.Settlements.Get(sid);
                 Homes.FreeLot(w, sid, hid, out float hx, out float hy);
-                var hh = new Household { Id = hid, Settlement = sid, Formed = w.Now, FamilyName = hid, HomeX = hx, HomeY = hy, Larder = 6, Shelter = Construction.House, Water = 30f, Indoor = (float)Hearth.Comfort };
+                var hh = new Household { Id = hid, Settlement = sid, Formed = w.Now, FamilyName = hid, HomeX = hx, HomeY = hy, Larder = 6, Shelter = Construction.House, Water = 30f, Indoor = (float)Hearth.Comfort,
+                                         Way = Architecture.WaysOff ? 0 : srr.Tradition };   // (each household builds as its people do: C11.1b)
                 w.Households.Add(hid, hh);
                 w.HouseholdsOf(sid).InsertSorted(hid);
                 w.History.Register(EntityRef.Household(hid), Names.Family(seed, hid, w.Settlements.Get(sid).Tongue), w.Now);

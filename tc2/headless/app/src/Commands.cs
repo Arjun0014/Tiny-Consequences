@@ -236,6 +236,7 @@ namespace TC2.Headless
             if (a.Has("lapsetally")) TC2.Core.Society.Conflict.LapseTally = new double[TC2.Core.Society.Conflict.LapseTallyN];
             if (a.Has("jointally")) TC2.Core.Places.Migration.JoinTally = new double[TC2.Core.Places.Migration.JoinTallyN];   // (the ceiling measured: households looking for a village to join)
             if (a.Has("oldnames")) TC2.Core.Places.Migration.TonguesOff = true;   // (C11.1 off: every name from the one speech of before)
+            if (a.Has("oldways")) TC2.Core.Places.Architecture.WaysOff = true;   // (C11.1b off: every house in its village's way of building)
             if (a.Has("oldmargins")) TC2.Core.Places.Migration.MarginsOff = true;   // (C3.6g off: no daughter villages on the margins)
             if (a.Has("margintally")) TC2.Core.Places.Migration.MarginTally = new double[4];   // (C3.6g: the leavers who looked to their village's margins)
             if (a.Has("oldburn")) TC2.Core.Society.Conflict.BurnOff = true;   // (C8.0 off: no band fires a home)
