@@ -78,6 +78,7 @@ namespace TC2.Game
             if (_fpsT > 0.5f) { _fps = _frames / _fpsT; _frames = 0; _fpsT = 0; }
             var w = Host.World;
             if (w == null || Host.CatchingUp) return;
+            if (_titleOn) return;   // (the title holds the world still: F11.1)
             if (!_bookAsked) { _bookAsked = true; if (Browser.Param("book") != null) OpenBook(-1); }   // (?book=1: open at the present age)
             if (Input.GetKeyDown(KeyCode.B)) _book = !_book;
             if (Input.GetKeyDown(KeyCode.Space)) Host.SpeedIndex = Host.SpeedIndex == 0 ? 3 : 0;
@@ -465,6 +466,7 @@ namespace TC2.Game
             var w = Host.World;
             if (w == null) { GUI.Label(new Rect(20, 20, 600, 40), Host.StatusLine, _title); return; }
             if (Host.CatchingUp) { CatchUpScreen(sw, sh); PointerOverUi = true; return; }
+            if (Title(sw, sh)) return;   // (the opening: F11.1)
 
             if (_hidden) { PointerOverUi = false; return; }
             if (!_book) { MapNames(w, sw, sh); WorkNames(w, sw, sh); PeopleNames(w, sw, sh); }

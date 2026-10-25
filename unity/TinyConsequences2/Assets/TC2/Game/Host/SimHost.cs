@@ -35,6 +35,8 @@ namespace TC2.Game
         public double AchievedSpeed;
         public float LastSimMs;
         public bool Ready;
+        /// <summary>Whether the world was continued from a save (the title's "Continue": F11.1), not begun.</summary>
+        public bool Continued;
 
         // catch-up
         public bool CatchingUp;
@@ -77,6 +79,7 @@ namespace TC2.Game
                     var w = SaveFile.Load(data, out var hdr);
                     _saveScratch = SaveFile.Scratch.For(hdr);
                     SetWorld(w);
+                    Continued = true;
                     Offline = hdr.Offline == OfflineMode.Paused && hdr.SavedRealUtcMs == 0 ? OfflineMode.Living : hdr.Offline;
                     long now = Browser.NowUtcMs();
                     string absence = Browser.Param("absence"); // test/debug: "26h", "3d"
