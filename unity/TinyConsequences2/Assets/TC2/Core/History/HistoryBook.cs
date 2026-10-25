@@ -23,6 +23,7 @@ namespace TC2.Core.History
     {
         public string Title, Sub;
         public int Settlement;   // the place the chapter is about, if one (0 none)
+        public int MapSeat, MapYear;   // a realm's portrait on a map: its seat and the year drawn (its height); MapSeat 0 none
         public readonly List<BookBlock> Blocks = new List<BookBlock>();
         internal void Para(string t, int sid = 0) { if (!string.IsNullOrEmpty(t)) Blocks.Add(new BookBlock { Kind = BookKind.Para, Text = t, Settlement = sid }); }
         internal void Fact(string t) { if (!string.IsNullOrEmpty(t)) Blocks.Add(new BookBlock { Kind = BookKind.Fact, Text = t }); }
@@ -157,6 +158,27 @@ namespace TC2.Core.History
                 Book.Sub = _c.Years > 0 ? "An account of its " + F(_c.Years) + " years, from the first settlers to year " + Book.Year : "Its first days";
                 Preface(_c, Book);
                 LastMs = t.Elapsed.TotalMilliseconds;
+            }
+
+            /// <summary>(The book's realm maps) The villages standing at the end of a year - founded by then and not yet abandoned, as the ledger tells
+            /// it - split into those of a seat's realm (every village whose highest lord then was the seat, and the seat) and the rest. Reads only.</summary>
+            public void RealmAt(int seat, int year, List<int> members, List<int> others)
+            {
+                members.Clear(); others.Clear();
+                var w = _c.W;
+                long t = (year + 1) * SimTime.Year - 1;
+                if (t > w.Now) t = w.Now;
+                var lordAt = new Dictionary<int, int>();
+                for (int i = 0; i < _c.Bonds.Count; i++) if (_c.Bonds[i].From <= t && _c.Bonds[i].To > t) lordAt[_c.Bonds[i].Payer] = _c.Bonds[i].Lord;
+                for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+                {
+                    if (_c.Founded.TryGetValue(sid, out var f) && f.Time > t) continue;
+                    if (_c.Abandoned.TryGetValue(sid, out var a) && a.Time <= t) continue;
+                    if (!_c.Founded.ContainsKey(sid) && !w.Settlements.Get(sid).Inhabited && !_c.Abandoned.ContainsKey(sid)) continue;
+                    int top = sid, d = 0;
+                    while (lordAt.TryGetValue(top, out int up) && d < 16 && up != sid) { top = up; d++; }
+                    if (top == seat) members.Add(sid); else others.Add(sid);
+                }
             }
 
             public BookPart Part(int i)
@@ -519,7 +541,7 @@ namespace TC2.Core.History
             var w = c.W;
             string seat = Name(w, r.Seat);
             bool present = r.To == c.Now;
-            var ch = new BookChapter { Title = "The Realm of " + seat, Sub = Span(r.From, r.To, present) + "; at its height " + Plural(r.Peak + 1, "village", "villages") + " (year " + r.PeakYear + ")", Settlement = r.Seat };
+            var ch = new BookChapter { Title = "The Realm of " + seat, Sub = Span(r.From, r.To, present) + "; at its height " + Plural(r.Peak + 1, "village", "villages") + " (year " + r.PeakYear + ")", Settlement = r.Seat, MapSeat = r.Seat, MapYear = r.PeakYear };
             var mine = new List<Bond>();
             for (int i = 0; i < c.Bonds.Count; i++) if (c.Bonds[i].Lord == r.Seat) mine.Add(c.Bonds[i]);
             var sb = new StringBuilder();

@@ -151,6 +151,37 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void ARealmsMapShowsItsVillagesAtItsHeight()
+        {
+            // premise (by hand, as the ledger holds it): villages 2 and 3 bow to village 1, then 3 is abandoned - the realm's chapter is drawn on a map
+            // at its height with all three; at the end village 3 stands no longer
+            Conflict.DemandOff = true;
+            try
+            {
+                var w = TestWorlds.Make(625);
+                Coarse(w);
+                Years(w, 2);
+                Rec(w, HistoryKind.TributeAgreed, 2, 1);
+                Rec(w, HistoryKind.TributeAgreed, 3, 1);
+                Years(w, 3);
+                int height = (int)(w.Now / SimTime.Year);
+                w.Record(new HistoryEvent { Kind = HistoryKind.SettlementAbandoned, Time = w.Now, Settlement = 3, Cell = -1, Subject = EntityRef.Settlement(3) });
+                Years(w, 2);
+                var writer = new HistoryBook.Writer(w);
+                var realm = writer.Part(1).Chapters.Find(x => x.MapSeat == 1);
+                Assert.IsNotNull(realm, "the realm's chapter has its map");
+                var inside = new System.Collections.Generic.List<int>(); var outside = new System.Collections.Generic.List<int>();
+                writer.RealmAt(1, realm.MapYear, inside, outside);
+                CollectionAssert.Contains(inside, 1, "the seat"); CollectionAssert.Contains(inside, 2, "its tributary");
+                if (realm.MapYear < height) CollectionAssert.Contains(inside, 3, "at its height village 3 paid it too");
+                writer.RealmAt(1, (int)(w.Now / SimTime.Year), inside, outside);
+                CollectionAssert.DoesNotContain(inside, 3); CollectionAssert.DoesNotContain(outside, 3, "an abandoned village stands no longer");
+                CollectionAssert.Contains(inside, 2);
+            }
+            finally { Conflict.DemandOff = false; }
+        }
+
+        [Test]
         public void RaidsAreOneWarUntilABowOrTwelveQuietYears()
         {
             // premise: raids and a bow between villages 1 and 2 written by hand - the world's own askings (C10.8) are off, or a refusal
