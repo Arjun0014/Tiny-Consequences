@@ -149,6 +149,20 @@ namespace TC2.Game
                         if (score > best) { best = score; pick = s2; }
                     }
                 }
+                else if (vArg == "stone")
+                {
+                    // (C7.2 shots) the village whose ring is most laid in stone - its own standing ring, then an old ring's - the most peopled first
+                    double best = 0;
+                    for (int s2 = w.Settlements.First(); s2 != 0; s2 = w.Settlements.Next(s2))
+                    {
+                        var st = w.Settlements.Get(s2);
+                        if (!st.Inhabited) continue;
+                        double v = (st.Wall == 2 ? st.StoneWall : 0f) + 0.5 * st.OldStone;
+                        if (v <= 0) continue;
+                        double score = v * 100000 + st.Population;
+                        if (score > best) { best = score; pick = s2; }
+                    }
+                }
                 else int.TryParse(vArg, out pick);
                 if (pick != 0 && w.Settlements.Exists(pick)) { sid = pick; CameraRig.FocusSid = pick; Debug.Log("[TC2] framing village " + pick + " (" + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(pick)) + ", " + w.Settlements.Get(pick).Population + " people)"); }
             }
