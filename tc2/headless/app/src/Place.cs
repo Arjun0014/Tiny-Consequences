@@ -56,6 +56,7 @@ namespace TC2.Headless
             if (a.Has("marriage")) { Marriage(w); return 0; }
             if (a.Has("ways")) { PeoplesWays(w); return 0; }
             if (a.Has("stonewalls")) { StoneWalls(w); return 0; }
+            if (a.Has("ruins")) { Ruins(w, a.Int("show", 15)); return 0; }
             if (a.Has("ceiling")) { Ceiling(w); return 0; }
             if (a.Has("margins")) { Margins(w, a.Int("show", 20)); return 0; }
             if (a.Has("heirs")) { Heirs(w); return 0; }
@@ -724,6 +725,65 @@ namespace TC2.Headless
         /// ring's labour and wood, whether it knows stone at hand (its outcrop and its distance, a quarry), its people and the years of grain in its
         /// store, and what a curtain of dry stone would cost it (loads a metre cut, carried, laid) against what it loses.
         /// </summary>
+        /// <summary>
+        /// (C13, ruins reused - measured first) The homes of each living village: lived in, standing empty, fallen to ruins that still keep their lots
+        /// (a house's ruin lasts ~300 years, on stone footings half again); how many ruins lie inside the ring its lived homes make (the nearest four
+        /// fifths of them), and where the homes raised in the last 30 years went - inside that ring or beyond it, while ruins kept lots inside.
+        /// </summary>
+        static void Ruins(World w, int show)
+        {
+            long now = w.Now;
+            var rows = new List<(int sid, int lived, int empty, int ruins, int inside, int fresh, int freshOut, double ruinAge, double r80)>();
+            int tl = 0, te = 0, tr = 0, ti = 0, tf = 0, tfo = 0, villages = 0, withInside = 0; double ageSum = 0; int ageN = 0;
+            var dl = new List<double>();
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                ref var s = ref w.Settlements.Get(sid);
+                if (!s.Inhabited) continue;
+                villages++;
+                var bl = w.BuildingsOf(sid);
+                dl.Clear();
+                int lived = 0, empty = 0;
+                for (int i = 0; i < bl.Count; i++)
+                {
+                    ref var b = ref w.Buildings.Get(bl[i]);
+                    if (!TC2.Core.Places.Structures.IsHome(b.Kind) || b.Done == 0) continue;
+                    if (b.Household != 0) { lived++; dl.Add(Math.Sqrt(((double)b.X - s.SquareX) * ((double)b.X - s.SquareX) + ((double)b.Y - s.SquareY) * ((double)b.Y - s.SquareY))); }
+                    else if (!TC2.Core.Places.Homes.Fallen(in b, now)) empty++;
+                }
+                dl.Sort();
+                double r80 = dl.Count > 0 ? dl[Math.Min(dl.Count - 1, (int)(0.8 * dl.Count))] : 0;
+                int ruins = 0, inside = 0, fresh = 0, freshOut = 0; double age = 0;
+                for (int i = 0; i < bl.Count; i++)
+                {
+                    ref var b = ref w.Buildings.Get(bl[i]);
+                    if (!TC2.Core.Places.Structures.IsHome(b.Kind) || b.Done == 0) continue;
+                    double d = Math.Sqrt(((double)b.X - s.SquareX) * ((double)b.X - s.SquareX) + ((double)b.Y - s.SquareY) * ((double)b.Y - s.SquareY));
+                    if (b.Left != 0 && TC2.Core.Places.Homes.Fallen(in b, now) && TC2.Core.Places.Homes.RuinLeft(in b, now) > 0)
+                    {
+                        ruins++;
+                        if (d <= r80) inside++;
+                        age += (now - b.Left) / (double)SimTime.Year - TC2.Core.Places.Homes.FallYears(in b);
+                    }
+                    else if (b.Household != 0 && now - b.Built < 30 * SimTime.Year) { fresh++; if (d > r80) freshOut++; }
+                }
+                tl += lived; te += empty; tr += ruins; ti += inside; tf += fresh; tfo += freshOut; if (ruins > 0) { ageSum += age; ageN += ruins; }
+                if (inside > 0) withInside++;
+                rows.Add((sid, lived, empty, ruins, inside, fresh, freshOut, ruins > 0 ? age / ruins : 0, r80));
+            }
+            Console.WriteLine("ruins: villages " + villages + "; homes lived in " + tl + ", standing empty " + te + ", fallen to ruins still on their lots " + tr +
+                              " (fallen " + (ageN > 0 ? (ageSum / ageN).ToString("0") : "-") + " years on average), inside the ring of the lived homes " + ti + " in " + withInside + " villages" +
+                              "; homes raised in the last 30 years " + tf + ", beyond that ring " + tfo);
+            rows.Sort((x, y) => y.inside != x.inside ? y.inside.CompareTo(x.inside) : x.sid.CompareTo(y.sid));
+            Console.WriteLine("  village                 lived  empty  ruins  inside  fallen y   ring m  new 30y  beyond");
+            for (int i = 0; i < Math.Min(show, rows.Count); i++)
+            {
+                var r = rows[i];
+                Console.WriteLine("  " + w.History.NameOf(EntityRef.Settlement(r.sid)).PadRight(22) + r.lived.ToString().PadLeft(7) + r.empty.ToString().PadLeft(7) + r.ruins.ToString().PadLeft(7) +
+                                  r.inside.ToString().PadLeft(8) + r.ruinAge.ToString("0").PadLeft(10) + r.r80.ToString("0").PadLeft(9) + r.fresh.ToString().PadLeft(9) + r.freshOut.ToString().PadLeft(8));
+            }
+        }
+
         static void StoneWalls(World w)
         {
             long now = w.Now;
