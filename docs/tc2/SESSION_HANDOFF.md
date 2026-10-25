@@ -48,6 +48,8 @@ running `K_b_ac3_s4`, then `0_za_web_s25web6` (Web build of main 3bfadd7: the te
 `0_zb` shots of village #4 at 300/600/1,000, `0_zc` realms at 1,000, `0_zd` meteor and drought, `0_ze_rain_rn1` (rain's checks: `rn1_ok`, control = `_pv1`),
 `0_zf_*` (the harrying: build, control vs `_rn1`, ten seeds `_hy1`, `results/cmp_bn1_hy1.txt`), then `K_b_ac3_s7`, `K_ba_siege_s47`, `N_a_ways_s2`. Waiters on
 `runq.log` must match exact job names: the log keeps every session's lines (an old `0_za_ways_wy0` matched `^end 0_za`).
+**The branches carry main now** (no sim change in main since 98): `wip/rain` 1112a4d, `wip/harry` 8bb3dca (= rain + the harrying); both compile (`cc --src`); their queued
+checks (`0_ze`, `0_zf_*`) build these tips. Land: `git merge --no-ff wip/rain` when `0_ze` says `rn1 ok` and the control is byte-identical; then `wip/harry` by `0_zf_d`.
 
 ### Next, in order
 1. Judge `0_za` (8/8 expected), then append D2-182 (`tc2/out/tools/s25/frame/d2182.md`) to DECISIONS. If a cull shows pop-in or missing villages in real shots
