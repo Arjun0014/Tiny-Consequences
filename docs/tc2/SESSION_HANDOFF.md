@@ -43,6 +43,12 @@ again after the reload; find which save wrote a catch-up target and why the expl
 saves and reloads work; the test read the published state before the game had done its `save` command (commands run at the next frame) and saw the save
 before's `saveOk`. The bridge publishes `saves` (stored), the test waits for it to rise (main 728bd0e). `0_za_web_s25web6` (queued next) should show 8/8.
 
+**Queue reordered (~16:58)** so the landings come sooner (the shots need sim-98 saves on main; seed 7 and the siege measure run their own binaries):
+running `K_b_ac3_s4`, then `0_za_web_s25web6` (Web build of main 3bfadd7: the test 8/8 expected; `--layer shadowlite` paired at the region and orbit views),
+`0_zb` shots of village #4 at 300/600/1,000, `0_zc` realms at 1,000, `0_zd` meteor and drought, `0_ze_rain_rn1` (rain's checks: `rn1_ok`, control = `_pv1`),
+`0_zf_*` (the harrying: build, control vs `_rn1`, ten seeds `_hy1`, `results/cmp_bn1_hy1.txt`), then `K_b_ac3_s7`, `K_ba_siege_s47`, `N_a_ways_s2`. Waiters on
+`runq.log` must match exact job names: the log keeps every session's lines (an old `0_za_ways_wy0` matched `^end 0_za`).
+
 ### Next, in order
 1. Judge `0_za` (8/8 expected), then append D2-182 (`tc2/out/tools/s25/frame/d2182.md`) to DECISIONS. If a cull shows pop-in or missing villages in real shots
    (`K_d`), fix forward.
