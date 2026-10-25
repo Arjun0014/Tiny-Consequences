@@ -80,8 +80,8 @@ namespace TC2.Core.History
                 if (s.HeadHh != 0 && !Society.Hall.Off)
                 {
                     int kept = 0, came = 0;
-                    var hl = w.HouseholdsOf(sid);
-                    for (int i = 0; i < hl.Count; i++) { ref var kh = ref w.Households.Get(hl[i]); if (kh.Keeper != s.HeadHh || kh.Dissolved != 0) continue; kept++; }
+                    var keptHl = w.HouseholdsOf(sid);
+                    for (int i = 0; i < keptHl.Count; i++) { ref var kh = ref w.Households.Get(keptHl[i]); if (kh.Keeper != s.HeadHh || kh.Dissolved != 0) continue; kept++; }
                     for (int hid = w.Households.First(); hid != 0 && w.Conflict.PolitySize(sid) > 0; hid = w.Households.Next(hid)) { ref var kh = ref w.Households.Get(hid); if (kh.Keeper == s.HeadHh && kh.Dissolved == 0 && kh.Settlement != sid) came++; }
                     if (kept + came > 0)
                         sb.Append(kept + came).Append(kept + came == 1 ? " landless household lives" : " landless households live").Append(" in the keep of the ").Append(HistoryText.Plural(w.History.NameOf(EntityRef.Household(s.HeadHh))))
