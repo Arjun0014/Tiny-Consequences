@@ -1,16 +1,17 @@
 # TC2 Session handoff
 
-## Session 26 (25 Oct 2026, from 21:20 IST; Control Room) - rain on main (sim 99); the harrying, the ways, stone walls and the memory pass in the queue
+## Session 26 (25 Oct 2026, from 21:20 IST; Control Room) - rain, the harrying and the ways on main (sim 101); stone walls, the memory pass, the god's ore and the lord's household in the queue
 
 ### Exact state (keep this block current)
-- **main**: b9ab94e (rain, sim 99) + ee11391 (flames on dry ground only) + 4919446 (shot tunable `ShadowLite`) + docs. Not ours: `.claude/launch.json`,
+- **main**: 36fad20 (**the harrying and the ways landed**, sim 101; D2-180, D2-181 in DECISIONS 45d4461) on b9ab94e (rain, sim 99) + ee11391 (flames on dry
+  ground only) + 4919446 (shot tunable `ShadowLite`) + 4928499 (bridge `sortplaces`, off) + docs. One full suite over everything landed: **484/0/0** (`fullsuite_bw3.txt`). Not ours: `.claude/launch.json`,
   `Assets/Resources.meta`. Old sim-98 saves (`_ac3`, `_pv1`...) no longer load in main's Unity: shots need sim-matching saves (the fourth run makes them).
 - **Branches to land, in order** (each carries the one before; each changes the sim version):
-  1. **C8.1a the harrying** - `wip/harry` 8bb3dca (sim 100). Ten seeds done (`tc2/out/tools/s25/results/cmp_bn1_hy1.txt`, lean in sickness/people: see
+  1. ~~**C8.1a the harrying**~~ LANDED (its placebo: inside the noise against its twin). Was: `wip/harry` 8bb3dca (sim 100). Ten seeds done (`tc2/out/tools/s25/results/cmp_bn1_hy1.txt`, lean in sickness/people: see
      PROGRESS session 26). Its **matched placebo** `0_zfa_hyp_*` + `0_zfb_cmp_hyp` (`results/cmp_bn1_hyp.txt`, `cmp_hyp_hy1.txt`, `lean_*.txt`) decides:
      land if the placebo spreads as wide (the harrying against its placebo twin inside the noise) or the mechanism explains it. Write D2-180 (rain + the
      harrying + the siege set aside: `tc2/out/tools/s25/siege/design.md`).
-  2. **C11.1b a people's ways** - `wip/c111b-ways` d401d43 (= the ways + the harrying + rain + main; sim 101). Checks `0_zg_a` (build bw3, tests), `0_zg_b`
+  2. ~~**C11.1b a people's ways**~~ LANDED with it. Was: `wip/c111b-ways` d401d43 (= the ways + the harrying + rain + main; sim 101). Checks `0_zg_a` (build bw3, tests), `0_zg_b`
      (control `--oldhouseways` = `_hy1` byte for byte; ways on: annals = `_hy1`), `0_zg_c` (**one full suite over everything to land**: `fs_bw3_ok`).
      D2-181 from `tc2/out/tools/s25/ways/d2181.md` (its "[centuries]" from the fourth acceptance run's `ways4_s2_y*.txt`).
      Land both: `git merge --no-ff wip/c111b-ways` (brings the harrying) once 1 and 2 hold; then `git merge main` into the next branches if main moved.
@@ -23,6 +24,12 @@
      a vein of copper laid bare at a place (40 t), unknown until someone sees it, its chain rooted in the cast (`run --castore Y`: seed 4 at 100, a mine by
      160); the fields round a place renewed (tiredness 0); the ore bodies drawn (copper's green and blue stones, bog iron's rust); shots `--ore M`. Check
      `0_zj_a_ore1` (build, PowersTests 9 and the rest, the uncast control = `_mem1` byte for byte). Land after the memory pass.
+  6. **C10.11 the lord's household** - `wip/hall` (worktree `C:/Game Dev/tc-hall`, sim 105, on the ore; `tc2/out/tools/s26/c1011_household.md`): a first
+     household whose grain runs beyond its needs and its sworn men keeps landless households - its village's, the neediest first; a lord's then its realm's,
+     who come to the seat (`Migration.Summon`) - a year of their need each harvest; kept households do not weigh leaving; let go when the grain fails, another
+     is first, or they hold land. HallTests 4/4. Measured first by `0_zga_deps_s4` (`results/deps_s4_y{300,600}.txt`: the lords' surplus beside their realms'
+     landless); a first look `0_zgb_hall_s4`; its evaluation `0_zk_*` (build, control `--oldhall` = `_ore0`, ten seeds `_hal1` against `_stw1`,
+     `results/cmp_stw1_hal1.txt`; generator `tc2/out/tools/s26/make_hall.sh`). Land after the ore if the seeds hold (D2-186).
 - **Then**: `bash tc2/out/tools/s26/make_ac4.sh $Q` - main's build and full suite (bin_m14), the fourth 1,000-year acceptance run (`_ac4`, seeds 2, 4, 7, books,
   ways and stone walls by century) and real shots (`s26a_*`: village #4 at 300/600/1,000 with `ShadowLite` beside, the villages most walled in stone, realms,
   the meteor again). Add one seed-2 run with `--oldcompact` for the memory measure at 1,000 if wanted (statesizes against `_ac4`).
