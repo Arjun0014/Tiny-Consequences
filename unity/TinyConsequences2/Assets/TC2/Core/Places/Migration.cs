@@ -20,10 +20,11 @@ namespace TC2.Core.Places
         public long Event;      // the history event of their setting out
         public double Food;     // FU of the village's store they carry (their larders go with them too)
         public byte State;      // 0 gathering (leaving at Depart), 1 on the way
+        public byte Kind;       // 0 to a place beyond the spacing, 1 to their village's own margins - a daughter village (C3.6g)
 
-        public void Write(BinWriter w) { w.Int(Id); w.Int(Origin); w.Int(Site); w.Int(Dest); w.Long(Depart); w.Long(Arrive); w.Long(Event); w.Double(Food); w.Byte(State); }
-        public static Party Read(BinReader r) => new Party { Id = r.Int(), Origin = r.Int(), Site = r.Int(), Dest = r.Int(), Depart = r.Long(), Arrive = r.Long(), Event = r.Long(), Food = r.Double(), State = r.Byte() };
-        public void Hash(ref StateHasher h) { h.Add(Id); h.Add(Origin); h.Add(Site); h.Add(Dest); h.Add(Depart); h.Add(Arrive); h.Add(Event); h.Add(Food); h.Add(State); }
+        public void Write(BinWriter w) { w.Int(Id); w.Int(Origin); w.Int(Site); w.Int(Dest); w.Long(Depart); w.Long(Arrive); w.Long(Event); w.Double(Food); w.Byte(State); w.Byte(Kind); }
+        public static Party Read(BinReader r) => new Party { Id = r.Int(), Origin = r.Int(), Site = r.Int(), Dest = r.Int(), Depart = r.Long(), Arrive = r.Long(), Event = r.Long(), Food = r.Double(), State = r.Byte(), Kind = r.Byte() };
+        public void Hash(ref StateHasher h) { h.Add(Id); h.Add(Origin); h.Add(Site); h.Add(Dest); h.Add(Depart); h.Add(Arrive); h.Add(Event); h.Add(Food); h.Add(State); if (Kind != 0) h.Add(Kind); }   // (C3.6g: hashed when set, so the old rules hash as before)
     }
 
     /// <summary>
@@ -43,7 +44,7 @@ namespace TC2.Core.Places
         public const double ScoutMin = 2000, ScoutMax = 4200;   // m: how far a scout goes to look
 
         World _w;
-        readonly List<int> _scratch = new List<int>(), _cells = new List<int>(), _leaving = new List<int>(), _arrived = new List<int>();
+        readonly List<int> _scratch = new List<int>(), _cells = new List<int>(), _leaving = new List<int>(), _arrived = new List<int>(), _unplaced = new List<int>();
 
         /// <summary>Tools: the yearly weighing - villages weighed, the sums of their pressure, crowding, short rations and famine memory,
         /// those pressed, the households that could go and those that chose to; null in the game.</summary>
@@ -165,14 +166,137 @@ namespace TC2.Core.Places
             }
             // too few to make a village, or no place known: each goes to a village it knows with land to spare and less want -
             // where kin live, sooner - or stays this year
+            _unplaced.Clear();
+            int unplacedPeople = 0;
+            if (!MarginsOff) Coming();
             for (int i = 0; i < _leaving.Count; i++)
             {
                 int hid = _leaving[i];
                 int dest = VillageToJoin(sid, hid, _press[i]);
-                if (dest == 0) continue;
+                if (dest == 0) { _unplaced.Add(hid); unplacedPeople += w.Members(hid).Count; continue; }
                 int pid = NewParty(sid, -1, dest);
                 w.Households.Get(hid).Party = pid;
+                if (!MarginsOff) { _coming.TryGetValue(dest, out int n); _coming[dest] = n + w.Members(hid).Count; }
             }
+            // (C3.6g) those who found no village to join, enough to make one, go together to the land between villages: the best place on their own
+            // village's margins, beyond every village's fields (the record's daughter settlements on the waste between townships)
+            if (MarginsOff || site >= 0 || _unplaced.Count < MinHouseholds || unplacedPeople < MinPeople) return;
+            if (MarginTally != null) MarginTally[0]++;
+            int m = MarginSite(sid, out _);
+            if (m < 0) return;
+            if (MarginTally != null) { MarginTally[1]++; MarginTally[2] += _unplaced.Count; MarginTally[3] += unplacedPeople; }
+            int mp = NewParty(sid, m, 0);
+            w.Parties.Get(mp).Kind = 1;
+            for (int i = 0; i < _unplaced.Count; i++) w.Households.Get(_unplaced[i]).Party = mp;
+        }
+
+        /// <summary>`--oldmargins`: no daughter villages on the margins, and the land a village has to spare not lessened by those already on their way
+        /// to it (before C3.6g), on the same binary.</summary>
+        public static bool MarginsOff;
+
+        // (C3.6g) the people of the households on their way to join each village (gathering or walking): the land they will sow there is not spare
+        // for the next who weigh going - before, every household that weighed on one day saw a new village's free land as its own, and a daughter
+        // village took in five times the people its land could feed. Read from the parties' households each weighing (saved state: nothing kept)
+        readonly Dictionary<int, int> _coming = new Dictionary<int, int>();
+
+        void Coming()
+        {
+            var w = _w;
+            _coming.Clear();
+            if (w.Parties.Count == 0) return;
+            for (int hid = w.Households.First(); hid != 0; hid = w.Households.Next(hid))
+            {
+                ref var hh = ref w.Households.Get(hid);
+                if (hh.Party == 0 || hh.Dissolved != 0 || !w.Parties.Exists(hh.Party)) continue;
+                int dest = w.Parties.Get(hh.Party).Dest;
+                if (dest <= 0) continue;
+                _coming.TryGetValue(dest, out int n);
+                _coming[dest] = n + w.Members(hid).Count;
+            }
+        }
+        /// <summary>Tools (null in the game): villages whose leavers, enough to found one, found no village to join and looked to their own margins [0],
+        /// those that found a place there [1], the households [2] and people [3] who set out for it.</summary>
+        public static double[] MarginTally;
+
+        /// <summary>How far the houses of a daughter village keep from any living village (C3.6g): beyond its fields' reach, with the slack its claims
+        /// reach a cell's centre by (`Hazards.CellsWithin`), so that they stand on no village's fields.</summary>
+        public static double MarginGap(World w) => w.Config.FieldReach + 0.75 * w.Planet.CellSize;
+
+        int[] _stamp; int _stampNow;
+        readonly List<(double hab, int c)> _mcand = new List<(double, int)>();
+        readonly List<int> _nbrs = new List<int>();
+        // the cells within the spacing of each village and how far each lies (the grid and a village's anchor never change: derived, never saved)
+        readonly Dictionary<int, (int[] cells, double[] d)> _around = new Dictionary<int, (int[] cells, double[] d)>();
+
+        (int[] cells, double[] d) Around(int sid)
+        {
+            if (_around.TryGetValue(sid, out var known)) return known;
+            var w = _w; var P = w.Planet; var g = P.Grid;
+            ref var s = ref w.Settlements.Get(sid);
+            if (_stamp == null || _stamp.Length != P.Cells) { _stamp = new int[P.Cells]; _stampNow = 0; }
+            _stampNow++;
+            _cells.Clear(); _cells.Add(s.Cell); _stamp[s.Cell] = _stampNow;
+            for (int head = 0; head < _cells.Count; head++)
+            {
+                int c = _cells[head];
+                for (int k = 0; k < 8; k++)
+                {
+                    int nb = g.Nbr8[c * 8 + k];
+                    if (_stamp[nb] == _stampNow) continue;
+                    _stamp[nb] = _stampNow;
+                    if (Vec3d.ArcDistance(s.Anchor, g.Center[nb], P.Radius) < Sites.Spacing) _cells.Add(nb);
+                }
+            }
+            var cells = _cells.ToArray(); var d = new double[cells.Length];
+            for (int i = 0; i < cells.Length; i++) d[i] = Vec3d.ArcDistance(s.Anchor, g.Center[cells[i]], P.Radius);
+            var a = (cells, d);
+            _around[sid] = a;
+            return a;
+        }
+
+        /// <summary>
+        /// (C3.6g) The best place for a daughter village on a village's own margins - the land its people walk beyond their fields, inside its spacing and
+        /// nearer to it than to any other living village, known without a scout - where houses would stand beyond every village's fields (`MarginGap`), on
+        /// no village's field or ground, worth `Sites.MinQuality` with that room kept (`Sites.Quality`: the free arable land within its own reach); -1 none.
+        /// </summary>
+        public int MarginSite(int sid, out double q)
+        {
+            var w = _w; var P = w.Planet; var g = P.Grid;
+            ref var s = ref w.Settlements.Get(sid);
+            double gap = MarginGap(w);
+            q = 0;
+            // the neighbours whose margins could meet this one's
+            _nbrs.Clear();
+            for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
+            {
+                if (o == sid) continue;
+                ref var t = ref w.Settlements.Get(o);
+                if (t.Inhabited && Vec3d.ArcDistance(s.Anchor, t.Anchor, P.Radius) < 2 * Sites.Spacing) _nbrs.Add(o);
+            }
+            // the cells within the spacing, and of them the ones its own and habitable enough to be worth the least
+            var (cells, dist) = Around(sid);
+            _mcand.Clear();
+            for (int i = 0; i < cells.Length; i++)
+            {
+                int c = cells[i];
+                double d = dist[i];
+                if (d < gap || !P.IsLand(c) || P.FieldOwner[c] != 0 || w.SettlementAtCell(c) != 0) continue;
+                double hab = Sites.Habitability(P, c);
+                bool mine = hab >= Sites.MinQuality;
+                for (int k = 0; k < _nbrs.Count && mine; k++) { double dn = Vec3d.ArcDistance(w.Settlements.Get(_nbrs[k]).Anchor, g.Center[c], P.Radius); if (dn < d || dn < gap) mine = false; }
+                if (mine) _mcand.Add((hab, c));
+            }
+            // the best by its worth, the most habitable first (a site's worth is never more than how habitable it is); ties to the lower cell; one their
+            // way on foot reaches (not across a bay or a lake)
+            _mcand.Sort((x, y) => x.hab != y.hab ? y.hab.CompareTo(x.hab) : x.c.CompareTo(y.c));
+            int best = -1;
+            for (int i = 0; i < _mcand.Count; i++)
+            {
+                if (_mcand[i].hab <= q) break;
+                double v = Sites.Quality(w, _mcand[i].c, _scratch, gap);
+                if (v >= Sites.MinQuality && v > q && w.Routes.GetToCell(w, sid, _mcand[i].c) != null) { q = v; best = _mcand[i].c; }
+            }
+            return best;
         }
 
         /// <summary>Whether a village knows a good place to found a village at now (the best of its lore, looked at again).</summary>
@@ -241,7 +365,9 @@ namespace TC2.Core.Places
                 if (jt != null) jt[1]++;
                 double p = Pressure(in t);
                 if (p > homePressure - 0.1) { if (jt != null) jt[2]++; continue; }
-                double spare = SpareLand(o) - heads * SettlementSystem.HaPerHead(w, in t);   // (what they would sow there, by what its land bears: C3.6f)
+                int coming = 0;
+                if (!MarginsOff) _coming.TryGetValue(o, out coming);   // (and what those already on their way will: C3.6g)
+                double spare = SpareLand(o) - (heads + coming) * SettlementSystem.HaPerHead(w, in t);   // (what they would sow there, by what its land bears: C3.6f)
                 if (spare <= 0) { if (jt != null) jt[3]++; continue; }
                 if (w.Routes.Get(w, sid, o) == null) { if (jt != null) jt[4]++; continue; }
                 if (jt != null) jt[5]++;
@@ -259,7 +385,7 @@ namespace TC2.Core.Places
         public const int JoinTallyN = 9;
 
         /// <summary>Arable hectares within a village's fields' reach that no other village holds, beyond what its people need.</summary>
-        double SpareLand(int sid)
+        public double SpareLand(int sid)   // (public for the tests: C3.6g)
         {
             var w = _w; var P = w.Planet;
             ref var s = ref w.Settlements.Get(sid);
@@ -395,7 +521,7 @@ namespace TC2.Core.Places
                 // for a report it never had - where a village now stands within the spacing no village is founded (`Sites.Spacing`), they
                 // make their home in the nearest; else they found theirs (two villages on one spot had a way of no length between them,
                 // and their visitors walked it forever: D2-137)
-                int there = JoinOff ? 0 : VillageNear(party.Site);
+                int there = JoinOff ? 0 : VillageNear(party.Site, party.Kind == 1 ? MarginGap(w) : Sites.Spacing);   // (a daughter village keeps less room: C3.6g)
                 if (there != 0)
                 {
                     dest = there;
@@ -415,7 +541,7 @@ namespace TC2.Core.Places
                         Rel1 = party.Event != 0 ? CauseRel.CausedBy : CauseRel.None, ArgA = households, ArgB = people, RootKind = RootKind.People,
                     });
                 }
-                else dest = FoundAt(party.Site, party.Event, party.Origin);
+                else dest = FoundAt(party.Site, party.Event, party.Origin, party.Kind);
             }
             if (dest == 0 || !w.Settlements.Exists(dest) || !w.Settlements.Get(dest).Inhabited)
             {
@@ -442,12 +568,13 @@ namespace TC2.Core.Places
         /// <summary>Tools: a party founds its village at its place even where one now stands (`--nojoin`, before D2-137).</summary>
         public static bool JoinOff;
 
-        /// <summary>The inhabited village nearest a place within `Sites.Spacing` of it (where no village may be founded; ties to the lower id), 0 none.</summary>
-        int VillageNear(int cell)
+        /// <summary>The inhabited village nearest a place within the room a new village keeps (`Sites.Spacing`, a daughter's `MarginGap`), where no village
+        /// may be founded (ties to the lower id), 0 none.</summary>
+        int VillageNear(int cell, double room)
         {
             var w = _w; var P = w.Planet;
             Vec3d at = P.Grid.Center[cell];
-            int best = 0; double bd = Sites.Spacing;
+            int best = 0; double bd = room;
             for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
             {
                 ref var s = ref w.Settlements.Get(sid);
@@ -508,7 +635,7 @@ namespace TC2.Core.Places
         public static bool TonguesOff;
 
         /// <summary>A village is founded at a place (at a party's arrival): its frame, its ground, no houses or works yet.</summary>
-        public int FoundAt(int cell, long cause, int origin)
+        public int FoundAt(int cell, long cause, int origin, int how = 0)   // (how 1: a daughter village on its village's margins - C3.6g)
         {
             var w = _w; var P = w.Planet;
             int sid = w.Ids.Next(EntityKind.Settlement);
@@ -548,7 +675,7 @@ namespace TC2.Core.Places
             sr.FoundedEvent = w.Record(new HistoryEvent
             {
                 Kind = HistoryKind.SettlementFounded, Time = w.Now, Cell = cell, Settlement = sid, Subject = EntityRef.Settlement(sid),
-                Object = EntityRef.Settlement(origin), Cause1 = cause, Rel1 = CauseRel.CausedBy,
+                Object = EntityRef.Settlement(origin), Cause1 = cause, Rel1 = CauseRel.CausedBy, ArgA = how,
             });
             Structures.Plan(w, sid);   // (their first work: a well, laid out at once - C1.1)
             Woods.Choose(w, sid);      // (and where they will fell their wood: C1.2)
