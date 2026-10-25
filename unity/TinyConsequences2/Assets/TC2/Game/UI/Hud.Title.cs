@@ -61,7 +61,7 @@ namespace TC2.Game
             {
                 GUILayout.Space(10);
                 GUILayout.Label("<b>Look</b>: drag to turn the planet, the wheel to come down to a village or rise to the whole world. <b>Time</b>: 1-8 or the bar at the top set the speed; Space holds the world still; 9 lets it run as fast as it can. The world lives on while you are away and catches up when you come back.", _titleText);
-                GUILayout.Label("<b>Its people</b>: click a person or a house to see who they are and follow a life; a village's name opens its page. <b>B</b> opens the History Book - every line in it happened, and each tells what caused it. <b>R</b> shows the realms, <b>N</b> the names, <b>H</b> hides all of this.", _titleText);
+                GUILayout.Label("<b>Its people</b>: click a person or a house to see who they are and follow a life; a village's name opens its page. <b>B</b> opens the History Book - every line in it happened, and each tells what caused it. <b>R</b> shows the realms, <b>N</b> the names, <b>M</b> mutes the world's sound, <b>H</b> hides all of this.", _titleText);
                 GUILayout.Label("<b>Reach in</b>: the powers at the bottom - lightning, a storm, a quake, an eruption, a sickness, a blight. Choose one, then click the ground; the right button stops. Each comes back in the world's time. The world does not exist to answer you: what follows is its own doing, and the book's last part, Your Actions, tells what came of yours.", _titleText);
             }
             GUILayout.EndArea();
