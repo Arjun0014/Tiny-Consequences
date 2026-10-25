@@ -136,13 +136,13 @@ namespace TC2.Core.Simulation
         public static Budget Events(long n) => new Budget { MaxEvents = n };
     }
 
-    public enum CommandKind : byte { None = 0, GodLightning = 1, Note = 2, SetResolution = 3, GodEruption = 4, GodQuake = 5, GodStorm = 6, SetStepDays = 7, GodPlague = 8, GodBlight = 9, GodMeteor = 10, GodDrought = 11, GodRain = 12, GodOre = 13, GodBounty = 14, GodCull = 15, GodBring = 16 }
+    public enum CommandKind : byte { None = 0, GodLightning = 1, Note = 2, SetResolution = 3, GodEruption = 4, GodQuake = 5, GodStorm = 6, SetStepDays = 7, GodPlague = 8, GodBlight = 9, GodMeteor = 10, GodDrought = 11, GodRain = 12, GodOre = 13, GodBounty = 14, GodCull = 15, GodBring = 16, GodWarm = 17, GodCold = 18 }
 
     /// <summary>(F9.4) A god's drought - rain withheld from the land round a place until a time - or (F9.5) the god's rain brought there. State: saved
     /// (hashed while one is held).</summary>
     public struct DrySpell
     {
-        public byte Kind;         // 0 the rain withheld, 1 rain brought (F9.5)
+        public byte Kind;         // 0 the rain withheld, 1 rain brought (F9.5), 2 warm air, 3 cold air (F9.9)
         public int Cell;          // the place
         public double Reach;      // m round it
         public long Until;        // the rain comes back
@@ -180,7 +180,7 @@ namespace TC2.Core.Simulation
     /// </summary>
     public sealed class World
     {
-        public const int FormatSimVersion = 106; // 106: the god's cull and bringing - nine in ten of the hunting beasts round a place culled; the game the place suits best brought there as thick as it lives where it does best (at sea the hunting fish and seals, a shoal) - the rest by the world's own laws (F9.8), 105: the lord's household - a first household whose grain runs years beyond its needs keeps landless households, its own village's and a lord's realm's (who come to the seat), a year of their need each harvest (C10.11), 104: the god's ore and bounty - the fields round a place renewed as when first broken, tiring again by the soil's own law (F9.7); the god's ore - a body of rich copper ore laid bare at a place, found, dug, smelted and traded by the world's own rules, its chain rooted in the cast (F9.6), 103: the memory pass - past the Local window the night's deeds and the ordinary are kept only for what they led to, and the names of the dead nothing kept can show leave the registry (14 §7), 102: stone walls - a walled village that knows rock at hand and loses much to other villages' people walls its ring in dry stone, stretch by stretch, when the curtain is worth its labour over the century it stands; stone does not rot and triples the defenders' ground (C7.2), 101: a people's ways carried and copied - each household builds as it was raised to (the groom's house, its founders', the village it came from), now and then taking a way of its village's first household or the bride's; a tributary's first household comes to build as its lord's seat (C11.1b), 100: the harrying - a band broken on a village's walls burns and tramples its standing crop outside them, a share by its numbers (C8.1a), 99: the god's rain - rain brought over a land for some days, the soil drinking and fires going out by the world's own laws (F9.5), 98: the god's meteor and drought - a strike from the sky that flattens, kills, burns and shakes round its place; the rain withheld from a land for a summer (F9.4), 97: the god's sickness and blight - two powers that act through the world's own systems, a pestilence breaking out in a village and a blight on its standing crop, each rooted in the cast (F9.3), 96: the burning-in - a band that holds the field fires the homes of the raided village's people who killed people of the village whose wrong it went for; the vengeance answers the killing (C8.0), 95: the land between villages - leavers who find no free good place known and no village to join go together, enough to make one, to found a daughter village on their own village's margins, its houses beyond every village's fields (C3.6g), 94: a people's tongue - each village's people speak as its founders did, a sound changed now and then; places, families and the born are named in it (C11.1a, D2-175), 93: the lord's peace - villages of one realm raise no bands against each other; a claim for blood between them is judged by their common lord, whose judgment binds the doers where it is no weaker (C10.10, D2-174), 92: the lord's death - when the one first among a lord village's people dies, the bonds for peace made with that village lapse; its tributaries owe the heir nothing until it has won them again by asking; bonds for bread stand (C10.9, D2-173), 91: the asking - a free village is asked a tenth at its harvest by its nearest stronger neighbour whose first among the people keeps sworn men: it bows where its people could neither stand against them nor go elsewhere, else the refusal is a wrong the asker holds (C10.8, D2-168), 90: people across water - a COARSE day's visits, the sickness and news they carry and the ways they wear go only to neighbours a way on foot joins, as lived visitors walk one (C9.5c, D2-166), 89: sworn men - a village's first household whose grain runs years beyond its needs keeps young men of its village sworn to it, a year's food each at its harvest; they practise arms every day and go with every band (C10.7b, D2-165), 88: a lordship's might by lasting strength - villages weigh each other's people of fighting age by their years, tools and arms and fighting skill, not by heads (C10.7a, D2-164), 87: a boat to cross - a village whose neighbours across the water are worth reaching makes a boat for that, and a dugout carries a load across a short water (C9.5b), 86: grain across water goes by boat - within a day's walk grain moves at once only where a way on foot joins two villages, and traders walk only along one; relief, grain given back and the lord's tenth cross water in boats (the lord's come for the tenth where its tributary has none) or not at all (C9.5a), 85: tribute carried - the lord's tenth set aside at the tributary's harvest and carried to its store by its people (C10.6, D2-161), 84: the ways' woods - routes worked out from the woods as they stood at the last turn of the plates, so a route built late, after a load or first for the view is the same (D2-160), 83: a lordship's might - villages weigh each other by their people of fighting age and the men a lord's call brings, not the day's fit at home (C10.5, D2-159), 82: bread and dependence - a village bows to the neighbour whose famine grain it cannot give back; tribute gives the relief back, a lord feeds its own (C10.4, D2-157), 81: walks on foot round the water - a lived walk bends round a lake or a bay across its way, the woods by the way their cutters walk, crofts and the well's and the idle's spots out of the water (D2-156), 80: the herds on the stubble and the fallow - their day's dung on the fields (C3.7d, D2-155), 79: the muck - the herds' night dung in the yards, carted out to the fields (C3.7c, D2-153), 78: the burial ground - the dead buried where they lived, their graves fresh and sinking (D2-151), 77: the threshing floor - the harvest held in the sheaf until its people thresh it (C3.7b); the woods remember their felling (W-FELL), 76: the household's garden - its croft dug, weeded and gathered (C3.7a), 75: the household's niche - a couple marries when its land and hands keep it, or its grain carries the shortfall (C3.5b, D2-140), 74: the soil - the fields tire, rest and the herds' dung give back (C3.6f, D2-139), 73: a headman gone to live in another household of the village stays first; clients follow the household that took theirs in (D2-138), 72: a founding party joins a village standing at its place; a way of no length arrives where it goes (D2-137), 71: the old hand on their holding for their keep (C3.6e, D2-136), 70: each household weighs leaving by its own land (C3.6d, D2-135), 69: the harvest shared by land and labour (C3.6c, D2-134), 68: each household holds land - founding shares, portions, the last out, heirs, land taken up (C3.6b, D2-133), 67: the harvest's grain comes into the store as it is reaped (the hungry gap, D2-132), 66: villages work their land harder where it is short of their want (C3.6, D2-131), 65: a couple marries when it can keep a household to the next harvest (C3.5, D2-129), 64: a contested succession splits a village (C10.3, D2-128), 63: the village's first household and its headman (C10.2, D2-127), 62: the household's grain and what households owe (C3.3, D2-126), 61: the village smith - a smithy's four places, a smith's practice (C1.4b, D2-125), 60: carts (C4.2, D2-122), 59: the potter's kiln, jars and hearths' pots of real clay; clay by the ground's shape (C3.2, D2-121), 58: more weaver's sheds where a town's makers cannot keep up (C3.1b, D2-120), 57: the weaver's shed and the village's wares (C3.1, D2-119), 56: footprints, a town's divided core, the market place (C13.3, D2-118), 55: streets (C13.1, D2-116), 54: how buildings are built, building traditions (D2-114), 53: relief owed back, social storage (C9.3, D2-113), 52: trade by sea (C9.3, D2-113), 51: boats of planks, the boat shed (C9.2b, D2-112), 50: the landing and the crew (C9.2a, D2-111), 49: boats from the woods (C9.1, D2-110), 48: the lord answers for its tributaries (D2-108), 47: the lord's call (C10.1, D2-107), 46: whose ore (C5.4, D2-105), 45: iron traded, made for buyers (C5.3b, D2-104), 44: places by their ore (C5.3, D2-103), 43: bog iron and the bloomery (C5.2b, D2-102), 42: charcoal (C5.2a, D2-101), 41: copper ore bodies and mines (C5.1, D2-100), 40: rings that grow (C7.1, D2-098), 39: ways worn by use (C4.1, D2-097), 38: markets, rings on dry ground (C1.6, D2-095), 37: training grounds and fighting skill (C1.5, D2-094), 36: the smithy and arms (C1.4, D2-093), 35: stone and the quarry (C1.3, D2-092), 34: timber from the woods (C1.2, D2-091), 33: structures by kind, works by need, granary capacity (C1.1, D2-090), 32: the store a DEEP step leads (F8), 31: DEEP steps (F8), 30: the annals (D2-077), 29: tribute and lordship (D2-075), 28: palisades (D2-074), 27: raids (D2-073), 26: amends, news and taking back (D2-072), 25: the watch, blows and injury (D2-071), 24: sickness at scale (D2-070), 23: deeds and taking (D2-069), 22: trade and relief (D2-067), 21: sickness (D2-066), 20: metal (D2-064), 19: materials and two more techniques (D2-063), 18: techniques carried by people (D2-062), 17: homes standing on their own (D2-059), 16: goods made and mended (D2-058), 15: the household's work and warmth (D2-056), 14: tending (D2-050), 13: herds near people, livestock (D2-047, D2-048), 12: building, knowing places, parties (D2-045), 11: relief, ice and animal densities (D2-043, D2-044), 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032), 5: wildlife (D2-035), 6: ice-aware weathering (D2-036), 7: evolution (D2-037), 8: crag fare (D2-038), 9: the sea's life (D2-039), 10: wild food, body reserves, famine memory (D2-042)
+        public const int FormatSimVersion = 106; // 106: the god's warmth and cold - a summer's air over a land warmer or colder by 5 C: the crops grow faster or slower, the soil dries, homes burn less or more wood (F9.9); the god's cull and bringing - nine in ten of the hunting beasts round a place culled; the game the land round it lacks most brought there as thick as it lives over its range (at sea the hunting fish and seals, a shoal) - the rest by the world's own laws (F9.8), 105: the lord's household - a first household whose grain runs years beyond its needs keeps landless households, its own village's and a lord's realm's (who come to the seat), a year of their need each harvest (C10.11), 104: the god's ore and bounty - the fields round a place renewed as when first broken, tiring again by the soil's own law (F9.7); the god's ore - a body of rich copper ore laid bare at a place, found, dug, smelted and traded by the world's own rules, its chain rooted in the cast (F9.6), 103: the memory pass - past the Local window the night's deeds and the ordinary are kept only for what they led to, and the names of the dead nothing kept can show leave the registry (14 §7), 102: stone walls - a walled village that knows rock at hand and loses much to other villages' people walls its ring in dry stone, stretch by stretch, when the curtain is worth its labour over the century it stands; stone does not rot and triples the defenders' ground (C7.2), 101: a people's ways carried and copied - each household builds as it was raised to (the groom's house, its founders', the village it came from), now and then taking a way of its village's first household or the bride's; a tributary's first household comes to build as its lord's seat (C11.1b), 100: the harrying - a band broken on a village's walls burns and tramples its standing crop outside them, a share by its numbers (C8.1a), 99: the god's rain - rain brought over a land for some days, the soil drinking and fires going out by the world's own laws (F9.5), 98: the god's meteor and drought - a strike from the sky that flattens, kills, burns and shakes round its place; the rain withheld from a land for a summer (F9.4), 97: the god's sickness and blight - two powers that act through the world's own systems, a pestilence breaking out in a village and a blight on its standing crop, each rooted in the cast (F9.3), 96: the burning-in - a band that holds the field fires the homes of the raided village's people who killed people of the village whose wrong it went for; the vengeance answers the killing (C8.0), 95: the land between villages - leavers who find no free good place known and no village to join go together, enough to make one, to found a daughter village on their own village's margins, its houses beyond every village's fields (C3.6g), 94: a people's tongue - each village's people speak as its founders did, a sound changed now and then; places, families and the born are named in it (C11.1a, D2-175), 93: the lord's peace - villages of one realm raise no bands against each other; a claim for blood between them is judged by their common lord, whose judgment binds the doers where it is no weaker (C10.10, D2-174), 92: the lord's death - when the one first among a lord village's people dies, the bonds for peace made with that village lapse; its tributaries owe the heir nothing until it has won them again by asking; bonds for bread stand (C10.9, D2-173), 91: the asking - a free village is asked a tenth at its harvest by its nearest stronger neighbour whose first among the people keeps sworn men: it bows where its people could neither stand against them nor go elsewhere, else the refusal is a wrong the asker holds (C10.8, D2-168), 90: people across water - a COARSE day's visits, the sickness and news they carry and the ways they wear go only to neighbours a way on foot joins, as lived visitors walk one (C9.5c, D2-166), 89: sworn men - a village's first household whose grain runs years beyond its needs keeps young men of its village sworn to it, a year's food each at its harvest; they practise arms every day and go with every band (C10.7b, D2-165), 88: a lordship's might by lasting strength - villages weigh each other's people of fighting age by their years, tools and arms and fighting skill, not by heads (C10.7a, D2-164), 87: a boat to cross - a village whose neighbours across the water are worth reaching makes a boat for that, and a dugout carries a load across a short water (C9.5b), 86: grain across water goes by boat - within a day's walk grain moves at once only where a way on foot joins two villages, and traders walk only along one; relief, grain given back and the lord's tenth cross water in boats (the lord's come for the tenth where its tributary has none) or not at all (C9.5a), 85: tribute carried - the lord's tenth set aside at the tributary's harvest and carried to its store by its people (C10.6, D2-161), 84: the ways' woods - routes worked out from the woods as they stood at the last turn of the plates, so a route built late, after a load or first for the view is the same (D2-160), 83: a lordship's might - villages weigh each other by their people of fighting age and the men a lord's call brings, not the day's fit at home (C10.5, D2-159), 82: bread and dependence - a village bows to the neighbour whose famine grain it cannot give back; tribute gives the relief back, a lord feeds its own (C10.4, D2-157), 81: walks on foot round the water - a lived walk bends round a lake or a bay across its way, the woods by the way their cutters walk, crofts and the well's and the idle's spots out of the water (D2-156), 80: the herds on the stubble and the fallow - their day's dung on the fields (C3.7d, D2-155), 79: the muck - the herds' night dung in the yards, carted out to the fields (C3.7c, D2-153), 78: the burial ground - the dead buried where they lived, their graves fresh and sinking (D2-151), 77: the threshing floor - the harvest held in the sheaf until its people thresh it (C3.7b); the woods remember their felling (W-FELL), 76: the household's garden - its croft dug, weeded and gathered (C3.7a), 75: the household's niche - a couple marries when its land and hands keep it, or its grain carries the shortfall (C3.5b, D2-140), 74: the soil - the fields tire, rest and the herds' dung give back (C3.6f, D2-139), 73: a headman gone to live in another household of the village stays first; clients follow the household that took theirs in (D2-138), 72: a founding party joins a village standing at its place; a way of no length arrives where it goes (D2-137), 71: the old hand on their holding for their keep (C3.6e, D2-136), 70: each household weighs leaving by its own land (C3.6d, D2-135), 69: the harvest shared by land and labour (C3.6c, D2-134), 68: each household holds land - founding shares, portions, the last out, heirs, land taken up (C3.6b, D2-133), 67: the harvest's grain comes into the store as it is reaped (the hungry gap, D2-132), 66: villages work their land harder where it is short of their want (C3.6, D2-131), 65: a couple marries when it can keep a household to the next harvest (C3.5, D2-129), 64: a contested succession splits a village (C10.3, D2-128), 63: the village's first household and its headman (C10.2, D2-127), 62: the household's grain and what households owe (C3.3, D2-126), 61: the village smith - a smithy's four places, a smith's practice (C1.4b, D2-125), 60: carts (C4.2, D2-122), 59: the potter's kiln, jars and hearths' pots of real clay; clay by the ground's shape (C3.2, D2-121), 58: more weaver's sheds where a town's makers cannot keep up (C3.1b, D2-120), 57: the weaver's shed and the village's wares (C3.1, D2-119), 56: footprints, a town's divided core, the market place (C13.3, D2-118), 55: streets (C13.1, D2-116), 54: how buildings are built, building traditions (D2-114), 53: relief owed back, social storage (C9.3, D2-113), 52: trade by sea (C9.3, D2-113), 51: boats of planks, the boat shed (C9.2b, D2-112), 50: the landing and the crew (C9.2a, D2-111), 49: boats from the woods (C9.1, D2-110), 48: the lord answers for its tributaries (D2-108), 47: the lord's call (C10.1, D2-107), 46: whose ore (C5.4, D2-105), 45: iron traded, made for buyers (C5.3b, D2-104), 44: places by their ore (C5.3, D2-103), 43: bog iron and the bloomery (C5.2b, D2-102), 42: charcoal (C5.2a, D2-101), 41: copper ore bodies and mines (C5.1, D2-100), 40: rings that grow (C7.1, D2-098), 39: ways worn by use (C4.1, D2-097), 38: markets, rings on dry ground (C1.6, D2-095), 37: training grounds and fighting skill (C1.5, D2-094), 36: the smithy and arms (C1.4, D2-093), 35: stone and the quarry (C1.3, D2-092), 34: timber from the woods (C1.2, D2-091), 33: structures by kind, works by need, granary capacity (C1.1, D2-090), 32: the store a DEEP step leads (F8), 31: DEEP steps (F8), 30: the annals (D2-077), 29: tribute and lordship (D2-075), 28: palisades (D2-074), 27: raids (D2-073), 26: amends, news and taking back (D2-072), 25: the watch, blows and injury (D2-071), 24: sickness at scale (D2-070), 23: deeds and taking (D2-069), 22: trade and relief (D2-067), 21: sickness (D2-066), 20: metal (D2-064), 19: materials and two more techniques (D2-063), 18: techniques carried by people (D2-062), 17: homes standing on their own (D2-059), 16: goods made and mended (D2-058), 15: the household's work and warmth (D2-056), 14: tending (D2-050), 13: herds near people, livestock (D2-047, D2-048), 12: building, knowing places, parties (D2-045), 11: relief, ice and animal densities (D2-043, D2-044), 2: volcanoes (D2-028), 3: quakes (D2-030), 4: erosion and storms (D2-031, D2-032), 5: wildlife (D2-035), 6: ice-aware weathering (D2-036), 7: evolution (D2-037), 8: crag fare (D2-038), 9: the sea's life (D2-039), 10: wild food, body reserves, famine memory (D2-042)
 
         public WorldConfig Config;
         public ulong Seed => Config.Seed;
@@ -280,7 +280,7 @@ namespace TC2.Core.Simulation
             Fire = new FireSystem(planet.Cells);
             Travel = new TravelIndex(planet.Cells);
             _cellSettlement = new int[planet.Cells];
-            PlanetSys = new PlanetSystems(planet);
+            PlanetSys = new PlanetSystems(planet) { Owner = this };
             Drainage = new Drainage(planet.Cells);
             Tect = new Tectonics(planet);
         }
@@ -345,6 +345,25 @@ namespace TC2.Core.Simulation
 
         /// <summary>(F9.5) Whether the god's rain falls on a cell today (any rain brought over it).</summary>
         public bool RainBrought(int cell) => Spell(cell, 1);
+
+        /// <summary>(F9.9) The god's warmth or cold: how far round the place the air is changed (m), for how many days (a summer, as a drought), by how much (C).</summary>
+        public const double AirReach = 4000.0, AirBy = 5.0;
+        public const int AirDays = 16;
+
+        /// <summary>(F9.9) How much warmer (or, below zero, colder) the god has made the air over a cell now: each warm or cold air held over it.</summary>
+        public double AirShift(int cell)
+        {
+            if (DrySpells.Count == 0) return 0.0;
+            double d = 0.0;
+            Vec3d p = Planet.Grid.Center[cell];
+            for (int i = 0; i < DrySpells.Count; i++)
+            {
+                var sp = DrySpells[i];
+                if (sp.Kind < 2 || Now >= sp.Until || Vec3d.ArcDistance(p, Planet.Grid.Center[sp.Cell], Planet.Radius) > sp.Reach) continue;
+                d += sp.Kind == 2 ? AirBy : -AirBy;
+            }
+            return d;
+        }
 
         bool Spell(int cell, byte kind)
         {
@@ -462,43 +481,41 @@ namespace TC2.Core.Simulation
             }
         }
 
-        /// <summary>(F9.8) The god's bringing: of the living kinds of the place's habitat that hunt nothing (game; at sea the shoaling fish), the one the place
-        /// suits best is brought to every cell of that habitat within a walk of it, as thick as it lives where it is thickest, as far as each cell suits it as
-        /// well as that one - with that place's coats and lineage, well fed. Told, caused by the cast; what follows by the world's own laws.</summary>
+        /// <summary>(F9.8) The god's bringing: of the living kinds of the place's habitat that hunt nothing (game; at sea the shoaling fish), the one the land
+        /// within a walk of it lacks most (by weight) is brought there - each cell filled to as thick as the kind lives over its range for what the land
+        /// offers it (its animals a hectare of the land it suits, as far as each cell suits it), with the coats and lineage of its thickest population,
+        /// well fed: a herd hunted out comes back, a kind the land never had comes. Told, caused by the cast; what follows by the world's own laws.</summary>
         void GodBring(int cell, long ev)
         {
             var P = Planet; int n = P.Cells;
             if (P.Abund == null || P.Abund.Length == 0) return;
             bool land = P.IsLand(cell);
             byte hab = (byte)(land ? 0 : 1);
-            int best = -1; double bs = 0;
+            BeastCells(cell, _beastCells);
+            int best = -1, bestSrc = -1; double bestLack = 0, bestStock = 0;
             for (int s = 0; s < P.Species.Count; s++)
             {
                 var sp = P.Species[s];
                 if (sp.Gone != 0 || sp.Habitat != hab || sp.Prey != 0 || (land && sp.Mass < 2f)) continue;
-                double su = Ecology.Suitability(P, sp, cell);
-                if (su > bs + 1e-12) { bs = su; best = s; }
+                double stock = Stocking(sp, s, out int src);
+                if (stock <= 0 || src < 0) continue;
+                double lack = 0;
+                for (int j = 0; j < _beastCells.Count; j++)
+                {
+                    int q = _beastCells[j];
+                    double want = stock * P.AreaHa(q) * Ecology.Suitability(P, sp, q), a = DMath.Max(0.0, P.Abund[s * n + q]);
+                    if (want > a) lack += (want - a) * sp.Mass;   // (by weight: a herd of deer is more game than a warren of hares)
+                }
+                if (lack > bestLack + 1e-9) { bestLack = lack; best = s; bestSrc = src; bestStock = stock; }
             }
-            if (best < 0 || bs < 0.05) return;   // nothing that lives would live here
+            if (best < 0 || bestLack < 0.5) return;   // the land holds all the game it could
             var bsp = P.Species[best];
-            // where the kind is thickest (animals a hectare): the brought come as thick as there, with its coats and lineage
-            int src = -1; double dens = 0;
-            for (int q = 0; q < n; q++)
-            {
-                double a = P.Abund[best * n + q];
-                if (a <= 0) continue;
-                double d = a / P.AreaHa(q);
-                if (d > dens) { dens = d; src = q; }
-            }
-            if (src < 0) return;
-            double suSrc = DMath.Max(0.05, Ecology.Suitability(P, bsp, src));
-            double coat = P.Coat[best * n + src], drift = P.Drift[best * n + src];
-            BeastCells(cell, _beastCells);
+            double coat = P.Coat[best * n + bestSrc], drift = P.Drift[best * n + bestSrc];
             double brought = 0;
             for (int j = 0; j < _beastCells.Count; j++)
             {
                 int q = _beastCells[j], i = best * n + q;
-                double want = dens * P.AreaHa(q) * DMath.Min(1.0, Ecology.Suitability(P, bsp, q) / suSrc);
+                double want = bestStock * P.AreaHa(q) * Ecology.Suitability(P, bsp, q);
                 double a = DMath.Max(0.0, P.Abund[i]), add = want - a;
                 if (add <= 1e-3) continue;
                 P.Coat[i] = (float)((a * P.Coat[i] + add * coat) / want);
@@ -510,6 +527,27 @@ namespace TC2.Core.Simulation
             if (brought < 0.5) return;
             Record(new HistoryEvent { Kind = HistoryKind.BeastsBrought, Time = Now, Cell = cell, Settlement = VillageNear(cell, GodReach), Subject = new EntityRef(EntityKind.Species, bsp.Id), Cause1 = ev, Rel1 = CauseRel.CausedBy, Magnitude = (float)brought, ArgA = hab, RootKind = RootKind.You });
         }
+
+        /// <summary>(F9.8) How thick a kind lives for what the land offers it: its animals over its range per hectare of suitability (the cells it suits by
+        /// `StockSuit` or more where it lives); and the cell where it is thickest (its coats and lineage). 0 where it lives nowhere it suits.</summary>
+        public double Stocking(in Species sp, int s, out int thickest)
+        {
+            var P = Planet; int n = P.Cells;
+            double num = 0, den = 0, top = 0; thickest = -1;
+            for (int q = 0; q < n; q++)
+            {
+                double a = P.Abund[s * n + q];
+                if (a <= 0) continue;
+                double su = Ecology.Suitability(P, sp, q);
+                if (su < StockSuit) continue;
+                double ha = P.AreaHa(q);
+                num += a; den += ha * su;
+                if (a / ha > top) { top = a / ha; thickest = q; }
+            }
+            return den > 0 ? num / den : 0.0;
+        }
+        /// <summary>(F9.8) The suitability from which a cell counts as the kind's land in its stocking.</summary>
+        public const double StockSuit = 0.3;
 
         /// <summary>The inhabited village nearest a cell within a distance (ties to the lower id), 0 none.</summary>
         public int VillageNear(int cell, double within)
@@ -688,6 +726,27 @@ namespace TC2.Core.Simulation
                         DrySpells.Add(new DrySpell { Kind = 1, Cell = c.Cell, Reach = RainReach, Until = Now + RainDays * SimTime.Day, Event = rev });
                         break;
                     }
+                case CommandKind.GodWarm:
+                case CommandKind.GodCold:
+                    {
+                        // (F9.9) a summer's air over the land round the place warmer (or colder) by 5 C: crops grow faster where it is cold and slower where
+                        // it is hot (or the cold slows them where it is cool), the soil dries faster, homes burn less (more) wood, the frost lifts (keeps the
+                        // herds in) - by the world's own laws; under the cold the crops standing name it as their harm, as under a drought
+                        bool warm = c.Kind == CommandKind.GodWarm;
+                        long ev = Record(new HistoryEvent { Kind = HistoryKind.GodCommand, Time = Now, Cell = c.Cell, Settlement = VillageNear(c.Cell, GodReach), RootKind = RootKind.You, ArgA = (int)c.Kind });
+                        long aev = Record(new HistoryEvent { Kind = warm ? HistoryKind.WarmAir : HistoryKind.ColdAir, Time = Now, Cell = c.Cell, Settlement = VillageNear(c.Cell, AirReach), Cause1 = ev, Rel1 = CauseRel.CausedBy, ArgA = AirDays, Magnitude = (float)AirBy, RootKind = RootKind.You });
+                        DrySpells.Add(new DrySpell { Kind = (byte)(warm ? 2 : 3), Cell = c.Cell, Reach = AirReach, Until = Now + AirDays * SimTime.Day, Event = aev });
+                        if (!warm)
+                        {
+                            Vec3d at = Planet.Grid.Center[c.Cell];
+                            for (int sid = Settlements.First(); sid != 0; sid = Settlements.Next(sid))
+                            {
+                                ref var s = ref Settlements.Get(sid);
+                                if (s.Inhabited && s.CropCause == 0 && Vec3d.ArcDistance(at, s.Anchor, Planet.Radius) <= AirReach) s.CropCause = aev;
+                            }
+                        }
+                        break;
+                    }
                 case CommandKind.GodEruption:
                     {
                         long ev = Record(new HistoryEvent { Kind = HistoryKind.GodCommand, Time = Now, Cell = c.Cell, Settlement = SettlementAtCell(c.Cell), RootKind = RootKind.You, ArgA = (int)c.Kind });
@@ -714,7 +773,7 @@ namespace TC2.Core.Simulation
                 case CommandKind.GodBring:
                     {
                         // (F9.8) the beasts of the land round the place (at sea, its waters): the cull takes nine in ten of every kind that hunts there -
-                        // wolves, foxes, bears; seals and the hunting fish -, the bringing brings the game the place suits best; what follows - pens
+                        // wolves, foxes, bears; seals and the hunting fish -, the bringing brings the game the land lacks most; what follows - pens
                         // safer, game thicker, the grass grazed harder, hunters back from beyond - runs by the world's own laws; each kind told
                         bool sea = !Planet.IsLand(c.Cell);
                         long ev = Record(new HistoryEvent { Kind = HistoryKind.GodCommand, Time = Now, Cell = c.Cell, Settlement = VillageNear(c.Cell, GodReach), RootKind = RootKind.You, ArgA = (int)c.Kind, ArgB = sea ? 1 : 0 });
@@ -1587,7 +1646,7 @@ namespace TC2.Core.Simulation
                 var e = Queue.RawAt(i);
                 if (e.Kind == EventKind.SystemTick && e.Target == SystemId.Vegetation && (NextPlantTick == 0 || e.Time < NextPlantTick)) NextPlantTick = e.Time;
             }
-            PlanetSys = new PlanetSystems(Planet);
+            PlanetSys = new PlanetSystems(Planet) { Owner = this };
             Tect = new Tectonics(Planet);
             Drainage.Rebuild(Planet, fromSaved: true);
             Drainage.SettleStored(Planet);
