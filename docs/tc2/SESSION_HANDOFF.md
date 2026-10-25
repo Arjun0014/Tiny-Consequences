@@ -16,6 +16,15 @@
   while `M_c`-`M_e` run** - work in a worktree.
 - Then: judge the run in the shots, books and measures; write 25 §6 "Fourth run" and the verdict on the finished core (25 §8); the frame pass by its
   pairs (make `sortplaces`/`shadowlite` the default if they help and read right).
+- **05:14 IST: the queue's runner was stopped by Claude Code for low system memory** (RAM 85 %, 1.7 GB free; not a fault of a job). Done by then:
+  `M_a` (main's full suite on sim 107: **507/0/0**), `M_b` x3 (seeds 2/4/7 `_ac4` for 1,000 years with books and measures in `tc2/out/tools/s26/accept/`),
+  `M_b0` (`place --ore` on `_rui1`), `M_b2` (prospecting's tests: `pros2 ok`). `M_c_shots_ac4_s2_v4_y0300` was running as an orphan (it finishes on its
+  own: `$Q/log/M_c_shots_ac4_s2_v4_y0300.log`, `tc2/out/shots/s26a_ac4_s2_v4_y300`; move `$Q/run_M_c_...` to `$Q/done` when it has ended). **Left in
+  `$Q/todo`**: `M_c` y600/y1000, `M_d`, `M_e`, `N_*` (prospecting's control, ten seeds `_pro1`, compare). Restart only when memory allows and the person
+  agrees: `bash tc2/out/tools/s23/runq.sh` in the background.
+- **C5.3c prospecting** (`wip/prospect` 85acede, worktree `C:/Game Dev/tc-prospect`, sim 108; measured first by `place --ore`, cb36a43 on main): a village
+  whose smiths lack ore looks for it twice a year - within its reach (the nearest body becomes known), else farther as a scout. ProspectTests 2/2 and six
+  classes 0 failed. Its evaluation is the `N_*` jobs; then land it (D2-190).
 - `K_b_ac3_s7` is in `$Q/hold` (superseded).
 ## Session 26 - HANDOFF (25 Oct 2026, 21:20 - ~23:25 IST; Control Room run #80 session 1) - rain, the harrying and the ways on main (sim 101); stone walls, the memory pass, the god's ore and the lord's household built, their checks RUNNING in the queue
 
