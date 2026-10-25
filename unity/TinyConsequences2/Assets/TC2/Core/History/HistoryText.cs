@@ -42,6 +42,11 @@ namespace TC2.Core.History
                 case HistoryKind.FireOut: return "The fire near " + place + " burnt out after " + e.ArgA + " hours (" + F(e.Magnitude, "0") + " cells).";
                 case HistoryKind.FieldsBurned: return "The fields of " + subj + " burned.";
                 case HistoryKind.CropsBlighted: return "A blight took the crop of " + subj + ".";
+                case HistoryKind.FieldsHarried:   // (C8.1a: the cause is the raid - its band named from it)
+                    {
+                        string by = w.History.TryGet(e.Cause1, out var re) && re.Kind == HistoryKind.Raid ? "the band from " + H.NameOf(re.Subject) : "a band";
+                        return "Driven off from its walls, " + by + " burned the crop of " + subj + " outside them (" + F(100.0 * e.Magnitude, "0") + " %).";
+                    }
                 case HistoryKind.MeteorStruck: return "A stone fell from the sky " + At(place) + (e.ArgA > 0 || e.ArgB > 0 ? ": " + (e.ArgA > 0 ? e.ArgA + (e.ArgA == 1 ? " building" : " buildings") + " flattened" : "") + (e.ArgA > 0 && e.ArgB > 0 ? ", " : "") + (e.ArgB > 0 ? e.ArgB + (e.ArgB == 1 ? " dead" : " dead") : "") : "") + ".";
                 case HistoryKind.RainBrought: return "Rain came over the land round " + place + (e.ArgA > 0 ? " for " + e.ArgA + " days" : "") + ".";
                 case HistoryKind.Drought: return "A drought came over the land round " + place + (e.ArgA > 0 ? ": no rain for " + e.ArgA + " days" : "") + ".";
