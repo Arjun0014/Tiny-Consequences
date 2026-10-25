@@ -88,6 +88,7 @@ namespace TC2.Core.History
         BoatBuilt = 85,         // a household made a boat (Subject the household, Object the boat, Other who led the making; C9.1)
         Sworn = 98,             // a man swore to the one first among his village's people, whose household feeds him from its grain (Subject the man, Object the lord, Other the household; Magnitude a year's food FU; ArgA the men sworn to the lord now; Cause1 the harvest, Cause2 the last tribute paid there; C10.7b)
         SwornReleased = 99,     // a sworn man was released (Subject the man, Object the lord; ArgA 1 the grain could keep no more, 2 another first among the people, 3 past forty, 4 he and the lord no longer of one village, 5 the lord died; C10.7b)
+        CropsBlighted = 101,    // a blight took most of a village's standing crop (Magnitude the share; Cause1 its cause - the god's blight: F9.3)
         TributeDemanded = 100,  // a village whose first among the people keeps sworn men asked a tenth of a weaker neighbour at its harvest (Subject the asker, Object the asked; Magnitude the tenth FU; ArgA 1 it bowed, 0 it refused - a wrong the asker holds; C10.8)
         BoatToCross = 97,       // a household laid down a boat to reach a village across the water no way on foot leads to (Subject the household, Object the village across, Other the boat; ArgA its kind, ArgB why - 1 a trade, 2 grain owed there, 3 its lord's tenth; Magnitude the deal's gain or the FU owed; C9.5b)
         FieldsRested = 96,      // a village began to rest a share of its arable each year: its crops a hectare had fallen (Magnitude the share resting; ArgA what a sown hectare bears, % of a fresh field's crop; ArgB its arable ha; C3.6f)
@@ -231,6 +232,7 @@ namespace TC2.Core.History
                 case HistoryKind.FireStarted:
                 case HistoryKind.FireOut:
                 case HistoryKind.FieldsBurned:
+                case HistoryKind.CropsBlighted:
                 case HistoryKind.BuildingBurned:
                 case HistoryKind.Harvest:
                 case HistoryKind.HarvestFailed:
@@ -317,6 +319,7 @@ namespace TC2.Core.History
                 case HistoryKind.Storm: b = 0.5 * DMath.Exp(0.06 * magnitude); break; // 33 m/s ~3.6, 60 m/s ~18
                 case HistoryKind.StormLandfall: b = 0.6 * DMath.Exp(0.06 * magnitude); break;
                 case HistoryKind.CropsFlattened: b = 5; break;
+                case HistoryKind.CropsBlighted: b = 5; break;
                 case HistoryKind.StormSurge: b = 20; break;
                 case HistoryKind.Speciation: b = 45; break;
                 case HistoryKind.Extinction: b = 40; break;

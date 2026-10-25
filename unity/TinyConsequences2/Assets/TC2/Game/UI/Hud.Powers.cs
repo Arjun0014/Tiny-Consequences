@@ -25,6 +25,10 @@ namespace TC2.Game
                         Help = "a magnitude-7 quake: homes may fall, slopes slide, the sea may come" },
             new Power { Name = "Eruption", Doing = "Split the earth", Kind = CommandKind.GodEruption, Arg = 3, Recharge = 10 * SimTime.Year, Reach = 2500,
                         Help = "the nearest vent within 2.5 km wakes, or the ground opens a new one" },
+            new Power { Name = "Plague", Doing = "Send a sickness", Kind = CommandKind.GodPlague, Recharge = 5 * SimTime.Year, Reach = World.GodReach,
+                        Help = "a new pestilence breaks out in the nearest village: it spreads as sicknesses do" },
+            new Power { Name = "Blight", Doing = "Blight the fields", Kind = CommandKind.GodBlight, Recharge = SimTime.Year, Reach = World.GodReach,
+                        Help = "the standing crop of the villages round it fails (nothing when the fields are bare)" },
         };
 
         int _aim = -1;                 // the power being aimed (-1 none)
@@ -106,7 +110,7 @@ namespace TC2.Game
                 _powerOff = new GUIStyle(_btn) { fontSize = 13, padding = new RectOffset(10, 10, 5, 5) };
                 _aimLabel = new GUIStyle(_label) { fontSize = 13, alignment = TextAnchor.UpperLeft };
             }
-            float bw = 470f, bh = 40f;
+            float bw = 640f, bh = 40f;
             _powersRect = new Rect((sw - bw) * 0.5f, sh - bh - 46f, bw, bh);
             GUILayout.BeginArea(_powersRect, _box);
             GUILayout.BeginHorizontal();

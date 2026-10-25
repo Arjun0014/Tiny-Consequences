@@ -41,6 +41,7 @@ namespace TC2.Core.History
                 case HistoryKind.Wildfire: return "A wildfire spread near " + place + " (" + F(e.Magnitude, "0") + " cells burnt so far).";
                 case HistoryKind.FireOut: return "The fire near " + place + " burnt out after " + e.ArgA + " hours (" + F(e.Magnitude, "0") + " cells).";
                 case HistoryKind.FieldsBurned: return "The fields of " + subj + " burned.";
+                case HistoryKind.CropsBlighted: return "A blight took the crop of " + subj + ".";
                 case HistoryKind.JourneyInterrupted:
                     {
                         string what = e.ArgA == JourneyOutcome.TurnedBack ? "turned back" : e.ArgA == JourneyOutcome.Waited ? "stopped on the road to wait" :
@@ -232,6 +233,8 @@ namespace TC2.Core.History
                         case CommandKind.GodStorm: return "You raised a storm " + At(place) + ".";
                         case CommandKind.GodQuake: return "You shook the ground " + At(place) + ".";
                         case CommandKind.GodEruption: return "You split the earth " + At(place) + ".";
+                        case CommandKind.GodPlague: return "You sent a sickness " + At(place) + ".";
+                        case CommandKind.GodBlight: return "You blighted the fields " + At(place) + ".";
                         default: return "You reached down near " + place + ".";
                     }
                 default: return e.Kind + " at " + place;
