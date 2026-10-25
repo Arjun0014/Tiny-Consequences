@@ -5417,3 +5417,38 @@ world takes x2.2-2.5 the time (seed 2 2,001 s against 910, seed 4 2,336 against 
 -52 % over 450-600) did not come in its new world (the sicknesses of the 400s took 4,496 against 3,919 + 5,187): a world parted at year 26 meets its
 epidemics otherwise. What 25 §6 still lacks after the infill - villages deserted in crises and refounded, ruins - is the next slice's question.
 **Landed** (session 25, 25 Oct 2026, sim 95).
+
+## D2-177 — 2026-10-25 — The burning-in: a band that holds the field fires the homes of those who killed its people (C8.0)
+
+**Context.** After C3.6g (D2-176) the 1,000-year worlds fill their land before ~300 and then change slowly; 25 §6 still lacks ruins and rebuilding, and
+C8's done-when ("wars ... change the map") had nothing that destroys. Measured first, two ways. (1) **Do small villages live worse, so that people would
+leave them?** (`run --sizetally`, new: villages' years, births, deaths by cause, moves, famines, ration, land and store by size; 300 years from the `_ac2`
+worlds' year 600): no - villages of under 25 have hunger 0.0-0.7 deaths a thousand person-years against 4.1-4.4 in villages of 200-399, rations 0.99
+against 0.84-0.89, stores of 1.9-7.5 years against 1.0-2.0, famines 0-0.5 a hundred village-years against 11-14; households move *into* them. A rule
+emptying them would be scripting: not built. One column pointed elsewhere: **small villages take more wounds a person** (0.7-1.7 against 0.4-0.8). (2)
+**What a raid could burn** (`run --burntally`, new): raids never burned anything (`BuildingBurned` was never written; fire burned fields and woods
+only). In a century from year 600 bands held the field in 60 of 122 raids (seed 4) and 88 of 202 (seed 2); in 51 and 77 of those the band's village knew
+blood against the raided village's people - but every remembered wound makes a doer: their homes would be 7-9 a raid, a fifth of the village. Killings
+alone: 42 and 70 held raids with a killing known, **1.8 killers' homes standing a raid** (74 and 125 a century).
+
+**The record.** Feud's vengeance burned: the *burning-in* of the sagas (a slayer's house fired at night by the kin of the slain - Njáll at Bergþórshvoll,
+Flugumýri in 1253), Gregory of Tours' feuds of houses burned; the Chronicle's raiders who "harried and burnt". Burning answered a killing; wounds were
+paid for. Burnt houses were rebuilt, and places burnt again and again were left.
+
+**Decision.** (Sim version 96.) **A band that holds the field fires the homes of the raided village's people who killed people of the village whose
+wrong it went for** (its own, or the tributary's its lord answered) - killings it knows by name (seen or told), not made good, still weighed - each home
+once (`Conflict.BurnIn`). The home falls at once, a ruin that fades as any; the household's larder, its food made ready, its pots and half its gear burn
+with it; its people go to an empty home of the village or camp on the innermost free lot and raise their own again (`Homes.Burnt`). **The vengeance
+answers the killing** (`DeedBook.Avenged`: it leaves the avengers' sums as amends would, and is not claimed or avenged again). **The burning weighs on
+the raid**: the raid's deed grows by what the homes were worth to their people (the labour that raised them, `LabourWorth` an hour, and the food that
+burned) - the burnt village holds it against the band's. Told: "The band from X burned the home of the Ys in Z, for a killing by W" (`BuildingBurned`,
+part of the raid, in response to the killing). Unseen bands and bands driven off burn nothing; wounds alone burn nothing. `--oldburn` the rule of before.
+
+**Evidence.** BurnTests 2/2 (a band holding the field burns the killer's home - a ruin at once, the household elsewhere, its larder gone, the killing
+answered and out of the avengers' sums, told with the killer, a save after it continuing identically; nothing burns unseen, for wounds alone, or with the
+rule off), DefenceTests 8/8, TakingTests 18/18, LordshipTests 4/4, PeaceTests 3/3, DemandTests 4/4, HistoryBookTests 5/5, DeterminismTests, SaveLoad,
+floatcheck clean, the Unity C# compiled. **Control**: seed 4's 300 years with `--oldburn` equal main's (`_m11`) byte for byte, annals and state hash.
+**Ten seeds against main** (`results/cmp_mg2_bn1.txt`): the world at par - people at year 300 x1.02 (t 1.81), over 200-299 x1.005, births and deaths
+a person-year x1.008 and x1.003, hunger x1.5 (t 0.98: a few worlds' famines), raids x1.16 (t 0.95), wounds x1.03, walls x1.10, foundings x1.00, the greatest
+realm x0.95; homes burnt in 300 years 5-45 a world (237 in ten worlds), in 4-13 villages, the most in one village 2-11 - war leaves burnt homes, ruins and
+rebuilding without changing how many live. **Landed** (session 25, 25 Oct 2026, sim 96).
