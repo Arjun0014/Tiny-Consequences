@@ -15,6 +15,11 @@
   Vivaiwick: `tc2/out/shots/s25n_ac2_s2_v4_y*`) - to compare with the old rules' `s25n_ac1_s2_v4_y{300,1000}` (done). Do not edit main's Game code while
   a `D_b` Unity job runs.
 
+**Update (~13:50)**: main's full suite (K_a, before F9.4) 471/0/0. **F9.4 the meteor and the drought landed** (be8ef8e, sim 98) and **F10.1 the
+world's sound** (f47ce59; `AudioView`, the library under `Game/Resources/Audio`, credits) - D2-179; a Sound toggle (66402bb). Main 66402bb. The final
+run was regenerated on 98 (`make_final.sh`, with `K_f` shots of a meteor and a drought); the 97 jobs dropped. Unity's first open will import the 71 .ogg
+files: commit their new `.meta` files after it (untracked under `Game/Resources/Audio`).
+
 **Update (~13:15)**: `D_a` main's full suite 465/0/0; the `D_b` shots judged (300 and 600 alike from above; 1,000 shows hamlets at the desert's edge).
 Measured: small villages live better (`run --sizetally`) - no desertion rule. **C8.0 the burning-in landed** (39bfa3a, sim 96, D2-177; worktree
 `tc-burn`). **F9.1-F9.3 + F11.1 landed** (0b05e63, sim 97, D2-178; worktree `tc-powers`): the power bar, Your Actions, a sickness and a blight, the
