@@ -38,8 +38,9 @@ namespace TC2.Core.Places
             return StoneLoadsPerM * (1.0 / DMath.Max(1e-6, bring) + 1.0 / StoneLayPerHour);
         }
 
-        /// <summary>Whether a village is laying its ring in stone now: walled, begun, not finished.</summary>
-        public static bool Laying(in Settlement s) => s.Wall == 2 && s.StoneWallEvent != 0 && s.StoneWall < 1f;
+        /// <summary>Whether a village is laying its ring in stone now: walled, begun, not finished, its rock known (a quarry the sea took leaves the work
+        /// waiting until they find rock again - its timber no longer kept up for it meanwhile).</summary>
+        public static bool Laying(in Settlement s) => s.Wall == 2 && s.StoneWallEvent != 0 && s.StoneWall < 1f && s.StoneCell > 0;
 
         /// <summary>Where a village's store stands (its granary, or the heap before one is built): beside the square.</summary>
         public static void GranarySpot(in Settlement s, out double x, out double y) { x = s.SquareX + 14.0; y = s.SquareY - 10.0; }
