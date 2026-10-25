@@ -15,35 +15,41 @@ namespace TC2.Game
     {
         struct Power { public string Name, Doing, Help; public CommandKind Kind; public long Arg, Recharge; public double Reach; }
 
+        // two rows: the sky and the ground's powers, then life's and the land's (Lightning stays first: the Web test aims power 0)
         static readonly Power[] Powers =
         {
             new Power { Name = "Lightning", Doing = "Strike", Kind = CommandKind.GodLightning, Recharge = SimTime.Day, Reach = 60,
                         Help = "a bolt from the sky: it can kindle the woods, the fields or a roof" },
             new Power { Name = "Storm", Doing = "Raise a storm", Kind = CommandKind.GodStorm, Arg = 50, Recharge = 30 * SimTime.Day, Reach = 2000,
                         Help = "a gale of 50 m/s that lives and wanders as storms do: roofs, crops, boats at sea" },
+            new Power { Name = "Rain", Doing = "Bring rain", Kind = CommandKind.GodRain, Recharge = SimTime.Year / 2, Reach = World.RainReach,
+                        Help = "a soaking rain for some days on the land round it: the soil drinks, the crops take it, fires go out" },
+            new Power { Name = "Drought", Doing = "Withhold the rain", Kind = CommandKind.GodDrought, Recharge = 2 * SimTime.Year, Reach = World.DroughtReach,
+                        Help = "no rain for a summer on the land round it: the soil dries, crops wilt, fire takes more readily" },
+            new Power { Name = "Warmth", Doing = "Warm the air", Kind = CommandKind.GodWarm, Recharge = 2 * SimTime.Year, Reach = World.AirReach,
+                        Help = "a summer 5 C warmer on the land round it: crops grow where it is cold (and wilt where it is hot), the soil dries, homes burn less wood" },
+            new Power { Name = "Cold", Doing = "Chill the air", Kind = CommandKind.GodCold, Recharge = 2 * SimTime.Year, Reach = World.AirReach,
+                        Help = "a summer 5 C colder on the land round it: crops grow slowly or fail where it is cool, homes burn more wood, frost keeps the herds in" },
             new Power { Name = "Quake", Doing = "Shake the ground", Kind = CommandKind.GodQuake, Arg = 7, Recharge = 2 * SimTime.Year, Reach = 3000,
                         Help = "a magnitude-7 quake: homes may fall, slopes slide, the sea may come" },
             new Power { Name = "Eruption", Doing = "Split the earth", Kind = CommandKind.GodEruption, Arg = 3, Recharge = 10 * SimTime.Year, Reach = 2500,
                         Help = "the nearest vent within 2.5 km wakes, or the ground opens a new one" },
+            new Power { Name = "Meteor", Doing = "Throw down a stone", Kind = CommandKind.GodMeteor, Recharge = 20 * SimTime.Year, Reach = World.BlastM,
+                        Help = "a stone from the sky: what stands near it falls, those at home there die, it burns and the ground shakes" },
             new Power { Name = "Plague", Doing = "Send a sickness", Kind = CommandKind.GodPlague, Recharge = 5 * SimTime.Year, Reach = World.GodReach,
                         Help = "a new pestilence breaks out in the nearest village: it spreads as sicknesses do" },
             new Power { Name = "Blight", Doing = "Blight the fields", Kind = CommandKind.GodBlight, Recharge = SimTime.Year, Reach = World.GodReach,
                         Help = "the standing crop of the villages round it fails (nothing when the fields are bare)" },
-            new Power { Name = "Drought", Doing = "Withhold the rain", Kind = CommandKind.GodDrought, Recharge = 2 * SimTime.Year, Reach = World.DroughtReach,
-                        Help = "no rain for a summer on the land round it: the soil dries, crops wilt, fire takes more readily" },
-            new Power { Name = "Rain", Doing = "Bring rain", Kind = CommandKind.GodRain, Recharge = SimTime.Year / 2, Reach = World.RainReach,
-                        Help = "a soaking rain for some days on the land round it: the soil drinks, the crops take it, fires go out" },
             new Power { Name = "Bounty", Doing = "Renew the land", Kind = CommandKind.GodBounty, Recharge = 10 * SimTime.Year, Reach = World.GodReach,
                         Help = "the fields round a place as when first broken: their crops full again until they tire" },
             new Power { Name = "Cull", Doing = "Cull the hunters", Kind = CommandKind.GodCull, Recharge = 5 * SimTime.Year, Reach = World.GodReach,
                         Help = "nine in ten of the wolves, foxes and bears round a place (at sea the seals and hunting fish): herds safer, game thicker - until more wander in" },
             new Power { Name = "Bring", Doing = "Bring game", Kind = CommandKind.GodBring, Recharge = 5 * SimTime.Year, Reach = World.GodReach,
-                        Help = "the game the place suits best, as thick as it lives where it does best (at sea a shoal): more to hunt - and more mouths on the grass" },
+                        Help = "the game the land round it lacks most - a herd hunted out comes back - as thick as it lives over its range (at sea a shoal): more to hunt, and more mouths on the grass" },
             new Power { Name = "Ore", Doing = "Lay bare a vein of copper", Kind = CommandKind.GodOre, Recharge = 20 * SimTime.Year, Reach = 120,
                         Help = "rich copper ore in the rock at a place: someone must go there and see it - then a mine, smiths and trade may follow" },
-            new Power { Name = "Meteor", Doing = "Throw down a stone", Kind = CommandKind.GodMeteor, Recharge = 20 * SimTime.Year, Reach = World.BlastM,
-                        Help = "a stone from the sky: what stands near it falls, those at home there die, it burns and the ground shakes" },
         };
+        const int FirstRow = 9;
 
         int _aim = -1;                 // the power being aimed (-1 none)
         Vector2 _downAt;               // where the pointer went down (a cast is a click, not a drag of the camera)
@@ -127,21 +133,25 @@ namespace TC2.Game
                 _powerOff = new GUIStyle(_btn) { fontSize = 13, padding = new RectOffset(10, 10, 5, 5) };
                 _aimLabel = new GUIStyle(_label) { fontSize = 13, alignment = TextAnchor.UpperLeft };
             }
-            float bw = 900f, bh = 40f;
+            float bw = 900f, bh = 72f;
             _powersRect = new Rect((sw - bw) * 0.5f, sh - bh - 46f, bw, bh);
             GUILayout.BeginArea(_powersRect, _box);
-            GUILayout.BeginHorizontal();
-            GUILayout.Label("Powers", _small, GUILayout.Width(52));
-            for (int k = 0; k < Powers.Length; k++)
+            for (int row = 0; row < 2; row++)
             {
-                long wait = Recharging(w, k);
-                string text = Powers[k].Name + (wait > 0 ? " (" + Wait(wait) + ")" : "");
-                GUI.enabled = wait == 0;
-                bool on = _aim == k;
-                if (GUILayout.Toggle(on, text, on ? _powerOn : _powerOff) != on) _aim = on ? -1 : k;
-                GUI.enabled = true;
+                GUILayout.BeginHorizontal();
+                GUILayout.Label(row == 0 ? "Powers" : "", _small, GUILayout.Width(52));
+                for (int k = row == 0 ? 0 : FirstRow; k < (row == 0 ? FirstRow : Powers.Length); k++)
+                {
+                    long wait = Recharging(w, k);
+                    string text = Powers[k].Name + (wait > 0 ? " (" + Wait(wait) + ")" : "");
+                    GUI.enabled = wait == 0;
+                    bool on = _aim == k;
+                    if (GUILayout.Toggle(on, text, on ? _powerOn : _powerOff) != on) _aim = on ? -1 : k;
+                    GUI.enabled = true;
+                }
+                GUILayout.FlexibleSpace();
+                GUILayout.EndHorizontal();
             }
-            GUILayout.EndHorizontal();
             GUILayout.EndArea();
             // (over a page, the book or a bar a click is theirs, not the power's: the ring and its words only over open ground - last frame's PointerOverUi)
             if (_aim < 0 || PointerOverUi || !GroundUnder(Input.mousePosition, out var dir, out int cell)) return;

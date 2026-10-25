@@ -1465,6 +1465,8 @@ namespace TC2.Core.History
                 case HistoryKind.RainBrought: return Plural(n, "rain brought", "rains brought");
                 case HistoryKind.OreRevealed: return Plural(n, "vein laid bare", "veins laid bare");
                 case HistoryKind.SoilRenewed: return Plural(n, "village's fields renewed", "villages' fields renewed");
+                case HistoryKind.WarmAir: return Plural(n, "warm summer", "warm summers");
+                case HistoryKind.ColdAir: return Plural(n, "cold summer", "cold summers");
                 case HistoryKind.BeastsCulled: return Plural(n, "kind of beast culled", "kinds of beast culled");
                 case HistoryKind.BeastsBrought: return Plural(n, "kind of beast brought", "kinds of beast brought");
                 case HistoryKind.FireOut: return Plural(n, "fire put out", "fires put out");
