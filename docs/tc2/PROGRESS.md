@@ -4,17 +4,18 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
-- **Session 26, second context (26 Oct 2026, from 23:43 IST 25 Oct; Control Room run #80 session 2) - stone walls landed (sim 102); the book's bonds
-  fixed; the settings landed; the cull, bringing, warmth and cold and ruins reused built - the queue RUNNING.** (1) **C7.2 stone walls landed** (f95b233,
-  D2-183): ten seeds inside the noise but for the rings completed, which count the stone rings themselves; 2-17 rings of stone standing a world at 300.
-  (2) **The book** (77a5bae): a village abandoned while it paid kept "paying" in the book (no harvest of its own told its bond's end) - an abandonment now
-  ends its bond; found when the lord's household's worlds read "tribute from five villages" against the world's four. (3) **F9.8-F9.9** (`wip/cull`, sim
-  106): the cull (nine in ten of the hunting kinds round a place: played, the hunters round Tamby 13 -> 1 -> 13 in five years), the bringing (the game the
-  land lacks most by weight, to the kind's typical stocking over its range - a first rule brought the single densest cell's thickness: 570 -> 14,308 game
-  that starved back to 865 in five years; at the most peopled village the revised rule adds 30, its land near its kinds' stocking), warm and cold air (a summer 5 C over 4 km); the power bar in two rows. (4) **C13.4 ruins reused**
-  (`wip/ruins`, sim 107), measured first (`place --ruins`): living villages kept 88-797 fallen homes' ruins on their lots at 300, >90 % inside the lived
-  ring, while 20-36 % of new homes went beyond it - a household seeking a lot now clears home ruins and builds there, their footing stone to the store.
-  (5) **F11.2 the player's settings landed** (885e540, D2-188): sound and volume, clouds, lighter shadows, picture detail - kept between visits.
+- **Session 26, second context (26 Oct 2026, from 23:43 IST 25 Oct; Control Room run #80 session 2) - everything built LANDED (main sim 107); the fourth
+  1,000-year acceptance RUNNING.** (1) **C7.2 stone walls** (f95b233, D2-183): ten seeds inside the noise but for the rings completed, which count the stone
+  rings themselves; 2-17 rings of stone standing a world at 300. (2) **The memory pass** (8086ced, D2-184): annals byte for byte - it changes no history.
+  (3) **F9.6-F9.7 the ore and bounty** (fd4eae6, D2-185). (4) **C10.11 the lord's household** (f176a84, D2-186): its ten seeds' one lean (the greatest realm
+  x0.69, t -2.2) was chaos by its matched placebo (`_hlp`: x0.73 from a nudge alone; the household against its twin x0.96); hunger and famines lower (x0.69,
+  x0.77); it feeds the landless more than it builds capitals. (5) **F9.8-F9.9** (ecedf12, D2-187): the cull (the hunters round Tamby 13 -> 1 -> 13 in five
+  years: a respite), the bringing (the game the land lacks most by weight, to its typical stocking - a first rule's single densest cell brought 570 -> 14,308
+  game that starved back to 865), warm and cold air; the power bar in two rows. (6) **C13.4 ruins reused** (bdc0305, D2-189), measured first (`place
+  --ruins`: 88-797 fallen homes' ruins kept their lots inside living villages at 300): a household seeking a lot clears home ruins and builds there, their
+  footing stone to the store; ten seeds inside the noise; ruins inside the lived ring -22 %. (7) **F11.2 the player's settings** (885e540, D2-188).
+  (8) **The book**: an abandoned village's bond ends with it (77a5bae - the household's worlds read "five villages" where the world held four); **realm
+  maps** on each realm's chapter (1825a61). SESSION_HANDOFF "Session 26, second context" has the queue and what to judge.
 - **Session 26 (25 Oct 2026, 21:20 - ~23:25 IST; Control Room; context handoff with the queue running) - rain, the harrying and the ways landed (main
   sim 101, one full suite 484/0/0); C7.2 stone walls, the memory pass, the god's ore and bounty, and C10.11 the lord's household built and in the queue.**
   (1) **Landed**: F9.5 the rain (uncast = main byte for byte); C8.1a the harrying - its ten seeds leaned (people x0.91, sickness x3.9) and **its matched placebo
