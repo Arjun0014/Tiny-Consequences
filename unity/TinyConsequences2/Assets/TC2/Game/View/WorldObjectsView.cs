@@ -1652,6 +1652,7 @@ namespace TC2.Game
                     ulong h = KeyedRng.Hash(11, RngStream.None, (ulong)c, (ulong)k);
                     double ox = (KeyedRng.Unit(h) * 2 - 1) * P.CellSize * 0.45, oy = (KeyedRng.Unit(KeyedRng.Mix(h)) * 2 - 1) * P.CellSize * 0.45;
                     Vec3d d = (ctr * P.Radius + east * ox + north * oy).Normalized;
+                    if (!Shore.Dry(P, d)) continue;   // (a coastal cell's flames on its dry ground only: the meteor's fires stood in the sea - s25o_meteor)
                     Vector3 pos = PlanetGeo.Surface(P, d);
                     float flicker = 0.75f + 0.25f * Mathf.Sin(t * 7f + k * 1.7f + c);
                     float hgt = (8f + 22f * inten) * flicker * Exaggeration(pos, 6f);
