@@ -2,7 +2,7 @@ using TC2.Core.Foundation;
 
 namespace TC2.Core.Simulation
 {
-    public enum FxKind : byte { None = 0, Quake = 1, Landslide = 2, Wave = 3, Lava = 4 }
+    public enum FxKind : byte { None = 0, Quake = 1, Landslide = 2, Wave = 3, Lava = 4, Bolt = 5, Stone = 6 }   // (5 a lightning strike, 6 a stone from the sky: F9.4)
 
     /// <summary>One thing that happened somewhere, for the view to show (a cell, a time, a size).</summary>
     public struct Fx

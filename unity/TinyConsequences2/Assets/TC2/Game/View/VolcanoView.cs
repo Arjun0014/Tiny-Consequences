@@ -106,7 +106,7 @@ namespace TC2.Game
             {
                 var l = _live[i];
                 float age = now - l.Real;
-                float life = l.Fx.Kind == TC2.Core.Simulation.FxKind.Lava ? 25f : (l.Fx.Kind == TC2.Core.Simulation.FxKind.Wave ? 10f : 12f);
+                float life = l.Fx.Kind == TC2.Core.Simulation.FxKind.Lava ? 25f : (l.Fx.Kind == TC2.Core.Simulation.FxKind.Wave ? 10f : l.Fx.Kind == TC2.Core.Simulation.FxKind.Bolt ? 0.9f : l.Fx.Kind == TC2.Core.Simulation.FxKind.Stone ? 16f : 12f);
                 if (age > life) { _live.RemoveAt(i); continue; }
                 float s = Mathf.Clamp01((life - age) / (life * 0.4f));
                 Vec3d dir = P.Grid.Center[l.Fx.Cell];
@@ -132,6 +132,49 @@ namespace TC2.Game
                             Add(p, 60f + 30f * Mathf.Sin(age * 2f + k), 0.6f * s, 0.002f, 0f, Mathf.Repeat(seed + k * 0.23f, 1f), 1f);
                         }
                         break;
+                    case TC2.Core.Simulation.FxKind.Bolt:
+                        {
+                            // (F9.4) the bolt: a jagged line of light from the cloud to the ground, a flash where it strikes - under a second
+                            float a = Mathf.Clamp01(1f - age / life);
+                            Vector3 prev = at + up * 700f;
+                            for (int k = 1; k <= 16; k++)
+                            {
+                                float h = 700f * (1f - k / 16f);
+                                Vector3 p = at + up * h + (k < 16 ? Jitter(seed + k * 0.37f, 18f + 0.04f * h) : Vector3.zero);
+                                Add(Vector3.Lerp(prev, p, 0.5f), 10f, 0.9f * a, 0f, 2.6f * a, Mathf.Repeat(seed + k * 0.13f, 1f), 0f);
+                                Add(p, 9f, 0.9f * a, 0f, 2.6f * a, Mathf.Repeat(seed + k * 0.29f, 1f), 0f);
+                                prev = p;
+                            }
+                            Add(at + up * 4f, 60f, 0.5f * a, 0f, 1.8f * a, seed, 0f);
+                            break;
+                        }
+                    case TC2.Core.Simulation.FxKind.Stone:
+                        {
+                            // (F9.4) the stone from the sky: falling at a slant with its trail (the first second and a half), the flash where it
+                            // strikes, then a cloud of dust and smoke rising and spreading as it settles
+                            const float fall = 1.5f;
+                            Vector3 side = Vector3.Cross(up, Vector3.up); if (side.sqrMagnitude < 1e-6f) side = Vector3.right; side.Normalize();
+                            if (age < fall)
+                            {
+                                float t = age / fall;
+                                Vector3 sky = at + up * 2600f + side * 1400f;
+                                Vector3 p = Vector3.Lerp(sky, at, t * t);
+                                Add(p, 34f, 1f, 0f, 3f, seed, 0f);
+                                for (int k = 1; k < 10; k++) { float tk = Mathf.Max(0f, t - k * 0.035f); Add(Vector3.Lerp(sky, at, tk * tk), 26f + 6f * k, 0.55f - 0.04f * k, 0.6f, 1.2f - 0.11f * k, Mathf.Repeat(seed + k * 0.17f, 1f), 0.4f); }
+                            }
+                            else
+                            {
+                                float g = age - fall, ph = Mathf.Clamp01(g / (life - fall));
+                                if (g < 0.8f) Add(at + up * 20f, 260f * (0.6f + g), 0.9f * (1f - g / 0.8f), 0f, 3f * (1f - g / 0.8f), seed, 0f);   // the flash
+                                for (int k = 0; k < 12; k++)
+                                {
+                                    float rise = 40f + 420f * Mathf.Sqrt(ph) * (0.6f + 0.4f * Mathf.Repeat(seed * 7f + k * 0.31f, 1f));
+                                    Vector3 p = at + up * rise + Jitter(seed + k * 0.53f, 40f + 160f * ph);
+                                    Add(p, 90f + 220f * ph, 0.7f * s * (1f - 0.5f * ph), 0.75f, 0.6f * (1f - ph) * s, Mathf.Repeat(seed * 3f + k * 0.37f, 1f), 0.8f);
+                                }
+                            }
+                            break;
+                        }
                     case TC2.Core.Simulation.FxKind.Lava:
                         {
                             // the lava's own cells (the flow as the simulation ran it)

@@ -109,6 +109,60 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void AMeteorFlattensWhatStandsNearItAndKillsThoseAtHomeThere()
+        {
+            var w = TestWorlds.Make(615);
+            Coarse(w);
+            w.AdvanceTo(w.Now + SimTime.Days(2));
+            int sid = w.Settlements.First();
+            int standing0 = 0; var bl = w.BuildingsOf(sid); for (int i = 0; i < bl.Count; i++) if (!TC2.Core.Places.Homes.Fallen(in w.Buildings.Get(bl[i]), w.Now)) standing0++;
+            long mark = w.History.LastId;
+            w.Issue(new Command { Time = w.Now, Kind = CommandKind.GodMeteor, Cell = w.Settlements.Get(sid).Cell });
+            w.AdvanceTo(w.Now + SimTime.Hours(3));
+            long cast = 0, strike = 0; int flattened = 0, killed = 0, dead = 0;
+            for (int i = w.History.FirstIndexAfter(mark); i < w.History.Count; i++)
+            {
+                var e = w.History.At(i);
+                if (e.Kind == HistoryKind.GodCommand) { cast = e.Id; StringAssert.StartsWith("You threw down a stone", HistoryText.Describe(w, in e)); }
+                if (e.Kind == HistoryKind.MeteorStruck) { strike = e.Id; flattened = e.ArgA; killed = e.ArgB; Assert.AreEqual(cast, e.Root); StringAssert.StartsWith("A stone fell from the sky", HistoryText.Describe(w, in e)); }
+                if (e.Kind == HistoryKind.PersonDied && e.ArgA == 14) { dead++; Assert.AreEqual(cast, e.Root, "the dead's causes run back to the cast"); }
+            }
+            Assert.AreNotEqual(0L, strike, "the strike is told");
+            Assert.Greater(flattened, 0, "it flattened what stood near it");
+            Assert.AreEqual(killed, dead, "those it killed are told so");
+            int standing1 = 0; bl = w.BuildingsOf(sid); for (int i = 0; i < bl.Count; i++) if (!TC2.Core.Places.Homes.Fallen(in w.Buildings.Get(bl[i]), w.Now)) standing1++;
+            Assert.Less(standing1, standing0, "fewer stand");
+            Assert.IsNull(TestWorlds.Audit(w));
+        }
+
+        [Test]
+        public void ADroughtWithholdsTheRainForItsDaysAndASaveKeepsIt()
+        {
+            var w = TestWorlds.Make(616);
+            Coarse(w);
+            w.AdvanceTo(w.Now + SimTime.Days(2));
+            int sid = w.Settlements.First();
+            int cell = w.Settlements.Get(sid).Cell;
+            w.Issue(new Command { Time = w.Now, Kind = CommandKind.GodDrought, Cell = cell });
+            w.AdvanceTo(w.Now + SimTime.Hours(1));
+            Assert.AreEqual(1, w.DrySpells.Count, "a drought held over the land");
+            Assert.IsTrue(w.RainWithheld(cell));
+            var w2 = TC2.Core.Persistence.SaveFile.Load(TC2.Core.Persistence.SaveFile.Save(w, 0, TC2.Core.Persistence.OfflineMode.Living), out _);
+            Assert.AreEqual(1, w2.DrySpells.Count, "the drought is saved");
+            double rain = 0, soil0 = w.Planet.SoilWater[cell];
+            for (int d = 0; d < World.DroughtDays - 2; d++) { w.AdvanceTo(w.Now + SimTime.Day); rain += w.Planet.RainToday[cell]; }
+            Assert.AreEqual(0.0, rain, 1e-9, "no rain under it");
+            Assert.LessOrEqual(w.Planet.SoilWater[cell], soil0 + 1e-6, "the soil dries");
+            w2.AdvanceTo(w.Now);
+            Assert.AreEqual(w.StateHash(), w2.StateHash(), "a save in the drought continues as if never saved");
+            w.AdvanceTo(w.Now + SimTime.Days(4));
+            Assert.AreEqual(0, w.DrySpells.Count, "the rain comes back after its days");
+            long dev = 0;
+            for (int i = 0; i < w.History.Count; i++) { var e = w.History.At(i); if (e.Kind == HistoryKind.Drought && e.RootKind == RootKind.You) dev = e.Id; }
+            Assert.AreNotEqual(0L, dev, "the drought is told, rooted in the cast");
+        }
+
+        [Test]
         public void WithNoCastTheWorldsHistoryIsItsOwn()
         {
             var w = TestWorlds.Make(612);
