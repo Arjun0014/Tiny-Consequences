@@ -5737,3 +5737,48 @@ three years; the ore: laid bare, unknown, found by someone who goes there, the f
 Actions, kept by a save); MiningTests 6, IronTests 8, HistoryBookTests 5; Unity C# compiles. Played: seed 4, copper laid bare at year 100 beside Tamby
 (141 people, smelting copper, knowing none): a mine by year 160, 1,829 kg dug, 7 records rooted in the cast. The queue's checks (session 26): ore1 ok (PowersTests 9, Mining 6, Iron 8, Determinism 7, SaveLoad 8; floatcheck, Unity C#); **uncast = the memory
 pass's rules (`_mem1`, seed 4, 300 years) byte for byte, same state hash**.
+
+## D2-186 — 2026-10-26 — The lord's household: a first household's surplus keeps the landless, and a lord's realm's come to its seat (C10.11)
+
+**Context.** C8.2's measure (`tc2/out/tools/s26/c82_flight.md`): at the land's ceiling no village within reach has land to spare - the landless and
+the harmed have nowhere to go; the acceptance's frozen map after ~300 has the same root (settlement goes only to land). Meanwhile lords' first households
+held grain far beyond their need - tribute lands in the first household's grain (C10.2) - spent only on sworn men (C10.7b) and relief in famine.
+**Measured first** (`lordships --dependants`, seed 4 at 300 and 600, `results/deps_s4_y{300,600}.txt`): at 300 four realms whose lords' grain beyond four
+years of their own need would feed **1,907 people a year**, beside **371 landless households (1,387 people) in their realms whose grain and larders last
+7-52 days**, and 2,000+ households short of land; at 600, spare for 1,260 people a year beside 114 landless households (312 people). Surplus and want
+stood side by side.
+
+**The record.** A lord's surplus fed a household: servants, craftsmen, dependants, a hall's people - the Anglo-Saxon *hiredmen* and *geneat*, the
+Carolingian *familia*, the Irish *aithech* clients who took a lord's stock and food for service. Seats of power drew people as they drew renders: towns
+grew at royal and episcopal seats on that surplus, the landless coming to the hall, not to land.
+
+**Decision.** (1) At its village's harvest, after its sworn men are fed (`Retinue.Harvest`), a first household whose grain runs beyond its own next year,
+`KeepYears` (3) more and its sworn men takes in landless households as its dependants - as many as that grain keeps a year each - its own village's first, the
+neediest first (the least food in days); then, a lord, its realm's: landless households of its tributaries within a day's walk with a way on foot, who
+come to live at the seat (`Migration.Summon`: a party joining the lord's village); never a tributary's own first household. (2) Each harvest it gives
+each dependant household a year of its need from its grain (into the household's own grain). Kept households do not weigh leaving. (3) They are let go
+when the grain no longer keeps them (the least needy first), when the household holds land of its own again, or - a new first household taking over its
+predecessor's dependants as far as its grain keeps them (the hall's people pass with the hall) - when the new first cannot keep them. Released
+dependants stay where they are, landless (the existing rules then move them). (4) `Household.Keeper` (saved, hashed), `TakenIn` / `LetGo` (Local);
+the settlement page: the households in its first household's keep and those on their way from the villages that pay it; `--oldhall` the control,
+`--halltally`, `lordships --dependants`.
+
+**What changes in the picture.** Seats of realms grow by their realms' landless: a lord's seat larger than its tributaries; when a realm falls its
+former tributaries' people stay at the old seat until the grain fails them - capitals that rise and shrink with their lords.
+
+**Evidence.** HallTests 5/5 (a first household with grain to spare keeps its village's landless, the neediest first; a lord's household keeps its
+realm's landless, who come to the seat; a new first household takes over its predecessor's dependants; no keep with the rule off; a save with kept
+households continues identically). First looks on seed 4 (`_hal0`, `_hal2`; one seed): the first rule let 3,156 of 4,157
+go at each change of first household - fixed (2,832 taken over in `_hal2`); then 2,730 of 3,334 taken in were let go mostly when the grain ran short
+(~2 household-years each), 50 kept at year 300, 2,960 summoned from realms to seats. The queue's checks (session 26): hall1 ok (HallTests 5, Sworn,
+Migration, Holdings, HouseholdFormation, Determinism, SaveLoad); **control** `--oldhall` = the ore's rules (`_ore0`, seed 4) byte for byte, same state hash;
+**ten seeds** `_hal1` against `_stw1` (main's annals: the memory pass and the ore change none; `results/cmp_stw1_hal1.txt`, `lean_stw1_hal1.txt`): people at
+300 x0.95 (t -1.1), hunger a person-year x0.69 (t -1.5), famines x0.77 (t -1.8), foundings x0.90 (t -1.7), deaths and births at par - and one lean past
+|t| 2, **the greatest realm at 300 x0.69 (t -2.2)**. **Its matched placebo** (`_hlp`: the old rules, one FU more in the first village's store at each
+world's parting year, 11-36; `results/cmp_stw1_hlp.txt`, `cmp_hlp_hal1.txt`): the nudge alone gives the same lean against `_stw1` (greatest x0.73, t -2.1;
+people x0.90) - main's ten worlds drew great realms (the greatest at one moment is a cycle of hegemonies, D2-168) - and **the household against its
+placebo twin: greatest x0.96 (t -0.2), people x1.06 (t 1.0), hunger x0.86, famines x0.77 (t -1.8), raids x0.81 (t -2.2)** - fewer raids against the twin
+and none against main (x0.94, t -0.3), in the household's direction (the hungry taking by night lead to raids; the kept are fed). The tally over ten
+worlds: 2,269 households taken in at home and 10,210 summoned from realms to seats; 9,777 let go when the grain ran short; 8,880 taken over by a new
+first household. **The seats at 300** (`results/seats_s*_{hal1,hlp}.txt`): the greatest realms' seats 571-820 people (Komdal, Vindford, Drandthorpe)
+against 526-612 in the twins (a village ~185) - the household feeds the landless more than it builds capitals.
