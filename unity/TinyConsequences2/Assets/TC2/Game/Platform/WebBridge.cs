@@ -127,6 +127,7 @@ namespace TC2.Game
             if (what == "peoplecull") { WorldObjectsView.PeopleCull = on; return; }   // (people beyond the limb and outside the view left unposed: 14 §7)
             if (what == "placescull") { WorldObjectsView.PlacesCull = on; return; }   // (villages beyond the limb left unbuilt: 14 §7)
             if (what == "shadowlite") { Sky.ShadowLite = on; return; }   // (above 3 km two cascades over twice the height: 14 §7, measured before chosen)
+            if (what == "sortplaces") { WorldObjectsView.SortPlaces = on; return; }   // (villages built neighbours together, so batches cull: 14 §7, measured before chosen)
             int part = what == "trees" ? 1 : what == "people" ? 2 : what == "buildings" ? 4 : 0;
             if (part != 0) { WorldObjectsView.Off = on ? WorldObjectsView.Off & ~part : WorldObjectsView.Off | part; return; }
             string prefix = what == "terrain" ? "Patch" : what == "planet" ? "Face" : what == "sea" ? "Sea" : what == "air" ? "Atmosphere" : what == "clouds" ? "Clouds" : what == "rivers" ? "Rivers" : null;
