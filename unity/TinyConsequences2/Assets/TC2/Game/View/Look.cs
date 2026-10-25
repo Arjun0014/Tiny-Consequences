@@ -31,6 +31,7 @@ namespace TC2.Game
         {
             AtmoH = Defaults[0]; AtmoTop = Defaults[1]; AtmoTau = Defaults[2]; AtmoMie = Defaults[3]; AtmoSun = Defaults[4]; AtmoGround = Defaults[5];
             CloudDeck = Defaults[6]; CloudCu = Defaults[7]; CloudStretch = Defaults[8]; CloudShade = Defaults[9];
+            Sky.ShadowLite = false;
         }
 
         /// <summary>Sets a tunable by name (a shot's "~Name=value"); false when there is none of that name.</summary>
@@ -49,6 +50,7 @@ namespace TC2.Game
                 case "CloudCu": CloudCu = v; return true;
                 case "CloudStretch": CloudStretch = v; return true;
                 case "CloudShade": CloudShade = v; return true;
+                case "ShadowLite": Sky.ShadowLite = v > 0f; return true;   // (the frame pass's shadow cascades, 14 §7: judged in real shots before chosen)
             }
             return false;
         }
