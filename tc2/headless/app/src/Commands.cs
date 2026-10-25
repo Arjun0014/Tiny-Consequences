@@ -264,7 +264,9 @@ namespace TC2.Headless
             if (a.Has("oldburn")) TC2.Core.Society.Conflict.BurnOff = true;   // (C8.0 off: no band fires a home)
             if (a.Has("oldharry")) TC2.Core.Society.Conflict.HarryOff = true;   // (C8.1a off: no band harries the fields outside the walls)
             if (a.Has("harrytally")) TC2.Core.Society.Conflict.HarryTally = new double[7];   // (C8.1a: bands broken on walls and the crops outside them)
-            if (a.Has("oldstonewalls")) TC2.Core.Society.Conflict.StoneWallsOff = true;   // (C7.2 off: no village walls its ring in stone)
+            if (a.Has("oldstonewalls")) TC2.Core.Society.Conflict.StoneWallsOff = true;
+            if (a.Has("oldruins")) TC2.Core.Places.Homes.OldRuins = true;   // (C13.4 off: fallen homes' ruins keep their lots until gone into the land)
+            if (a.Has("ruinstally")) TC2.Core.Places.Homes.RuinTally = new double[3];   // (C13.4: ruins cleared for new homes, on stone footings, stone carried back)   // (C7.2 off: no village walls its ring in stone)
             if (a.Has("oldcompact")) TC2.Core.History.HistoryLedger.CompactOff = true;
             if (a.Has("oldhall")) TC2.Core.Society.Hall.Off = true;   // (C10.11 off: no first household keeps dependants)
             if (a.Has("halltally")) TC2.Core.Society.Hall.Tally = new double[TC2.Core.Society.Hall.TallyN];   // (C10.11: households taken in, let go, fed)   // (the memory pass off: old events kept by importance alone, every name kept)
@@ -1131,6 +1133,18 @@ namespace TC2.Headless
                         int keptNow = 0, keptSeat = 0; for (int hi = w.Households.First(); hi != 0; hi = w.Households.Next(hi)) { ref var hh = ref w.Households.Get(hi); if (hh.Keeper == 0 || hh.Dissolved != 0) continue; keptNow++; if (w.Settlements.Exists(hh.Settlement) && w.Conflict.PolitySize(hh.Settlement) > 0) keptSeat++; }
                         Console.WriteLine("hall: taken in at home " + hlt[0] + ", from the realm " + hlt[1] + " (could not go " + hlt[9] + "); let go - the grain short " + hlt[2] + ", no first " + hlt[3] + ", land of their own " + hlt[4] + "; taken over by a new first " + hlt[10] +
                                           "; FU given " + F(hlt[5], "0") + " (" + hlt[6] + " household-years); the most kept by one " + hlt[7] + "; village-harvests weighed " + hlt[8] + "; kept now " + keptNow + " (at lords' seats " + keptSeat + ")");
+                    }
+                    var rnt = TC2.Core.Places.Homes.RuinTally;
+                    if (rnt != null)   // (C13.4: ruins reused)
+                    {
+                        int ruinsNow = 0, livedNow = 0;
+                        for (int bi = w.Buildings.First(); bi != 0; bi = w.Buildings.Next(bi))
+                        {
+                            ref var bb = ref w.Buildings.Get(bi);
+                            if (!TC2.Core.Places.Structures.IsHome(bb.Kind) || !w.Settlements.Exists(bb.Settlement) || !w.Settlements.Get(bb.Settlement).Inhabited) continue;
+                            if (bb.Household != 0) livedNow++; else if (TC2.Core.Places.Homes.ClearableRuin(in bb, w.Now)) ruinsNow++;
+                        }
+                        Console.WriteLine("ruins: cleared for new homes " + rnt[0] + " (on stone footings " + rnt[1] + ", stone carried back " + F(rnt[2], "0") + " loads); now in living villages: homes lived in " + livedNow + ", fallen homes' ruins " + ruinsNow);
                     }
                     var stw = TC2.Core.Society.Conflict.StoneTally; var stl = TC2.Core.Places.Construction.StoneTally;
                     if (stw != null && stl != null)   // (C7.2: walls of stone weighed, begun and laid)
