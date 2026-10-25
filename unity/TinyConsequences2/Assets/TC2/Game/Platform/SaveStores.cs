@@ -64,7 +64,9 @@ namespace TC2.Game
     public sealed class WebSaveStore : ISaveStore
     {
         public string Name => "indexeddb: tiny-consequences-2";
-        static readonly Dictionary<string, Action<bool>> _saving = new Dictionary<string, Action<bool>>();
+        // (each save's own answer, in the order they were made: one database, whose readwrite transactions on one store complete in the order they
+        // were opened - one slot a key let an earlier save's completion answer a later one, and a page reloaded on it lost the later save: s25web3/4)
+        static readonly Dictionary<string, Queue<Action<bool>>> _saving = new Dictionary<string, Queue<Action<bool>>>();
         static readonly Dictionary<string, Action<byte[]>> _loading = new Dictionary<string, Action<byte[]>>();
 
 #if UNITY_WEBGL && !UNITY_EDITOR
@@ -81,7 +83,8 @@ namespace TC2.Game
 
         public void Save(string key, byte[] data, int length, Action<bool> done)
         {
-            _saving[key] = done;
+            if (!_saving.TryGetValue(key, out var waiting)) _saving[key] = waiting = new Queue<Action<bool>>();
+            waiting.Enqueue(done);
             var h = GCHandle.Alloc(data, GCHandleType.Pinned);
             try { TC2_IdbSave(key, h.AddrOfPinnedObject(), length); }
             finally { h.Free(); } // the jslib copies the bytes synchronously (HEAPU8.slice)
@@ -101,7 +104,7 @@ namespace TC2.Game
             int bar = msg.LastIndexOf('|');
             string key = msg.Substring(0, bar);
             bool ok = msg.Substring(bar + 1) == "ok";
-            if (_saving.TryGetValue(key, out var cb)) { _saving.Remove(key); cb?.Invoke(ok); }
+            if (_saving.TryGetValue(key, out var waiting) && waiting.Count > 0) waiting.Dequeue()?.Invoke(ok);
         }
 
         /// <summary>Called by OnIdbLoaded("key|size"); size 0 = nothing saved, -1 = error.</summary>

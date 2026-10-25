@@ -1,5 +1,106 @@
 # TC2 Session handoff
 
+## Session 25, fourth context (25 Oct 2026, from 14:10 IST; Control Room run #78 session 3) - main 31234dc (sim 98): the frame pass and two Web fixes landed; C11.1b built; the siege set aside
+
+### Exact state
+- **main 31234dc, sim 98** (not ours: `.claude/launch.json`, `Assets/Resources.meta`). Landed this context (no sim change): **the frame pass** (merge 3e3f64c of
+  `wip/frame` b91a8c2: people beyond the limb or outside the view unposed - `WorldObjectsView.PeopleCull`; villages wholly beyond the limb unbuilt, rebuilt at
+  once when the camera moves - `PlacesCull`, `PlacesReach` 2.5 km; bridge `on/off peoplecull|placescull`), **`SaveNow` unsets `LastSaveOk` while a save is in
+  flight** (the reload test had loaded an older save), **the power's aim drawn only over open ground** + bridge `closepages` + the Web test closes the pages
+  before it aims; Unity's .meta files for the 71 sounds (4a745a3) and for Hud.Powers/Hud.Title/AudioView (31234dc). Main's Game code compiled (`cc --src`);
+  **not yet built for the Web** - job `0_w` does it.
+- **Measured and set aside: C8.1b the siege** (`tc2/out/tools/s25/siege/design.md`; tool `run --siegetally` on `wip/siege-tally` ca6c3ec, main + a reading
+  tally, worktree `C:/Game Dev/tc-sgtally`; results `tc2/out/tools/s25/results/siege_s*_ac3_y*.txt`): no band the walls held off could stand a sally by the
+  walled village on open ground, in any world measured. `K_ba_siege_s47` adds seeds 4 and 7 (expected the same).
+- **Built, in evaluation: C11.1b a people's ways carried and copied** - `wip/c111b-ways` 1069a6d (worktree `C:/Game Dev/tc-bways`, on `wip/harry`, **sim 101**;
+  draft `tc2/out/tools/s25/ways/d2181.md` - update its rule text: Conform 0.6 replaced HeadCopy 0.3, BrideCopy 0.1 from another village only). Checks:
+  `0_v` (first control) ran with the clashing `--oldways` (D2-160's) and differed - renamed `--oldhouseways`; ways on: annals = `_hyr` byte for byte;
+  `0_y_ways_ctl2` reruns the control (`bw_ctl_ok`) and measures the revised rule (`ways/ways_s4_bw2_y300.txt`: want most households of a village in its way,
+  tributaries' first households toward their lords); `N_a_ways_s2` (1,000 years, needs `bw_ctl_ok`) at the queue's end.
+- **The queue** (runner PID 9632, `Q` as below; generators `tc2/out/tools/s25/siege/make_measure.sh`, `ways/make_ways.sh`): running `0_w_web_s25web4`, then
+  `0_x_heap_s25web4` (the wasm heap loading seed 2's worlds of every age: engine vs per-person), `0_y_ways_ctl2`, `K_b_ac3_s4`, `K_b_ac3_s7`, `K_ba_siege_s47`,
+  `K_d` shots (village #4 at 300/600/1,000), `K_e` realms, `K_f` meteor/drought, `L_a_rain_rn1`, `M_*` (the harrying), `N_a_ways_s2`.
+
+**Update (~16:20)**: `0_w` (Web `s25web4`): the click casts; the culls x1.22/x1.57 (people) and x1.21/x1.51 (places) at region/village; with both the
+year-1,000 frame ~108/126 ms (from ~155/225); buildings still x0.44-0.46 (~60-67 ms), shadows x0.53-0.69, people x0.87-0.92 (`14` §7). The reload still lost
+the save - traced: `WebSaveStore` kept one answer slot a key, so an autosave's completion answered the test's later save; fixed (answers in order, `saveOk` set
+by the latest save only) and **the save streamed both ways** (`wip/savestream`, SaveStreamTests 3/3; seed 2's year-1,000 save loads and lives two days to main's
+hash) - both on main (8a83dd7, no state change). `0_x` the heap by age before it: 247/428 MB at year 50 ... 1,198/1,297 at 1,000 - it grows with the world's
+record, not its people. **C11.1b's second control ok** (`--oldhouseways` = `_hyr` byte for byte, hash too; ways on: annals = `_hyr`); the rule revised by its
+measure (`Conform` 0.6: households as their first household 55 %, tributaries' first households as their lord's 73 %) - `ways/d2181.md` complete but for
+`N_a`. Drafts: `tc2/out/tools/s25/frame/d2182.md`. Main c013107. Running: `0_z_web_s25web5` (Web build of main with the save fixes: the test's reload, the heap at
+50/300/1,000 against `0_x`).
+
+**Update (~16:50)**: `0_z` (Web `s25web5`, main c013107 with the streamed save and the save-answer fixes): **the heap at year 1,000 955 MB loaded / 1,054
+after the views (-243 MB against `0_x`)**, year 300 616 / 713 (-100). **The reload still fails (7/8)**: the reloaded game loaded a save written at day 1
+06:11 that carried a catch-up target of day 2 01:57 (it caught up to 93,423 s) - not the explicit save at ~281,777 s, whose own answer did come (the seq fix).
+`s25web2` "passed" with 22,359 -> 44,666, a world caught up past its saved time: probably the same fault, masked by the numbers. **Not yet understood** - the
+save-answer fixes are right but not this fault's root. Next: in the Web test, right after `save` and its answer, read the store (`page.evaluate`: IndexedDB
+'tiny-consequences-2', store 'saves', key 'world' -> the header's WorldTime at byte 18 and CatchUpTarget at byte 35, `realmsperf.mjs` reads the same header) and
+again after the reload; find which save wrote a catch-up target and why the explicit save is not what is read (a later write? another key? the title?).
+
+**Update (~17:00)**: **the reload fault traced - the test harness, not the game** (`tc2/scripts/saveprobe.mjs` reads the stored save's header at each step):
+saves and reloads work; the test read the published state before the game had done its `save` command (commands run at the next frame) and saw the save
+before's `saveOk`. The bridge publishes `saves` (stored), the test waits for it to rise (main 728bd0e). `0_za_web_s25web6` (queued next) should show 8/8.
+
+**Queue reordered (~16:58)** so the landings come sooner (the shots need sim-98 saves on main; seed 7 and the siege measure run their own binaries):
+running `K_b_ac3_s4`, then `0_za_web_s25web6` (Web build of main 3bfadd7: the test 8/8 expected; `--layer shadowlite` paired at the region and orbit views),
+`0_zb` shots of village #4 at 300/600/1,000, `0_zc` realms at 1,000, `0_zd` meteor and drought, `0_ze_rain_rn1` (rain's checks: `rn1_ok`, control = `_pv1`),
+`0_zf_*` (the harrying: build, control vs `_rn1`, ten seeds `_hy1`, `results/cmp_bn1_hy1.txt`), then `K_b_ac3_s7`, `K_ba_siege_s47`, `N_a_ways_s2`. Waiters on
+`runq.log` must match exact job names: the log keeps every session's lines (an old `0_za_ways_wy0` matched `^end 0_za`).
+
+### Next, in order
+1. Judge `0_za` (8/8 expected), then append D2-182 (`tc2/out/tools/s25/frame/d2182.md`) to DECISIONS. If a cull shows pop-in or missing villages in real shots
+   (`K_d`), fix forward.
+2. **The frame and memory passes, next steps**: buildings are still the largest layer - villages in front of the limb but outside the view, the buildings' draws
+   by colour group (each a draw a camera and a shadow cascade), shadows cast only near (`Sky.GpuCascades` 4 and `GpuShadowReach` 3.2 x the camera's height,
+   up to 7 km: at the region view every visible building is drawn into four cascades - try 2 cascades and ~2x above ~3 km, measured by a bridge toggle in
+   `realmsperf` and judged in real shots); the heap grows with the record - **measured** (`run --load F
+   --statesizes`, main 44b12bc; `tc2/out/tools/s25/frame/statesizes_s2_ac3_y{300,1000}.txt`): seed 2's state 33.7 MB at 300 -> 106.8 at 1,000; **the history
+   ledger 12.8 -> 63.9 MB** (114k -> 509k events, 117-132 B each; Local-tier Struck, TakingSeen, Sworn, Taken, TributePaid lead), **households 7,005 -> 68,066
+   rows** (dissolved ones kept: 10.7 MB), **people 25,461 -> 47,527** (12,698 living; 20.4 MB), the deed book 1.1 -> 3.6 MB. Levers, in order: compact old
+   Local-tier events the book does not read (check `HistoryBook`'s readers first - it is written after the fact), drop dissolved households nothing refers to
+   (check Building.Style/Last, biographies, the name registry), prune the long dead as compaction already does for some.
+3. Land in order once `K_d`-`K_f` are done (they need sim-98 saves): rain (`L_a`), the harrying (`M_*`; D2-180), then C11.1b (`0_y` ok; D2-181; merge main
+   into `wip/c111b-ways` first - the version line 99, 100, 101).
+4. Judge the third acceptance run (25 §6 "Third run": `_ac3` seeds 2/4/7, books, `K_d` shots) and write it up.
+
+
+## Session 25, third context - HANDOFF (25 Oct 2026, ~14:10 IST; Control Room run #78 session 2) - main 9bd2814 (sim 98); the final run RUNNING in the queue
+
+### Exact state
+- **main 9bd2814, sim 98, clean** (not ours: `.claude/launch.json`, `Assets/Resources.meta`). Landed this context: **C3.6g the land between villages**
+  (D2-176), **C8.0 the burning-in** (D2-177), **F9.1-F9.4 the god's powers** (D2-178, D2-179: the power bar - lightning, storm, quake, eruption,
+  sickness, blight, drought, meteor; Your Actions, the book's ninth part; the bolt and the falling stone drawn), **F11.1 the opening** (title and guide),
+  **F10.1 the world's sound** (`AudioView`, 71 clips under `Game/Resources/Audio`, credits), a Sound toggle; tools `place --margins`, `run --sizetally`,
+  `--burntally`, `--margintally`; shots `--meteor`, `--godrought`. **Main's full suite 473 passed, 0 failed, 0 skipped** (9d3c1c2 = main's code).
+- **Measured, not built**: small villages live better, not worse (`run --sizetally`) - no desertion rule. The shots' `ArgumentOutOfRangeException` is
+  Unity's own editor search indexing at startup - closed. War now (`results/war_s*_ac2_y*.txt`): between realms (898 raids a century at seed 4's year
+  1,000 against 26 within a realm), half broken on walls - `tc2/out/tools/s25/c81_design.md`.
+- **Two branches built, waiting to land in order** (each changes the sim version - never land while a queued job needs a sim-98 save):
+  1. **F9.5 the rain** - `wip/rain` e1782f0 (worktree `C:/Game Dev/tc-rain`, sim 99; PowersTests 7/7, floatcheck, cc ok). Its checks and its uncast
+     control (= `_pv1`) are job `L_a_rain_rn1`. Land: `git merge --no-ff wip/rain` when `L_a` says `rn1 ok` and `seed 4: F9.5 uncast = _pv1 byte-identical`.
+  2. **C8.1a the harrying** - `wip/harry` 1090933 (worktree `C:/Game Dev/tc-harry`, on wip/rain, sim 100; HarryTests 2/2): a band driven off by a
+     village's standing palisade burns 3 % of its standing crop a raider (at most 60 %), caused by the raid. Evaluation `M_a`-`M_d` (control `--oldharry`
+     = `_rn1`, which also measures the old rules with `--harrytally`; ten seeds `_hy1` against `_bn1`; `results/cmp_bn1_hy1.txt`). Land after rain if
+     the ten seeds hold (a lean past |t| 2 in people: a matched placebo or a mechanism); write D2-180.
+- **The queue** (runner PID 9632, `tc2/out/tools/s23/runq.sh`; `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`;
+  generators in `tc2/out/tools/s25/c36g/`: `make_final.sh`, `make_c81a.sh`): running **`K_b_ac3_s2`** (since 14:03; ~40 min), then `K_b_ac3_s4`, `K_b_ac3_s7`
+  (the third 1,000-year run on main's final rules: `$O/s*_ac3/world_y{50,150,300,500,600,800,1000}.tc2`, books `tc2/out/tools/s25/accept/book3_*`),
+  `K_c_web_s25web3` (Web build of main; webtest with the power cast by a real click, Your Actions and the title; bookshots over `s2_ac3` y1,000; realmsperf
+  `--layer` people/buildings/trees/cover/shadows/terrain/Hud -> `$N/perf_*_s25web3.txt`), `K_d` shots of village #4 at 300/600/1,000 (`tc2/out/shots/s25o_ac3_s2_v4_y*`),
+  `K_e` realms at 1,000 (the spears edged pale), `K_f` a meteor and a drought (`s25o_meteor`, `s25o_drought`), then `L_a` (rain), `M_*` (the harrying).
+  No monitor survives the clear: arm one (`tail -n 0 -F $Q/runq.log | grep --line-buffered -E "^end |runner stopped"`).
+- **After Unity first opens main** (the `K_c` Web build), it will create `.meta` files for the 71 new `.ogg` under `Game/Resources/Audio`: commit them.
+
+### Next, in order
+1. Judge `K_b` (25 §6 on `_ac3`: villages, burnt homes, realms, the map after the infill; the books), `K_c` (webtest checks incl. "a power aimed and clicked
+   is cast" and the title; the layer costs), `K_d`-`K_f` shots (fixed village by age; the spears; the meteor and the drought seen). Write 25 §6's third run.
+2. Land rain (`L_a`), then the harrying (`M_*`) - D2-180, docs.
+3. The frame pass by the layer costs (`14` §7): first candidate - `WorldObjectsView.RebuildPeople` computes every living person's position and height each
+   frame within 6 km of the camera, before any culling.
+4. Then: C8.1 the siege proper (a blockade - `c81_design.md`), more powers (warmth, cull, bring), F11 platform (packaging, settings), W-FOREST.
+
 ## Session 25, third context (25 Oct 2026, from 07:34 IST; after a compaction) - C3.6g the land between villages LANDED (sim 95)
 
 ### Exact state

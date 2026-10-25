@@ -157,6 +157,12 @@ reach - fills with daughter villages before ~year 300 (seed 2 57 places at 300 a
 2,707 people at 1,000 against 10,083 / 11,494 / 2,131); after the infill the map still changes slowly (300-999: 12, 21 and 2 foundings, 2, 4 and 1
 abandoned). Measured next: small villages live better, not worse (`run --sizetally`) - no rule empties them; war's burning (C8.0, D2-177) leaves
 burnt homes, ruins and rebuilding (5-45 homes a world in 300 years).
+**Third run (main's final rules, sim 98: C3.6g, C8.0, the powers uncast; `_ac3`; books `tc2/out/tools/s25/accept/book3_*`) - seed 2 judged, seeds 4 and 7 in
+the queue**: 1,000 years in 29 min; people ~10,000 by 310, held 9,400-11,700 to 730, the wasting pox of 719-748 killed 3,737 (11,462 -> 7,784), recovered to
+12,000-12,700 by 850; Reaikford's realm held 48 villages at 741; 178 homes burnt in 35 villages over the millennium; the book reads as history (eighteen
+ages: feuds and raids, the walls, the lords, the pox, ruin - quakes and great waves). **Still**: places 55-56 from 290 to 630 and 62 at 1,000 - founded and
+abandoned 0 in most ages after the infill: the map's settlement pattern stays as it was at ~300 (the realms and the record change; the villages do not).
+The siege was measured on these worlds and set aside (`tc2/out/tools/s25/siege/design.md`: no band the walls held off could stand a sally).
 
 ## 7. After the C-phases
 F9 (the god's powers beyond those that exist), F10 (art and presentation: animation of labour, UI art pass), F11 (platform).

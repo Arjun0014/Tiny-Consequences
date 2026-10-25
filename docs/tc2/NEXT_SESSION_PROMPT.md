@@ -381,8 +381,9 @@ village's reach). **C3.6g the land between villages landed** (D2-176, main b516b
 found a daughter village on their own village's margins; joiners now count those already on their way. The map is settled twice as densely by ~300 and feeds
 16-33 % more people; after the infill it still changes slowly (25 §6 "Second run"). Next by that evidence: villages deserted in crises and refounded - measured
 first (do small villages live worse?) - measured: they live better; no desertion rule. Then **C8.0 the burning-in** (D2-177, sim 96) and **F9.1-F9.3 the
-god's powers as play + F11.1 the opening** (D2-178, sim 97: the power bar, Your Actions, a sickness and a blight, the title). SESSION_HANDOFF "Session
-25, third context" has the queue and the steps.
+god's powers as play + F11.1 the opening** (D2-178, sim 97: the power bar, Your Actions, a sickness and a blight, the title), **F9.4 the meteor and
+the drought + F10.1 the world's sound** (D2-179, sim 98; full suite 473/0/0). On branches, to land after the queue's final run: F9.5 the rain (sim 99)
+and C8.1a the harrying (sim 100). SESSION_HANDOFF "Session 25, third context - HANDOFF" has the queue and the steps.
 
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at

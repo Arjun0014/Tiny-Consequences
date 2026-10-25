@@ -11,11 +11,23 @@ namespace TC2.Core.Foundation
     {
         byte[] _buf;
         int _len;
+        long _flushed;
 
         public BinWriter(int capacity = 1 << 16) { _buf = new byte[Math.Max(16, capacity)]; }
 
         public int Length => _len;
         public byte[] Buffer => _buf;
+
+        /// <summary>
+        /// (The memory pass, 14 §7) Where the buffer's bytes go when it would overflow - a save's state hashed and deflated a chunk at a time, so the
+        /// save holds a chunk of the world's state, not all of it (a year-1,000 world's ~110 MB held for the session in a browser's heap that only
+        /// grows); null: the buffer grows (every other use).
+        /// </summary>
+        public Action<byte[], int> Sink;
+        /// <summary>Bytes written in all: with a sink, those already passed on too.</summary>
+        public long Total => _flushed + _len;
+        /// <summary>Passes what the buffer holds to the sink (none: nothing).</summary>
+        public void Flush() { if (Sink == null || _len == 0) return; Sink(_buf, _len); _flushed += _len; _len = 0; }
 
         public byte[] ToArray()
         {
@@ -24,12 +36,13 @@ namespace TC2.Core.Foundation
             return r;
         }
 
-        public void Clear() { _len = 0; }
+        public void Clear() { _len = 0; _flushed = 0; }
 
         void Ensure(int extra)
         {
             int need = _len + extra;
             if (need <= _buf.Length) return;
+            if (Sink != null) { Flush(); need = extra; if (need <= _buf.Length) return; }   // (the chunk passed on: the buffer is free again)
             int cap = _buf.Length;
             while (cap < need) cap *= 2;
             Array.Resize(ref _buf, cap);
@@ -78,7 +91,7 @@ namespace TC2.Core.Foundation
         public void ByteArray(byte[] a, int count) { Int(count); Bytes(a, 0, count); }
 
         /// <summary>Reserves 4 bytes for a length to be patched later; returns the position.</summary>
-        public int BeginLength() { int p = _len; Int(0); return p; }
+        public int BeginLength() { if (Sink != null) throw new InvalidOperationException("a length cannot be patched into bytes already passed on"); int p = _len; Int(0); return p; }
         public void EndLength(int pos)
         {
             int n = _len - pos - 4;
@@ -88,20 +101,53 @@ namespace TC2.Core.Foundation
 
     public sealed class BinReader
     {
-        readonly byte[] _buf;
+        byte[] _buf;
         int _pos;
-        readonly int _end;
+        int _end;
+        readonly System.IO.Stream _src;
+        readonly Action<byte[], int, int> _onRead;
 
         public BinReader(byte[] buf, int offset = 0, int count = -1)
         {
             _buf = buf; _pos = offset; _end = count < 0 ? buf.Length : offset + count;
         }
 
+        /// <summary>
+        /// (The memory pass, 14 §7) A reader that refills from a stream as it goes - a save inflated a chunk at a time, never all of its state at once;
+        /// `onRead` sees every byte as it comes in (the payload's hash).
+        /// </summary>
+        public BinReader(System.IO.Stream source, int chunk, Action<byte[], int, int> onRead)
+        {
+            _buf = new byte[Math.Max(16, chunk)]; _pos = 0; _end = 0; _src = source; _onRead = onRead;
+        }
+
         public int Position { get => _pos; set => _pos = value; }
         public int End => _end;
-        public bool AtEnd => _pos >= _end;
+        public bool AtEnd => _pos >= _end && !Refill(1);
 
-        void Need(int n) { if (_pos + n > _end) throw new FormatException("TC2 save: unexpected end of data"); }
+        void Need(int n) { if (_pos + n > _end && !Refill(n)) throw new FormatException("TC2 save: unexpected end of data"); }
+
+        /// <summary>A stream reader's buffer filled again from its source with what was left of it kept in front (grown for a read larger than it);
+        /// true when n bytes are there to read.</summary>
+        bool Refill(int n)
+        {
+            if (_src == null) return false;
+            int have = _end - _pos;
+            if (n > _buf.Length) { var nb = new byte[Math.Max(n, 2 * _buf.Length)]; System.Buffer.BlockCopy(_buf, _pos, nb, 0, have); _buf = nb; }
+            else if (_pos > 0 && have > 0) System.Buffer.BlockCopy(_buf, _pos, _buf, 0, have);
+            _pos = 0; _end = have;
+            while (_end < _buf.Length)
+            {
+                int got = _src.Read(_buf, _end, _buf.Length - _end);
+                if (got <= 0) break;
+                _onRead?.Invoke(_buf, _end, got);
+                _end += got;
+            }
+            return _end >= n;
+        }
+
+        /// <summary>A stream reader: what is left of its source read through (seen by `onRead`) and dropped.</summary>
+        public void Drain() { _pos = _end; while (_src != null && Refill(1)) _pos = _end; }
 
         public byte Byte() { Need(1); return _buf[_pos++]; }
         public bool Bool() => Byte() != 0;

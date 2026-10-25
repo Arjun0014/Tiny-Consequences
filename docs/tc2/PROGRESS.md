@@ -4,6 +4,30 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 25, fourth context (25 Oct 2026, from 14:10 IST; Control Room run #78 session 3) - the siege measured and set aside; C11.1b built; the frame
+  pass and two Web fixes on main (no sim change).** (1) **C8.1b the siege measured first** (`run --siegetally`, `wip/siege-tally`; `tc2/out/tools/s25/siege/design.md`):
+  of the bands a walled village's palisade alone held off - kept home or broken on it - **not one could have stood a sally by the walled village's people
+  on open ground** (bands of 13-35, strength 20-33, against towns of 150-330 with whole fit strength 109-310; seed 4 years 0-150, seed 2 at 300, 600, 1,000).
+  Stores are years in the early world, 35-64 days in a full land. Set aside: a siege needs a host many times a raiding band, and this world raises none -
+  the asking coerces (all askings bowed). (2) **The third acceptance run** (`_ac3`): seed 2 done (1,000 years in 29 min; 178 homes burnt in 35 villages;
+  the wasting pox of 719-748 killed 3,737; Reaikford's realm 48 villages at 741; book `accept/book3_s2_y1000.md` reads as history) - **the map still freezes
+  after ~300** (55-56 places 290-630, 62 at 1,000; founded/abandoned 0 in most ages); seeds 4 and 7 queued. (3) **C11.1b a people's ways carried and copied**
+  (`wip/c111b-ways`, worktree `C:/Game Dev/tc-bways`, on `wip/harry`, **sim 101**; draft `tc2/out/tools/s25/ways/d2181.md`): measured first - every one of
+  6,615 buildings of seed 2's year-1,000 world roofed in its village's founding way. Each household carries a way (the groom's house's; founders their new
+  village's; joiners their own); a couple builds as its village builds (its first household's way) 0.6 of the time, a bride from elsewhere brings one of her
+  ways 0.1; a tributary's first household takes one of its lord's a year 0.1; homes raised and rebuilt in their household's way, works as the first household
+  builds; the book's Peoples count the roofs standing and a realm's chapter tells its houses; the building page tells a roof's way; `--oldhouseways`
+  (`--oldways` is D2-160's - the first control ran both and differed). BuildingWaysTests 5/5 and eight classes 0 failed 0 skipped; with the ways on seed 4's
+  annals = the harrying's byte for byte (ways change no history). A first marriage rule (one trait of the first household 0.3, every bride 0.15) made every
+  village a mosaic (seed 4 at 300: 15 % of households as their founders, 62 of 63 mixed) - revised; its measure and second control queued (`0_y`).
+  (4) **The frame pass** (`14` §7; main 3e3f64c, presentation): layer costs on the year-1,000 world (`s25web3`, 12,698 people, ~155 ms a frame at the region
+  view, ~225 at the village): buildings x0.53 (~76-106 ms), people x0.75 (~40-66 ms), shadows x0.63-0.73, terrain x0.90, trees, cover and the HUD ~x1.
+  People beyond the planet's limb or outside the view are no longer posed (all ~12,700 were, every frame); villages wholly beyond the limb are not built
+  (rebuilt at once when the camera moves). **The heap**: 1,297 MB loaded, 1,491 MB after the layer pairs (headless managed 304 MB): the memory pass next.
+  (5) **Two Web faults** (`s25web3` 6/8): the reload test loaded an older save - `SaveNow` never unset `saveOk` while a save was in flight; and the power
+  click fell on the place page left open (a click over a page is the page's; the aim ring is now drawn only over open ground; the test closes the pages).
+  Also committed: Unity's .meta files for the 71 sounds and for Hud.Powers/Hud.Title/AudioView. Queue: `0_w` (Web s25web4: test, cull on/off pairs),
+  `0_x` (heap by age), `0_y` (C11.1b control 2), then K_b s4/s7, K_ba, K_d-K_f, L_a (rain), M_* (the harrying), N_a (ways over 1,000 years).
 - **Session 25, third context (25 Oct 2026, from 07:34 IST; after a compaction) - C3.6g the land between villages landed on main (b516bb1, sim 95;
   D2-176).** (1) **Measured first** (`place --margins`, new): the handoff's marginal-land hypothesis is refuted - beyond the 1,900 m spacing the land is
   ice, cold or dry (lowering a site's bar adds 0-1 villages a world); **the room is between villages**: 1,164-1,425 ha of free arable (15-20 % of the
@@ -28,6 +52,10 @@
   `ArgumentOutOfRangeException` traced: Unity's own editor search indexing at startup (harmless). (9) Queued (`make_final.sh`): main's full suite,
   the third 1,000-year acceptance run `_ac3`, the Web build `s25web3` (its test casts a power by a click, shows Your Actions and the title), layer costs
   of a great world (people, buildings, trees, cover, shadows, terrain, HUD), shots of village #4 at 300/600/1,000 and the realms at 1,000.
+  (10) **F9.4 the meteor and the drought** (be8ef8e, sim 98) and **F10.1 the world's sound** (f47ce59) landed - D2-179; main's full suite at sim 98
+  **473/0/0**. War measured on `_ac2`: between realms now, half broken on walls. Built, waiting to land after the final run: **F9.5 the rain**
+  (`wip/rain`, sim 99) and **C8.1a the harrying** (`wip/harry`, sim 100) - their checks queued (`L_a`, `M_*`). Handoff at ~14:10 with the final run
+  running (SESSION_HANDOFF "Session 25, third context - HANDOFF").
 - **Session 25, second context (25 Oct 2026, 23:56-~02:35 IST; Control Room run #78 session 2) - four slices landed on main (sim 94): C10.8 the asking, C10.9 the lord's death, C10.10 the lord's peace (chosen over C8.1 by measuring first), C11.1a a people's tongue; the wars drawn on the realms layer; the 1,000-year acceptance in the queue.** (1) **C10.8 landed** (731c75a, D2-168): its branch's one failing test was a premise the asking itself overtook (1b5e033). (2) **A fault in the job tooling**: `lib.sh`'s `gate` read the load into global `r` and `c`, so a job looping `for c in <classes>` ran filters like "4" and "2" and passed on "0 passed" - C10.9's first `lp1 ok` had run none of its classes; `gate` keeps them local, the gates need 1+ passed. (3) **C10.9 the lord's death landed** (aeb880b, D2-173): ten seeds against C10.8 at par in people and per-person rates, raids x0.64, wounds x0.82, bonds made x2.8 and ended x3.6, the greatest realm x1.04. (4) **C8.1 measured first and set aside** (`lordships --walls`, `run --raidtally`): refusals of the asking are rare and end in a bow; the war is feud on walled villages (raids answer blows, refused claims, takers seen; bonds' ends 1-6 %), 30-88 % of it between villages of one realm. (5) **C10.10 the lord's peace landed** (955b497, D2-174): no bands within a realm, blood judged by the common lord; ten seeds against C10.9 - per-person rates at par, famines a person-year x0.83, loot x0.65, people x1.085 over years 100-199; against its matched placebo twin x1.054 (t 2.69; the twins x1.029), explained: raids within realms gone (seed 4: 85 -> 0), war at the realms' edges. (6) **C11.1a a people's tongue landed** (33fd336, D2-175): measured first - every house stands as its village's way, all names from one speech; now each first people its own tongue, founders' tongues changed a sound at a time, places, first families and the born named in it (Stoby's line: Stoby, Finby, Tainnidal, Kothirhope...); the book's Places begins with The Peoples; seed 4's annals = C10.9's byte for byte. (7) **The wars on the realms map layer** (8098877): the last ten years' raids as dark spearheads toward the raided. (8) In the queue: main's full suite (`9_a`), three 1,000-year worlds `_ac1` (seeds 2, 4, 7; saved at 50/150/300/500/800/1,000, books at 300 and 1,000), the Web build `s25web2` over them, each age's real shots `s25m_*`.
 - **Session 25 (24 Oct 2026, from 22:14 IST; Arjun's priorities: forward progress; the governance slice; a finished core simulation within two weeks;
   the planet like Earth from space; places and people identifiable; a real History Book; then god powers) - the orbit look, the History Book as a book

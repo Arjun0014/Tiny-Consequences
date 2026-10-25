@@ -129,7 +129,8 @@ try {
 
   // (F9.1-F9.2) the god's powers: lightning aimed as its button aims it, a real click on the planet casts it (the ray to the ground, a command);
   // a world-day on, the book's last part tells it and what came of it
-  await cmd('speed 0'); await cmd('village 0 6000'); await page.waitForTimeout(1500);
+  // (the place page opened above covers the middle of the view, and a click over a page is the page's: s25web3 clicked on it and cast nothing)
+  await cmd('closepages'); await cmd('speed 0'); await cmd('village 0 6000'); await page.waitForTimeout(1500);
   const casts0 = (await state()).casts || 0;
   await cmd('aim 0'); await page.waitForTimeout(400);
   const cv = await page.locator('canvas').first().boundingBox();
@@ -145,8 +146,11 @@ try {
 
   // save to IndexedDB, reload, the same world continues
   await cmd('speed 0'); await page.waitForTimeout(800);
+  // (the save is done at the game's next frame, and the state published before it still shows the save before: wait for one more save stored -
+  // s25web3-5 reloaded on the stale saveOk and lost the save)
+  const saves0 = (await state()).saves || 0;
   await cmd('save');
-  await waitFor(() => window.__TC2 && window.__TC2.saveOk === true, null, 60000);
+  await waitFor((n) => window.__TC2 && window.__TC2.saves > n && window.__TC2.saveOk === true, saves0, 60000);
   const before = await state();
   await page.goto(`${base}?speed=0${gfxParam}`);
   await waitFor(() => window.__TC2 && window.__TC2.ready === true && window.__TC2.people > 0, null, 300000);
