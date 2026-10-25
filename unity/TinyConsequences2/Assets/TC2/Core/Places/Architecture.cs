@@ -70,11 +70,13 @@ namespace TC2.Core.Places
         /// <summary>`--oldhouseways` (`--oldways` is D2-160's): every house built in its village's way (D2-114) - no household carries one of its own - on the same binary.</summary>
         public static bool WaysOff;
         /// <summary>
-        /// At a marriage, the chance the new household takes one way of its village's first household where theirs differ (the leading house's way
-        /// copied by the young: the hall's form imitated in its village's houses), and one of the household the bride grew up in (she brings her
-        /// mother's ways with her).
+        /// At a marriage, the chance the new household builds as its village builds - its first household's way, roof and shade: houses are raised
+        /// with the village's hands, from its materials, in its custom, and the young of a household come from elsewhere take it up (`Conform`);
+        /// and the chance a bride from another village brings one of her household's ways with her (`BrideCopy`). A first form had the young take one
+        /// way of the first household at a time (0.3) and every bride one of hers (0.15): by year 300 only 15 % of households built as their village's
+        /// founders and 21 % as its first household, 62 of 63 villages a mosaic - no village had a way of its own (seed 4, `place --ways`).
         /// </summary>
-        public const double HeadCopy = 0.3, BrideCopy = 0.15;
+        public const double Conform = 0.6, BrideCopy = 0.1;
         /// <summary>A year's chance the first household of a tributary takes one way of its lord's first household where they differ (the lord's
         /// seat imitated by the households that lead the villages paying it).</summary>
         public const double LordCopy = 0.1;
@@ -107,10 +109,13 @@ namespace TC2.Core.Places
             return (to & ~(7 << 2)) | (from & (7 << 2));
         }
 
+        /// <summary>A way built with `from`'s roof form and shade, the line `to` descends from kept.</summary>
+        public static int Adopt(int to, int from) => (to & ~0x1F) | (from & 0x1F);
+
         /// <summary>
         /// The way a couple's new household builds in (C11.1b): the way of the house the groom grew up in (they make their home in his village, under
-        /// his family's name); now and then one way of their village's first household (`HeadCopy`) and one of the bride's own household's
-        /// (`BrideCopy`), each where it differs.
+        /// his family's name) - as its village builds, its first household's way, more often than not (`Conform`); and now and then one of the ways
+        /// of the bride's own household, where she came from another village (`BrideCopy`).
         /// </summary>
         public static int WayAtMarriage(World w, int sid, int hid, int groomHh, int brideHh)
         {
@@ -118,9 +123,10 @@ namespace TC2.Core.Places
             ref var s = ref w.Settlements.Get(sid);
             int way = WayOf(w, groomHh, in s);
             int head = s.HeadHh;
-            if (head != 0 && head != groomHh && w.Households.Exists(head) && KeyedRng.Unit(w.Seed, RngStream.Traits, (ulong)hid, 9101) < HeadCopy)
-                way = Take(way, WayOf(w, head, in s), KeyedRng.Hash(w.Seed, RngStream.Traits, (ulong)hid, 9102));
-            if (brideHh != 0 && brideHh != groomHh && w.Households.Exists(brideHh) && KeyedRng.Unit(w.Seed, RngStream.Traits, (ulong)hid, 9103) < BrideCopy)
+            if (head != 0 && head != groomHh && w.Households.Exists(head) && KeyedRng.Unit(w.Seed, RngStream.Traits, (ulong)hid, 9101) < Conform)
+                way = Adopt(way, WayOf(w, head, in s));
+            if (brideHh != 0 && brideHh != groomHh && w.Households.Exists(brideHh) && w.Households.Get(brideHh).Settlement != sid &&
+                KeyedRng.Unit(w.Seed, RngStream.Traits, (ulong)hid, 9103) < BrideCopy)
             {
                 int bs = w.Households.Get(brideHh).Settlement;
                 if (w.Settlements.Exists(bs)) way = Take(way, WayOf(w, brideHh, in w.Settlements.Get(bs)), KeyedRng.Hash(w.Seed, RngStream.Traits, (ulong)hid, 9104));

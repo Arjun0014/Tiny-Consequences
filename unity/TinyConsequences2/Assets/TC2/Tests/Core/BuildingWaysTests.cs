@@ -62,12 +62,12 @@ namespace TC2.Tests.Core
         }
 
         [Test]
-        public void ACoupleBuildsAsTheGroomsHouseNowAndThenAsTheFirstHouseholdOrTheBrides()
+        public void ACoupleBuildsAsItsVillageMoreOftenThanNotElseAsTheGroomsHouseAndABrideBringsHerWays()
         {
             var w = TwoWays(out int a, out int b, out int hid, out int bid);
             Assume.That(w != null, "a world with two villages building apart");
             int ta = w.Settlements.Get(a).Tradition, tb = w.Settlements.Get(b).Tradition;
-            // the premise: the groom's house builds in the first village's way, the village's first household in its own
+            // the premise: the groom's house came from the first village and builds in its way; the village's first household in the village's own
             ref var sb = ref w.Settlements.Get(b);
             int head = 0;
             var hl = w.HouseholdsOf(b);
@@ -75,18 +75,16 @@ namespace TC2.Tests.Core
             Assume.That(head != 0, "a second household to lead the village");
             sb.HeadHh = head;
             w.Households.Get(hid).Way = ta;
-            int n = 2000, same = 0, headTook = 0;
+            int n = 2000, groom = 0, village = 0;
             for (int k = 0; k < n; k++)
             {
                 int way = Architecture.WayAtMarriage(w, b, 900000 + k, hid, hid);
                 Assert.AreEqual(Architecture.Line(ta), Architecture.Line(way), "the line it descends from is kept");
-                bool roof = Architecture.TraditionRoof(way) != Architecture.TraditionRoof(ta), shade = Architecture.TraditionPalette(way) != Architecture.TraditionPalette(ta);
-                Assert.IsFalse(roof && shade, "one way at a time");
-                if (!roof && !shade) same++;
-                else { headTook++; Assert.IsTrue(roof ? Architecture.TraditionRoof(way) == Architecture.TraditionRoof(tb) : Architecture.TraditionPalette(way) == Architecture.TraditionPalette(tb), "the first household's way"); }
+                if (way == ta) groom++;
+                else { village++; Assert.IsTrue(Architecture.Alike(way, tb), "the village's way, roof and shade"); }
             }
-            Console.WriteLine("as the groom's house " + same + " of " + n + ", one of the first household's ways " + headTook);
-            Assert.That(headTook / (double)n, Is.InRange(Architecture.HeadCopy - 0.04, Architecture.HeadCopy + 0.04));
+            Console.WriteLine("as the groom's house " + groom + " of " + n + ", as the village builds " + village);
+            Assert.That(village / (double)n, Is.InRange(Architecture.Conform - 0.04, Architecture.Conform + 0.04));
             // a bride from the first village, the groom's house building as its own village does and leading it: now and then one of hers
             w.Households.Get(hid).Way = tb; sb.HeadHh = hid;
             int brideHh = w.HouseholdsOf(a)[0];
