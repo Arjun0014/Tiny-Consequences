@@ -946,6 +946,7 @@ namespace TC2.Game
             if (_writer == null || year != _bookYear)
             {
                 _writer = new HistoryBook.Writer(w);
+                _mapSeat = -1;   // (a new book: its realm maps drawn anew)
                 _parts = new BookPart[HistoryBook.PartTitles.Length];
                 _bookYear = year;
             }
@@ -1007,6 +1008,7 @@ namespace TC2.Game
                     if (!string.IsNullOrEmpty(ch.Sub)) GUILayout.Label(ch.Sub, _inkSub);
                     _bookScroll = GUILayout.BeginScrollView(_bookScroll, GUILayout.Height(r.height * (_line != 0 ? 0.52f : 0.80f)));
                     if (_bookChapter == 0 && !string.IsNullOrEmpty(part.Intro)) GUILayout.Label("<i>" + part.Intro + "</i>", _inkFact);
+                    if (ch.MapSeat > 0 && w.Settlements.Exists(ch.MapSeat)) RealmMap(w, ch, r.width);
                     foreach (var b in ch.Blocks)
                     {
                         switch (b.Kind)
@@ -1051,6 +1053,80 @@ namespace TC2.Game
             GUILayout.EndHorizontal();
             GUILayout.EndArea();
         }
+
+        // (the book's realm maps, 25 §8) a realm's portrait: the land round its seat at its height, its villages in its ink, the rest in grey - the
+        // ground drawn once a chapter into a texture, the villages as dots over it
+        const int MapW = 256, MapH = 160;
+        Texture2D _mapTex; int _mapSeat = -1, _mapYear = -1; double _mapHalf;
+        Vec3d _mapAt, _mapE, _mapN;
+        readonly System.Collections.Generic.List<int> _mapIn = new System.Collections.Generic.List<int>(), _mapOut = new System.Collections.Generic.List<int>();
+
+        /// <summary>A point on the planet in the map's frame (m east and north of the seat, along the ground: an azimuthal projection).</summary>
+        void MapXY(Vec3d p, out double x, out double y)
+        {
+            double R = Host.World.Planet.Radius, c = System.Math.Max(-1.0, System.Math.Min(1.0, Vec3d.Dot(_mapAt, p)));
+            Vec3d d = p - _mapAt * c; double len = d.Length;
+            if (len < 1e-12) { x = 0; y = 0; return; }
+            double th = System.Math.Acos(c) * R / len;
+            x = Vec3d.Dot(d, _mapE) * th; y = Vec3d.Dot(d, _mapN) * th;
+        }
+
+        void BuildRealmMap(TC2.Core.Simulation.World w, BookChapter ch)
+        {
+            _mapSeat = ch.MapSeat; _mapYear = ch.MapYear;
+            _writer.RealmAt(ch.MapSeat, ch.MapYear, _mapIn, _mapOut);
+            var P = w.Planet; double R = P.Radius;
+            _mapAt = w.Settlements.Get(ch.MapSeat).Anchor;
+            TC2.Core.Planet.Storms.Frame(_mapAt, out _mapE, out _mapN);
+            double far = 0;
+            foreach (int sid in _mapIn) far = System.Math.Max(far, Vec3d.ArcDistance(_mapAt, w.Settlements.Get(sid).Anchor, R));
+            _mapHalf = System.Math.Min(System.Math.PI * R * 0.8, System.Math.Max(1500.0, far * 1.3 + 400.0));   // (half the map's height, m)
+            if (_mapTex == null) { _mapTex = new Texture2D(MapW, MapH, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear }; }
+            var px = new Color32[MapW * MapH];
+            double scale = 2.0 * _mapHalf / MapH;   // m a pixel
+            var parchment = new Color(0.86f, 0.79f, 0.63f); var wood = new Color(0.62f, 0.64f, 0.46f); var sea = new Color(0.60f, 0.68f, 0.72f); var ice = new Color(0.92f, 0.93f, 0.94f);
+            for (int j = 0; j < MapH; j++)
+                for (int i = 0; i < MapW; i++)
+                {
+                    double x = (i + 0.5 - MapW * 0.5) * scale, y = (j + 0.5 - MapH * 0.5) * scale, rr = System.Math.Sqrt(x * x + y * y);
+                    Vec3d p = _mapAt;
+                    if (rr > 1e-9) { double th = rr / R; p = (_mapAt * System.Math.Cos(th) + (_mapE * (x / rr) + _mapN * (y / rr)) * System.Math.Sin(th)).Normalized; }
+                    int c = P.Grid.CellOf(p);
+                    Color col = c < 0 ? sea : !P.IsLand(c) || P.IsLake(c) ? sea : P.Ice[c] > 5f ? ice : Color.Lerp(parchment, wood, 0.7f * P.Forest[c]);
+                    px[j * MapW + i] = col;
+                }
+            _mapTex.SetPixels32(px);
+            _mapTex.Apply(false);
+        }
+
+        void RealmMap(TC2.Core.Simulation.World w, BookChapter ch, float pageW)
+        {
+            if (_mapTex == null || _mapSeat != ch.MapSeat || _mapYear != ch.MapYear) BuildRealmMap(w, ch);
+            float h = Mathf.Min(180f, pageW * 0.3f), mw = h * MapW / MapH;
+            GUILayout.BeginHorizontal(); GUILayout.FlexibleSpace();
+            Rect box = GUILayoutUtility.GetRect(mw, h, GUILayout.Width(mw), GUILayout.Height(h));
+            GUILayout.FlexibleSpace(); GUILayout.EndHorizontal();
+            GUILayout.Label("<size=11>" + w.History.NameOf(EntityRef.Settlement(ch.MapSeat)) + "'s realm in year " + ch.MapYear + ": its villages in its ink, the others grey; " + OneDec(2.0 * _mapHalf / 1000.0) + " km from top to foot</size>", _inkFact);
+            if (Event.current.type != EventType.Repaint) return;
+            GUI.DrawTexture(box, _mapTex);
+            Color ink = RealmInk[0];
+            for (int k = 0; k < 2; k++)
+            {
+                var list = k == 0 ? _mapOut : _mapIn;
+                foreach (int sid in list)
+                {
+                    MapXY(w.Settlements.Get(sid).Anchor, out double x, out double y);
+                    float u = box.x + box.width * (0.5f + (float)(x / (2.0 * _mapHalf * MapW / MapH))), v = box.y + box.height * (0.5f - (float)(y / (2.0 * _mapHalf)));
+                    if (u < box.x || u > box.xMax || v < box.y || v > box.yMax) continue;
+                    bool seat = sid == ch.MapSeat; float d = seat ? 9f : k == 0 ? 4f : 6f;
+                    GUI.color = new Color(0f, 0f, 0f, 0.7f); GUI.DrawTexture(new Rect(u - d * 0.5f - 1f, v - d * 0.5f - 1f, d + 2f, d + 2f), _dot);
+                    GUI.color = k == 0 ? new Color(0.45f, 0.42f, 0.38f) : ink; GUI.DrawTexture(new Rect(u - d * 0.5f, v - d * 0.5f, d, d), _dot);
+                }
+            }
+            GUI.color = Color.white;
+        }
+
+        static string OneDec(double v) => v.ToString("0.0", CultureInfo.InvariantCulture);
 
         /// <summary>
         /// The Timeline page: the world's years at a glance - its ages as bands across the top, under them each great realm's villages year by year
