@@ -153,9 +153,9 @@ namespace TC2.Tests.Core
             [Test]
         public void ANewHomeTakesTheInnermostFreeLotSoAVillageKeepsItsShape()
         {
-            // a ruin keeps its lot; when it has gone into the land its lot is the next new home's (before, every new home took the next
-            // lot of an ever-longer spiral and villages of a few hundred sprawled 400 m out over the centuries); never a lot in the water
-            const long y = SimTime.Year;
+            // a ruin kept its lot until it had gone into the land (`--oldruins`); now (C13.4) the next new home clears it and takes the lot at once
+            // (before both, every new home took the next lot of an ever-longer spiral and villages of a few hundred sprawled 400 m out over the
+            // centuries); never a lot in the water
             var w = TestWorlds.Make(445);
             int sid = w.Settlements.First();
             ref var s = ref w.Settlements.Get(sid);
@@ -176,18 +176,23 @@ namespace TC2.Tests.Core
             var b = w.Buildings.Get(inner);
             int gone = b.Household;
             DieOut(w, gone);
-            w.Buildings.Get(inner).Left = w.Now - 100 * y;   // premise: fallen in long ago, its ruin still there
-            Homes.FreeLot(w, sid, 0, out float rx, out float ry);
-            Assert.Greater((rx - b.X) * (double)(rx - b.X) + (ry - b.Y) * (double)(ry - b.Y), 36.0, "a ruin keeps its lot");
-            w.Buildings.Get(inner).Left = w.Now - 400 * y;   // premise: its ruin is gone into the land
-            Homes.Prune(w);
-            Homes.FreeLot(w, sid, 0, out float fx, out float fy);
+            w.Buildings.Get(inner).Left = w.Now - SimTime.Years(Homes.FallYears(in w.Buildings.Get(inner)) + 10.0);   // premise: fallen in ten years ago, its ruin still there
+            Assert.IsTrue(Homes.ClearableRuin(in w.Buildings.Get(inner), w.Now), "premise: a fallen home's ruin");
+            try
+            {
+                Homes.OldRuins = true;
+                Homes.FreeLot(w, sid, 0, out float rx, out float ry);
+                Assert.Greater((rx - b.X) * (double)(rx - b.X) + (ry - b.Y) * (double)(ry - b.Y), 36.0, "under the old rule a ruin keeps its lot");
+            }
+            finally { Homes.OldRuins = false; }
+            Homes.FreeLot(w, sid, 0, out float fx, out float fy);   // (C13.4: the ruin cleared, its lot the new home's)
+            Assert.AreEqual(0.0, Homes.RuinLeft(in w.Buildings.Get(inner), w.Now), 1e-12, "the ruin cleared for the new home");
             var P = w.Planet;
             int cell = P.Grid.CellOf(w.Settlements.Get(sid).LocalToSphere(fx, fy, P.Radius));
             Assert.IsTrue(P.IsLand(cell) && !P.IsLake(cell), "on dry land");
             double fromSquare = Math.Sqrt(((double)fx - s.SquareX) * ((double)fx - s.SquareX) + ((double)fy - s.SquareY) * ((double)fy - s.SquareY));
-            Assert.LessOrEqual(fromSquare, best + 1e-3, "the freed inner lot (or one as near the square) is the new home's, not the spiral's end");
-            Console.WriteLine("innermost home " + best.ToString("0.0") + " m from the square; the next new home after its ruin went " + fromSquare.ToString("0.0") + " m; lots used " + w.Settlements.Get(sid).Lots);
+            Assert.LessOrEqual(fromSquare, best + 1e-3, "the ruin's inner lot (or one as near the square) is the new home's, not the spiral's end");
+            Console.WriteLine("innermost home " + best.ToString("0.0") + " m from the square; the next new home on its ruin's lot " + fromSquare.ToString("0.0") + " m; lots used " + w.Settlements.Get(sid).Lots);
         }
             [Test]
         public void AHomeTheSeaTakesIsLostAndItsPeopleMoveToDryLand()

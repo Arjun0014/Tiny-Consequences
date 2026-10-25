@@ -158,7 +158,31 @@ namespace TC2.Core.Places
         /// (`exceptBid` the building it replaces), every other household's camp (`exceptHid` its own), the streets and lanes where they are lined,
         /// the green and the market place, and the palisade's ring.
         /// </summary>
-        public static bool HomeFits(World w, int sid, double x, double y, double face, int plan, int exceptBid, int exceptHid)
+        public static bool HomeFits(World w, int sid, double x, double y, double face, int plan, int exceptBid, int exceptHid) => HomeFits(w, sid, x, y, face, plan, exceptBid, exceptHid, false);
+
+        /// <summary>(C13.4) Whether a home laid out at a lot (its plan and bearing) meets a home standing or fallen there (their ground and the gap).</summary>
+        public static bool HomeMeetsHome(World w, int sid, double x, double y, double face, int plan, in Building b)
+        {
+            ref var s = ref w.Settlements.Get(sid);
+            int bp = PlanOf(in b);
+            double dx = (double)b.X - x, dy = (double)b.Y - y, rr = Reach(plan) + Reach(bp) + Gap;
+            if (dx * dx + dy * dy >= rr * rr) return false;
+            double bf = FaceOf(in s, in b);
+            for (int r = 0; r < Count(plan); r++)
+            {
+                Rect(plan, r, out double cx, out double cz, out double hx, out double hz);
+                for (int q = 0; q < Count(bp); q++)
+                {
+                    Rect(bp, q, out double qx, out double qz, out double qhx, out double qhz);
+                    if (Boxes(x, y, face, cx, cz, hx, hz, b.X, b.Y, bf, qx, qz, qhx, qhz, Gap)) return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>As <see cref="HomeFits(World, int, double, double, double, int, int, int)"/>; with `overRuins` the fallen homes' ruins do not keep
+        /// the ground (C13.4: a household seeking a lot may clear one and build on it).</summary>
+        public static bool HomeFits(World w, int sid, double x, double y, double face, int plan, int exceptBid, int exceptHid, bool overRuins)
         {
             ref var s = ref w.Settlements.Get(sid);
             double reach = Reach(plan);
@@ -169,6 +193,7 @@ namespace TC2.Core.Places
                 if (bl[i] == exceptBid) continue;
                 ref var b = ref w.Buildings.Get(bl[i]);
                 if (Homes.RuinLeft(in b, w.Now) <= 0) continue;   // (gone into the land)
+                if (overRuins && Homes.ClearableRuin(in b, w.Now)) continue;   // (a home's ruin gives way: C13.4)
                 double dx = (double)b.X - x, dy = (double)b.Y - y;
                 if (Structures.IsHome(b.Kind))
                 {

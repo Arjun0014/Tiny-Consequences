@@ -349,11 +349,12 @@ namespace TC2.Core.Places
                 }
             }
             ref var s2 = ref w.Settlements.Get(sid);
-            if (front) { x = fx; y = fy; return; }
+            if (front) { x = fx; y = fy; ClearRuinsAt(w, sid, forHid, x, y); return; }
             if (spiral >= 0)
             {
                 if (spiral >= s2.Lots) s2.Lots = spiral + 1;
                 x = sx; y = sy;
+                ClearRuinsAt(w, sid, forHid, x, y);
                 return;
             }
             s2.LotPosition(s2.Lots++, out x, out y);   // (nothing free within reach: the next lot)
@@ -366,7 +367,51 @@ namespace TC2.Core.Places
             ref var s = ref w.Settlements.Get(sid);
             if (!Shore.Dry(w.Planet, s.LocalToSphere(lx, ly, w.Planet.Radius))) return false;   // (the ground as drawn: D2-088)
             int plan = Footprints.LotPlan(in s, lx, ly);
-            return Footprints.HomeFits(w, sid, lx, ly, Footprints.FaceAt(in s, lx, ly, forHid), plan, 0, forHid);
+            return Footprints.HomeFits(w, sid, lx, ly, Footprints.FaceAt(in s, lx, ly, forHid), plan, 0, forHid, !OldRuins);
+        }
+
+        /// <summary>(C13.4) The control: fallen homes' ruins keep their lots until they have gone into the land (300 years and more), as before.</summary>
+        public static bool OldRuins;
+        /// <summary>(C13.4) The share of a ruin's footing stone its clearers carry to the village's store (the rest broken or sunk).</summary>
+        public const double RuinStoneBack = 0.8;
+        /// <summary>(C13.4, tools: `--ruinstally`) ruins cleared, of them on stone footings, stone loads carried back.</summary>
+        public static double[] RuinTally;
+
+        /// <summary>(C13.4) A home's ruin that a household seeking a lot may clear: a hut or house fallen in (its roof gone), nobody's home, its ruin
+        /// still on the ground.</summary>
+        public static bool ClearableRuin(in Building b, long t) => Structures.IsHome(b.Kind) && b.Household == 0 && b.Done == 1 && Fallen(in b, t) && RuinLeft(in b, t) > 0;
+
+        /// <summary>
+        /// (C13.4) Ruins reused: a household that takes a lot where a fallen home's ruin lies clears it - its ground free at once, the stone of its
+        /// footings carried to the village's store (`RuinStoneBack`) for the next footings, the next wall; the rotten timber left. Told: the ruins of the
+        /// house of the household that lived there last cleared for the new one. So a living village rebuilds on its old plots, as medieval tofts were,
+        /// and does not grow outward round lots its ruins kept for centuries.
+        /// </summary>
+        static void ClearRuinsAt(World w, int sid, int forHid, float x, float y)
+        {
+            if (OldRuins) return;
+            ref var s = ref w.Settlements.Get(sid);
+            int plan = Footprints.LotPlan(in s, x, y);
+            double face = Footprints.FaceAt(in s, x, y, forHid);
+            var bl = w.BuildingsOf(sid);
+            for (int i = 0; i < bl.Count; i++)
+            {
+                int bid = bl[i];
+                ref var b = ref w.Buildings.Get(bid);
+                if (!ClearableRuin(in b, w.Now) || !Footprints.HomeMeetsHome(w, sid, x, y, face, plan, in b)) continue;
+                double stone = b.Stone > 0f ? b.Stone * RuinStoneBack : 0.0;
+                b.Left = w.Now - DMath.ToLong((FallYears(in b) + RuinYears(in b)) * SimTime.Year) - 1;   // (gone: RuinLeft 0)
+                b.Stone = 0f;
+                ref var s2 = ref w.Settlements.Get(sid);
+                s2.Stone += stone;
+                int last = b.Last;
+                w.Record(new HistoryEvent
+                {
+                    Kind = HistoryKind.HomeCleared, Time = w.Now, Cell = s2.Cell, Settlement = sid, Subject = last != 0 ? EntityRef.Household(last) : default,
+                    Object = new EntityRef(EntityKind.Building, bid), Other = forHid != 0 ? EntityRef.Household(forHid) : default, ArgA = 5, Magnitude = (float)stone, RootKind = RootKind.People,
+                });
+                if (RuinTally != null) { RuinTally[0]++; if (stone > 0) { RuinTally[1]++; RuinTally[2] += stone; } }
+            }
         }
 
         /// <summary>
