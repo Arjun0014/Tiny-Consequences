@@ -47,7 +47,9 @@ before's `saveOk`. The bridge publishes `saves` (stored), the test waits for it 
 1. Judge `0_za` (8/8 expected), then append D2-182 (`tc2/out/tools/s25/frame/d2182.md`) to DECISIONS. If a cull shows pop-in or missing villages in real shots
    (`K_d`), fix forward.
 2. **The frame and memory passes, next steps**: buildings are still the largest layer - villages in front of the limb but outside the view, the buildings' draws
-   by colour group (each a draw a camera and a shadow cascade), shadows cast only near; the heap grows with the record - **measured** (`run --load F
+   by colour group (each a draw a camera and a shadow cascade), shadows cast only near (`Sky.GpuCascades` 4 and `GpuShadowReach` 3.2 x the camera's height,
+   up to 7 km: at the region view every visible building is drawn into four cascades - try 2 cascades and ~2x above ~3 km, measured by a bridge toggle in
+   `realmsperf` and judged in real shots); the heap grows with the record - **measured** (`run --load F
    --statesizes`, main 44b12bc; `tc2/out/tools/s25/frame/statesizes_s2_ac3_y{300,1000}.txt`): seed 2's state 33.7 MB at 300 -> 106.8 at 1,000; **the history
    ledger 12.8 -> 63.9 MB** (114k -> 509k events, 117-132 B each; Local-tier Struck, TakingSeen, Sworn, Taken, TributePaid lead), **households 7,005 -> 68,066
    rows** (dissolved ones kept: 10.7 MB), **people 25,461 -> 47,527** (12,698 living; 20.4 MB), the deed book 1.1 -> 3.6 MB. Levers, in order: compact old
