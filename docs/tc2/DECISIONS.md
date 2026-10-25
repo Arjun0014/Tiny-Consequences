@@ -5452,3 +5452,32 @@ floatcheck clean, the Unity C# compiled. **Control**: seed 4's 300 years with `-
 a person-year x1.008 and x1.003, hunger x1.5 (t 0.98: a few worlds' famines), raids x1.16 (t 0.95), wounds x1.03, walls x1.10, foundings x1.00, the greatest
 realm x0.95; homes burnt in 300 years 5-45 a world (237 in ten worlds), in 4-13 villages, the most in one village 2-11 - war leaves burnt homes, ruins and
 rebuilding without changing how many live. **Landed** (session 25, 25 Oct 2026, sim 96).
+
+## D2-178 — 2026-10-25 — The god's powers as play: the power bar, Your Actions, a sickness and a blight; the opening (F9.1-F9.3, F11.1)
+
+**Context.** The vision's promise (`00`): "I may intervene as a god - a bolt, a drought, a plague, a meteor - but the world never exists to react to me",
+and WHAT DID I CAUSE as one view of the causal record. The core had four god commands (lightning, a storm, a quake, an eruption: each a logged command
+recording a `GodCommand` event, RootKind YOU, every consequence's `Root` following its cause back to it) - and the game exposed none of them: the HUD held
+inspection, the book and save/debug buttons; the game opened straight into the world.
+
+**Decision.** (1) **The power bar (F9.1, presentation and input)**: lightning, a storm (50 m/s), a quake (M7), an eruption, a sickness, a blight - each
+back in game time after its last use (1 day, 30 days, 2 years, 10 years, 5 years, 1 year), read from the world's command log (a save or a day away keeps
+it); chosen, it is aimed at the ground under the pointer (a ray to the planet: the sea's sphere, then the ground's height), a ring drawn where it falls
+and the place named ("Strike at Vivaiwick"); a click casts it as a command at that moment (a drag of the camera does not), Escape or the right button
+stops aiming. The view writes nothing. Each cast is told as what you did ("You struck lightning at X", "You raised a storm on the land beyond Y").
+(2) **Your Actions (F9.2, an observer)**: the History Book's ninth part - each cast, newest first, and the records whose causes run back to it (counted by
+kind: deaths, fires, homes burned, fields, the sky's and the earth's work, sicknesses, villages struck) and the weightiest told in order; "Nothing yet"
+until you reach in. (3) **A sickness and a blight (F9.3, sim 97)**, through the world's own systems: a pestilence breaks out in the village nearest the
+place within 2.5 km (`Disease.Pestilence`: traits drawn as a sickness's from the animals, deadlier - virulence 0.05-0.4, 0.4-1.5 contacts a day; one of
+its people its first host; its appearance caused by the cast) and spreads as sicknesses do; a blight takes 70 % of the standing crop of every village
+within 2.5 km (`SettlementSystem.CropLoss`, `CropsBlighted`; nothing when the fields are bare) and the failed harvest names it. (4) **The opening (F11.1)**:
+on a plain address a title over the world, held still beneath it - continue (or begin), a new world asked twice (it replaces the world kept), and how to
+watch and reach in; the tools' and tests' parameters skip it, `?menu=1` shows it. (5) The war spears on the realms layer read on any dye (a pale edge under
+the dark core, half again the chevrons' size).
+
+**Evidence.** PowersTests 4/4 (a storm cast is told and its storm rooted in it; Your Actions tells the cast first and only lines that came of it; a
+pestilence appears in the nearest village rooted in the cast and takes hold; a blight takes most of a growing crop and the failed harvest's causes run
+back to the cast; with no cast the part says so), HistoryBookTests 5/5 (nine parts), GazetteerTests, DiseaseTests 7/7, BurnTests, DeterminismTests 7/7,
+SaveLoad 8/8, the Unity C# compiled; **control**: with no cast the powers' binary lives seed 4's 300 years as main's rules byte for byte (annals and the
+state hash). The Web test casts lightning by a real click on the planet after aiming it and checks the world logged it; it shows Your Actions and the
+title (to be run on main's Web build: `make_final.sh`). **Landed** (session 25, 25 Oct 2026, sim 97).
