@@ -1,3 +1,4 @@
+using TC2.Core.Foundation;
 using TC2.Core.History;
 using TC2.Core.Simulation;
 
@@ -64,7 +65,7 @@ namespace TC2.Core.Diagnostics
                 case HistoryKind.HouseholdMoved:
                     {
                         int k = ClassOfVillage(w, e.Settlement); if (k >= 0) t[k * Stride + MovedOut] += e.ArgA;
-                        if (e.Object.Kind == Foundation.EntityKind.Settlement) { int d = ClassOfVillage(w, e.Object.Id); if (d >= 0) t[d * Stride + MovedIn] += e.ArgA; }
+                        if (e.Object.Kind == EntityKind.Settlement) { int d = ClassOfVillage(w, e.Object.Id); if (d >= 0) t[d * Stride + MovedIn] += e.ArgA; }
                         break;
                     }
                 case HistoryKind.PartySetOut: { int k = ClassOfVillage(w, e.Settlement); if (k >= 0) { t[k * Stride + Parties]++; t[k * Stride + PartyHh] += e.ArgA; } break; }
