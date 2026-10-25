@@ -242,6 +242,8 @@ namespace TC2.Headless
             if (a.Has("oldburn")) TC2.Core.Society.Conflict.BurnOff = true;   // (C8.0 off: no band fires a home)
             if (a.Has("oldharry")) TC2.Core.Society.Conflict.HarryOff = true;   // (C8.1a off: no band harries the fields outside the walls)
             if (a.Has("harrytally")) TC2.Core.Society.Conflict.HarryTally = new double[7];   // (C8.1a: bands broken on walls and the crops outside them)
+            if (a.Has("oldstonewalls")) TC2.Core.Society.Conflict.StoneWallsOff = true;   // (C7.2 off: no village walls its ring in stone)
+            if (a.Has("stonetally")) { TC2.Core.Society.Conflict.StoneTally = new double[5]; TC2.Core.Places.Construction.StoneTally = new double[3]; }   // (C7.2: stone weighed, begun, laid)
             if (a.Has("burntally")) TC2.Core.Society.Conflict.BurnTally = new double[TC2.Core.Society.Conflict.BurnTallyN];   // (ravaging, measured first)
             if (a.Has("sizetally")) TC2.Core.Diagnostics.SizeTally.Sums = new double[TC2.Core.Diagnostics.SizeTally.Classes * TC2.Core.Diagnostics.SizeTally.Stride];   // (villages deserted, measured first: how villages of each size live)
             if (a.Has("demandtally")) TC2.Core.Society.Conflict.DemandTally = new double[TC2.Core.Society.Conflict.DemandTallyN];   // (C10.8: the askings and their answers)
@@ -1045,6 +1047,20 @@ namespace TC2.Headless
                     if (hyt != null)   // (C8.1a: the harrying)
                         Console.WriteLine("harry: bands driven off " + hyt[0] + ", by a standing wall " + hyt[1] + ", with a crop standing " + hyt[2] + " (the harvest at stake " + F(hyt[3], "0") + " FU, " + hyt[4] +
                                           " raiders); harried " + hyt[5] + " (" + F(hyt[6], "0") + " FU of harvest burnt)");
+                    var stw = TC2.Core.Society.Conflict.StoneTally; var stl = TC2.Core.Places.Construction.StoneTally;
+                    if (stw != null && stl != null)   // (C7.2: walls of stone weighed, begun and laid)
+                    {
+                        int ringsNow = 0, partNow = 0, oldNow = 0; double share = 0;
+                        for (int si = w.Settlements.First(); si != 0; si = w.Settlements.Next(si))
+                        {
+                            ref var ss = ref w.Settlements.Get(si);
+                            if (ss.Wall == 2 && ss.StoneWall >= 1f) ringsNow++; else if (ss.Wall == 2 && ss.StoneWall > 0f) { partNow++; share += ss.StoneWall; }
+                            if (ss.OldR > 0f && ss.OldStone > 0f) oldNow++;
+                        }
+                        Console.WriteLine("stonewalls: village-days weighed with rock at hand " + stw[0] + " (losses a year " + F(stw[0] > 0 ? stw[1] / stw[0] : 0, "0") + " FU, a curtain's worth against its cost x" +
+                                          F(stw[0] > 0 ? stw[2] / stw[0] : 0, "0.00") + " on average); begun " + stw[3] + " (cost " + F(stw[4], "0") + " FU); hours laid " + F(stl[0], "0") + ", loads " + F(stl[1], "0") +
+                                          "; rings finished in stone " + stl[2] + "; now: rings of stone " + ringsNow + ", part laid " + partNow + " (" + F(partNow > 0 ? share / partNow : 0, "0.00") + " on average), old rings of stone inside " + oldNow);
+                    }
                     var bnt = TC2.Core.Society.Conflict.BurnTally;
                     if (bnt != null)   // (ravaging, measured first: whose homes a band holding the field could fire)
                         Console.WriteLine("burn: raids " + bnt[0] + " (unseen " + bnt[1] + "), the band holding the field " + bnt[2] + "; of those with blood the band's village knows against the raided's people " + bnt[3] +

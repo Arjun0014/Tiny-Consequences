@@ -190,6 +190,9 @@ namespace TC2.Core.Places
         public double Stubble;          // kg (dry) of forage left on its reaped fields for its herds until the sowing ploughs it in (C3.7d)
         public double TributeDue;       // FU of its lord's tenth set aside at its harvest, still to be carried to the lord's store by its people (C10.6, D2-161)
         public byte CarryToday;         // loads of it the village's day wants carried today: lived, the first of its grown people to go take them (C10.6)
+        public float StoneWall;         // the share of its ring's dry stretches laid in dry stone (C7.2: 0 all timber, 1 a stone curtain - it does not rot)
+        public long StoneWallEvent;     // the record of its people's beginning to wall it in stone (0: they have not chosen to)
+        public float OldStone;          // the share of the old ring inside a grown town that is stone: it stands when the timber has rotted (C7.2)
 
         public float SquareX, SquareY, FieldX, FieldY, WoodX, WoodY, WellX, WellY;
 
@@ -268,6 +271,7 @@ namespace TC2.Core.Places
             w.Double(Stubble);   // (C3.7d, sim version 80)
             w.Double(TributeDue); w.Byte(CarryToday);   // (C10.6, sim version 85)
             w.Long(Tongue);   // (C11.1, sim version 94)
+            w.Float(StoneWall); w.Long(StoneWallEvent); w.Float(OldStone);   // (C7.2, sim version 102)
         }
 
         public static Settlement Read(BinReader r)
@@ -300,6 +304,7 @@ namespace TC2.Core.Places
             s.Stubble = r.Double();
             s.TributeDue = r.Double(); s.CarryToday = r.Byte();
             s.Tongue = r.Long();
+            s.StoneWall = r.Float(); s.StoneWallEvent = r.Long(); s.OldStone = r.Float();
             return s;
         }
 
@@ -332,6 +337,7 @@ namespace TC2.Core.Places
             h.Add(Stubble);
             h.Add(TributeDue); h.Add(CarryToday);
             h.Add(Tongue);   // (C11.1)
+            if (StoneWallEvent != 0 || StoneWall != 0f || OldStone != 0f) { h.Add(StoneWall); h.Add(StoneWallEvent); h.Add(OldStone); }   // (C7.2: worlds with no stone walls hash as before)
         }
 
         internal static void WriteV(BinWriter w, Vec3d v) { w.Double(v.X); w.Double(v.Y); w.Double(v.Z); }

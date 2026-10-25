@@ -16,8 +16,30 @@ namespace TC2.Core.Places
         public const byte Well = 1, Granary = 2, Palisade = 4;   // a village's works (bits)
         public const byte Mend = 8;                              // (a work, not a bit: mending the palisade; D2-074)
         public const byte Structure = 16;                        // (a work, not a bit: raising the village's planned structure, C1.1)
+        public const byte StoneWork = 32;                        // (a work, not a bit: laying its ring's stretches in stone in place of the timber, C7.2)
         /// <summary>A palisade a metre of its ring: felling, carrying, digging and setting the posts; the timber (D2-074).</summary>
         public const double PalisadeHoursPerM = 2.5, PalisadeWoodPerM = 0.8;
+        /// <summary>
+        /// A dry-stone curtain a metre of its ring (C7.2; 22 §2): ~1.5 m high and 1 m thick, about 150 loads of 25 kg of rubble, laid at ~8 loads an hour by a
+        /// fit grown person - beside the hours of cutting the stone at the quarry and carrying it home (`Stone`: ~3 loads an hour cut, every load carried).
+        /// </summary>
+        public const double StoneLoadsPerM = 150.0, StoneLayPerHour = 8.0;
+
+        /// <summary>The ring's dry stretches (m): where posts or stones can stand (C1.6).</summary>
+        public static double RingLength(in Settlement s) => 2.0 * DMath.PI * DMath.Max(1.0, (double)s.WallR) * (s.WallDry > 0f ? (double)s.WallDry : 1.0);
+
+        /// <summary>Hours of laying the whole ring in stone (the stone at hand in store).</summary>
+        public static double StoneLayHours(in Settlement s) => RingLength(in s) * StoneLoadsPerM / StoneLayPerHour;
+
+        /// <summary>Hours a metre of stone curtain asks in all - cut at the village's rock, carried home a load at a time, laid (C7.2).</summary>
+        public static double StoneHoursPerM(World w, in Settlement s)
+        {
+            double bring = Stone.Rate(Stone.CutPerHour, (double)s.StoneDist, w.Config.WalkSpeed);   // (loads an hour of quarrying brings home)
+            return StoneLoadsPerM * (1.0 / DMath.Max(1e-6, bring) + 1.0 / StoneLayPerHour);
+        }
+
+        /// <summary>Whether a village is laying its ring in stone now: walled, begun, not finished.</summary>
+        public static bool Laying(in Settlement s) => s.Wall == 2 && s.StoneWallEvent != 0 && s.StoneWall < 1f;
 
         /// <summary>Where a village's store stands (its granary, or the heap before one is built): beside the square.</summary>
         public static void GranarySpot(in Settlement s, out double x, out double y) { x = s.SquareX + 14.0; y = s.SquareY - 10.0; }
@@ -67,6 +89,7 @@ namespace TC2.Core.Places
             if (s.Wall == 1) return Palisade;
             if (s.Project != 0) return Structure;
             if (s.Wall == 2 && s.WallKeep != 0 && s.WallCond < 0.6f) return Mend;
+            if (Laying(in s)) return StoneWork;   // (C7.2: the stone after every other work: its timber kept mended meanwhile)
             return 0;
         }
 
@@ -87,10 +110,11 @@ namespace TC2.Core.Places
         {
             if (work == Palisade || work == Mend)
             {
-                double perim = 2.0 * DMath.PI * DMath.Max(1.0, (double)s.WallR) * (s.WallDry > 0f ? (double)s.WallDry : 1.0);   // (the dry stretches only: C1.6)
-                double share = work == Mend ? 0.6 * DMath.Max(0.05, 1.0 - (double)s.WallCond) : 1.0;
+                double perim = RingLength(in s);   // (the dry stretches only: C1.6)
+                double share = work == Mend ? 0.6 * DMath.Max(0.05, 1.0 - (double)s.WallCond) * (1.0 - (double)s.StoneWall) : 1.0;   // (only its timber stretches rot: C7.2)
                 hours = PalisadeHoursPerM * perim * share; wood = PalisadeWoodPerM * perim * share;
             }
+            else if (work == StoneWork) { hours = StoneLayHours(in s); wood = 0; }   // (C7.2: the whole ring's laying; the share done is `StoneWall`)
             else { hours = 0; wood = 0; }
         }
 
@@ -98,7 +122,7 @@ namespace TC2.Core.Places
         public static void WorkSpot(World w, in Settlement s, byte work, double u, out double x, out double y)
         {
             if (work == Structure && s.Project != 0 && w.Buildings.Exists(s.Project)) { ref var b = ref w.Buildings.Get(s.Project); x = b.X; y = b.Y; return; }
-            if (work == Palisade || work == Mend)
+            if (work == Palisade || work == Mend || work == StoneWork)
             {
                 // a stretch on dry ground (C4.1: builders were seen standing in the sea where the ring crosses the shore)
                 double a = 2.0 * DMath.PI * u;
@@ -166,6 +190,29 @@ namespace TC2.Core.Places
             }
             byte work = NextWork(in s);
             if (work == 0) return 0;
+            if (work == StoneWork)
+            {
+                // (C7.2) a stretch of the ring laid in stone from the store's rubble (cut and carried from the quarry): the share laid grows by the hours,
+                // as far as the stone in store allows; when the last stretch is laid the ring has no timber left to rot
+                double need = StoneLayHours(in s);
+                double left = need * (1.0 - (double)s.StoneWall);
+                double doable = DMath.Min(hours * rate, DMath.Min(left, s.Stone / StoneLayPerHour));
+                if (doable <= 0 || need <= 0) return 0;
+                s.Stone = DMath.Max(0.0, s.Stone - doable * StoneLayPerHour);
+                s.StoneWall = (float)DMath.Min(1.0, (double)s.StoneWall + doable / need);
+                if (StoneTally != null) { StoneTally[0] += doable; StoneTally[1] += doable * StoneLayPerHour; }
+                if (left - doable < Done)
+                {
+                    s.StoneWall = 1f; s.WallCond = 1f;
+                    w.Record(new HistoryEvent
+                    {
+                        Kind = HistoryKind.WallBuilt, Time = w.Now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid),
+                        ArgA = (int)DMath.Floor(RingLength(in s) + 0.5), ArgB = 2, RootKind = RootKind.People, Cause1 = s.StoneWallEvent, Rel1 = CauseRel.CausedBy,
+                    });
+                    if (StoneTally != null) StoneTally[2]++;
+                }
+                return rate > 0 ? doable / rate : 0;
+            }
             if (work == Structure)
             {
                 // the village's planned structure (C1.1): its hours and wood go into it; it stands when they are in
@@ -206,6 +253,9 @@ namespace TC2.Core.Places
         /// </summary>
         public const double Done = 0.01;
 
+        /// <summary>Tools (`--stonetally`; null in the game): hours laid in stone [0], loads laid [1], rings finished in stone [2] (C7.2).</summary>
+        public static double[] StoneTally;
+
         /// <summary>Work-hours spent, as far as the wood allows (wood per work-hour), never past what is left to do.</summary>
         static double Spend(ref Settlement s, double effort, double left, double woodPerHour)
         {
@@ -237,6 +287,7 @@ namespace TC2.Core.Places
             }
             byte work = NextWork(in s);
             if (work == 0) return false;
+            if (work == StoneWork) return s.Stone >= StoneLayPerHour;   // (C7.2: stone for an hour's laying in store - else the quarry, not the woods)
             WorkCost(w, work, in s, out double needW, out double woodW);
             woodShort = s.Woodstore < woodW / needW;
             return !woodShort;
