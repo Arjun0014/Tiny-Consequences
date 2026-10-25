@@ -85,7 +85,7 @@ try {
   for (const pg of pages) {
     await cmd(`bookat ${pg.part} ${pg.chapter}`);
     await page.waitForTimeout(2500);
-    const f = path.join(outDir, `book_${pg.part < 0 ? 'preface' : pg.part + '_' + pg.chapter}.png`);
+    const f = path.join(outDir, `book_${pg.part === -1 ? 'preface' : pg.part === -2 ? 'timeline' : pg.part + '_' + pg.chapter}.png`);   // (-2: the timeline - it overwrote the preface's picture)
     await page.screenshot({ path: f });
     report.shots.push(f);
     console.log('shot book ' + pg.part + ':' + pg.chapter);
