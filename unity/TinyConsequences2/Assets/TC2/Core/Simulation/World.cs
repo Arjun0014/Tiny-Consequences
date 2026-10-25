@@ -400,6 +400,7 @@ namespace TC2.Core.Simulation
                 b2.Household = 0; b2.Left = Now - DMath.ToLong(Places.Homes.FallYears(in b2) * SimTime.Year) - 1;   // (fallen at once)
                 if (!Places.Structures.IsHome(b2.Kind)) Places.Structures.Lost(this, bid);
             }
+            Fx.Add(Now, cell, FxKind.Stone, _meteorFall.Count);   // (for the view: the stone falling, the flash, the dust)
             Fire.TryIgnite(this, cell, ev, RootKind.You, MeteorFire);
             GodQuake(cell, ev, 5);
         }
@@ -1241,6 +1242,7 @@ namespace TC2.Core.Simulation
             Metrics.Lightning++;
             long strike = Record(new HistoryEvent { Kind = HistoryKind.LightningStrike, Time = Now, Cell = cell, Settlement = SettlementAtCell(cell), Cause1 = cause, Rel1 = CauseRel.CausedBy, RootKind = root });
             Fire.TryIgnite(this, cell, strike, root, strength);
+            Fx.Add(Now, cell, FxKind.Bolt, (float)strength);   // (for the view: the bolt)
         }
 
         // ------------------------------------------------------------- time
