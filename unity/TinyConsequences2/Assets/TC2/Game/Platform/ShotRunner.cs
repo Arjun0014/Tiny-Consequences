@@ -276,6 +276,26 @@ namespace TC2.Game
                 long q = 0; foreach (long x in w.Metrics.Quakes) q += x;
                 Debug.Log("[TC2] quake: " + q + " quakes, " + w.Metrics.Landslides + " landslides, " + w.Metrics.QuakeDeaths + " deaths");
             }
+            string meteor = Arg("-tc2meteor");
+            if (meteor != null && sid != 0)
+            {
+                // (F9.4) the god throws down a stone a little way off the first village's square (metres east, as given): a logged command
+                var sm = w.Settlements.Get(sid);
+                int cell = w.Planet.Grid.CellOf(sm.LocalToSphere(Parse(meteor, 120), 0, w.Planet.Radius));
+                w.Issue(new Command { Time = w.Now, Kind = CommandKind.GodMeteor, Cell = cell });
+                var bm = Budget.Unlimited;
+                w.AdvanceTo(w.Now + 2 * SimTime.Minute, ref bm);
+                Debug.Log("[TC2] meteor: fires " + w.Fire.Active.Count);
+            }
+            string drought = Arg("-tc2drought");
+            if (drought != null && sid != 0)
+            {
+                // (F9.4) the god withholds the rain round the first village for a summer, the shots taken the days after as given
+                w.Issue(new Command { Time = w.Now, Kind = CommandKind.GodDrought, Cell = w.Settlements.Get(sid).Cell });
+                var bd2 = Budget.Unlimited;
+                w.AdvanceTo(w.Now + (long)(Parse(drought, 10) * SimTime.Day), ref bd2);
+                Debug.Log("[TC2] drought: soil water " + w.Planet.SoilWater[w.Settlements.Get(sid).Cell].ToString("0.00", System.Globalization.CultureInfo.InvariantCulture));
+            }
             string erupt = Arg("-tc2erupt");
             if (erupt != null && w.Planet.Vents.Count > 0)
             {
