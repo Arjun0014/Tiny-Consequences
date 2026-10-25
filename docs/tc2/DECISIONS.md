@@ -5618,3 +5618,50 @@ brings one of hers (0.1): households as their first household 55 %, homes in the
 (joiners, brides); tributaries' first households building as their lord's 73 % (58 % before); neighbouring pairs sharing roof and shade 20 % (chance ~6 %).
 Open: bonds churn (~11 years), so first households chase a succession of lords - a candidate refinement is to copy a lord only after the bond has stood a
 generation (`Settlement.LordSince`). **On the harrying's tip** (session 26, `wip/c111b-ways` with the harrying, rain and main merged): control `--oldhouseways` = `_hy1` byte for byte, annals and state hash; ways on: annals = `_hy1` byte for byte; seed 4 at 300: households as their village's founders 29 %, as its first household 55 %, 59 of 63 villages building more than one way, tributaries' first households as their lord's 73 % (`tc2/out/tools/s25/ways/ways_s4_bw3_y300.txt`). Landed with the harrying after one full suite over both (`fullsuite_bw3.txt`). The ways over centuries: the fourth acceptance run (`ways4_s*_y*.txt`).
+
+## D2-183 — 2026-10-25 — Stone walls: a walled village with rock at hand that loses much walls its ring in dry stone (C7.2)
+
+**Context.** C7's done-when: fortifications differ by region and history; walls ring what is guarded. 25 §8 item 4. Every wall in every world was a
+palisade (D2-074) - timber that rots in ~30 years unmended, kept while what it guards outweighs a third of its cost, raised again when it falls. The 1,000-year
+acceptance (25 §6) found years 300 and 1,000 hard to tell apart in the picture; nothing a village built outlasted the generation that built it.
+**Measured first** (`place --stonewalls`, `tc2/out/tools/s25/c72_design.md`, `results/stonewalls_s*_y*.txt`; the `_ac1` worlds at 300, 500, 1,000): seed 2 had
+24-28 walled villages, 14-20 knowing rock at hand (an outcrop seen, a quarry); the heaviest losers lost ~1,000-1,500 FU a year at year 300 (others' takings,
+raids, blows - as `Conflict.Defence` weighs them), ~200-770 at 1,000 (war moved to the realms' edges, D2-174); a dry-stone curtain ~1.5 m high and 1 m thick
+asks ~150 loads of 25 kg a metre - cut (3 an hour), carried home a load at a time, laid (~8 an hour): 27,000-85,000 work-hours a ring where the rock is
+0-750 m off (6,900-21,300 FU at `LabourWorth`). Real but narrow room: a few villages a world - those that both lose heavily and have stone at hand.
+
+**The record.** Early medieval fortifications were earth and timber almost everywhere (Anglo-Saxon burhs' banks and palisades, Slav grods, motte-and-bailey);
+stone came where it was at hand and where a place was rich and threatened enough to spend decades of labour on it - the burhs refaced in stone (Wareham,
+Cricklade in the 10th-11th c.), Roman circuits refurbished, the Irish and Scottish cashels and duns of dry stone where the rock lay on the surface. Town
+walls were built stretch by stretch over decades, gates and their towers first; a stone circuit outlived the needs that raised it - old walls stood
+inside towns grown past them, and in deserted places.
+
+**Decision.** (1) A walled village whose people know rock within a quarry's reach (`Stone.Reach` 1 km) weighs, day by day as its palisade is weighed, walling
+its ring in dry stone: the curtain's worth - what it keeps beyond the palisade over the century it stands (`StoneGuards` 0.75 of the year's losses against
+the palisade's `WallGuards` 0.5, over `StoneYears` 100: stone does not rot) and the timber no longer felled and mended (a palisade every `WallYears`) -
+against its cost - the hours of cutting at its rock, carrying home and laying, `Construction.StoneLoadsPerM` 150 and `StoneLayPerHour` 8 at `LabourWorth`.
+It begins when the curtain is worth more (`WallPlanned` ArgB 2, in response to its latest harm, enabled by the rock its people found). (2) Its people lay it
+as a village work after every other (`Construction.StoneWork`: the share laid `Settlement.StoneWall`), from the store's rubble; the village wants a few
+metres of curtain cut ahead (`Stone.WallAheadM` 3) beside its footings, so its quarry - opened if it has none - cuts and carries it in their free hours;
+the timber between is mended while the stone goes up. (3) Behind stone the defenders' ground is tripled (a sound palisade doubles it; `StoneGround`), and the
+stretches laid stay sound. (4) When the last stretch is laid (`WallBuilt` ArgB 2) no timber is left to rot or mend. The stretches laid stand when the timber
+between them falls, and when a grown town raises a larger ring the old ring's stone stays inside it (`Settlement.OldStone`) - an old wall in the town, a
+ruin's walls where the village is gone. `--oldstonewalls` the control, `--stonetally`.
+
+**What changes in the picture.** A few villages a world - where war was heaviest and rock lay near - stand behind grey dry-stone curtains with towers at their
+gates and along the circuit (drawn from the gates outward as the share laid grows); they keep them for centuries, and old stone rings stand inside towns
+that grew past them and about deserted places. Regions with no rock near keep timber.
+
+**Evidence.** StoneWallTests 5/5 (a heavily raided village with rock 200 m off begins, its first works and quarry first, lays a 274 m ring in ~3.5 years
+of its free hours from the store's rubble, its ground x3.6 = 3 x `HomeGround`, sound a year on; no rock, small losses or the rule off: none; the villagers
+lay the stone themselves - "laying stone in X's walls, in place of the timber"; the stretches laid stand as an old ring when the timber falls; a save while
+laying continues identically); Defence, Stone, Structures, Harry, Gazetteer, Footprints, Streets, Training tests 0 failed. The queue's checks
+(session 26): its classes again on the built binary (`sw1 ok`); **control** `--oldstonewalls` = the ways' rules (`_bw3`, seed 4, 300 years) byte for byte,
+annals and state hash; **ten seeds** `_stw1` against `_hy1` (main's annals; `tc2/out/tools/s26/results/cmp_hy1_stw1.txt`): people at 300 x1.085 (t 1.8),
+raids x0.66 (t -1.9), wounds a person-year x0.82 (t -1.4), births, deaths, hunger, famines, tribute and the greatest realm at par. One lean past |t| 2,
+**walls x1.23 (t 2.9), by construction**: the column counts rings completed, and a ring finished in stone is one - the extra per seed follows the stone rings
+finished (seed 11 +25 with 22, seed 6 +14 with 16, seed 42 +15 with 13, seed 8 +9 with 10); less them, palisades raised are as before (paired -2.9 a world,
+t -1.3). **The stone tally at year 300**: begun 2-23 a world (cost 15,535-210,008 FU of labour), finished 2-22, **rings of stone standing 2-17** (of ~55-65
+villages: more than the measure's "few" - seeds 11 and 6, rocky and warlike, wall a quarter of their villages, as Ireland's and Scotland's stony lands
+did), part laid 0-3, **old rings of stone inside grown towns 0-6**; a curtain's worth against its cost on the days weighed x0.24-0.50 (most weighing says
+no). Judged in the fourth acceptance run's shots (`s26a_ac4_s*_stone_y*`).
