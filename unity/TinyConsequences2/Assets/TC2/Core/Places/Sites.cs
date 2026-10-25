@@ -36,7 +36,11 @@ namespace TC2.Core.Places
         /// A site's worth (0..~1.7): habitable, with water (fresh, or the sea's shore for fishing folk), arable land within the
         /// fields' reach that no village claims (enough for ~25 people at full), and no village within the spacing.
         /// </summary>
-        public static double Quality(World w, int c, List<int> scratch)
+        public static double Quality(World w, int c, List<int> scratch) => Quality(w, c, scratch, Spacing);
+
+        /// <summary>A site's worth with the room it keeps from every living village given: `Spacing` for a new village, less for a daughter
+        /// village on its village's own margins (C3.6g).</summary>
+        public static double Quality(World w, int c, List<int> scratch, double spacing)
         {
             var P = w.Planet;
             double hab = Habitability(P, c);
@@ -52,7 +56,7 @@ namespace TC2.Core.Places
             {
                 ref var s = ref w.Settlements.Get(sid);
                 if (!s.Inhabited) continue;
-                if (Vec3d.ArcDistance(at, s.Anchor, P.Radius) < Spacing) return 0;
+                if (Vec3d.ArcDistance(at, s.Anchor, P.Radius) < spacing) return 0;
             }
             w.Hazards.CellsWithin(w, c, w.Config.FieldReach, scratch);
             double arable = 0;

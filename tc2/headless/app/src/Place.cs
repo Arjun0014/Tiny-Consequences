@@ -57,6 +57,7 @@ namespace TC2.Headless
             if (a.Has("ways")) { PeoplesWays(w); return 0; }
             if (a.Has("stonewalls")) { StoneWalls(w); return 0; }
             if (a.Has("ceiling")) { Ceiling(w); return 0; }
+            if (a.Has("margins")) { Margins(w, a.Int("show", 20)); return 0; }
             if (a.Has("heirs")) { Heirs(w); return 0; }
             if (a.Has("crofts")) { Crofts(w, a.Int("cell", 2)); return 0; }
             if (a.Has("seasons"))
@@ -748,6 +749,155 @@ namespace TC2.Headless
             }
             Console.WriteLine("  land to spare (1.25 x need or more): " + roomy + " villages, " + spare.ToString("0") + " ha held by none; crowded (under 0.9): " + crowded + " villages, " + shortCrowded +
                               " households short of their want; villages knowing a place still free and good: " + knowFree);
+        }
+
+        /// <summary>
+        /// (marginal land, measured first: `place --margins`) the land no village holds and why none is founded on it: every land cell by its distance to the
+        /// nearest living village - within a village's fields' reach, between villages (inside the spacing no village is founded in), beyond the spacing but
+        /// within a scout's sight (`Migration.ScoutMax` out and `Sites.LookRadius` round), beyond sight; their hectares and arable land (as it stands, and
+        /// cleared of its woods), held by fields or free, under the plough's floor (0.08); for the cells a village could stand on (beyond the spacing) the
+        /// site's worth (`Sites.Quality`) by bands and what holds each short of `Sites.MinQuality` (ice or lake, cold, dry or marsh, height, no water, little
+        /// free arable land); and how many villages could be founded at each lower bar, packed `Sites.Spacing` apart, the arable land they would hold and the
+        /// people it would feed.
+        /// </summary>
+        static void Margins(World w, int show)
+        {
+            var P = w.Planet; var g = P.Grid; var cfg = w.Config;
+            int n = P.Cells;
+            var vil = new List<(int sid, Vec3d at)>();
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid)) { ref var s = ref w.Settlements.Get(sid); if (s.Inhabited) vil.Add((sid, s.Anchor)); }
+            double sight = Migration.ScoutMax + Sites.LookRadius;
+            string[] zn = { "within a village's fields' reach", "between villages (in the spacing)", "beyond the spacing, in sight", "beyond any scout's sight" };
+            var cells = new int[4]; var ha = new double[4]; var arNow = new double[4]; var arOpen = new double[4]; var arHeld = new double[4]; var arFree = new double[4]; var arWaste = new double[4];
+            var nearSid = new int[n]; var nearD = new double[n];
+            var scratch = new List<int>();
+            var cand = new List<(double q, int c)>();
+            // why a cell beyond the spacing falls short of MinQuality: 0 ice or lake, 1 cold or hot, 2 dry or marsh, 3 high, 4 no water, 5 little free arable land
+            string[] why = { "ice or lake", "too cold or hot", "too dry or marsh", "too high", "no water to drink or fish", "little free arable land within reach" };
+            var whyN = new int[6]; var whyHa = new double[6];
+            double[] bars = { 0.25, 0.2, 0.15, 0.1, 0.05, 0.02 };
+            var bandN = new int[bars.Length + 1];
+            for (int c = 0; c < n; c++)
+            {
+                if (!P.IsLand(c)) continue;
+                Vec3d at = g.Center[c];
+                double bd = double.MaxValue; int bs = 0;
+                for (int i = 0; i < vil.Count; i++) { double d = Vec3d.ArcDistance(at, vil[i].at, P.Radius); if (d < bd) { bd = d; bs = vil[i].sid; } }
+                nearSid[c] = bs; nearD[c] = bd;
+                int z = bd < cfg.FieldReach ? 0 : bd < Sites.Spacing ? 1 : bd < sight ? 2 : 3;
+                double area = P.AreaHa(c), tm = w.PlanetSys.MeanTemp(c);
+                double a = P.Arability(c, tm), ao = P.ArabilityOpen(c, tm);
+                cells[z]++; ha[z] += area; arNow[z] += area * a; arOpen[z] += area * ao;
+                if (P.FieldOwner[c] != 0) arHeld[z] += area * a;
+                else if (w.SettlementAtCell(c) == 0) { if (a >= 0.08) arFree[z] += area * a; else arWaste[z] += area * ao; }
+                if (z < 2) continue;
+                double q = Sites.Quality(w, c, scratch);
+                int band = bars.Length;
+                for (int b = 0; b < bars.Length; b++) if (q >= bars[b]) { band = b; break; }
+                bandN[band]++;
+                if (q >= bars[bars.Length - 1]) cand.Add((q, c));
+                if (q >= Sites.MinQuality) continue;
+                // what holds it short: the factor of its worth that is least
+                int k;
+                double hab = Sites.Habitability(P, c);
+                double tmn = P.TMean[c], m = P.Moist[c];
+                double tf = DMath.SmoothStep(4, 11, tmn) * (1.0 - DMath.SmoothStep(24, 30, tmn));
+                double mf = DMath.SmoothStep(0.22, 0.4, m) * (1.0 - DMath.SmoothStep(0.85, 1.0, m));
+                double ef = 1.0 - DMath.SmoothStep(500, 1100, P.Elev[c] - P.SeaLevel);
+                if (P.Ice[c] > 0.5f || P.LakeDepth[c] > 0.3f) k = 0;
+                else if (hab > 0 && q <= 0) k = 4;
+                else
+                {
+                    double af = hab > 0 ? q / hab : 1.0;
+                    k = 1; double lo = tf;
+                    if (mf < lo) { k = 2; lo = mf; }
+                    if (ef < lo) { k = 3; lo = ef; }
+                    if (hab > 0 && af < lo) { k = 5; }
+                }
+                whyN[k]++; whyHa[k] += area;
+            }
+            int land = cells[0] + cells[1] + cells[2] + cells[3];
+            Console.WriteLine("margins at " + SimTime.Format(w.Now) + ": " + vil.Count + " villages, " + land + " land cells (" + (ha[0] + ha[1] + ha[2] + ha[3]).ToString("0") + " ha); fields' reach " +
+                              cfg.FieldReach.ToString("0") + " m, spacing " + Sites.Spacing.ToString("0") + " m, sight " + sight.ToString("0") + " m");
+            Console.WriteLine("  zone                                  cells       ha   arable now  cleared  held by fields  free (>=0.08)  waste (<0.08, cleared)");
+            for (int z = 0; z < 4; z++)
+                Console.WriteLine("  " + zn[z].PadRight(36) + cells[z].ToString().PadLeft(7) + ha[z].ToString("0").PadLeft(9) + arNow[z].ToString("0").PadLeft(13) + arOpen[z].ToString("0").PadLeft(9) +
+                                  arHeld[z].ToString("0").PadLeft(16) + arFree[z].ToString("0").PadLeft(15) + arWaste[z].ToString("0").PadLeft(24));
+            var sb = new System.Text.StringBuilder("  sites beyond the spacing by worth:");
+            for (int b = 0; b <= bars.Length; b++) sb.Append(b < bars.Length ? "  >=" + bars[b].ToString("0.00") + " " + bandN[b] : "  less " + bandN[b]);
+            Console.WriteLine(sb.ToString());
+            sb.Clear(); sb.Append("  short of " + Sites.MinQuality.ToString("0.00") + " (the least of its worth's factors):");
+            for (int k = 0; k < 6; k++) sb.Append("  " + why[k] + " " + whyN[k] + " (" + whyHa[k].ToString("0") + " ha)");
+            Console.WriteLine(sb.ToString());
+            // villages that could be founded at each lower bar, best first, `Sites.Spacing` apart
+            cand.Sort((x, y) => x.q != y.q ? y.q.CompareTo(x.q) : x.c.CompareTo(y.c));
+            List<int> lastChosen = null;
+            for (int b = 0; b < bars.Length; b++)
+            {
+                var chosen = new List<int>();
+                foreach (var (q, c) in cand)
+                {
+                    if (q < bars[b]) break;
+                    bool ok = true;
+                    for (int i = 0; i < chosen.Count && ok; i++) if (Vec3d.ArcDistance(g.Center[c], g.Center[chosen[i]], P.Radius) < Sites.Spacing) ok = false;
+                    if (ok) chosen.Add(c);
+                }
+                double ar = 0; int inSight = 0;
+                foreach (int c in chosen)
+                {
+                    w.Hazards.CellsWithin(w, c, cfg.FieldReach, scratch);
+                    for (int i = 0; i < scratch.Count; i++) { int x = scratch[i]; if (!P.IsLand(x) || P.FieldOwner[x] != 0) continue; double ax = P.Arability(x, w.PlanetSys.MeanTemp(x)); if (ax >= 0.08) ar += P.AreaHa(x) * ax; }
+                    if (nearD[c] < sight) inSight++;
+                }
+                Console.WriteLine("  at a bar of " + bars[b].ToString("0.00") + ": " + chosen.Count + " villages could be founded (" + inSight + " in a scout's sight), holding " + ar.ToString("0") +
+                                  " arable ha - bread for ~" + (ar / cfg.FieldHaPerPerson).ToString("0") + " people");
+                lastChosen = chosen;
+            }
+            // (C3.6g) daughter villages on a village's own margins: a cell nearer to it than to any other, inside its spacing, its houses beyond every
+            // village's fields (`FieldReach` and the claims' slack of 0.75 cell), worth MinQuality with that room kept; packed that far apart, land counted once
+            double gap = cfg.FieldReach + 0.75 * P.CellSize;
+            var mcand = new List<(double q, int c)>();
+            var withSite = new HashSet<int>();
+            for (int c = 0; c < n; c++)
+            {
+                if (!P.IsLand(c) || nearD[c] < gap || nearD[c] >= Sites.Spacing || P.FieldOwner[c] != 0 || w.SettlementAtCell(c) != 0) continue;
+                double q = Sites.Quality(w, c, scratch, gap);
+                if (q < Sites.MinQuality) continue;
+                mcand.Add((q, c)); withSite.Add(nearSid[c]);
+            }
+            mcand.Sort((x, y) => x.q != y.q ? y.q.CompareTo(x.q) : x.c.CompareTo(y.c));
+            var mchosen = new List<int>(); var counted = new HashSet<int>(); double mar = 0;
+            foreach (var (q, c) in mcand)
+            {
+                bool ok = true;
+                for (int i = 0; i < mchosen.Count && ok; i++) if (Vec3d.ArcDistance(g.Center[c], g.Center[mchosen[i]], P.Radius) < gap) ok = false;
+                if (!ok) continue;
+                mchosen.Add(c);
+                w.Hazards.CellsWithin(w, c, cfg.FieldReach, scratch);
+                for (int i = 0; i < scratch.Count; i++) { int x = scratch[i]; if (!P.IsLand(x) || P.FieldOwner[x] != 0 || !counted.Add(x)) continue; double ax = P.Arability(x, w.PlanetSys.MeanTemp(x)); if (ax >= 0.08) mar += P.AreaHa(x) * ax; }
+            }
+            Console.WriteLine("  on the villages' own margins (houses " + gap.ToString("0") + " m from any village): " + mcand.Count + " cells worth " + Sites.MinQuality.ToString("0.00") + " or more, by " + withSite.Count +
+                              " of " + vil.Count + " villages; " + mchosen.Count + " daughter villages could be founded, holding " + mar.ToString("0") + " arable ha - bread for ~" + (mar / cfg.FieldHaPerPerson).ToString("0") + " people");
+            if (lastChosen == null || show <= 0) return;
+            Console.WriteLine("  the sites at the lowest bar (best first): cell  worth  habitable  warmth  wet  low  water  free arable ha  nearest village (m)  a way on foot");
+            int shown = 0;
+            foreach (int c in lastChosen)
+            {
+                if (shown++ >= show) break;
+                double q = Sites.Quality(w, c, scratch), hab = Sites.Habitability(P, c);
+                double tmn = P.TMean[c], m = P.Moist[c];
+                double tf = DMath.SmoothStep(4, 11, tmn) * (1.0 - DMath.SmoothStep(24, 30, tmn));
+                double mf = DMath.SmoothStep(0.22, 0.4, m) * (1.0 - DMath.SmoothStep(0.85, 1.0, m));
+                double ef = 1.0 - DMath.SmoothStep(500, 1100, P.Elev[c] - P.SeaLevel);
+                w.Hazards.CellsWithin(w, c, cfg.FieldReach, scratch);
+                double ar = 0;
+                for (int i = 0; i < scratch.Count; i++) { int x = scratch[i]; if (!P.IsLand(x) || P.FieldOwner[x] != 0) continue; double ax = P.Arability(x, w.PlanetSys.MeanTemp(x)); if (ax >= 0.08) ar += P.AreaHa(x) * ax; }
+                bool fresh = P.FreshWaterNear(c);
+                bool way = nearSid[c] != 0 && w.Routes.GetToCell(w, nearSid[c], c) != null;
+                Console.WriteLine("    " + c.ToString().PadLeft(6) + q.ToString("0.000").PadLeft(7) + hab.ToString("0.00").PadLeft(11) + (tf.ToString("0.00") + " (" + tmn.ToString("0.0") + " C)").PadLeft(15) +
+                                  mf.ToString("0.00").PadLeft(6) + (ef.ToString("0.00") + " (" + (P.Elev[c] - P.SeaLevel).ToString("0") + " m)").PadLeft(14) + (fresh ? "fresh" : "shore").PadLeft(7) +
+                                  ar.ToString("0.0").PadLeft(16) + (w.History.NameOf(EntityRef.Settlement(nearSid[c])) + " " + nearD[c].ToString("0")).PadLeft(28) + (way ? "yes" : "no").PadLeft(14));
+            }
         }
 
         static void Marriage(World w)

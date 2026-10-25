@@ -23,7 +23,7 @@ namespace TC2.Core.History
             {
                 case HistoryKind.WorldCreated: return "The world took shape.";
                 case HistoryKind.PeopleArrived: return "People came to the place that would be " + subj + ".";
-                case HistoryKind.SettlementFounded: return subj + " was founded.";
+                case HistoryKind.SettlementFounded: return subj + " was founded" + (e.ArgA == 1 && !e.Object.IsNone ? " on the margins of " + obj + "'s land, between its fields and its neighbours'" : "") + ".";   // (a daughter village: C3.6g)
                 case HistoryKind.SettlementAbandoned: return subj + " was abandoned.";
                 case HistoryKind.PersonBorn: return subj + " was born to " + obj + (e.Other.IsNone ? "" : " and " + other) + " in " + place + ".";
                 case HistoryKind.PersonDied:

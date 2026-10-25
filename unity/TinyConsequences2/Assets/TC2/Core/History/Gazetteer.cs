@@ -41,7 +41,7 @@ namespace TC2.Core.History
             bool origin = false;
             if (s.FoundedEvent != 0 && w.History.TryGet(s.FoundedEvent, out var fe) && fe.Kind == HistoryKind.SettlementFounded)
             {
-                if (fe.Object.Kind == EntityKind.Settlement && fe.Object.Id != 0 && fe.Object.Id != sid) { sb.Append(" by people of ").Append(Name(w, fe.Object.Id)); origin = true; }
+                if (fe.Object.Kind == EntityKind.Settlement && fe.Object.Id != 0 && fe.Object.Id != sid) { sb.Append(" by people of ").Append(Name(w, fe.Object.Id)); if (fe.ArgA == 1) sb.Append(" on the margins of its land"); origin = true; }   // (a daughter village: C3.6g)
                 if (fe.Cause1 != 0 && w.History.TryGet(fe.Cause1, out var fc))
                 {
                     sb.Append(" (").Append(HistoryText.Describe(w, in fc).TrimEnd('.')).Append(')');

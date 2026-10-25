@@ -236,6 +236,8 @@ namespace TC2.Headless
             if (a.Has("lapsetally")) TC2.Core.Society.Conflict.LapseTally = new double[TC2.Core.Society.Conflict.LapseTallyN];
             if (a.Has("jointally")) TC2.Core.Places.Migration.JoinTally = new double[TC2.Core.Places.Migration.JoinTallyN];   // (the ceiling measured: households looking for a village to join)
             if (a.Has("oldnames")) TC2.Core.Places.Migration.TonguesOff = true;   // (C11.1 off: every name from the one speech of before)
+            if (a.Has("oldmargins")) TC2.Core.Places.Migration.MarginsOff = true;   // (C3.6g off: no daughter villages on the margins)
+            if (a.Has("margintally")) TC2.Core.Places.Migration.MarginTally = new double[4];   // (C3.6g: the leavers who looked to their village's margins)
             if (a.Has("demandtally")) TC2.Core.Society.Conflict.DemandTally = new double[TC2.Core.Society.Conflict.DemandTallyN];   // (C10.8: the askings and their answers)
             if (a.Has("raidtally")) TC2.Core.Society.Conflict.RaidTally = new double[TC2.Core.Society.Conflict.RaidTallyN];   // (C8.1 measured first: bands weighed over a wrong)
             if (a.Has("oldpeace")) TC2.Core.Society.Conflict.PeaceOff = true;   // (C10.10 off: villages of one realm feud as free villages do)
@@ -1032,6 +1034,21 @@ namespace TC2.Headless
                     if (rt != null)   // (C8.1 measured first: bands weighed over a wrong, and the walls that kept them home)
                         Console.WriteLine("raidtally: bands weighed over a wrong " + rt[0] + " (against walled villages " + rt[1] + "); too few would go " + rt[2] + "; too weak for the defence they expect " + rt[3] +
                                           " (against walled villages " + rt[4] + ", of which would have dared without the wall " + rt[5] + "); raised " + rt[6] + " (against walled villages " + rt[7] + "), " + rt[8] + " people");
+                    var mgt = TC2.Core.Places.Migration.MarginTally;
+                    if (mgt != null)   // (C3.6g: daughter villages on the land between villages)
+                    {
+                        int daughters = 0, living = 0, peopleNow = 0;
+                        for (int hi = 0; hi < w.History.Count; hi++)
+                        {
+                            var he = w.History.At(hi);
+                            if (he.Kind != TC2.Core.History.HistoryKind.SettlementFounded || he.ArgA != 1 || !w.Settlements.Exists(he.Settlement)) continue;
+                            daughters++;
+                            ref var ds = ref w.Settlements.Get(he.Settlement);
+                            if (ds.Inhabited) { living++; peopleNow += ds.Population; }
+                        }
+                        Console.WriteLine("margins: villages whose leavers found no village to join and looked to their own margins " + mgt[0] + ", found a place there " + mgt[1] + " (" + mgt[2] + " households, " + mgt[3] +
+                                          " people set out); daughter villages founded " + daughters + ", living " + living + " (" + peopleNow + " people), abandoned " + (daughters - living));
+                    }
                     var jt = TC2.Core.Places.Migration.JoinTally;
                     if (jt != null)   // (the ceiling measured: why the households that choose to leave find no village to join)
                         Console.WriteLine("join: households looking for a village to join " + jt[0] + " (their pressure at home " + F(jt[0] > 0 ? jt[8] / jt[0] : 0, "0.00") + " on average); candidates within marriage reach " + jt[1] +
