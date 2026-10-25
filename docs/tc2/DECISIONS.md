@@ -5825,3 +5825,39 @@ its play**: a first rule - the kind the place suits best, as thick as at its sin
 already near its ceiling there), and the next - the kind lacking most, to its densest cell's thickness - 13,738 (570 -> 14,308) that starved back to 865
 within five years; the rule kept brings the kind lacking most to its typical stocking: +30 at Stoby (its land near what its kinds keep), 17.9 t of deer
 back where the deer were hunted out (PowersTests). The herds round Stoby fell 86 -> 60 in those five years in every run, cast or not.
+
+## D2-189 — 2026-10-26 — Ruins reused: a living village rebuilds on its old plots (C13.4)
+
+**Context.** C13's content names "rebuilding, ruins reused". A home left empty falls in after 20 years (a hut) or 60 (a house; twice that on stone
+footings) and its ruin keeps its lot until it has gone into the land - 80 years for a hut, 300 for a house, half again on footings (D2-059, C1.3); a lot is
+free only where no building or ruin stands (`Footprints.HomeFits`). **Measured first** (`place --ruins`, ten seeds at year 300, `_stw1`,
+`tc2/out/tools/s26/results/ruins_s*_stw1_y300.txt`): living villages held **88-797 fallen homes' ruins on their lots a world** (a quarter to a third as many
+as the homes lived in: seed 2 797 against 2,982, seed 6 391 against 1,097), fallen 66-155 years before on average, **over 90 % of them inside the ring
+of the lived homes** (the nearest four fifths), while new homes were raised on fresh lots - 20-36 % of them beyond that ring (seed 2: 403 of 1,121),
+some outward lean beyond the ~20 % the ring holds by construction. Living villages kept the ruins of their dead households for centuries in their
+hearts; burnt homes (C8.0) were never rebuilt in place.
+
+**The record.** A medieval village's tofts and a town's burgage plots outlived the houses on them: timber houses were rebuilt on the same plots every
+generation or two (Wharram Percy's tofts rebuilt many times on one row; burgages held their frontages for centuries), a burnt town was rebuilt on its
+plots within years, and the stone of fallen buildings was carried off and built into new ones. Plots lay waste for long only where the village itself
+was dying.
+
+**Decision.** (1) A household seeking a lot (`Homes.FreeLot`: the innermost free lot of its village's spiral, or the nearest frontage) may take one
+where a fallen home's ruin lies (`ClearableRuin`: a hut or house fallen in, nobody's home): such ruins do not keep the ground from it. (2) Taking it,
+the household clears every home ruin its new home's ground meets - gone at once; the stone of their footings carried to the village's store
+(`RuinStoneBack` 0.8) for the next footings, the next wall; the rotten timber left. (3) Told: "The ruins of the house of X were cleared for Y's new
+home" (`HomeCleared` ArgA 5, Local). Works' ruins keep their ground as before. `--oldruins` the control, `--ruinstally`.
+
+**What changes in the picture.** Growing villages fill their old plots and burnt quarters are rebuilt in place; ruins stand where villages have died
+or shrunk and nobody needs a lot; footings' stone passes from house to house.
+
+**Evidence.** RuinsTests 2/2 (a household given the lot where a house fell ten years before on stone footings clears it and builds there, its 40 loads
+of footing stone 32 in the store, told; with the old rule the ruin keeps its lot and the household is given another; twin worlds over 90 years: ruins
+cleared for new homes and fewer ruins standing in living villages). HomesTests 5/5 (the innermost-lot test now: under the old rule the ruin keeps its lot, now the next home
+clears it); Footprints, Streets, Burn, Architecture, Determinism, SaveLoad 0 failed; floatcheck, Unity C#. **Control** `--oldruins` = the household's
+rules (`_hal1`, seed 4) byte for byte, same state hash. **Ten seeds** `_rui1` against `_hal1` (`results/cmp_hal1_rui1.txt`): all inside the noise -
+people at 300 x1.04 (t 1.5), deaths a person-year x0.98 (t -1.6), hunger x1.26 (t 1.0), famines x1.22 (t 1.1), raids, foundings, tribute at par.
+**Ruins reused** (`--ruinstally`): 30-182 ruins cleared for new homes a world over 300 years (983 in ten), 9-124 of them on stone footings, 448-5,536
+loads of stone carried back. **In the picture at 300** (`place --ruins`, `results/ruins_s*_{hal1,rui1}_y300.txt`): fallen homes' ruins inside the lived
+ring 2,885 -> 2,250 over ten worlds (-22 %; fewer in nine of ten), in 196 -> 152 villages; most left stand in villages that shrank (seed 2's plague: 996
+-> 874), where nobody seeks a lot - as deserted tofts did.
