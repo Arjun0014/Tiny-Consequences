@@ -107,7 +107,8 @@ namespace TC2.Core.Society
                         if (o == sid || !w.Settlements.Get(o).Inhabited || !InRealm(w, o, sid)) continue;
                         if (Vec3d.ArcDistance(s.Anchor, w.Settlements.Get(o).Anchor, w.Planet.Radius) > w.Config.MarriageReach) continue;
                         var oh = w.HouseholdsOf(o);
-                        for (int i = 0; i < oh.Count; i++) if (Landless(w, oh[i], first)) _cand.Add((Days(w, oh[i]) + 0.5, oh[i], o));   // (home first, at a like need)
+                        int theirs = Leaders.First(in w.Settlements.Get(o));   // (never a tributary's own first household)
+                        for (int i = 0; i < oh.Count; i++) if (oh[i] != theirs && Landless(w, oh[i], first)) _cand.Add((Days(w, oh[i]) + 0.5, oh[i], o));   // (home first, at a like need)
                     }
                 _cand.Sort((a, b) => a.days != b.days ? a.days.CompareTo(b.days) : a.hid.CompareTo(b.hid));
                 for (int i = 0; i < _cand.Count; i++)
