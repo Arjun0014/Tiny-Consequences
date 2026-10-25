@@ -173,6 +173,7 @@ namespace TC2.Game
                 {
                     case HistoryKind.LightningStrike: if (v > 0f) { Play("thunder", 0.3f + 0.7f * v, (int)e.Id); told++; } break;
                     case HistoryKind.Quake: if (v > 0f || e.Magnitude > 6.5f) { Play("quake", 0.4f + 0.6f * Mathf.Max(v, 0.3f), (int)e.Id); told++; } break;
+                    case HistoryKind.MeteorStruck: { Play("thunder", 1f, (int)e.Id); Play("house_fall", 0.6f + 0.4f * v, (int)e.Id + 1); told++; break; }
                     case HistoryKind.BuildingBurned: case HistoryKind.HomesDrowned: if (v > 0.2f) { Play("house_fall", 0.4f + 0.6f * v, (int)e.Id); told++; } break;
                     case HistoryKind.Raid: if (v > 0.3f) { Play("shout", 0.3f + 0.5f * v, (int)e.Id); told++; } break;
                 }
