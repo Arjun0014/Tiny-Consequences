@@ -1,20 +1,22 @@
 # TC2 Session handoff
 
-## Session 26, second context (26 Oct 2026, from 23:43 IST 25 Oct; Control Room run #80 session 2) - stone walls LANDED (sim 102); the book's bonds fixed; F9.8-F9.9 the cull, bringing, warmth and cold built; the queue RUNNING
+## Session 26, second context (26 Oct 2026, from 23:43 IST 25 Oct; Control Room run #80 session 2) - stone walls, the memory pass, the ore, the household, the cull and warmth, ruins reused, the settings and the realm maps LANDED (sim 107); the fourth acceptance RUNNING
 
 ### Exact state (keep current; ~02:25 IST 26 Oct)
-- **main** (sim 106): landed this context - **C7.2 stone walls** (f95b233, D2-183), **the book's bonds end with an
-  abandoned village** (77a5bae), **the memory pass** (8086ced, D2-184), **F9.6-F9.7 the ore and bounty** (fd4eae6, D2-185), **C10.11 the lord's household**
-  (f176a84, D2-186: its ten seeds' one lean - the greatest realm x0.69 - was chaos by its matched placebo `_hlp`), **F11.2 the player's settings** (885e540,
-  D2-188), **the book's realm maps** (1825a61), tools `place --ruins` (edcacb7), bookshots' timeline name (896fe11).
-- **F9.8-F9.9 the cull, bringing, warmth and cold landed** (ecedf12, D2-187; sim 106 on main).
-- **C13.4 ruins reused** (`wip/ruins`, tc-ruins 6538886, sim 107; draft `d2189.md`): `0_zl_a` control (`--oldruins` = `_hal1`), `0_zl_b` x10 `_rui1`,
-  `0_zl_c` compare (`results/cmp_hal1_rui1.txt`, `place --ruins` at 300 per seed `results/ruins_s*_rui1_y300.txt`). Land if the seeds hold (a lean: a matched
-  placebo `--oldruins --nudge Y`).
-- Then: **the fourth acceptance run** - `bash tc2/out/tools/s26/make_ac4.sh $Q` (now also `lordships --dependants` and the book's pages in the browser,
-  `s26book1`); judge it in shots and books; 25 §6 "Fourth run" and the verdict on the finished core (25 §8).
-- `K_b_ac3_s7` is in `$Q/hold` (superseded by the fourth run).
-
+- **main** (sim 107, 27e1bfc): landed this context - **C7.2 stone walls** (f95b233, D2-183), **the book's bonds end with an abandoned village**
+  (77a5bae), **the memory pass** (8086ced, D2-184), **F9.6-F9.7 the ore and bounty** (fd4eae6, D2-185), **C10.11 the lord's household** (f176a84, D2-186:
+  its one lean - the greatest realm x0.69 - was chaos by its matched placebo `_hlp`), **F9.8-F9.9 the cull, bringing, warmth and cold** (ecedf12, D2-187),
+  **C13.4 ruins reused** (bdc0305, D2-189: measured first by `place --ruins`; ten seeds inside the noise; ruins inside living villages -22 %), **F11.2 the
+  player's settings** (885e540, D2-188), **the book's realm maps** (1825a61), tools `place --ruins`, bookshots' timeline name.
+- **RUNNING: the fourth 1,000-year acceptance run** (generated 03:06 by `make_ac4.sh`; ~4 hours): `M_a` (main's cc, build `bin_m14`, full suite), `M_b` x3
+  (seeds 2/4/7 `_ac4` with books at 300/1,000, `lordships --dependants`, `place --ways/--stonewalls/--ruins` at 300/600/1,000 into
+  `tc2/out/tools/s26/accept/`), `M_c` (village #4 of seed 2 at 300/600/1,000, region also with ShadowLite), `M_d` (the villages most walled in stone, realms,
+  the meteor, the god's ore), `M_e` (Web `s26web1`: the test - now 9 checks with the settings' reload -, the heap at year 1,000 against 955 MB, the
+  `sortplaces`/`shadowlite` pairs, the book's pages `s26book1` with the realm maps). **Unity jobs use main's checkout: do not edit main's Game code
+  while `M_c`-`M_e` run** - work in a worktree.
+- Then: judge the run in the shots, books and measures; write 25 §6 "Fourth run" and the verdict on the finished core (25 §8); the frame pass by its
+  pairs (make `sortplaces`/`shadowlite` the default if they help and read right).
+- `K_b_ac3_s7` is in `$Q/hold` (superseded).
 ## Session 26 - HANDOFF (25 Oct 2026, 21:20 - ~23:25 IST; Control Room run #80 session 1) - rain, the harrying and the ways on main (sim 101); stone walls, the memory pass, the god's ore and the lord's household built, their checks RUNNING in the queue
 
 ### Exact state (verified at the handoff, ~23:22)
