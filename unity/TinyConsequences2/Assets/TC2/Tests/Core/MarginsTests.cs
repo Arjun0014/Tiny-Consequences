@@ -139,6 +139,7 @@ namespace TC2.Tests.Core
             Assert.AreEqual(0.0, Sites.Quality(w, c, new System.Collections.Generic.List<int>()), "and no place a village beyond the spacing could be founded at");
             Assert.AreEqual(0, P.FieldOwner[c], "on no village's field");
             Assert.AreEqual(0, w.SettlementAtCell(c), "nor a village's ground");
+            Assert.IsNotNull(w.Routes.GetToCell(w, sid, c), "and a way on foot reaches it");
         }
     }
 }

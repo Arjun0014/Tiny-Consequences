@@ -262,14 +262,15 @@ namespace TC2.Core.Places
                 for (int k = 0; k < _nbrs.Count && mine; k++) { double dn = Vec3d.ArcDistance(w.Settlements.Get(_nbrs[k]).Anchor, g.Center[c], P.Radius); if (dn < d || dn < gap) mine = false; }
                 if (mine) _mcand.Add((hab, c));
             }
-            // the best by its worth, the most habitable first (a site's worth is never more than how habitable it is); ties to the lower cell
+            // the best by its worth, the most habitable first (a site's worth is never more than how habitable it is); ties to the lower cell; one their
+            // way on foot reaches (not across a bay or a lake)
             _mcand.Sort((x, y) => x.hab != y.hab ? y.hab.CompareTo(x.hab) : x.c.CompareTo(y.c));
             int best = -1;
             for (int i = 0; i < _mcand.Count; i++)
             {
                 if (_mcand[i].hab <= q) break;
                 double v = Sites.Quality(w, _mcand[i].c, _scratch, gap);
-                if (v >= Sites.MinQuality && v > q) { q = v; best = _mcand[i].c; }
+                if (v >= Sites.MinQuality && v > q && w.Routes.GetToCell(w, sid, _mcand[i].c) != null) { q = v; best = _mcand[i].c; }
             }
             return best;
         }
