@@ -435,7 +435,7 @@ namespace TC2.Core.Places
             }
             ref var h2 = ref w.Households.Get(hid);
             worth += h2.Larder + h2.Ready;
-            h2.Larder = 0; h2.Ready = 0; h2.Pots = 0f; h2.Gear *= 0.5f; if (h2.Wares > h2.Gear) h2.Wares = h2.Gear;
+            h2.Larder = 0; h2.Ready = 0; h2.Pots = 0f; h2.Gear = (float)(h2.Gear * 0.5); if (h2.Wares > h2.Gear) h2.Wares = h2.Gear;
             h2.Building = 0; h2.Shelter = Construction.Camp; h2.Build = 0f; h2.Rebuild = 0;
             int sid = h2.Settlement;
             if (!TakeEmpty(w, hid)) { FreeLot(w, sid, hid, out float x, out float y); ref var h3 = ref w.Households.Get(hid); h3.HomeX = x; h3.HomeY = y; }
