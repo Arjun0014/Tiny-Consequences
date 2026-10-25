@@ -326,6 +326,7 @@ namespace TC2.Headless
             {
                 w = SaveFile.Load(File.ReadAllBytes(a.Get("load")), out var hdr);
                 Console.WriteLine("loaded " + a.Get("load") + " at " + SimTime.Format(w.Now) + " (saved " + hdr.SavedRealUtcMs + ")");
+                if (a.Has("statesizes")) { StateSizes.Print(w); return 0; }   // (the memory pass, 14 §7: what the state holds, part by part)
                 if (a.Has("warmroutes"))
                 {
                     // (session 23, a determinism probe: the routes the view builds at its first frame for the ways it draws - TerrainLod, WaterView,
