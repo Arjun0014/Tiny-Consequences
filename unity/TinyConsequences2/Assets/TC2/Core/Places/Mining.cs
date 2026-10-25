@@ -386,6 +386,59 @@ namespace TC2.Core.Places
             }
         }
 
+        // ---------------------------------------------------------------- looking for it (C5.3c)
+        /// <summary>(C5.3c) Days between a lacking village's prospectors (twice a year); the control (`--oldprospect`); tools: seasons gone looking,
+        /// bodies found within reach, looks beyond it.</summary>
+        public const int ProspectDays = 24;
+        public static bool ProspectOff;
+        public static double[] ProspectTally;
+
+        /// <summary>
+        /// (C5.3c) A village whose smiths lack ore (`Lacks`: someone smelts the metal, its tools or arms want it, and it knows no body within reach)
+        /// goes looking for it twice a year: its people look over the land within their reach as founders do - the nearest body of what they lack
+        /// that shows there becomes known (its finding told; a mine and the smelting follow by the existing rules) - and, finding none, someone
+        /// goes farther as a scout does (2-4 km): ore in sight there makes a site beside it worth more to whoever of the village leaves (D2-103).
+        /// Before, ore was seen only where the work of the day took people - smiths sat idle with outcrops two kilometres off unseen.
+        /// </summary>
+        public static void Prospect(World w, int sid, int days)
+        {
+            if (ProspectOff) return;
+            ref var s = ref w.Settlements.Get(sid);
+            if (!s.Inhabited || w.Now - s.Founded < SimTime.Years(3) || (s.ProspectAt != 0 && w.Now - s.ProspectAt < ProspectDays * SimTime.Day)) return;   // (0: nobody has gone yet)
+            bool cu = Lacks(in s, Copper), fe = Lacks(in s, Iron);
+            if (!cu && !fe) return;
+            s.ProspectAt = w.Now;
+            if (ProspectTally != null) ProspectTally[0]++;
+            var near = new List<int>();
+            w.Hazards.CellsWithin(w, s.Cell, Reach, near);
+            near.Sort();
+            bool found = false;
+            for (byte kind = Copper; kind <= Iron; kind++)
+            {
+                if (kind == Copper ? !cu : !fe) continue;
+                int best = -1; double bd = Reach + 1;
+                for (int i = 0; i < near.Count; i++)
+                {
+                    int c = near[i];
+                    if ((kind == Copper ? !Stone.Outcrop(w.Planet, c) : !Wet(w.Planet, c)) && !Laid(w, c, kind)) continue;   // (the cheap part of the rule first)
+                    double d = Vec3d.ArcDistance(w.Settlements.Get(sid).Anchor, w.Planet.Grid.Center[c], w.Planet.Radius);
+                    if (d >= bd - 1e-6 || Seen(w, sid, c, kind) < 0) continue;
+                    bd = d; best = c;
+                }
+                if (best < 0) continue;
+                Know(w, sid, 0, best, bd, kind);
+                found = true;
+                if (ProspectTally != null) ProspectTally[1]++;
+            }
+            if (found) return;
+            // none within reach: someone goes farther and looks round as a scout does - the same place a scout would choose
+            var rs = new RandomSequence(KeyedRng.Hash(w.Seed, RngStream.Travel, (ulong)sid, (ulong)w.Now, (ulong)53));
+            int target = w.Migration.ScoutTarget(sid, ref rs);
+            if (target < 0) return;
+            w.Migration.Look(sid, target, 0);
+            if (ProspectTally != null) ProspectTally[2]++;
+        }
+
         // ---------------------------------------------------------------- wanting it
 
         /// <summary>
