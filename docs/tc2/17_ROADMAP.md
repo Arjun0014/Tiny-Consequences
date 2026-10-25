@@ -98,10 +98,16 @@ time in the browser; the COARSE hunting-skill fix as its own calibrated change) 
 ## F9 — The god
 Powers that write physical state (lightning, rain, drought, warmth, cull, bring, plague, blight, meteor,
 stir a mountain, strain a fault); chains rooted at YOU.
+**Started (session 25, D2-178, D2-179)**: the power bar - lightning, a storm, a quake, an eruption, a sickness, a blight, a drought, a meteor -
+aimed at the ground under the pointer and cast by a click, each back in game time read from the command log; every consequence rooted in the
+cast; the History Book's ninth part, Your Actions; the bolt and the falling stone drawn. Not yet: warmth, cull, bring, rain.
 
 ## F10 — Art and presentation
 Art direction; modular building kits; characters and animals with vertex-animation instancing; vegetation;
 weather and fire effects; audio; UI polish.
+**Started (session 25, D2-179)**: the world's sound (`AudioView`: beds by what the camera looks at, the world's happenings and your casts heard).
 
 ## F11 — Platform
 Wavedash cloud saves and init; itch packaging (threads on); phones; settings.
+**Started (session 25, D2-178)**: the opening - a title over the world held still (continue or begin, a new world asked twice, how to watch and
+reach in); a Sound toggle.
