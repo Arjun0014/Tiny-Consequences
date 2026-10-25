@@ -230,6 +230,28 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void ABountyRenewsTheTiredFieldsRoundThePlaceAndTheyTireAgain()
+        {
+            var w = TestWorlds.Make(617);
+            Coarse(w);
+            w.AdvanceTo(w.Now + SimTime.Days(2));
+            int sid = w.Settlements.First();
+            // premise: the village's fields long cropped (tired, as a full land's are)
+            w.Settlements.Get(sid).Tired = 0.6;
+            double heart0 = TC2.Core.Places.SettlementSystem.Heart(in w.Settlements.Get(sid));
+            w.Issue(new Command { Time = w.Now, Kind = CommandKind.GodBounty, Cell = w.Settlements.Get(sid).Cell });
+            w.AdvanceTo(w.Now + SimTime.Hours(1));
+            Assert.AreEqual(0.0, w.Settlements.Get(sid).Tired, 1e-12, "renewed as when first broken");
+            Assert.Greater(TC2.Core.Places.SettlementSystem.Heart(in w.Settlements.Get(sid)), heart0, "its fields' heart full");
+            long rev = 0;
+            for (int i = 0; i < w.History.Count; i++) { var e = w.History.At(i); if (e.Kind == HistoryKind.SoilRenewed && e.Settlement == sid) { rev = e.Id; Assert.AreEqual(RootKind.You, e.RootKind); StringAssert.StartsWith("The fields of", HistoryText.Describe(w, in e)); } }
+            Assert.AreNotEqual(0L, rev, "told, rooted in the cast");
+            // and the fields tire again as they are cropped, by the soil's own law
+            w.AdvanceTo(w.Now + SimTime.Years(3));
+            Assert.Greater(w.Settlements.Get(sid).Tired, 0.0, "tiring again");
+        }
+
+        [Test]
         public void WithNoCastTheWorldsHistoryIsItsOwn()
         {
             var w = TestWorlds.Make(612);

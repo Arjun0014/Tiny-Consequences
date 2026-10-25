@@ -33,6 +33,8 @@ namespace TC2.Game
                         Help = "no rain for a summer on the land round it: the soil dries, crops wilt, fire takes more readily" },
             new Power { Name = "Rain", Doing = "Bring rain", Kind = CommandKind.GodRain, Recharge = SimTime.Year / 2, Reach = World.RainReach,
                         Help = "a soaking rain for some days on the land round it: the soil drinks, the crops take it, fires go out" },
+            new Power { Name = "Bounty", Doing = "Renew the land", Kind = CommandKind.GodBounty, Recharge = 10 * SimTime.Year, Reach = World.GodReach,
+                        Help = "the fields round a place as when first broken: their crops full again until they tire" },
             new Power { Name = "Ore", Doing = "Lay bare a vein of copper", Kind = CommandKind.GodOre, Recharge = 20 * SimTime.Year, Reach = 120,
                         Help = "rich copper ore in the rock at a place: someone must go there and see it - then a mine, smiths and trade may follow" },
             new Power { Name = "Meteor", Doing = "Throw down a stone", Kind = CommandKind.GodMeteor, Recharge = 20 * SimTime.Year, Reach = World.BlastM,
