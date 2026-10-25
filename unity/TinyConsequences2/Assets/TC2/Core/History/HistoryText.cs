@@ -38,6 +38,10 @@ namespace TC2.Core.History
                 case HistoryKind.Wildfire: return "A wildfire spread near " + place + " (" + F(e.Magnitude, "0") + " cells burnt so far).";
                 case HistoryKind.FireOut: return "The fire near " + place + " burnt out after " + e.ArgA + " hours (" + F(e.Magnitude, "0") + " cells).";
                 case HistoryKind.FieldsBurned: return "The fields of " + subj + " burned.";
+                case HistoryKind.BuildingBurned:   // (C8.0: a band's burning-in)
+                    if (e.Subject.Kind == EntityKind.Household)
+                        return "The band from " + obj + " burned the home of the " + Plural(subj) + " in " + place + (e.Other.IsNone ? "" : ", for a killing by " + other) + ".";
+                    return "A building of " + place + " burned.";
                 case HistoryKind.JourneyInterrupted:
                     {
                         string what = e.ArgA == JourneyOutcome.TurnedBack ? "turned back" : e.ArgA == JourneyOutcome.Waited ? "stopped on the road to wait" :
