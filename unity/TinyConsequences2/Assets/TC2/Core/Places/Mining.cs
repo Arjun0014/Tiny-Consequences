@@ -16,10 +16,11 @@ namespace TC2.Core.Places
         public long Found;         // when it was first seen
         public int By;             // the village that first saw it
         public long GaveOut;       // when the last of it was dug (0 while ore is left)
+        public long Event;         // what laid it there, when the geology did not (the god's ore: F9.6; 0 for the ground's own)
 
-        public void Write(BinWriter w) { w.Int(Id); w.Int(Cell); w.Byte(Kind); w.Double(Ore); w.Double(Taken); w.Long(Found); w.Int(By); w.Long(GaveOut); }
-        public static Deposit Read(BinReader r) => new Deposit { Id = r.Int(), Cell = r.Int(), Kind = r.Byte(), Ore = r.Double(), Taken = r.Double(), Found = r.Long(), By = r.Int(), GaveOut = r.Long() };
-        public void Hash(ref StateHasher h) { h.Add(Id); h.Add(Cell); h.Add(Kind); h.Add(Ore); h.Add(Taken); h.Add(Found); h.Add(By); h.Add(GaveOut); }
+        public void Write(BinWriter w) { w.Int(Id); w.Int(Cell); w.Byte(Kind); w.Double(Ore); w.Double(Taken); w.Long(Found); w.Int(By); w.Long(GaveOut); w.Long(Event); }
+        public static Deposit Read(BinReader r) => new Deposit { Id = r.Int(), Cell = r.Int(), Kind = r.Byte(), Ore = r.Double(), Taken = r.Double(), Found = r.Long(), By = r.Int(), GaveOut = r.Long(), Event = r.Long() };
+        public void Hash(ref StateHasher h) { h.Add(Id); h.Add(Cell); h.Add(Kind); h.Add(Ore); h.Add(Taken); h.Add(Found); h.Add(By); h.Add(GaveOut); if (Event != 0) h.Add(Event); }   // (a world with no god's ore hashes as before)
     }
 
     /// <summary>
@@ -176,6 +177,34 @@ namespace TC2.Core.Places
             return w.Deposits.Add(new Deposit { Id = w.Deposits.Count + 1, Cell = c, Kind = kind, Ore = OreOf(w, c, kind), Found = w.Now, By = sid });
         }
 
+        // ---------------------------------------------------------------- the god's ore (F9.6)
+
+        /// <summary>Whether a body the god laid bare lies at a cell (F9.6) - the ground's own bodies are found by the geology's rule alone.</summary>
+        static bool Laid(World w, int c, byte kind) { int i = w.Deposits.IndexAt(c, kind); return i >= 0 && w.Deposits.Get(i).Event != 0; }
+
+        /// <summary>kg of ore in a body the god lays bare: twice the richest the ground holds (a vein's whole cap, green and blue stone).</summary>
+        public const double GodOreKg = 2.0 * OreMax;
+
+        /// <summary>
+        /// The god lays bare a body of rich copper ore at a place on dry land (F9.6): it enters the world's state at once as a body in the ground - not yet
+        /// seen by anyone; its people find it as they find any ore, where they go (`Saw`), and dig, smelt and trade it by the world's own rules. Where a body
+        /// lies there already its ore is renewed. Returns the record of its laying (0: no dry land there).
+        /// </summary>
+        public static long Reveal(World w, int cell, long cause)
+        {
+            var P = w.Planet;
+            if (cell < 0 || !P.IsLand(cell) || P.Ice[cell] > 0.5f || !Shore.Dry(P, P.Grid.Center[cell])) return 0;
+            long ev = w.Record(new HistoryEvent
+            {
+                Kind = HistoryKind.OreRevealed, Time = w.Now, Cell = cell, Settlement = w.VillageNear(cell, Reach), Cause1 = cause, Rel1 = CauseRel.CausedBy,
+                ArgA = Copper, Magnitude = (float)GodOreKg, RootKind = RootKind.You,
+            });
+            int i = w.Deposits.IndexAt(cell, Copper);
+            if (i >= 0) { ref var d = ref w.Deposits.At(i); d.Ore += GodOreKg; d.GaveOut = 0; d.Event = ev; }
+            else w.Deposits.Add(new Deposit { Id = w.Deposits.Count + 1, Cell = cell, Kind = Copper, Ore = GodOreKg, Found = w.Now, By = 0, Event = ev });
+            return ev;
+        }
+
         // ---------------------------------------------------------------- whose ore (C5.4)
 
         /// <summary>The share of its people with metal tools below which a village's need presses: it digs ore others work.</summary>
@@ -306,7 +335,7 @@ namespace TC2.Core.Places
                 {
                     int c = k < 0 ? cell : P.Grid.Nbr8[cell * 8 + k];
                     if (c + 1 == known) continue;
-                    if (kind == Copper ? !Stone.Outcrop(P, c) : !Wet(P, c)) continue;   // (the cheap part of the rule first)
+                    if ((kind == Copper ? !Stone.Outcrop(P, c) : !Wet(P, c)) && !Laid(w, c, kind)) continue;   // (the cheap part of the rule first; a body the god laid bare where it does not hold is there all the same: F9.6)
                     double d = Vec3d.ArcDistance(s.Anchor, P.Grid.Center[c], P.Radius);
                     if (d > Reach || d >= bd - 1e-6) continue;
                     if (Seen(w, sid, c, kind) < 0) continue;
@@ -326,10 +355,13 @@ namespace TC2.Core.Places
             SetKnown(ref s, kind, cell + 1, dist);
             if (!first) return;
             w.Metrics.OreFound++;
+            int di = w.Deposits.IndexAt(cell, kind);
+            long laid = di >= 0 ? w.Deposits.Get(di).Event : 0;   // (a body the god laid bare: its finding runs back to the cast - F9.6)
             long ev = w.Record(new HistoryEvent
             {
                 Kind = HistoryKind.OreFound, Time = w.Now, Cell = cell, Settlement = sid, Subject = EntityRef.Settlement(sid),
-                Other = pid != 0 ? EntityRef.Person(pid) : default, ArgA = kind, Magnitude = (float)dist, RootKind = RootKind.People,
+                Other = pid != 0 ? EntityRef.Person(pid) : default, ArgA = kind, Magnitude = (float)dist, RootKind = laid != 0 ? RootKind.Unknown : RootKind.People,
+                Cause1 = laid, Rel1 = laid != 0 ? CauseRel.EnabledBy : CauseRel.None,
             });
             ref var s2 = ref w.Settlements.Get(sid);
             if (kind == Iron) s2.FeEvent = ev; else s2.OreEvent = ev;
