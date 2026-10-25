@@ -5681,3 +5681,34 @@ their pictures and numbers stay their own. The view only: nothing touches the wo
 
 **Evidence.** The Unity C# compiles (`unity.mjs cc`); the Web test's new check - a setting changed before the reload is there after it ("the settings
 are kept for the next visit") [in `s26web1`].
+
+## D2-184 — 2026-10-25 — The memory pass: the ordinary past its window is kept for what it led to; the names nothing kept can show are let go (14 §7)
+
+**Context.** Great worlds in the browser held ~1 GB (D2-182: 955 MB loaded at year 1,000 after the streamed save) and the heap grows with a world's record,
+not its people. **Measured first** (`run --load F --statesizes` with the ledger by kind and the names by kind; `tc2/out/tools/s26/memory.md`), seed 2's
+year-1,000 world: the state 106.8 MB serialized, the history 63.9 MB - 509,273 events, **389,138 of them Local and 235,168 of those past the Local
+window (200 years)**, kept because their kinds score at the keep line by their size alone (`BaseImportance`: every blow 10; a sworn man's year of food
+14): Struck 65k, TakingSeen 58k, Sworn 54k, Taken 42k, TributePaid 39k... Of the 214,332 old events of the ordinary kinds, 148k had led to nothing (their
+importance never raised by a consequence). **The registry named every one of 310,106 people who ever lived** (47,527 person rows kept), 193,326 of them
+by nothing kept; and 22,191 processes (parties, bands, fires) named by nothing.
+
+**Decision.** (1) Past the Local window the night's deeds and the ordinary - blows, takings and their sight, sworn men and their release, the tenth paid,
+claims refused, amends, the watch, harvests, carts, rebuilt houses, lightning - are kept only for what they led to: their importance raised `KeepRaised`
+(4) beyond their kind's and size's own (a blow a raid answered is kept; a blow that led to nothing falls out); other kinds as before; causes rewired to
+the nearest kept ancestor as before. (2) At the year's housekeeping, after the long dead leave the people table, the registry lets go of an ended
+person's name when no kept event names them and the world keeps nothing that does (a person row; a kept row's mother, father or partner; a building's
+leader; a deed's doer; a band's leader), and of a process's after 50 years when no kept event names it. Never a settlement's, a household's (families
+are named by them), a pathogen's. (3) Behaviour-neutral: the simulation's few readers of old records read within a year (a village's last tribute, its
+last failed harvest) or Historical events (a bond's agreement); names drive nothing. `--oldcompact` the control.
+
+**What changes.** Nothing in the picture or the history lived; the book of a world's early centuries keeps its raids, wars, famines, foundings and
+the deeds that led to them, and no longer every unanswered blow. Memory: seed 4 at year 300 (`results/statesizes_s4_mem{0,1}_y300.txt`) - the history part 15.73 -> 15.30 MB (139,685 -> 138,411 events), all
+parts 37.7 -> 37.3 MB: little, as only a century lies past the window; the year-1,000 world and the browser's heap are the fourth acceptance run's (`s26web1`
+against `s25web5`'s 955 MB).
+
+**Evidence.** MemoryPassTests 3/3 (an unanswered blow and a sworn man's record past 200 years fall out, a blow a raid answered stays and the raid still names
+it, the rule off keeps both; names nothing shows go - a dead person, an old process - and those a kept event, a kin row, a living person or a recent
+process names stay; twin worlds with the pass off and on live the same 75 years, 4,579 names checked, none lost, a save continues identically);
+HistoryBook, Chronicle, Biography, Gazetteer 0 failed. The queue's checks (session 26): mem1 ok (MemoryPassTests 3, HistoryBook 5, Chronicle 3, Biography 4, Determinism 7, SaveLoad 8; floatcheck, Unity C#);
+**control** `--oldcompact` = the stone walls' rules (`_stw1`, seed 4, 300 years) byte for byte, same state hash; **the pass on: the annals = `_stw1` byte
+for byte** - it changes no history.
