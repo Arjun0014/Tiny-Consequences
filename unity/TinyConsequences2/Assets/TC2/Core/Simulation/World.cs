@@ -270,7 +270,7 @@ namespace TC2.Core.Simulation
         }
 
         // ------------------------------------------------------------- history
-        public long Record(HistoryEvent e) => History.Record(Ids, e);
+        public long Record(HistoryEvent e) { if (Diagnostics.SizeTally.Sums != null) Diagnostics.SizeTally.Event(this, in e); return History.Record(Ids, e); }   // (tools: villages by size)
 
         // ------------------------------------------------------------- lists
         static IntList Slot(ref IntList[] arr, int id)
