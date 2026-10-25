@@ -133,7 +133,8 @@ namespace TC2.Game
             }
             GUILayout.EndHorizontal();
             GUILayout.EndArea();
-            if (_aim < 0 || !GroundUnder(Input.mousePosition, out var dir, out int cell)) return;
+            // (over a page, the book or a bar a click is theirs, not the power's: the ring and its words only over open ground - last frame's PointerOverUi)
+            if (_aim < 0 || PointerOverUi || !GroundUnder(Input.mousePosition, out var dir, out int cell)) return;
             // the ring where it falls, on the ground round the point aimed at
             var P = w.Planet; var pw = Powers[_aim];
             Vec3d up = dir;

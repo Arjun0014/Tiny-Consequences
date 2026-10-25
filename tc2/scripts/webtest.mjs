@@ -129,7 +129,8 @@ try {
 
   // (F9.1-F9.2) the god's powers: lightning aimed as its button aims it, a real click on the planet casts it (the ray to the ground, a command);
   // a world-day on, the book's last part tells it and what came of it
-  await cmd('speed 0'); await cmd('village 0 6000'); await page.waitForTimeout(1500);
+  // (the place page opened above covers the middle of the view, and a click over a page is the page's: s25web3 clicked on it and cast nothing)
+  await cmd('closepages'); await cmd('speed 0'); await cmd('village 0 6000'); await page.waitForTimeout(1500);
   const casts0 = (await state()).casts || 0;
   await cmd('aim 0'); await page.waitForTimeout(400);
   const cv = await page.locator('canvas').first().boundingBox();

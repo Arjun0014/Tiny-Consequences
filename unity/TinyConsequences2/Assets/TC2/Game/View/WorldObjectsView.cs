@@ -51,6 +51,25 @@ namespace TC2.Game
         public int PeopleDrawn, PeopleBusy, TreesDrawn, BoatsAfloat;   // (PeopleBusy: drawn at work or on the move - Presence.Busy)
         /// <summary>People the camera cannot see this frame (beyond the planet's limb or outside the view), left unposed (the frame pass, 14 §7).</summary>
         public int PeopleCulled;
+        /// <summary>Villages wholly beyond the planet's limb at the last building of the places, left unbuilt (the frame pass, 14 §7).</summary>
+        public int PlacesCulled;
+        /// <summary>Tools (webperf, the bridge's `placescull`): whether villages beyond the limb are left unbuilt (else every village is).</summary>
+        public static bool PlacesCull = true;
+        /// <summary>m: the farthest a village's buildings stand from its anchor - its homes, works, quarry, mines, landing (stone at hand 1 km,
+        /// ore and the woods' hearths beyond): the margin past the limb within which a village is still built.</summary>
+        public const float PlacesReach = 2500f;
+        Vector3 _placesCam = Vector3.up; float _placesCamR;
+
+        /// <summary>Whether the camera has moved far enough since the places were built that a village kept off by the limb may have come into
+        /// sight: a quarter of `PlacesReach` over the ground, or its height by 15 %.</summary>
+        bool PlacesMoved()
+        {
+            if (!PlacesCull || Rig == null || Rig.Cam == null || Host.World == null) return false;
+            Vector3 c = Rig.Cam.transform.position;
+            float cr = c.magnitude, R = (float)Host.World.Planet.Radius;
+            if (_placesCamR <= 0f || Mathf.Abs(cr - _placesCamR) > 0.15f * Mathf.Max(1f, _placesCamR - R)) return true;
+            return Vector3.Angle(c, _placesCam) * Mathf.Deg2Rad * R > 0.25f * PlacesReach;
+        }
         /// <summary>Tools (webperf, the bridge's `peoplecull`): whether people beyond the limb and outside the view are skipped (else all are posed).</summary>
         public static bool PeopleCull = true;
         readonly Plane[] _peoplePlanes = new Plane[6];
@@ -288,7 +307,7 @@ namespace TC2.Game
             var w = Host.World;
             if (w == null || Host.CatchingUp) return;
             _placeTimer -= Time.unscaledDeltaTime;
-            if (_placeTimer <= 0) { _placeTimer = 0.5f; RebuildPlaces(w); }
+            if (_placeTimer <= 0 || PlacesMoved()) { _placeTimer = 0.5f; RebuildPlaces(w); }   // (and at once when the camera has moved: the limb's cull, 14 §7)
             _treeTimer -= Time.unscaledDeltaTime;
             if (_treeTimer <= 0) { _treeTimer = 1.5f; RebuildTrees(w); }
             RebuildFire(w);
@@ -530,9 +549,26 @@ namespace TC2.Game
             _ricks.Clear(); _graves.Clear(); _gravesOld.Clear(); _standards.Clear(); _muck.Clear(); _huts.Clear(); _tents.Clear(); _ruins.Clear(); _beached.Clear(); _beachedP.Clear(); _walls.Clear(); _woodpiles.Clear();
             _smoke.Clear(); _lights.Clear(); _watch.Clear();
             MuckHeaps = 0; MuckLargestKg = 0;   // (tools: the heaps drawn, and where the largest stands - the "muck" shot views)
+            // (the frame pass, 14 §7) a village wholly beyond the planet's limb is not built: none of its buildings, lights or smoke can be seen - its
+            // farthest work is within `PlacesReach` of its anchor, and the places are built again as soon as the camera has moved a quarter of that
+            // (`PlacesMoved`); a great world drew every village's buildings, most of them on the far side of a 6 km planet
+            bool cullFar = PlacesCull && Rig != null && Rig.Cam != null;
+            Vector3 camAt = cullFar ? Rig.Cam.transform.position : Vector3.zero;
+            float cosFar = -2f;
+            if (cullFar)
+            {
+                float R = (float)P.Radius, cr = Mathf.Max(camAt.magnitude, R + 1f);
+                float horizon = Mathf.Acos(Mathf.Clamp((R - 500f) / cr, -1f, 1f));   // (the limb, over ground a little below the sea)
+                float far = horizon + PlacesReach / R;
+                cosFar = far >= Mathf.PI ? -2f : Mathf.Cos(far);
+                _placesCam = camAt.normalized; _placesCamR = cr;
+            }
+            Vector3 camDir = cullFar ? camAt.normalized : Vector3.up;
+            PlacesCulled = 0;
             for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
             {
                 ref var s = ref w.Settlements.Get(sid);
+                if (cullFar && Vector3.Dot(PlanetGeo.ToVector(s.Anchor), camDir) < cosFar) { PlacesCulled++; continue; }
                 Vector3 center = PlanetGeo.Surface(P, s.Anchor);
                 double gone = s.Inhabited ? 0.0 : (w.Now - s.Abandoned) / (double)SimTime.Year;
                 if (!s.Inhabited && (gone > 600 || (Rig != null && Rig.Cam != null && (center - Rig.Cam.transform.position).sqrMagnitude > 6000f * 6000f))) continue;
