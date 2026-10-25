@@ -48,6 +48,9 @@ running `K_b_ac3_s4`, then `0_za_web_s25web6` (Web build of main 3bfadd7: the te
 `0_zb` shots of village #4 at 300/600/1,000, `0_zc` realms at 1,000, `0_zd` meteor and drought, `0_ze_rain_rn1` (rain's checks: `rn1_ok`, control = `_pv1`),
 `0_zf_*` (the harrying: build, control vs `_rn1`, ten seeds `_hy1`, `results/cmp_bn1_hy1.txt`), then `K_b_ac3_s7`, `K_ba_siege_s47`, `N_a_ways_s2`. Waiters on
 `runq.log` must match exact job names: the log keeps every session's lines (an old `0_za_ways_wy0` matched `^end 0_za`).
+**Update (~17:20)**: seed 4's `_ac3` done (places 65 -> 81 over 300-990, unlike seed 2's frozen map; 25 §6). Claude Code stopped this session's background
+waiters on `runq.log` for low memory (RAM 87 % at 17:17; the queue's own gate holds `0_za` until it is under 86 %) - the queue runs on; re-arm a waiter only
+when memory allows (one `until grep -q "^end <exact job> " runq.log` loop).
 **The branches carry main now** (no sim change in main since 98): `wip/rain` 1112a4d, `wip/harry` 8bb3dca (= rain + the harrying); both compile (`cc --src`); their queued
 checks (`0_ze`, `0_zf_*`) build these tips. Land: `git merge --no-ff wip/rain` when `0_ze` says `rn1 ok` and the control is byte-identical; then `wip/harry` by `0_zf_d`.
 
