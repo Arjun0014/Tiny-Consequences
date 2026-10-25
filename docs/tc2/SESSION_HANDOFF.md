@@ -1,5 +1,22 @@
 # TC2 Session handoff
 
+## Session 26, second context (26 Oct 2026, from 23:43 IST 25 Oct; Control Room run #80 session 2) - stone walls LANDED (sim 102); the book's bonds fixed; F9.8-F9.9 the cull, bringing, warmth and cold built; the queue RUNNING
+
+### Exact state (keep current)
+- **main**: f95b233 merge C7.2 stone walls (sim 102; D2-183 appended e78147c), 77a5bae the book's fix (a village that pays no longer pays when it is
+  abandoned - the lord's household's worlds counted an abandoned tributary as paying; an observer's fix, HistoryBookTests 6/6 with a premise test).
+- **Still to land, in order** (their checks in the queue): the memory pass (`0_zi_*`), the ore and bounty (`0_zj_a`), the lord's household (`0_zk_*`), then
+  **F9.8-F9.9** (`wip/cull`, worktree `C:/Game Dev/tc-cull`, on `wip/hall` + main; sim 106; draft `tc2/out/tools/s26/d2187.md`): the cull (nine in ten of
+  the hunting kinds round a place), the bringing (the game the land lacks most by weight, as thick as it lives where it is thickest; at sea a shoal), warm and
+  cold air (a summer 5 C warmer or colder over 4 km: `World.AirShift`, read by the fast climate and `PlanetSystems.DayMean` through `PlanetSystems.Owner`;
+  spells `DrySpell.Kind` 2/3); the power bar in two rows (Lightning first: the Web test aims power 0). Checks: `0_zh_e` (cull1: Powers 11, Ecology,
+  Livestock, WildFood, Determinism, SaveLoad ok; HistoryBookTests failed on the household's world - the book's fault, fixed on main), `0_zh_g` (cull2 with
+  warmth and the fix: its classes, the bringing played again), `0_zk_e` (uncast = `_hal1` byte for byte). Played cull (seed 4, `results/castcull_s4.txt`):
+  the hunters round Tamby 13 -> 1 -> 13 five years on (a respite, as wolves recolonise); the first bringing (best-suited kind) added only 10 to 570 - revised to
+  the kind the land lacks most.
+- `K_b_ac3_s7` (the third run's seed 7 on sim 98) moved to `$Q/hold`: the fourth run on the final rules supersedes it.
+- Then: regenerate the fourth acceptance run (`bash tc2/out/tools/s26/make_ac4.sh $Q`) once the household and the cull have landed.
+
 ## Session 26 - HANDOFF (25 Oct 2026, 21:20 - ~23:25 IST; Control Room run #80 session 1) - rain, the harrying and the ways on main (sim 101); stone walls, the memory pass, the god's ore and the lord's household built, their checks RUNNING in the queue
 
 ### Exact state (verified at the handoff, ~23:22)
