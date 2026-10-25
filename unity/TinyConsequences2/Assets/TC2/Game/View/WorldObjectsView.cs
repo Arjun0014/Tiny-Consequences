@@ -49,6 +49,18 @@ namespace TC2.Game
         Material _mat;
         float _treeTimer, _placeTimer;
         public int PeopleDrawn, PeopleBusy, TreesDrawn, BoatsAfloat;   // (PeopleBusy: drawn at work or on the move - Presence.Busy)
+        /// <summary>People the camera cannot see this frame (beyond the planet's limb or outside the view), left unposed (the frame pass, 14 §7).</summary>
+        public int PeopleCulled;
+        /// <summary>Tools (webperf, the bridge's `peoplecull`): whether people beyond the limb and outside the view are skipped (else all are posed).</summary>
+        public static bool PeopleCull = true;
+        readonly Plane[] _peoplePlanes = new Plane[6];
+
+        /// <summary>Whether a point lies inside the camera's view, within a margin (m) beyond its planes.</summary>
+        static bool InView(Plane[] planes, Vector3 at, float margin)
+        {
+            for (int i = 0; i < planes.Length; i++) if (planes[i].GetDistanceToPoint(at) < -margin) return false;
+            return true;
+        }
         public static int Off;   // tools (webperf): parts not drawn - 1 trees, 2 people, 4 buildings and yards
         public static bool ShowGround;   // tools (shots -tc2ground): each home's ground as the simulation holds it (C13.3), a red plate under it
 
@@ -1617,18 +1629,27 @@ namespace TC2.Game
             var P = w.Planet;
             _people.Clear(); _afloat.Clear(); _afloatP.Clear(); _hulls.Clear(); _handcarts.Clear(); _oxcarts.Clear(); _cartLoads.Clear(); _oxen.Clear();
             _floors.Clear(); _floorsUsed.Clear();
-            PeopleDrawn = 0; PeopleBusy = 0; BoatsAfloat = 0;
+            PeopleDrawn = 0; PeopleBusy = 0; BoatsAfloat = 0; PeopleCulled = 0;
             float waterR = (float)(P.Radius + Ground.WaterHeight(P, P.SeaLevel));
             double t = Host.RenderTime;
             float camDist = Rig != null && Rig.Cam != null ? Vector3.Distance(Rig.Cam.transform.position, Rig.FocusPoint) : 5000f;
             if (camDist > 6000f) return;
+            // (the frame pass, 14 §7) only those the camera can see are placed and posed: in front of the planet's limb, then inside the view with a
+            // margin for their drawn place (Presence keeps it within a few metres, a way's line within tens) - on a 6 km planet the camera sees a
+            // tenth to a quarter of the globe, and a great world's people were all posed every frame, most of them on its far side
+            bool cull = PeopleCull && Rig != null && Rig.Cam != null;
+            Vector3 camPos = cull ? Rig.Cam.transform.position : Vector3.zero;
+            float limb = (float)P.Radius - 500f;   // (below the camera's horizon at any ground a person stands on)
+            if (cull) GeometryUtility.CalculateFrustumPlanes(Rig.Cam, _peoplePlanes);
             for (int id = w.People.First(); id != 0; id = w.People.Next(id))
             {
                 ref var p = ref w.People.Get(id);
                 if (!p.Alive) continue;
                 if (p.Act == ActivityKind.Sleep || p.Act == ActivityKind.Infant || p.Act == ActivityKind.Ill) continue; // indoors
                 Vec3d d = w.Agents.PositionAt(p, t);
+                if (cull && Vector3.Dot(PlanetGeo.ToVector(d), camPos) < limb) { PeopleCulled++; continue; }
                 Vector3 pos = PlanetGeo.Surface(P, d);
+                if (cull && !InView(_peoplePlanes, pos, 60f)) { PeopleCulled++; continue; }
                 float age = (float)p.AgeYears((long)t);
                 // out in the household's boat (C9.1): drawn in it wherever they are on the water - rowing out, fishing, rowing home. A boat
                 // goes out with its crew (C9.2): one hull for the boat, where the first of its crew on the water is, the others seated in it
