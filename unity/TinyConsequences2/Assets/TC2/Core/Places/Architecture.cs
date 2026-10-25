@@ -67,7 +67,7 @@ namespace TC2.Core.Places
         public static int Line(int tradition) => tradition >> 5;
 
         // ---- a people's ways carried and copied (C11.1b)
-        /// <summary>`--oldways`: every house built in its village's way (D2-114) - no household carries one of its own - on the same binary.</summary>
+        /// <summary>`--oldhouseways` (`--oldways` is D2-160's): every house built in its village's way (D2-114) - no household carries one of its own - on the same binary.</summary>
         public static bool WaysOff;
         /// <summary>
         /// At a marriage, the chance the new household takes one way of its village's first household where theirs differ (the leading house's way
@@ -80,7 +80,7 @@ namespace TC2.Core.Places
         public const double LordCopy = 0.1;
 
         /// <summary>The way a household builds in (C11.1b): the one it carries - from the house its people grew up in, the village its founders came
-        /// from or the one it came from itself - else (none recorded; `--oldways`) its village's.</summary>
+        /// from or the one it came from itself - else (none recorded; `--oldhouseways`) its village's.</summary>
         public static int WayOf(World w, int hid, in Settlement s)
         {
             if (!WaysOff && hid != 0 && w.Households.Exists(hid))

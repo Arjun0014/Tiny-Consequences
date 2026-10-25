@@ -572,7 +572,7 @@ namespace TC2.Core.Places
         /// <summary>Tools: a party founds its village at its place even where one now stands (`--nojoin`, before D2-137).</summary>
         public static bool JoinOff;
 
-        /// <summary>The way a party's first household builds in (C11.1b: the way its founders bring), 0 with `--oldways` or none.</summary>
+        /// <summary>The way a party's first household builds in (C11.1b: the way its founders bring), 0 with `--oldhouseways` or none.</summary>
         int LeadWay(int pid, int origin)
         {
             var w = _w;

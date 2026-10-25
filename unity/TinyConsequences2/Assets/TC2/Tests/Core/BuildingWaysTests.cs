@@ -9,7 +9,7 @@ namespace TC2.Tests.Core
     /// <summary>
     /// A people's ways carried and copied (C11.1b): each household builds as it was raised to - the way of the house the groom grew up in, its
     /// founders' where it founded a village, the one it brought where it joined one - now and then taking one way of its village's first household
-    /// or of the bride's own; the first household of a tributary comes to build as its lord's seat. `--oldways` builds every house in its village's
+    /// or of the bride's own; the first household of a tributary comes to build as its lord's seat. `--oldhouseways` builds every house in its village's
     /// way, as D2-114 did. Mechanisms.
     /// </summary>
     [TestFixture]
@@ -55,9 +55,9 @@ namespace TC2.Tests.Core
             Assert.AreEqual(Architecture.TraditionRoof(ta), Architecture.RoofOf(form), "roofed in the way it carries");
             int pal = Architecture.PaletteOf(form), tp = Architecture.TraditionPalette(ta);
             Assert.IsTrue(pal == tp || pal == (tp + 1) % 8 || pal == (tp + 2) % 8, "its walls in its way's shades");
-            // --oldways: in its village's way
+            // --oldhouseways: in its village's way
             Architecture.WaysOff = true;
-            try { Assert.AreEqual(Architecture.TraditionRoof(tb), Architecture.RoofOf(Architecture.HomeForm(w, b, hid, bid, Construction.House)), "--oldways: its village's"); }
+            try { Assert.AreEqual(Architecture.TraditionRoof(tb), Architecture.RoofOf(Architecture.HomeForm(w, b, hid, bid, Construction.House)), "--oldhouseways: its village's"); }
             finally { Architecture.WaysOff = false; }
         }
 
@@ -96,7 +96,7 @@ namespace TC2.Tests.Core
             Console.WriteLine("one of the bride's ways " + hers + " of " + n);
             Assert.That(hers / (double)n, Is.InRange(Architecture.BrideCopy - 0.04, Architecture.BrideCopy + 0.04));
             Architecture.WaysOff = true;
-            try { Assert.AreEqual(0, Architecture.WayAtMarriage(w, b, 920000, hid, brideHh), "--oldways: no way of its own"); }
+            try { Assert.AreEqual(0, Architecture.WayAtMarriage(w, b, 920000, hid, brideHh), "--oldhouseways: no way of its own"); }
             finally { Architecture.WaysOff = false; }
         }
 
