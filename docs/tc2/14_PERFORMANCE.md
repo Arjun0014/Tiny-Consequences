@@ -94,3 +94,19 @@ worlds of the integrated rules (sim 90), on a machine loaded by other work:
   the same machine's Web test of a 145-person world draws the region at ~30 fps (51-62 on a quiet machine, `s23web2`-`s23web4`), and a 569-person world
   after a day away 19-24 fps at the village view on a quiet machine. Great worlds want a memory and frame pass of their own (what holds the heap: the
   world's state, the history ledger, the views' meshes; what bounds the frame: draw submission, as D2-109 found, against the people and buildings drawn).
+
+**The frame pass (session 25, fourth context; D2-182 draft `tc2/out/tools/s25/frame/d2182.md`)**, measured by paired layer counts on seed 2's year-1,000 world
+(`_ac3`: 12,698 people in 62 places; sim 98) in the Web build:
+
+| Frame (ms) | Region view | Village view |
+|---|---|---|
+| before (`s25web3`) | ~155 (6.4 fps) | ~225 (4.4 fps) |
+| layer costs then | buildings x0.53, people x0.75, shadows x0.73, terrain x0.91 | buildings x0.54, people x0.75, shadows x0.63, terrain x0.90 |
+| people beyond the limb or outside the view unposed | x1.22 | x1.57 |
+| villages beyond the limb unbuilt (2.5 km margin; rebuilt as the camera moves) | x1.21 | x1.51 |
+| both (`s25web4`) | ~108 (9.3 fps) | ~126 (7.9 fps) |
+| layer costs now | buildings x0.44 (~60 ms), shadows x0.69, people x0.87 | buildings x0.46 (~67 ms), shadows x0.53, people x0.92 |
+
+- Next: villages in front of the limb but outside the view (the buildings' works reach 2.5 km, their homes ~0.4 km), the buildings' draws by colour group
+  (each group a draw a camera and a shadow cascade: D2-109), shadows cast only near. The memory pass: a save streamed both ways (no whole state kept or
+  inflated at once; D2-182), its effect on the heap measured by age (`0_x` before, `0_z` after).

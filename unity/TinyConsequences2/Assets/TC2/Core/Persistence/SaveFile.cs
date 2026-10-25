@@ -53,10 +53,11 @@ namespace TC2.Core.Persistence
             public Scratch() : this(1 << 20, 1 << 16) { }
 
             /// <summary>Buffers sized for a world already known (a loaded save's lengths, an eighth more): its first save grows nothing by doubling -
-            /// which alone made ~255 MB of short-lived buffers for a 79 MB state.</summary>
+            /// which alone made ~255 MB of short-lived buffers for a 79 MB state. (The memory pass, 14 §7: the state goes through `Body` a chunk at a
+            /// time, hashed and deflated as it comes - `Body` no longer holds the whole state, ~124 MB of a year-1,000 world kept for the session.)</summary>
             public Scratch(int stateBytes, int saveBytes)
             {
-                Body = new BinWriter(Math.Max(1 << 16, stateBytes + stateBytes / 8));
+                Body = new BinWriter(Chunk);
                 Deflated = new MemoryStream(Math.Max(1 << 16, saveBytes + saveBytes / 8));
                 Out = new BinWriter(Math.Max(1 << 16, saveBytes + saveBytes / 8 + 4096));
             }
@@ -77,16 +78,33 @@ namespace TC2.Core.Persistence
         {
             var body = scratch.Body;
             body.Clear();
-            w.WriteState(body);
-            byte[] raw = body.Buffer;
-            int rawLen = body.Length;
-            byte[] payload = raw;
-            int payloadLen = rawLen;
+            byte[] payload;
+            int payloadLen, rawLen;
+            ulong payloadHash;
             if (compress)
             {
-                Deflate(raw, rawLen, scratch.Deflated);
-                payload = scratch.Deflated.GetBuffer();
-                payloadLen = (int)scratch.Deflated.Length;
+                // (the memory pass, 14 §7) the state hashed and deflated a chunk at a time as it is written: the save never holds all of it
+                var into = scratch.Deflated;
+                into.SetLength(0); into.Position = 0;
+                var hash = StateHasher.Create();
+                using (var ds = new DeflateStream(into, CompressionLevel.Fastest, true))
+                {
+                    body.Sink = (b, n) => { HashInto(ref hash, b, 0, n); ds.Write(b, 0, n); };
+                    try { w.WriteState(body); body.Flush(); }
+                    finally { body.Sink = null; }
+                }
+                rawLen = (int)body.Total;
+                body.Clear();
+                payload = into.GetBuffer();
+                payloadLen = (int)into.Length;
+                payloadHash = hash.Value;
+            }
+            else
+            {
+                w.WriteState(body);
+                payload = body.Buffer;
+                payloadLen = rawLen = body.Length;
+                payloadHash = HashBytes(payload, rawLen);
             }
             var h = new SaveHeader
             {
@@ -94,7 +112,7 @@ namespace TC2.Core.Persistence
                 SavedRealUtcMs = realUtcMs, Offline = mode, CatchUpTarget = catchUpTarget, CatchUpStartedUtcMs = catchUpStartedUtcMs,
                 Population = w.LivingPeople(), Settlements = w.InhabitedSettlements(), Headline = headline ?? "",
                 Compression = (byte)(compress ? 1 : 0), PayloadLength = payloadLen, UncompressedLength = rawLen,
-                PayloadHash = HashBytes(raw, rawLen), StateHash = w.StateHash(),
+                PayloadHash = payloadHash, StateHash = w.StateHash(),
             };
             var outw = scratch.Out;
             outw.Clear();
@@ -130,11 +148,29 @@ namespace TC2.Core.Persistence
             var r = new BinReader(data);
             header = ReadHeader(r);
             if (header.SimVersion != World.FormatSimVersion) throw new FormatException("the save is from another model of the world (" + header.SimVersion + ", this game " + World.FormatSimVersion + ")");
-            byte[] raw;
-            if (header.Compression == 1) raw = Inflate(data, r.Position, header.PayloadLength, header.UncompressedLength);   // (from the save in place: no copy of the payload)
-            else { raw = new byte[header.PayloadLength]; Buffer.BlockCopy(data, r.Position, raw, 0, header.PayloadLength); }
-            if (verify && HashBytes(raw) != header.PayloadHash) throw new InvalidDataException("save payload is corrupt (hash mismatch)");
-            var w = World.ReadState(new BinReader(raw));
+            World w;
+            if (header.Compression == 1)
+            {
+                // (the memory pass, 14 §7) inflated a chunk at a time as the state is read, from the save in place - never all of the state at once
+                // (a year-1,000 world's ~110 MB, in a browser's heap that only grows); its hash and length checked when it has all been read
+                var hash = StateHasher.Create();
+                long seen = 0;
+                using (var ms = new MemoryStream(data, r.Position, header.PayloadLength))
+                using (var ds = new DeflateStream(ms, CompressionMode.Decompress))
+                {
+                    var sr = new BinReader(ds, Chunk, (b, o, n) => { HashInto(ref hash, b, o, n); seen += n; });
+                    w = World.ReadState(sr);
+                    sr.Drain();
+                }
+                if (seen != header.UncompressedLength) throw new InvalidDataException("save payload is truncated");
+                if (verify && hash.Value != header.PayloadHash) throw new InvalidDataException("save payload is corrupt (hash mismatch)");
+            }
+            else
+            {
+                var raw = new byte[header.PayloadLength]; Buffer.BlockCopy(data, r.Position, raw, 0, header.PayloadLength);
+                if (verify && HashBytes(raw) != header.PayloadHash) throw new InvalidDataException("save payload is corrupt (hash mismatch)");
+                w = World.ReadState(new BinReader(raw));
+            }
             if (verify)
             {
                 ulong h = w.StateHash();
@@ -144,6 +180,17 @@ namespace TC2.Core.Persistence
         }
 
         public static ulong HashBytes(byte[] b) => HashBytes(b, b.Length);
+
+        /// <summary>The bytes a save's state passes through at a time, written or read (the memory pass, 14 §7).</summary>
+        public const int Chunk = 1 << 20;
+
+        /// <summary>`count` bytes of `b` from `offset` into a running payload hash: byte by byte, as `HashBytes` hashes them (its words are their
+        /// eight bytes in order), so the chunks a save passes through do not change it.</summary>
+        static void HashInto(ref StateHasher h, byte[] b, int offset, int count)
+        {
+            int end = offset + count;
+            for (int i = offset; i < end; i++) h.Add(b[i]);
+        }
 
         /// <summary>The hash of the first `length` bytes of `b`.</summary>
         public static ulong HashBytes(byte[] b, int length)
