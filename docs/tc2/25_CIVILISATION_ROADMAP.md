@@ -175,8 +175,10 @@ queue's runner was stopped for low memory at 05:14).** Main's full suite 507/0/0
 people 13,946 at 1,000 (third run 9,821), raids 979 (1,857), sickness deaths 16,495 (33,156) - one seed; Trostrimford's realm 63 villages in five tiers at
 year 999, three lords take tribute from 76 of 82 villages. **Seed 7** (6 min): a small world, 20-22 villages, ~2,500 people steady; one lord over all 20.
 **The books** (`book4_s*_y1000.md`) read as history: sixteen ages a world, twelve great realms and the lesser lordships, fourteen named wars and 128 lesser,
-23 plagues, the places as towns of 300-700 people. **Shots** (seed 2, village #4 at 300): the village in its ring by the sea, a river, the plain's fields;
-at the region view **two shadow cascades above 3 km (ShadowLite) cannot be told from four**. Still to judge: years 600 and 1,000 in shots, the villages
+23 plagues, the places as towns of 300-700 people. **Shots** (seed 2, village #4 at 300, 600, 1,000: `tc2/out/shots/s26a_ac4_s2_v4_y*`): at 300 the village in its ring on a green lobe by the sea, a river,
+the plain's fields; at 600 the shore has moved in on it - the village on the sand at the water's edge, denser, its ring cut by the coast; at 1,000 a sand
+spit to the north, the river's mouth moved south and fishers' boats off the beach - the three ages read as different landscapes;
+at the region view **two shadow cascades above 3 km (ShadowLite) cannot be told from four**. Still to judge (the queue stopped at 05:17 by the person's leave pending): the villages
 most walled in stone, realms, the meteor, the god's ore, the Web build (the heap at 1,000 after the memory pass; the frame pass's pairs; the book's pages
 with the realm maps). **Seen to look at next**: hunger is every world's great killer (46,072 hunger deaths in seed 4's millennium against 16,495 of
 sickness); by 1,000 realms hold nearly every village (the "kingdoms" of §6); in metal worlds smelting reaches every village while few know ore (C5.3c
