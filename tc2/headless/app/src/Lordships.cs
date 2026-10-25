@@ -263,7 +263,62 @@ namespace TC2.Headless
             if (a.Has("together")) Together(w, name);
             if (a.Has("heirs")) Heirs(w, name);
             if (a.Has("walls")) Walls(w, name);
+            if (a.Has("dependants")) Dependants(w, name);
             return 0;
+        }
+
+        /// <summary>
+        /// (The lord's household, measured first: `lordships --dependants`) whether there is both a surplus at the seats and want among the landless of the
+        /// realms: for each lord, its first household's grain against its need (years), what its men sworn eat a year, the tribute in over ten years; its own
+        /// village's and its tributaries' households - holding no land, short of their want - and the landless households' grain and larders in days of
+        /// their need; the villages' land against need. A lord's surplus that could feed dependants is set beside the landless who could be fed.
+        /// </summary>
+        static void Dependants(World w, Func<int, string> name)
+        {
+            long now = w.Now;
+            Console.WriteLine("dependants at " + SimTime.Format(now) + ":");
+            Console.WriteLine("  lord                    people  first hh grain (years of its need)  sworn  tribute 10 y (people fed a year)  realm villages  realm hh  landless hh (people)  their food (days)  short hh");
+            double allSpare = 0; int allLandless = 0, allLandlessPeople = 0;
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                ref var s = ref w.Settlements.Get(sid);
+                if (!s.Inhabited || w.Conflict.LordOf(sid) != 0 || w.Conflict.PolitySize(sid) == 0) continue;
+                int first = TC2.Core.Society.Leaders.First(in s);
+                double grain = first != 0 && w.Households.Exists(first) ? w.Households.Get(first).Grain : 0;
+                double need = first != 0 ? w.SettlementSys.HouseholdNeed(first) * SimTime.DaysPerYear : 0;
+                int sworn = TC2.Core.Society.Retinue.Count(w, sid);
+                double tribute = 0;
+                for (int i = w.History.Count - 1; i >= 0; i--) { var e = w.History.At(i); if (e.Time < now - 10 * SimTime.Year) break; if (e.Kind == HistoryKind.TributePaid && e.Object.Id == sid) tribute += e.Magnitude; }
+                int realmV = 0, realmHh = 0, landless = 0, landlessPeople = 0, shortHh = 0; double landlessFood = 0, landlessNeed = 0;
+                for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
+                {
+                    ref var t = ref w.Settlements.Get(o);
+                    if (!t.Inhabited) continue;
+                    bool inRealm = o == sid;
+                    for (int l = w.Conflict.LordOf(o), guard = 0; l != 0 && !inRealm && guard < 12; l = w.Conflict.LordOf(l), guard++) if (l == sid) inRealm = true;
+                    if (!inRealm) continue;
+                    realmV++;
+                    var hhs = w.HouseholdsOf(o);
+                    for (int i = 0; i < hhs.Count; i++)
+                    {
+                        ref var hh = ref w.Households.Get(hhs[i]);
+                        if (hh.Dissolved != 0 || hh.Party != 0) continue;
+                        realmHh++;
+                        double want = w.Holdings.LandWant(hhs[i]);
+                        if (hh.Land < 0.05) { landless++; landlessPeople += w.Members(hhs[i]).Count; landlessFood += hh.Grain + hh.Larder; landlessNeed += w.SettlementSys.HouseholdNeed(hhs[i]); }
+                        else if (hh.Land < want - 0.05) shortHh++;
+                    }
+                }
+                double spare = grain - need * 4.0;   // (beyond its own next year and three more: what `Retinue.Keepable` sets aside)
+                if (spare > 0) allSpare += spare;
+                allLandless += landless; allLandlessPeople += landlessPeople;
+                Console.WriteLine("  " + name(sid).PadRight(22) + s.Population.ToString().PadLeft(7) + (grain.ToString("0") + " (" + (need > 0 ? grain / need : 0).ToString("0.0") + ")").PadLeft(36) +
+                                  sworn.ToString().PadLeft(7) + (tribute.ToString("0") + " (" + (tribute / 10.0 / Math.Max(1.0, w.Config.FoodPerAdultDay * SimTime.DaysPerYear)).ToString("0") + ")").PadLeft(34) +
+                                  realmV.ToString().PadLeft(16) + realmHh.ToString().PadLeft(10) + (landless + " (" + landlessPeople + ")").PadLeft(22) +
+                                  (landlessNeed > 0 ? landlessFood / landlessNeed : 0).ToString("0").PadLeft(19) + shortHh.ToString().PadLeft(10));
+            }
+            Console.WriteLine("  the lords' grain beyond four years of their own need: " + allSpare.ToString("0") + " FU (" + (allSpare / Math.Max(1.0, w.Config.FoodPerAdultDay * SimTime.DaysPerYear)).ToString("0") +
+                              " people's food a year); landless households in their realms " + allLandless + " (" + allLandlessPeople + " people)");
         }
 
         /// <summary>
