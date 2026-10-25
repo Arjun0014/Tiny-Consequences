@@ -4,6 +4,12 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 25, fourth context - END (~17:45 IST, stopped at Arjun's word)**: since the entry below - the streamed save landed (the heap of a year-1,000
+  world 1,198/1,297 -> 955/1,054 MB loaded/after the views), the reload fault traced to the Web test's harness (it read a stale `saveOk` before the game had
+  done its `save`; the bridge publishes `saves`, the test waits for it to rise) - **Web `s25web6` 8/8**; D2-182 appended; `shadowlite` measured x1.21 at the
+  region view (off by default, to judge in shots); seed 4's third run (65 -> 81 places over 300-990); the state by part (`run --statesizes`: the history
+  ledger 64 of 107 MB at year 1,000). Rain and the harrying carry main and wait to land (rain's checks were running at the stop); the queue stops after them.
+  SESSION_HANDOFF "Session 25, fourth context - END".
 - **Session 25, fourth context (25 Oct 2026, from 14:10 IST; Control Room run #78 session 3) - the siege measured and set aside; C11.1b built; the frame
   pass and two Web fixes on main (no sim change).** (1) **C8.1b the siege measured first** (`run --siegetally`, `wip/siege-tally`; `tc2/out/tools/s25/siege/design.md`):
   of the bands a walled village's palisade alone held off - kept home or broken on it - **not one could have stood a sally by the walled village's people

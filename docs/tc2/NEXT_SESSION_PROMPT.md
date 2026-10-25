@@ -385,6 +385,14 @@ god's powers as play + F11.1 the opening** (D2-178, sim 97: the power bar, Your 
 the drought + F10.1 the world's sound** (D2-179, sim 98; full suite 473/0/0). On branches, to land after the queue's final run: F9.5 the rain (sim 99)
 and C8.1a the harrying (sim 100). SESSION_HANDOFF "Session 25, third context - HANDOFF" has the queue and the steps.
 
+**Where we are (session 25, fourth context, 25 Oct 2026, 14:10-~17:45 IST; stopped at Arjun's word)**: **C8.1b the siege measured and set aside** (no band the
+walls held off could stand a sally: the world raises no host - `tc2/out/tools/s25/siege/design.md`). **On main (sim 98, no sim change; D2-182)**: the frame
+pass (people beyond the limb or outside the view unposed, villages beyond the limb unbuilt: a year-1,000 world x1.4-1.8), a save streamed both ways (its heap
+-243 MB), each save answered by its own completion; the Web test's reload fixed (the harness read a stale `saveOk`) - Web `s25web6` 8/8. **Built, ready to
+land in order**: F9.5 the rain (sim 99), C8.1a the harrying (100), **C11.1b a people's ways carried and copied** (101: households build as they were raised
+to, couples mostly as their village, tributaries' first households toward their lords). The third acceptance run: seed 2's map set by ~300, seed 4's keeps
+changing. SESSION_HANDOFF "Session 25, fourth context - END" has the steps.
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.

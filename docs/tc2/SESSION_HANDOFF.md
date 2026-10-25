@@ -1,5 +1,39 @@
 # TC2 Session handoff
 
+## Session 25, fourth context - END (25 Oct 2026, ~17:45 IST; stopped at Arjun's word) - main (sim 98) clean of ours; the queue stopping after rain's checks
+
+### Exact state
+- **main** (61da54f and the docs after it), **sim 98**, nothing of ours uncommitted (not ours: `.claude/launch.json`, `Assets/Resources.meta`). Landed this
+  context, no sim change: **the frame pass** (people beyond the limb or outside the view unposed; villages beyond the limb unbuilt), **the streamed save**
+  (the heap at year 1,000 -243 MB), **each save answered by its own completion** + the bridge's `saves` (the Web test reloaded on a stale `saveOk` - the
+  harness, not the game), the power's aim only over open ground, `closepages`, the tools `run --statesizes`, `saveprobe.mjs`, the bridge's `peoplecull`,
+  `placescull`, `shadowlite` (off by default); Unity's .meta files (the 71 sounds, Hud.Powers, Hud.Title, AudioView). **D2-182 appended.** **Web `s25web6` 8/8.**
+- **Measured and set aside: C8.1b the siege** (`tc2/out/tools/s25/siege/design.md`: no band the walls held off could stand a sally, in any world measured).
+- **Branches ready to land, in order** (each carries main; each changes the sim version):
+  1. **F9.5 the rain** - `wip/rain` 1112a4d (worktree `C:/Game Dev/tc-rain`, sim 99): its checks `0_ze_rain_rn1` were RUNNING at the stop (from 17:43):
+     read `$Q/log/0_ze_rain_rn1.log` - land with `git merge --no-ff wip/rain` if it says `rn1 ok` and `seed 4: F9.5 uncast = _pv1 byte-identical`.
+  2. **C8.1a the harrying** - `wip/harry` 8bb3dca (`C:/Game Dev/tc-harry`, sim 100): its evaluation `0_zf_*` waits in `$Q/todo` (build, control vs `_rn1`,
+     ten seeds `_hy1` against `_bn1`, `results/cmp_bn1_hy1.txt`); land after rain if the ten seeds hold (a lean past |t| 2: a matched placebo or a
+     mechanism); write D2-180 (rain + the harrying + the siege set aside).
+  3. **C11.1b a people's ways** - `wip/c111b-ways` 1069a6d (`C:/Game Dev/tc-bways`, on the old `wip/harry`, sim 101): verified (control `--oldhouseways` =
+     `_hyr` byte for byte; ways on: annals identical; `ways/ways_s4_bw2_y300.txt`); merge `wip/harry` into it, rebuild, land; D2-181 from
+     `tc2/out/tools/s25/ways/d2181.md` (open refinement: copy a lord only after the bond has stood a generation). `N_a_ways_s2` (1,000 years) in `todo`.
+- **The queue** (`Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`, runner
+  `tc2/out/tools/s23/runq.sh`): **`$Q/stop` is set** - the runner ends after `0_ze`. Left in `$Q/todo`: `0_zf_*` (the harrying), `K_b_ac3_s7` (the third
+  run's seed 7), `K_ba_siege_s47`, `N_a_ways_s2`. To restart: `rm $Q/stop` and run `bash tc2/out/tools/s23/runq.sh` in the background (one heavy job at a time,
+  RAM < 86 %, CPU < 85 %; Claude Code may stop idle background shells when memory is short - then check in the foreground).
+- **Judged this context**: K_a (main's suite 473/0/0), J_a (war between realms, half broken on walls - `c81_design.md`), the third acceptance run (seed 2:
+  the map's pattern set by ~300; seed 4: 65 -> 81 places over 300-990 - 25 §6), K_c/`s25web3` (layer costs), the shots of village #4 at 300/600/1,000
+  (`tc2/out/shots/s25o_ac3_s2_v4_y*`: villages drawn to the limb with the culls on), the realms and the meteor/drought shots (`s25o_*`, not yet looked at).
+
+### Next, in order
+1. Read `0_ze`'s log; land rain (sim 99). Restart the queue for the harrying (`0_zf_*`), land it (sim 100), D2-180; then C11.1b (sim 101), D2-181.
+2. Look at the realms shot (the war spears edged pale) and the meteor and drought shots; judge `shadowlite` (x1.21 at the region view) in real shots.
+3. The frame pass on: buildings are the largest layer (~60-67 ms on a year-1,000 world) - villages in front of the limb but outside the view, the draws by
+   colour group, shadows (above). The memory pass on: the history ledger (64 MB of 107 MB serialized at year 1,000), dissolved households (68,066), the dead.
+4. The acceptance's seed 7 (`K_b_ac3_s7`) and its write-up in 25 §6; why seed 2's map freezes after ~300 while seed 4's keeps changing.
+5. Then F9's remaining powers (warmth, cull, bring) and F11 (packaging, settings).
+
 ## Session 25, fourth context (25 Oct 2026, from 14:10 IST; Control Room run #78 session 3) - main 31234dc (sim 98): the frame pass and two Web fixes landed; C11.1b built; the siege set aside
 
 ### Exact state

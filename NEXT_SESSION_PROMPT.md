@@ -16,14 +16,17 @@ then god powers and player-facing gameplay.
 
 ## Read first (this order), then work autonomously
 1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the standing prompt (architecture, rules, every direction; "Where we are (session 25, second context)").
-2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 25, fourth context"** (then "Session 25, third context - HANDOFF" below it): the exact state, the job queue, the branches to land, "Next, in order".
+2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 25, fourth context - END"** (then "Session 25, third context - HANDOFF" below it): the exact state, the job queue, the branches to land, "Next, in order".
 3. `docs/tc2/DECISIONS.md` newest (D2-176 the land between villages, D2-177 the burning-in, D2-178 the god's powers and the opening, D2-179 the meteor, the drought and the sound; before them D2-168, D2-173-D2-175); `docs/tc2/PROGRESS.md`
    CURRENT STATE (session 25, second context); `docs/tc2/25_CIVILISATION_ROADMAP.md` §8 (the plan to a finished core); the C7.2 measure in
    `tc2/out/tools/s25/results/stonewalls_*.txt` when it has run, and `tc2/out/tools/s25/c81_design.md` (why C8.1 waits).
 4. `git status`, `git log --oneline -15`, `git worktree list`, and the queue: `cat $Q/runq.log` (`Q` below) - which jobs ended, with what.
 
-## Session 25, fourth context (25 Oct 2026, from 14:10 IST) - the frame pass on main; C11.1b built (sim 101); the siege set aside
-- Read SESSION_HANDOFF's top block **"Session 25, fourth context"** first: the exact state, the queue and "Next, in order".
+## Session 25, fourth context (25 Oct 2026, 14:10 - ~17:45 IST, stopped at Arjun's word) - the frame pass and the streamed save on main; Web 8/8; rain, the harrying and C11.1b ready to land
+- Read SESSION_HANDOFF's top block **"Session 25, fourth context - END"** first: the exact state, the branches to land in order, the queue (stopped after
+  rain's checks `0_ze`; restart it for the harrying) and "Next, in order". First: read `0_ze`'s log and land rain (sim 99), then the harrying (100), then
+  C11.1b (101); D2-180 and D2-181 (drafts in `tc2/out/tools/s25/`). Then the realms and powers shots, `shadowlite` judged in shots, the frame pass on
+  (buildings), the memory pass on (the history ledger), the acceptance's seed 7.
 - **On main (728bd0e, sim 98, no sim change)**: a save streamed both ways (the heap -243 MB at year 1,000), the reload test fixed (it read a stale saveOk - the harness, not the game), the frame pass (people beyond the limb or outside the view unposed; villages beyond the limb unbuilt), the
   reload fault fixed (`SaveNow` unsets `saveOk` while a save is in flight), the power's aim only over open ground, the Web test closing the pages before it
   aims; the .meta files Unity made (sounds, Hud.Powers, Hud.Title, AudioView).
