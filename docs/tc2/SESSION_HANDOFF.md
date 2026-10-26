@@ -34,8 +34,9 @@
   x0.92, the villages' trees - / x0.89, people - / x0.91; clouds and cover ~1. Shadow set-ups against 4 cascades x3.2: 4 x1.6 -> x1.02/x1.02 (reach is not
   the cost), 2 x1.6 -> x1.12/x1.29, 2 x1.0 -> x1.22/x1.29, 1 x1.0 -> x1.25/x1.51 (each cascade is a pass over every caster). Built from it: villages beyond
   2.2 km of the camera without their homes' small details and casting no shadow (homes and yard trees: `WorldObjectsView.DetailFar`, bridge `fardetail`),
-  and the light shadows graded by height and made the default (`Sky.ShadowLite`: 4 cascades below 300 m, 2 below 900 m, 1 above). `0_y_perf2_s27` measures
-  them on s27web3 (fardetail, shadowlite, cloudshadow, names, terrain) - then D2-195.
+  and the light shadows graded by height and made the default (`Sky.ShadowLite`: 4 cascades below 300 m, 2 below 900 m, 1 above). Measured on s27web3
+  (`s27perf2`): region ~30 fps (was 12.4), village ~16 (was 8.4); fardetail x1.89/x1.14, the graded shadows x1.06/x1.31, cloud shadows ~1, names ~1;
+  **the terrain x0.59/x0.66 - the next cost** (Terrain.shader: canopy, plots, cover per pixel). D2-195 written.
 - **The queue** (runner `tc2/out/tools/s23/runq.sh`, `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`,
   the background task `bbgjl1nqj`): `0_u_web_s27web2` (the Web build of main c06833f = the reader, E, marks, flags, the top bar; webtest `s27web2`, bookshots
   `s27book2 --play`), then `0_v_perf_s27` (each layer's paired frame cost on seed 2's year 300: clouds, shadows, trees, cover, people, buildings, air -
@@ -43,8 +44,12 @@
   `wip/s27-int` while no Unity job runs - `0_v` is a browser job, main's checkout is free then): `$Q/stage/0_w_shots_s27b.sh` (flames v3 + the meteor's scar
   by day/night `s27e6`/`e7`, the training ground's standards `s27q3`, the head up close `s27q4` view `chosen`, seed 42's lumpy cumulus `s27p6`, bare crowns over
   snow `s27f4`, the rain forest's tones `s27f5`). The next Web build must carry `--meteor-play` (the meteor's fall, landing and scar in the browser).
-- **Prospecting** (`wip/prospect` 85acede, sim 108): merges cleanly onto main (`git merge-tree`); land it (D2-190) if `results/cmp_rui1_pro1.txt` is inside the
-  noise - seeds s4, s5, s1, s6, s11 done (s11: 2,836 seasons gone looking, 5 bodies found within reach).
+- **Prospecting** (`wip/prospect` 85acede, sim 108): merged onto main's tip in the landing worktree **`C:/Game Dev/tc-s27land` (`wip/s27-land` 142ffc5)**; its
+  tests `N_d_land_tests` run after the compare `N_c_cmp_pro1` (`tc2/out/tools/s26/results/cmp_rui1_pro1.txt`). **Land only after `P_a_shots_s27c` and
+  `P_b_web_s27web4` finish** (they load sim-107 saves): then fast-forward main to `wip/s27-land` (merge `wip/s27-int` into it first if it moved), write
+  D2-190, and regenerate the shots' saves with the sim-108 binary (seed 2 to years 300 and 1,000 as `s2_ac4` was: `tc2/out/tools/s26/make_ac4.sh` shows
+  how) before any later shots or bookshots job. Seeds done: s4 (7,464 seasons gone looking, 115 bodies found within reach), s5, s1, s6 (no metal), s11
+  (2,836 / 5), s2 (7,174 / 18, 6 scouted).
 - **Drafts**: D2-193 (the book) and D2-194 (the powers' feel, the HUD) in this context's scratchpad `d2193_194.md` - finish with the Web evidence
   (`WEB_EVIDENCE_19x`) and append to DECISIONS. D2-192 (people) is on the branch.
 
@@ -52,7 +57,12 @@
 1. When `0_u` ends: `tc2/out/webtest/s27web2.log` 9/9; look at `s27book2` (the new reader, the timeline, `play_*`: the house mark, the aim, the cast, Your hand);
    `git checkout -- unity/TinyConsequences2/ProjectSettings/ProjectSettings.asset`; fix what the pictures say; D2-193, D2-194.
 2. Fast-forward main to `wip/s27-int` (during `0_v`), move `0_w` to `todo`; judge its shots; then a Web build `s27web3` with `--play --meteor-play`.
-3. `s27perf`: the costliest layer at the region and village views -> optimise it (the integrated GPU: 22-30 fps at the region/village views in `s27web1`).
+3. **The terrain is the next cost** (x0.59 region, x0.66 village: `s27perf2/terrain.txt`). Plan: in `Terrain.shader` the woods block (from "the woods
+   (D2-079)") runs for every pixel - 6 `Crowns` + 9 `CoverAt` samples, the stand rank - because implicit-derivative samples must stay in uniform control
+   flow on WebGPU. Compute `ddx/ddy(i.positionWS)` and `pxs`/`pxw` before it, pass each projection's uv gradients (the `lt` offsets keep them; the turned
+   `mul(turnB, uv) * 0.413` scales them) into `Crowns`/`CoverAt` as `SAMPLE_TEXTURE2D_GRAD`, then wrap the block in `if (i.wood.x > 0.002)` - with no wood
+   it leaves the albedo as it was (dl = 0: litter = albedo, mask 0, fc 0; the stand step keeps dens 0). Then the same for the plots/furrows block where
+   `i.farm` is 0. Verify: Unity shots (no shader errors), a Web build (WebGPU compiles it), `realmsperf --layer terrain`.
 4. Prospecting's compare -> D2-190, land (merge `wip/prospect`, sim 108; every queued shots/Web job then needs saves of sim 108 or the old binary).
 5. Then on by the shots: the book (portraits? age names that repeat), A (night clouds faintly grey; the sea's broad sheen), D (warm temperate woods never
    found in seeds 2/4 - check whether any world has them), E (sound for the meteor's fall?).

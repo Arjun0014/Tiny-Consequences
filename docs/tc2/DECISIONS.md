@@ -5972,3 +5972,27 @@ with its tag; a lightning aimed - its 60 m ring and its words; cast - the burst 
 hand: Struck lightning at Rindstead (today) - one fire". Fixed after: aimed inside a town it had said "no village within its reach" (now measured to the
 village's buildings), the panel's second line cut, the power buttons' tooltips never drawn (now above the bar), the date's old-style figures ("Year o").
 The meteor's fall and scar and the lightning's bolt come with the next Web build (`--meteor-play`).
+
+## D2-195 — 2026-10-26 — The frame on an integrated GPU: far villages plain and shadowless, the light shadows graded by height and the default, the air's march halved over the ground (presentation; 14 §7)
+
+**Context.** Since 26 Oct every drawing job runs on the machine's integrated Radeon (the RX 5600M restarts the PC under load), which is also the class
+of GPU many players have. Arjun's standing direction (5 Oct) is 60 fps in the Web build. Measured first, paired in one page (`realmsperf.mjs`, the
+layer off and on in alternating pairs; `tc2/out/webtest/s27perf/*.txt`), Web `s27web2`, seed 2's year-300 world (11,272 people, 54 places): **12.4
+fps at the region view (6 km), 8.4 at the village view (1.4 km)**. What each layer costs (the frame with it on over the frame with it off): buildings
+x0.38 / x0.61 (drawn and cast), shadows x0.64 / x0.50, the air x0.90 / x0.92, the villages' trees - / x0.89, people - / x0.91, clouds x0.97 / x1.00, ground
+cover ~1. Shadow set-ups against the four cascades over 3.2x the camera's height: the same four over half the reach x1.02 / x1.02 (the reach is not the
+cost), two over 1.6x x1.12 / x1.29, two over 1.0x x1.22 / x1.29, one over 1.0x x1.25 / x1.51 - each cascade is a pass over every caster in it.
+
+**Decision.** Presentation only. (1) **A village beyond 2.2 km of the camera** (`WorldObjectsView.DetailFar`) is drawn without its homes' small details
+- timber framing, stone footings, chimneys, lean-tos, pens, gardens, carts, muck, woodpiles: under a pixel there - and **its homes and yard trees cast no
+shadow** (`_homesFar`, `_treesFar`: the same meshes); its windows and hearth smoke stay. (2) **The light shadows are the default and graded by the
+camera's height** (`Sky.ShadowLite`): four cascades only below 300 m, where a shadow's detail shows, two below 900 m over twice the height, one above over
+1.25x; the setting "lighter shadows from high up" turns the old four cascades back on; shots show the game's default. (3) **The air marched in 8 steps over
+the ground**, 16 at the limb (`Atmosphere.shader`). Bridge toggles to measure: `fardetail`, `shadowlite`, `cloudshadow` (cloud shadows skipped entirely at
+strength 0).
+
+**Evidence.** The same world on Web `s27web3` (with (1) and (2), before (3)), paired in one page (`tc2/out/webtest/s27perf2/*.txt`):
+**about 30 fps at the region view (was 12.4) and 16 at the village view (was 8.4)**. Far detail on against off x1.89 / x1.14; the graded light shadows
+against the old four cascades x1.06 / x1.31; cloud shadows x0.97 / x1.00 (kept); the HUD's names x0.99 / x0.99. What is left: **the terrain x0.59 of the
+region view's frame and x0.66 of the village view's** (about 15 and 24 ms: its canopy, plots, cover and lighting in one shader) - the next cost.
+Web `s27web3` 9/9 with all of it; real shots at every view since (`s27e6`-`s27q4`) show the near villages unchanged (detail and shadows within 2.2 km).
