@@ -580,6 +580,10 @@ namespace TC2.Game
             Vector2 m = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y) / _scale;
             PointerOverUi = _settingsRect.Contains(m) || _powersRect.Contains(m) || _left.Contains(m) || _toggles.Contains(m) || _right.Contains(m) || worldRect.Contains(m) || realmsRect.Contains(m) || _bottom.Contains(m) || _ticker.Contains(m) || (showInsp && insp.Contains(m)) || (_book && _bookRect.Contains(m)) || _pageRect.Contains(m);
             if (!_book) HoverTag(w, sw, sh);
+            // (session 27) who is ringed on the ground: the person whose page is open, the one under the pointer, the chosen home's household
+            WorldObjectsView.Chosen = _personPage ? _selected : 0;
+            WorldObjectsView.Pointed = !_book && !PointerOverUi ? _hoverPid : 0;
+            WorldObjectsView.ChosenHome = _building;
         }
 
         /// <summary>
