@@ -19,6 +19,9 @@ namespace TC2.Game
         Texture2D _leaf, _gutter, _leather;
         GUIStyle _bkBook, _bkBookSub, _bkKicker, _bkTitle, _bkSub, _bkBody, _bkHead, _bkGreat, _bkGreatSel, _bkLine, _bkLineSel, _bkMinor, _bkMinorSel, _bkNote, _bkTally,
                  _bkYear, _bkToc, _bkTocSel, _bkTocPart, _bkTocPartSel, _bkNav, _bkFolio, _bkWhy;
+        GUIStyle _pgTitle, _pgSub, _pgBody, _pgLine, _pgYear, _pgHead, _pgTab, _pgTabSel, _pgDot;   // (session 27: the person and place pages as leaves of the book)
+        string _pgFor;
+        string[] _pgLines = new string[0];
         static readonly Color Ink = new Color(0.16f, 0.11f, 0.07f), Faded = new Color(0.42f, 0.34f, 0.25f), Rubric = new Color(0.55f, 0.15f, 0.08f);
 
         void BookStyles()
@@ -68,6 +71,15 @@ namespace TC2.Game
             _bkTocPartSel = new GUIStyle(_bkTocPart); _bkTocPartSel.normal.textColor = Rubric;
             _bkNav = S(_display, 17, Rubric, a: TextAnchor.MiddleCenter, l: 6, rt: 6, t: 2, b: 2); _bkNav.hover.textColor = Ink; _bkNav.hover.background = hover;
             _bkFolio = S(_display, 15, Faded, a: TextAnchor.MiddleCenter);
+            _pgTitle = S(_display, 26, Ink);
+            _pgSub = S(_serif, 15, Faded, FontStyle.Italic, b: 4);
+            _pgBody = S(_serif, 16, Ink, t: 2, b: 5);
+            _pgLine = S(_serif, 15, Ink, l: 2, t: 2, b: 3);
+            _pgYear = S(_display, 14, Rubric, a: TextAnchor.UpperRight, rt: 8, t: 3);
+            _pgHead = S(_display, 18, Rubric, t: 10, b: 2);
+            _pgTab = S(_display, 15, Ink, a: TextAnchor.MiddleCenter, l: 5, rt: 5, t: 2, b: 2); _pgTab.hover.textColor = Rubric; _pgTab.hover.background = hover;
+            _pgTabSel = new GUIStyle(_pgTab); _pgTabSel.normal.textColor = Rubric; _pgTabSel.normal.background = chosen;
+            _pgDot = S(_display, 15, Faded, a: TextAnchor.MiddleCenter, t: 2, b: 2);
             // the rest of the book's pages (the preface's paragraphs, the timeline, the realm maps' captions) in the book's type
             if (_serif != null)
             {
@@ -258,13 +270,13 @@ namespace TC2.Game
         }
 
         /// <summary>A paragraph's first letter raised and in red (a chapter's opening).</summary>
-        string Initial(string text)
+        string Initial(string text, int size = 0)
         {
             if (string.IsNullOrEmpty(text)) return text;
             int i = 0;
             while (i < text.Length && !char.IsLetter(text[i])) i++;
             if (i >= text.Length) return text;
-            return text.Substring(0, i) + "<size=" + Mathf.RoundToInt(_bkBody.fontSize * 2.4f) + "><color=#8c2614>" + text[i] + "</color></size>" + text.Substring(i + 1);
+            return text.Substring(0, i) + "<size=" + (size > 0 ? size : Mathf.RoundToInt(_bkBody.fontSize * 2.4f)) + "><color=#8c2614>" + text[i] + "</color></size>" + text.Substring(i + 1);
         }
 
         /// <summary>A record in the chapter: its year in the margin in red, its words by its weight - a great event in bold, a notable record in plain ink,
@@ -288,6 +300,93 @@ namespace TC2.Game
             GUILayout.Label("<size=" + ys + ">" + year + "</size>" + (season.Length > 0 && b.Weight > 0 ? "\n<size=12><i>" + season + "</i></size>" : ""), _bkYear, GUILayout.Width(86));
             if (GUILayout.Button(text, st)) { _line = sel ? 0 : b.Event; _whyScroll = Vector2.zero; }
             GUILayout.EndHorizontal();
+        }
+
+        /// <summary>
+        /// (session 27) A person's or a place's page as a leaf of the book (they had been dark glass with small grey type): a leaf of the same paper in its
+        /// binding, the page's kind as a kicker, the name in IM FELL, the standing in italic, the sections as ink links, a rule; then its words laid out as
+        /// the book lays a chapter - dated records with their years in the margin in red, the works by the year raised, "Label: ..." lines under a red
+        /// rubric, the rest as paragraphs, the first under a raised initial. Returns the section chosen; <paramref name="close"/> when it is shut.
+        /// The words are Biography's and Gazetteer's (Core); nothing here writes the world.
+        /// </summary>
+        int PaperPage(Rect r, string kicker, string title, string standing, string[] tabs, int tab, string text, out bool close)
+        {
+            BookStyles();
+            close = false;
+            if (Event.current.type == EventType.Repaint)
+            {
+                GUI.DrawTexture(new Rect(r.x - 6f, r.y - 5f, r.width + 12f, r.height + 10f), _leather);
+                GUI.DrawTexture(r, _leaf);
+            }
+            GUILayout.BeginArea(new Rect(r.x + 26f, r.y + 16f, r.width - 44f, r.height - 26f));
+            GUILayout.BeginHorizontal();
+            Kicker(kicker);
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("close  ×", _bkNav, GUILayout.Width(84))) close = true;
+            GUILayout.EndHorizontal();
+            GUILayout.Label(title, _pgTitle);
+            if (!string.IsNullOrEmpty(standing)) GUILayout.Label(standing, _pgSub);
+            GUILayout.BeginHorizontal();
+            for (int i = 0; i < tabs.Length; i++)
+            {
+                if (i > 0) GUILayout.Label("·", _pgDot);
+                if (GUILayout.Button(tabs[i], i == tab ? _pgTabSel : _pgTab)) tab = i;
+            }
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+            Rule(0f, 1f);
+            _pageScroll = GUILayout.BeginScrollView(_pageScroll, GUIStyle.none, GUI.skin.verticalScrollbar);
+            if (!ReferenceEquals(text, _pgFor)) { _pgFor = text; _pgLines = (text ?? "").Split('\n'); }
+            bool first = true;
+            for (int i = 0; i < _pgLines.Length; i++)
+            {
+                string line = _pgLines[i].TrimEnd();
+                if (line.Length == 0) continue;
+                string t = line.TrimStart();
+                if (t.StartsWith("-- ", System.StringComparison.Ordinal)) { GUILayout.Label(Cap(t.Substring(3)), _pgHead); continue; }
+                if (Dated(t, out string year, out string season, out string words))
+                {
+                    GUILayout.BeginHorizontal();
+                    GUILayout.Label(year + (season.Length > 0 ? "\n<size=11><i>" + season + "</i></size>" : ""), _pgYear, GUILayout.Width(66));
+                    GUILayout.Label(words, _pgLine);
+                    GUILayout.EndHorizontal();
+                    continue;
+                }
+                int colon = t.IndexOf(": ", System.StringComparison.Ordinal), paren = t.IndexOf('(');
+                bool label = colon >= 2 && colon <= 28 && (paren < 0 || paren > colon) && !char.IsDigit(t[0]);   // ("Mother: ...", "Grain: ...")
+                if (label) t = "<color=#8c2614>" + t.Substring(0, colon) + "</color>  " + t.Substring(colon + 2);
+                GUILayout.Label(first && !label ? Initial(t, 34) : t, _pgBody);
+                first = false;
+            }
+            GUILayout.EndScrollView();
+            GUILayout.EndArea();
+            return tab;
+        }
+
+        /// <summary>A record's year and season and its words: "Year 249, late winter: ..." (the ledger's), "year 273: ..." (a deed weighed),
+        /// "well (year 162)" (a work raised).</summary>
+        static bool Dated(string t, out string year, out string season, out string words)
+        {
+            year = season = words = "";
+            if (t.StartsWith("Year ", System.StringComparison.Ordinal) || t.StartsWith("year ", System.StringComparison.Ordinal))
+            {
+                int colon = t.IndexOf(": ", System.StringComparison.Ordinal);
+                if (colon < 6 || colon > 40) return false;
+                string date = t.Substring(5, colon - 5);
+                int comma = date.IndexOf(',');
+                year = (comma > 0 ? date.Substring(0, comma) : date).Trim();
+                season = comma > 0 ? date.Substring(comma + 1).Trim() : "";
+                words = t.Substring(colon + 2);
+                return year.Length > 0 && char.IsDigit(year[0]);
+            }
+            int at = t.LastIndexOf(" (year ", System.StringComparison.Ordinal);
+            if (at > 0 && t.EndsWith(")", System.StringComparison.Ordinal))
+            {
+                year = t.Substring(at + 7, t.Length - at - 8);
+                words = t.Substring(0, at);
+                return year.Length > 0 && char.IsDigit(year[0]);
+            }
+            return false;
         }
 
         /// <summary>The leaf's number: the chapters before it in the book, counted from the preface.</summary>

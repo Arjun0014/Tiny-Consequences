@@ -44,7 +44,7 @@ namespace TC2.Game
         long _line;
         Vector2 _listScroll, _bookScroll, _whyScroll;
         readonly long[] _chain = new long[16];
-        GUIStyle _lineStyle, _lineSel, _page, _sheet, _ink, _inkTitle, _inkHead, _inkFact, _inkSub, _inkLine, _inkLineSel, _toc, _tocSel, _tocPart, _inkBtn;
+        GUIStyle _lineStyle, _lineSel, _sheet, _ink, _inkTitle, _inkHead, _inkFact, _inkSub, _inkLine, _inkLineSel, _toc, _tocSel, _tocPart, _inkBtn;
         Rect _bookRect;
 
         /// <summary>Opens the History Book at an age (the page a tool or a URL asks for; -1 the present age).</summary>
@@ -173,9 +173,6 @@ namespace TC2.Game
             _btn.onNormal.background = bActive; _btn.onHover.background = bActive; _btn.onActive.background = bActive; _btn.onFocused.background = bActive;
             _btn.normal.textColor = new Color(0.90f, 0.88f, 0.82f); _btn.hover.textColor = new Color(1f, 0.86f, 0.52f); _btn.active.textColor = new Color(1f, 0.92f, 0.65f);
             _btn.onNormal.textColor = new Color(1f, 0.90f, 0.62f); _btn.onHover.textColor = new Color(1f, 0.92f, 0.68f); _btn.onActive.textColor = new Color(1f, 0.92f, 0.68f);
-            _page = new GUIStyle(_box) { padding = new RectOffset(14, 14, 10, 10) };   // (the book reads on a page, not over the world)
-            var page = new Texture2D(1, 1); page.SetPixel(0, 0, new Color(0.06f, 0.07f, 0.09f, 0.92f)); page.Apply();
-            _page.normal.background = page;
             _lineStyle = new GUIStyle(_small) { padding = new RectOffset(4, 4, 2, 2) };
             _lineStyle.hover.textColor = new Color(1f, 0.92f, 0.6f);
             _lineSel = new GUIStyle(_lineStyle);
@@ -823,18 +820,10 @@ namespace TC2.Game
                 }
                 _pageText = body;
             }
-            GUILayout.BeginArea(r, _page);
-            GUILayout.Label(_pageTitle, _title);
-            if (_pageStanding.Length > 0) GUILayout.Label("<color=#f2c35f>" + Cap(_pageStanding) + "</color>", _label);
-            GUILayout.BeginHorizontal();
-            for (int i = 0; i < PageTabs.Length; i++) if (GUILayout.Toggle(_pageTab == i, PageTabs[i], _btn) && _pageTab != i) _pageTab = i;
-            GUILayout.FlexibleSpace();
-            if (GUILayout.Button("Close", _btn)) _personPage = false;
-            GUILayout.EndHorizontal();
-            _pageScroll = GUILayout.BeginScrollView(_pageScroll);
-            GUILayout.Label(_pageText, _small);
-            GUILayout.EndScrollView();
-            GUILayout.EndArea();
+            // (session 27) a leaf of the book
+            int tab = PaperPage(r, "A Life", _pageTitle, Cap(_pageStanding), PageTabs, _pageTab, _pageText, out bool close);
+            if (tab != _pageTab) { _pageTab = tab; _pageScroll = Vector2.zero; }
+            if (close) _personPage = false;
         }
 
         /// <summary>Opens a person's page (tools: shots of the page; a click in the world selects, the button opens it).</summary>
@@ -864,17 +853,10 @@ namespace TC2.Game
                     default: _placeText = Gazetteer.Life(w, _placeSid, 80); break;
                 }
             }
-            GUILayout.BeginArea(r, _page);
-            GUILayout.Label(_placeTitle, _title);
-            GUILayout.BeginHorizontal();
-            for (int i = 0; i < PlaceTabs.Length; i++) if (GUILayout.Toggle(_placeTab == i, PlaceTabs[i], _btn) && _placeTab != i) _placeTab = i;
-            GUILayout.FlexibleSpace();
-            if (GUILayout.Button("Close", _btn)) _placeSid = 0;
-            GUILayout.EndHorizontal();
-            _pageScroll = GUILayout.BeginScrollView(_pageScroll);
-            GUILayout.Label(_placeText, _small);
-            GUILayout.EndScrollView();
-            GUILayout.EndArea();
+            // (session 27) a leaf of the book
+            int tab = PaperPage(r, "A Place", _placeTitle, "", PlaceTabs, _placeTab, _placeText, out bool close);
+            if (tab != _placeTab) { _placeTab = tab; _pageScroll = Vector2.zero; }
+            if (close) _placeSid = 0;
         }
 
         /// <summary>
