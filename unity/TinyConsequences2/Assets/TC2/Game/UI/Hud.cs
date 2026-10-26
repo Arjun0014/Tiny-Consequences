@@ -634,6 +634,7 @@ namespace TC2.Game
             _powersRect = Rect.zero;
             if (!_book) PowerBar(w, sw, sh);   // (the god's powers: F9.1)
             if (!_book) YourHand(w, sw, sh);   // (what came of your casts, live: session 27)
+            if (!_book) DrawTip(); else _tip = null;
             _settingsRect = Rect.zero;
             if (_settings) SettingsPanel(sw);
             KeepSettings();

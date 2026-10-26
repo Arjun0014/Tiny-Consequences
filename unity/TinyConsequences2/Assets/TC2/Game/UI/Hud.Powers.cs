@@ -134,6 +134,11 @@ namespace TC2.Game
         readonly System.Collections.Generic.List<(long id, string what, long time, string came, int n)> _hand = new System.Collections.Generic.List<(long, string, long, string, int)>();
         float _handAt;
         GUIStyle _handLine, _tipStyle;
+        GUIContent _tip;
+        Rect _tipRect;
+
+        /// <summary>The pending tooltip of the power under the pointer, drawn over everything else at the end of the HUD's frame.</summary>
+        void DrawTip() { if (_tip != null && Event.current.type == EventType.Repaint) GUI.Box(_tipRect, _tip, _tipStyle); _tip = null; }
 
         void YourHand(World w, float sw, float sh)
         {
@@ -249,7 +254,7 @@ namespace TC2.Game
                 var tc = new GUIContent("<b>" + hp.Doing + "</b>: " + hp.Help + (hw > 0 ? "\n<color=#f2c35f>back in " + Wait(hw) + "</color>" : "") + "\n<size=11><i>click, then click the ground where it falls</i></size>");
                 float tw = 400f, th = _tipStyle.CalcHeight(tc, tw);
                 float cx = area.x + hoveredRect.center.x;
-                GUI.Box(new Rect(Mathf.Clamp(cx - tw * 0.5f, 4f, sw - tw - 4f), _powersRect.y - th - 8f, tw, th), tc, _tipStyle);
+                _tip = tc; _tipRect = new Rect(Mathf.Clamp(cx - tw * 0.5f, 4f, sw - tw - 4f), _powersRect.y - th - 8f, tw, th);   // (drawn last: over "Your hand")
             }
             // (over a page, the book or a bar a click is theirs, not the power's: the mark and its words only over open ground - last frame's PointerOverUi)
             if (_aim < 0 || PointerOverUi || !GroundUnder(Input.mousePosition, out var dir, out int cell)) return;
