@@ -16,3 +16,7 @@ the project owner). Requests for assets that need a human (download, purchase, l
   interface cues; F10.1, session 25): generated for this project (Tiny Consequences 1, session 21, `assets/audio/manifest.json`) with the ElevenLabs
   sound effects model (`eleven_text_to_sound_v2`) on the project owner's ElevenLabs account, levelled and encoded with ffmpeg; no third-party
   recordings. Use is subject to that account's ElevenLabs terms - commercial use needs a paid plan: check before publishing commercially.
+- **The History Book's type** (`Game/Resources/Fonts/`, session 27): **EB Garamond** (`EBGaramond.ttf`, `EBGaramond-Italic.ttf`; Copyright 2017 The EB
+  Garamond Project Authors, https://github.com/octaviopardo/EBGaramond12) for the text and **IM FELL English** (`IMFellEnglish.ttf`, the Roman; Copyright (c)
+  2010 Igino Marini, Reserved Font Name "IM FELL English") for titles - both under the **SIL Open Font License 1.1**, unmodified, from the Google Fonts
+  repository (`ofl/ebgaramond`, `ofl/imfellenglish`); the licence texts are kept in `tc2/art/fonts/`.
