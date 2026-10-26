@@ -27,6 +27,9 @@ namespace TC2.Game
             for (int i = 0; i < 256; i++) perm[256 + i] = perm[i];
             // one jittered point a cell for each lattice the billows and puffs use (4, 8, 16 cells a tile)
             var pts4 = Points(4, rng); var pts8 = Points(8, rng); var pts16 = Points(16, rng); var puff8 = Points(8, rng);
+            // (session 27) each puff of its own size, some cells forming none - the sea's cumulus had read as evenly spaced ovals - and a finer lattice of
+            // small cumuli between the large
+            var size8 = Sizes(puff8.Length, rng, 0.30f, 0.45f, 1.30f); var puff16 = Points(16, rng); var size16 = Sizes(puff16.Length, rng, 0.50f, 0.22f, 0.50f);
             var px = new Color32[n * n * n];
             float inv = 1f / n;
             for (int z = 0; z < n; z++)
@@ -41,8 +44,9 @@ namespace TC2.Game
                         // G: billows - inverted cellular distance, three octaves
                         float g = 0.55f * (1f - Worley(u, v, w, 4, pts4)) + 0.30f * (1f - Worley(u, v, w, 8, pts8)) + 0.15f * (1f - Worley(u, v, w, 16, pts16));
                         g = Mathf.Clamp01((g - 0.25f) / 0.70f);
-                        // B: puffs - the distance to the nearest point of an 8-cell lattice (0 at a puff's heart)
-                        float b = Mathf.Clamp01(Worley(u, v, w, 8, puff8));
+                        // B: puffs - the distance to the nearest point of an 8-cell lattice over that point's size (0 at a puff's heart), or to a small one
+                        // of the 16-cell lattice between them (in the 8-cell lattice's widths)
+                        float b = Mathf.Clamp01(Mathf.Min(Worley(u, v, w, 8, puff8, size8), 0.5f * Worley(u, v, w, 16, puff16, size16)));
                         // A: the fine grain - fbm of 3 octaves from 8 cells
                         float a = 0f; amp = 0.5f; tot = 0f;
                         for (int o = 0, f = 8; o < 3; o++, f *= 2) { a += amp * Perlin(u * f, v * f, w * f, f, perm); tot += amp; amp *= 0.5f; }
@@ -62,8 +66,18 @@ namespace TC2.Game
             return p;
         }
 
-        /// <summary>The distance (in cell widths, ~0..1) to the nearest point of a jittered lattice of <paramref name="cells"/> a tile, wrapping.</summary>
-        static float Worley(float u, float v, float w, int cells, Vector3[] pts)
+        /// <summary>Each point's size: a share <paramref name="none"/> of them forming nothing (a size so small no puff shows), the rest between
+        /// <paramref name="lo"/> and <paramref name="hi"/>, small ones the likelier.</summary>
+        static float[] Sizes(int count, System.Random rng, float none, float lo, float hi)
+        {
+            var s = new float[count];
+            for (int k = 0; k < count; k++) { float r = (float)rng.NextDouble(); s[k] = rng.NextDouble() < none ? 0.05f : lo + (hi - lo) * r * r; }
+            return s;
+        }
+
+        /// <summary>The distance (in cell widths, ~0..1) to the nearest point of a jittered lattice of <paramref name="cells"/> a tile, wrapping; with
+        /// sizes, each point's distance over its size (the nearest puff by how far within it).</summary>
+        static float Worley(float u, float v, float w, int cells, Vector3[] pts, float[] sizes = null)
         {
             float fx = u * cells, fy = v * cells, fz = w * cells;
             int cx = (int)fx, cy = (int)fy, cz = (int)fz;
@@ -77,6 +91,7 @@ namespace TC2.Game
                         var pt = pts[(iz * cells + iy) * cells + ix];
                         float ex = gx + pt.x - fx, ey = gy + pt.y - fy, ez = gz + pt.z - fz;
                         float d = ex * ex + ey * ey + ez * ez;
+                        if (sizes != null) { float sz = sizes[(iz * cells + iy) * cells + ix]; d /= sz * sz; }
                         if (d < best) best = d;
                     }
             return Mathf.Sqrt(best);
