@@ -341,6 +341,7 @@ namespace TC2.Game
         {
             var w = Host.World;
             if (w == null || Host.CatchingUp) return;
+            Ground.SurfaceEpoch(w.Planet, w.Now);   // (the ground remembered for the day: everything set on it this frame reads it)
             _placeTimer -= Time.unscaledDeltaTime;
             if (_placeTimer <= 0 || PlacesMoved()) { _placeTimer = 0.5f; RebuildPlaces(w); }   // (and at once when the camera has moved: the limb's cull, 14 §7)
             _treeTimer -= Time.unscaledDeltaTime;
@@ -485,19 +486,22 @@ namespace TC2.Game
                 if (!_ringDry[k]) continue;
                 if (!inStone && cond <= 0f) continue;   // (the timber of an old ring all rotted away, its stone standing)
                 double x = s.SquareX + r * System.Math.Cos(a), y = s.SquareY + r * System.Math.Sin(a);
-                float yaw = Mathf.Atan2((float)(s.SquareX - x), (float)(s.SquareY - y)) * Mathf.Rad2Deg;
+                // (session 27, context 4) each stretch faces the ring's middle in the village's own frame (PlaceFaced, as homes have since C13.3): turned about
+                // a world-fixed forward (Place), a ring's stretches had stood up to a right angle off its line - on a beach, separate slabs side-on (s27d4,
+                // s27e3, s27f7; `place --ring` showed every dry stretch standing), behind the village a solid band seen end-on
+                double face = System.Math.Atan2(s.SquareY - y, s.SquareX - x);
                 if (inStone)
                 {
                     float tone = 0.94f + 0.06f * (((k * 7) % 5) / 4f);   // (rubble a little uneven from stretch to stretch)
-                    _stoneWalls.Add(0, new Color(tone, tone, tone * 0.98f, 1f), Place(P, s, x, y, yaw, ex));
+                    _stoneWalls.Add(0, new Color(tone, tone, tone * 0.98f, 1f), PlaceFaced(P, s, x, y, face, ex));
                     // towers: either side of each gate, and along the curtain
                     bool byGate = _gateDist[k] < gateHalf + 2.0 / r;
-                    if (byGate || k % towerEvery == 0) _towers.Add(0, Color.white, Place(P, s, s.SquareX + (r + 0.6) * System.Math.Cos(a), s.SquareY + (r + 0.6) * System.Math.Sin(a), yaw, ex));
+                    if (byGate || k % towerEvery == 0) _towers.Add(0, Color.white, PlaceFaced(P, s, s.SquareX + (r + 0.6) * System.Math.Cos(a), s.SquareY + (r + 0.6) * System.Math.Sin(a), face, ex));
                     continue;
                 }
                 // (old palisades lean a little as the posts rot)
                 float lean = (1f - cond) * 0.25f * (((k * 13) % 5) - 2);
-                _walls.Add(0, timber, Place(P, s, x, y, yaw, ex) * Matrix4x4.Rotate(Quaternion.Euler(lean * 10f, 0f, 0f)));
+                _walls.Add(0, timber, PlaceFaced(P, s, x, y, face, ex) * Matrix4x4.Rotate(Quaternion.Euler(lean * 10f, 0f, 0f)));
             }
         }
 
@@ -1854,6 +1858,15 @@ namespace TC2.Game
             return m;
         }
 
+        /// <summary>(session 27, context 4: the frame) where a person stands: on the ground as this frame draws it (TerrainLod.DrawnRadius), never below the
+        /// sea's surface; on Ground's own where no patch is shown there.</summary>
+        static Vector3 Stand(PlanetState P, Vec3d d)
+        {
+            if (!TerrainLod.DrawnRadius(d, out double r)) return PlanetGeo.Surface(P, d);
+            float rr = (float)System.Math.Max(r, P.Radius + P.SeaLevel);
+            return new Vector3((float)d.X * rr, (float)d.Y * rr, (float)d.Z * rr);
+        }
+
         void RebuildPeople(TC2.Core.Simulation.World w)
         {
             var P = w.Planet;
@@ -1887,7 +1900,7 @@ namespace TC2.Game
                 if (p.Act == ActivityKind.Sleep || p.Act == ActivityKind.Infant || p.Act == ActivityKind.Ill) continue; // indoors
                 Vec3d d = w.Agents.PositionAt(p, t);
                 if (cull && Vector3.Dot(PlanetGeo.ToVector(d), camPos) < limb) { PeopleCulled++; continue; }
-                Vector3 pos = PlanetGeo.Surface(P, d);
+                Vector3 pos = Stand(P, d);
                 if (cull && !InView(_peoplePlanes, pos, 60f)) { PeopleCulled++; continue; }
                 float age = (float)p.AgeYears((long)t);
                 // out in the household's boat (C9.1): drawn in it wherever they are on the water - rowing out, fishing, rowing home. A boat
@@ -1939,14 +1952,14 @@ namespace TC2.Game
                 // where they are drawn, which way they face and what their body does - from what they are doing (Presence: the field hand hoes
                 // along the rows, the woodcutter swings, the herder walks with the herd, neighbours turn to each other; indoors, not drawn)
                 if (!Presence.Of(w, in p, t, out d, out Vec3d face, out byte pose, out bool moving)) continue;
-                pos = PlanetGeo.Surface(P, d);
+                pos = Stand(P, d);
                 float sc = (age < 12 ? 0.55f + age * 0.038f : 1f) * PeopleScale(pos);   // a little larger than life, to be read
                 Color cloth = Livery(w, in p, age, out int dye, out float stature, out byte rank);
                 float yaw = (id * 53) % 360;
                 {
                     Vector3 up = pos.normalized;
                     Vector3 flat;
-                    if (face.X == 0 && face.Y == 0 && face.Z == 0) flat = Vector3.ProjectOnPlane(PlanetGeo.Surface(P, w.Agents.PositionAt(p, t + 20.0)) - pos, up);   // (on the move: where they go)
+                    if (face.X == 0 && face.Y == 0 && face.Z == 0) flat = Vector3.ProjectOnPlane(PlanetGeo.ToVector(w.Agents.PositionAt(p, t + 20.0) - d), up);   // (on the move: where they go - the way's bearing needs no ground under it)
                     else flat = Vector3.ProjectOnPlane(PlanetGeo.ToVector(face), up);
                     if (flat.sqrMagnitude > 1e-6f) yaw = Vector3.SignedAngle(Vector3.ProjectOnPlane(PlanetGeo.Upright(pos, 0) * Vector3.forward, up), flat, up);
                 }

@@ -56,6 +56,7 @@ namespace TC2.Headless
             if (a.Has("marriage")) { Marriage(w); return 0; }
             if (a.Has("ways")) { PeoplesWays(w); return 0; }
             if (a.Has("stonewalls")) { StoneWalls(w); return 0; }
+            if (a.Has("ring")) { Ring(w, a.Int("sid", 0)); return 0; }
             if (a.Has("ruins")) { Ruins(w, a.Int("show", 15)); return 0; }
             if (a.Has("ore")) { OreReach(w, a.Int("show", 15)); return 0; }
             if (a.Has("ceiling")) { Ceiling(w); return 0; }
@@ -876,6 +877,79 @@ namespace TC2.Headless
                                   guarded.ToString("0").PadLeft(19) + timber.ToString("0").PadLeft(16) + (r.stone ? r.dist.ToString("0") + (r.quarry ? " q" : "") : "-").PadLeft(12) +
                                   stoneH.ToString("0").PadLeft(14) + (" (" + (TC2.Core.Society.Conflict.LabourWorth * stoneH).ToString("0") + ")").PadLeft(9) + r.years.ToString("0.0").PadLeft(10) +
                                   (w.Settlements.Get(r.sid).StoneWall > 0f || w.Settlements.Get(r.sid).StoneWallEvent != 0 ? (100.0 * w.Settlements.Get(r.sid).StoneWall).ToString("0") + " %" : "-").PadLeft(10));
+            }
+        }
+
+        /// <summary>
+        /// (session 27, context 4: the palisade drawn as separate panels down a beach, s27f7) each walled village's rings as the view lays them
+        /// (WorldObjectsView.DrawRing): its radius, stretches (one every 2 m) and those set, then a character a stretch - 'D' dry / 'w' wet ground at its
+        /// point, then after the view's two passes '=' standing, '.' not (wet), 'g' a gate (a street or a worn way out through it).
+        /// `place --load SAVE --ring [--sid N]`
+        /// </summary>
+        static void Ring(World w, int only)
+        {
+            var P = w.Planet;
+            var ways = new List<TC2.Core.Agents.Way>();
+            w.Ways.Collect(w.Now, ways);
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                if (only != 0 && sid != only) continue;
+                ref var s = ref w.Settlements.Get(sid);
+                if (!s.Inhabited) continue;
+                var rings = new List<(string what, double r, double share)>();
+                if (s.Wall == 1 || s.Wall == 2)
+                {
+                    double share = 1.0;
+                    if (s.Wall == 1)
+                    {
+                        Construction.WorkCost(Construction.Palisade, in s, out double need, out _);
+                        share = Construction.NextWork(in s) == Construction.Palisade && need > 0 ? Math.Min(1.0, Math.Max(0.0, s.WorkBuild / need)) : 0.0;
+                    }
+                    rings.Add((s.Wall == 2 ? "ring" : "being raised", s.WallR, share));
+                }
+                if (s.OldR > 0f) rings.Add(("old ring", s.OldR, 1.0));
+                foreach (var (what, r, share) in rings)
+                {
+                    if (r < 5.0) continue;
+                    int stretches = Math.Max(8, (int)(2.0 * Math.PI * r / 2.0));
+                    int set = (int)(stretches * share);
+                    var gates = new List<double>();
+                    for (int k = 0; k < s.StreetN; k++) gates.Add(s.StreetAt(k));
+                    foreach (var way in ways)
+                    {
+                        if (way.A != sid && way.B != sid) continue;
+                        var route = w.Routes.Get(w, way.A, way.B);
+                        if (route == null) continue;
+                        var line = TC2.Core.Agents.WayLines.Of(w, route);
+                        for (int k = 0; k + 1 < line.Length; k++)
+                        {
+                            s.SphereToLocal(line[k], P.Radius, out double ax, out double ay);
+                            s.SphereToLocal(line[k + 1], P.Radius, out double bx, out double by);
+                            double da = Math.Sqrt((ax - s.SquareX) * (ax - s.SquareX) + (ay - s.SquareY) * (ay - s.SquareY));
+                            double db = Math.Sqrt((bx - s.SquareX) * (bx - s.SquareX) + (by - s.SquareY) * (by - s.SquareY));
+                            if ((da - r) * (db - r) > 0) continue;
+                            double f = Math.Abs(db - da) > 1e-9 ? (r - da) / (db - da) : 0.0;
+                            gates.Add(Math.Atan2(ay + (by - ay) * f - s.SquareY, ax + (bx - ax) * f - s.SquareX));
+                        }
+                    }
+                    double gateHalf = 3.0 / r;
+                    var dry = new bool[set]; var show = new bool[set]; var stand = new bool[set];
+                    for (int k = 0; k < set; k++) dry[k] = Structures.RingDry(w, in s, r, 2.0 * Math.PI * (k + 0.5) / stretches);
+                    bool whole = set == stretches;
+                    for (int k = 0; k < set; k++) { bool b = k > 0 ? dry[k - 1] : whole && dry[set - 1], af = k + 1 < set ? dry[k + 1] : whole && dry[0]; show[k] = dry[k] || (b && af); }
+                    for (int k = 0; k < set; k++) { bool b = k > 0 ? show[k - 1] : whole && show[set - 1], af = k + 1 < set ? show[k + 1] : whole && show[0]; stand[k] = show[k] && (b || af || set <= 2); }
+                    var raw = new System.Text.StringBuilder(); var drawn = new System.Text.StringBuilder();
+                    int nGate = 0, nWet = 0;
+                    for (int k = 0; k < set; k++)
+                    {
+                        double a = 2.0 * Math.PI * (k + 0.5) / stretches, dg = Math.PI;
+                        foreach (double g in gates) dg = Math.Min(dg, Math.Abs(Math.IEEERemainder(a - g, 2.0 * Math.PI)));
+                        raw.Append(dry[k] ? 'D' : 'w');
+                        if (dg < gateHalf) { drawn.Append('g'); nGate++; } else if (!stand[k]) { drawn.Append('.'); nWet++; } else drawn.Append('=');
+                    }
+                    Console.WriteLine("#" + sid + " " + w.History.NameOf(EntityRef.Settlement(sid)) + " " + what + ": r " + r.ToString("0.0") + " m, " + stretches + " stretches, " + set + " set, " + gates.Count + " gates (" + nGate + " stretches), " + nWet + " left out wet");
+                    for (int o = 0; o < set; o += 100) Console.WriteLine("  ground " + raw.ToString(o, Math.Min(100, set - o)) + "\n  drawn  " + drawn.ToString(o, Math.Min(100, set - o)));
+                }
             }
         }
 

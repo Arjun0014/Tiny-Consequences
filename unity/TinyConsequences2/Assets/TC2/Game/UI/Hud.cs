@@ -437,10 +437,17 @@ namespace TC2.Game
                 _hoverPid = 0; _hoverBid = 0;
                 double t = Host.RenderTime;
                 float best = 16f * _scale;
+                // (session 27, context 4: the frame) only those near the ground under the pointer are placed and measured on the screen - every one of a
+                // great world's people had been, eight times a second, the far side of the planet too: 11.7 ms of a running village view's 71 (s27prof1_run)
+                if (!GroundUnder(mp, out Vec3d under, out _)) return;
+                double R = w.Planet.Radius, cosNear = System.Math.Cos(System.Math.Max(80.0, alt * 0.25) / R);
                 for (int id = w.People.First(); id != 0; id = w.People.Next(id))
                 {
                     ref var p = ref w.People.Get(id);
-                    if (!p.Alive || !Presence.Of(w, in p, t, out var pd, out _, out _, out _)) continue;
+                    if (!p.Alive) continue;
+                    Vec3d at = w.Agents.PositionAt(p, t);   // (where the way has them; their drawn place keeps within tens of metres of it)
+                    if (at.X * under.X + at.Y * under.Y + at.Z * under.Z < cosNear) continue;
+                    if (!Presence.Of(w, in p, t, out var pd, out _, out _, out _)) continue;
                     Vector3 sp = cam.WorldToScreenPoint(PlanetGeo.Surface(w.Planet, pd));
                     if (sp.z < 0) continue;
                     float d = Vector2.Distance(mp, sp);
@@ -449,16 +456,16 @@ namespace TC2.Game
                 if (_hoverPid == 0)
                 {
                     float bestB = 22f * _scale;
-                    Vector3 camPos = cam.transform.position;
                     for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
                     {
                         ref var s = ref w.Settlements.Get(sid);
-                        if ((PlanetGeo.Surface(w.Planet, s.Anchor) - camPos).sqrMagnitude > 2500f * 2500f) continue;
-                        var bl = w.BuildingsOf(sid);
+                        var bl = w.BuildingsOf(sid);   // (each by its own place: a mine or a quarry may stand kilometres out)
                         for (int i = 0; i < bl.Count; i++)
                         {
                             ref var b = ref w.Buildings.Get(bl[i]);
-                            Vector3 sp = cam.WorldToScreenPoint(PlanetGeo.Surface(w.Planet, s.LocalToSphere(b.X, b.Y, w.Planet.Radius)));
+                            Vec3d bd = s.LocalToSphere(b.X, b.Y, R);
+                            if (bd.X * under.X + bd.Y * under.Y + bd.Z * under.Z < cosNear) continue;
+                            Vector3 sp = cam.WorldToScreenPoint(PlanetGeo.Surface(w.Planet, bd));
                             if (sp.z < 0) continue;
                             float d = Vector2.Distance(mp, sp);
                             if (d < bestB) { bestB = d; _hoverBid = bl[i]; }
@@ -529,7 +536,9 @@ namespace TC2.Game
             if (Title(sw, sh)) return;   // (the opening: F11.1)
 
             if (_hidden) { PointerOverUi = false; WorldObjectsView.Chosen = WorldObjectsView.Pointed = WorldObjectsView.ChosenHome = WorldObjectsView.PointedHome = 0; return; }
-            if (!_book) { MapNames(w, sw, sh); WorkNames(w, sw, sh); PeopleNames(w, sw, sh); }
+            // (the names take no input: laid out and drawn on the repaint only - session 27, context 4: every IMGUI event had placed and measured them all
+            // again, the map's names 3.6 ms of the region view's frame in s27prof1)
+            if (!_book && Event.current.type == EventType.Repaint) { MapNames(w, sw, sh); WorkNames(w, sw, sh); PeopleNames(w, sw, sh); }
             // top-left: a slim bar - the date and the speeds, measured from their words (the date's widest form); on a narrow screen the speeds under the
             // date, so the bar never runs under the panels' toggles at the right (it did at 1280 px: "10 days/s" under Info)
             if (_dateW == 0f)

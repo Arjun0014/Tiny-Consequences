@@ -326,6 +326,48 @@ namespace TC2.Game
             return (c - cam).sqrMagnitude;
         }
 
+        // (session 27, context 4: the frame) the ground as this frame draws it - the shown patches by key - for what is set on it anew every frame
+        static TerrainLod _drawn;
+        readonly Dictionary<long, Patch> _shownByKey = new Dictionary<long, Patch>();
+        int _shownLo, _shownHi;
+        static readonly Vec3d[] FaceN = { new Vec3d(1, 0, 0), new Vec3d(-1, 0, 0), new Vec3d(0, 1, 0), new Vec3d(0, -1, 0), new Vec3d(0, 0, 1), new Vec3d(0, 0, -1) };
+        static readonly Vec3d[] FaceU = { new Vec3d(0, 0, -1), new Vec3d(0, 0, 1), new Vec3d(1, 0, 0), new Vec3d(1, 0, 0), new Vec3d(1, 0, 0), new Vec3d(-1, 0, 0) };
+        static readonly Vec3d[] FaceV = { new Vec3d(0, 1, 0), new Vec3d(0, 1, 0), new Vec3d(0, 0, -1), new Vec3d(0, 0, 1), new Vec3d(0, 1, 0), new Vec3d(0, 1, 0) };
+
+        /// <summary>
+        /// The ground's radius at a direction as this frame draws it: on the triangle of the shown patch under it (the mesh's own, BuildTris), so what
+        /// stands there stands on what is seen at any level of detail - and for a fraction of the fine relief's cost (Ground.Height: some ten noise
+        /// octaves a point; a great world's people were set on it every frame - 31 ms of a running region view's 69, s27prof1_run). False where no
+        /// patch is shown (or the terrain is off): the caller reads Ground then. The cube's faces as CubeSphere lays them (its ToFace with the
+        /// platform's atan: a view's lookup, not the simulation's).
+        /// </summary>
+        public static bool DrawnRadius(Vec3d d, out double r)
+        {
+            r = 0;
+            var t = _drawn;
+            if (t == null || !t.isActiveAndEnabled || t._shownByKey.Count == 0) return false;
+            int f = CubeSphere.FaceOf(d);
+            double pn = d.X * FaceN[f].X + d.Y * FaceN[f].Y + d.Z * FaceN[f].Z;
+            if (pn <= 1e-9) return false;
+            double a = System.Math.Atan((d.X * FaceU[f].X + d.Y * FaceU[f].Y + d.Z * FaceU[f].Z) / pn) + DMath.PI / 4;
+            double b = System.Math.Atan((d.X * FaceV[f].X + d.Y * FaceV[f].Y + d.Z * FaceV[f].Z) / pn) + DMath.PI / 4;
+            for (int L = t._shownHi; L >= t._shownLo; L--)
+            {
+                double size = DMath.HalfPi / (1 << L), fa = a / size, fb = b / size;
+                int i = (int)System.Math.Floor(fa), j = (int)System.Math.Floor(fb);
+                if (!t._shownByKey.TryGetValue(Key(f, L, i, j), out var p) || p.Pos == null) continue;
+                double u = (fa - i) * N, v = (fb - j) * N;
+                int qi = System.Math.Min(N - 1, System.Math.Max(0, (int)u)), qj = System.Math.Min(N - 1, System.Math.Max(0, (int)v));
+                double tu = u - qi, tv = v - qj;
+                int V = N + 1, a0 = qj * V + qi, a1 = a0 + 1, b0 = a0 + V, b1 = b0 + 1;
+                double r00 = p.Pos[a0].magnitude, r10 = p.Pos[a1].magnitude, r01 = p.Pos[b0].magnitude, r11 = p.Pos[b1].magnitude;
+                // (the quad's two triangles: a0 b0 a1, then a1 b0 b1)
+                r = tu + tv <= 1.0 ? r00 + (r10 - r00) * tu + (r01 - r00) * tv : r11 + (r01 - r11) * (1.0 - tu) + (r10 - r11) * (1.0 - tv);
+                return true;
+            }
+            return false;
+        }
+
         void Show()
         {
             if (_patchShadows != PatchShadows)
@@ -337,12 +379,17 @@ namespace TC2.Game
             for (int k = 0; k < _draw.Count; k++) _draw[k].Shown = true;
             foreach (var p in _shownLast) if (!p.Shown && p.Go != null) { p.Go.SetActive(false); _shownVersion++; }
             _shownLast.Clear();
+            _shownByKey.Clear(); _shownLo = MaxLevel; _shownHi = 0;
             for (int k = 0; k < _draw.Count; k++)
             {
                 var p = _draw[k];
                 if (!p.Go.activeSelf) { p.Go.SetActive(true); _shownVersion++; }
                 _shownLast.Add(p);
+                _shownByKey[p.Key] = p;
+                if (p.Level < _shownLo) _shownLo = p.Level;
+                if (p.Level > _shownHi) _shownHi = p.Level;
             }
+            _drawn = this;
             PatchesDrawn = _draw.Count;
         }
 
@@ -1095,12 +1142,16 @@ namespace TC2.Game
         {
             if (!_roads.TryGetValue(c, out var list)) return 0f;
             Vector3 p = PlanetGeo.ToVector(d);
-            float most = 0f;
+            float most = 0f, R = (float)P.Radius, reach = Mathf.Max(1.2f + 2.0f, 0.8f * quad) * 1.4f / R, reach2 = reach * reach;   // (no road is drawn wider)
             for (int k = 0; k + 1 < list.Count; k += 2)
             {
                 Vector3 a = list[k], ab = (Vector3)list[k + 1] - a;
                 float t = Mathf.Clamp01(Vector3.Dot(p - a, ab) / Mathf.Max(1e-12f, ab.sqrMagnitude));
-                float m = (a + ab * t - p).magnitude * (float)P.Radius;
+                // (session 27, context 4: the frame) a stretch beyond any road's drawn width is passed over before its root and its edge are taken - a town's
+                // cell holds hundreds of them, and this was 7.6 ms of a running village view's frame (s27prof1_run)
+                float m2 = (a + ab * t - p).sqrMagnitude;
+                if (m2 >= reach2) continue;
+                float m = Mathf.Sqrt(m2) * R;
                 // ~2-6 m of packed earth by how worn it is (C4.1); where the vertices stand further apart than that, the road is drawn
                 // wider and fainter (the same ink), so the grid samples a soft path instead of dots
                 float worn = list[k].w;
@@ -1380,7 +1431,7 @@ namespace TC2.Game
                 }
                 else
                 {
-                    if (lattice && o < (N + 1) * (N + 1)) WarpTo(P, d + LatticeOffset(o), c, ref dw, ref cw); else WarpCells(P, d, c, ref dw, ref cw);
+                    if (lattice && o < (N + 1) * (N + 1)) WarpTo(P, d, LatticeOffset(o), c, ref dw, ref cw); else WarpCells(P, d, c, ref dw, ref cw);
                     int n = Ground.ColourWeights(P, dw, cw, _wc, _ww);
                     col = new Color(0, 0, 0, 1);
                     float farm = 0; int owner = 0; float ow = 0;
@@ -1473,7 +1524,7 @@ namespace TC2.Game
                     }
                     if (beaten > 0f) { col = Color.Lerp(col, Beaten, beaten * 0.85f); bare = Mathf.Max(bare, beaten); clear = Mathf.Max(clear, beaten); }
                     if (grave > 0f) { col = Color.Lerp(col, Sward, grave * 0.8f); bare *= 1f - grave; clear = Mathf.Max(clear, grave); }
-                    float road = RoadAt(P, d, c, quad) * roadLod;
+                    float road = roadLod > 0f ? RoadAt(P, d, c, quad) * roadLod : 0f;   // (none drawn on a coarse patch: not looked for - s27prof1_run)
                     bare = Mathf.Max(bare, road);
                     if (road > 0) col = Color.Lerp(col, Road, road * 0.85f);
                     // the river's corridor (D2-084): wet earth at the water's edge and a strip of lusher green along the banks, wider by a
@@ -1641,26 +1692,38 @@ namespace TC2.Game
         static float CoreMask(Vector2 local) => Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(85f, 135f, local.magnitude));
 
         /// <summary>
-        /// (session 27) Where a point of land reads the cells' shares (woods, farmland, soil, cover): moved up to about half a cell along a smooth noise of
-        /// ~450 m, so the edges of what the cells hold wander as such edges do instead of following the grid's 150 m staircase (s27book4: a region of
-        /// ploughland edged in steps). The share is still the cells' own, read a little off the point; never across the shore.
+        /// (session 27) Where a point of land reads the cells' shares (woods, farmland, soil, cover): moved along a smooth noise, so the edges of what the
+        /// cells hold wander as such edges do instead of following the grid's 150 m staircase (s27book4: a region of ploughland edged in steps). The share
+        /// is still the cells' own, read a little off the point; never across the shore.
         /// </summary>
-        static void WarpCells(PlanetState P, Vec3d d, int c, ref Vec3d dw, ref int cw) => WarpTo(P, d + WarpOffset(P, d), c, ref dw, ref cw);
+        static void WarpCells(PlanetState P, Vec3d d, int c, ref Vec3d dw, ref int cw) => WarpTo(P, d, WarpOffset(P, d), c, ref dw, ref cw);
 
-        /// <summary>The warp's offset at a direction (unit-sphere lengths).</summary>
+        /// <summary>
+        /// The warp's offset at a direction (unit-sphere lengths): a 600 m field and a 220 m one, about half a cell typically and rarely past a cell.
+        /// (Session 27, context 4: the first warp's "half a cell" was its noise's whole reach - Perlin's two octaves spread only ±0.2 - so it moved a
+        /// point a tenth of a cell, and the staircase still stood in s27book6's near and region views; the finer field scrambles the cell-sized steps.)
+        /// </summary>
         static Vec3d WarpOffset(PlanetState P, Vec3d d)
         {
-            double f = P.Radius / 450.0, a = 0.55 * P.CellSize / P.Radius;
-            double x = d.X * f, y = d.Y * f, z = d.Z * f;
-            return new Vec3d(a * Noise.Fbm(x + 3.1, y - 1.7, z, 2), a * Noise.Fbm(x - 5.3, y + 7.7, z + 2.2, 2), a * Noise.Fbm(x + 0.9, y - 4.4, z + 12.9, 2));
+            double cs = P.CellSize / P.Radius;
+            double f1 = P.Radius / 600.0, a1 = 2.0 * cs, f2 = P.Radius / 220.0, a2 = 0.8 * cs;
+            double x = d.X * f1, y = d.Y * f1, z = d.Z * f1, u = d.X * f2, v = d.Y * f2, s = d.Z * f2;
+            return new Vec3d(a1 * Noise.Fbm(x + 3.1, y - 1.7, z, 2) + a2 * Noise.Perlin(u - 8.3, v + 2.9, s + 5.5),
+                             a1 * Noise.Fbm(x - 5.3, y + 7.7, z + 2.2, 2) + a2 * Noise.Perlin(u + 4.4, v - 6.1, s - 0.7),
+                             a1 * Noise.Fbm(x + 0.9, y - 4.4, z + 12.9, 2) + a2 * Noise.Perlin(u - 2.2, v + 9.9, s + 3.3));
         }
 
-        static void WarpTo(PlanetState P, Vec3d moved, int c, ref Vec3d dw, ref int cw)
+        /// <summary>The point moved by the offset - shortened by half, then by half again, where the whole would cross the shore (so the warp fades
+        /// toward a coast instead of stopping short); its own cell if even a quarter would.</summary>
+        static void WarpTo(PlanetState P, Vec3d d, Vec3d off, int c, ref Vec3d dw, ref int cw)
         {
-            var w = moved.Normalized;
-            int k = P.Grid.CellOf(w);
-            if (k < 0 || P.IsLand(k) != P.IsLand(c)) return;
-            dw = w; cw = k;
+            bool land = P.IsLand(c);
+            for (int k = 0; k < 3; k++, off = off * 0.5)
+            {
+                var w = (d + off).Normalized;
+                int cell = P.Grid.CellOf(w);
+                if (cell >= 0 && P.IsLand(cell) == land) { dw = w; cw = cell; return; }
+            }
         }
 
         // (the frame) on a fine patch the warp is read on a 9 x 9 lattice over its grid and blended between (its 450 m field barely bends over a patch;

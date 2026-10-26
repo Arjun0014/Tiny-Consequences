@@ -177,10 +177,41 @@ namespace TC2.Game
 
         public static double Height(PlanetState P, Vec3d dir) => Height(P, dir, out _);
 
+        // (session 27, context 4: the frame) the ground under a direction remembered until the world's day turns or its relief, coast or vents change -
+        // a great world's people were set on it every frame, and its fine relief (some ten noise octaves a point) was half of the region view's frame in
+        // the browser (s27prof1: WorldObjectsView.RebuildPeople 29 of 56 ms, Ground.Height 18 of them); a still world now reads each point once. Its lakes,
+        // ice and cones change by the day; a point within ~12 mm of one read is given that one's height.
+        static readonly System.Collections.Generic.Dictionary<long, double> _surf = new System.Collections.Generic.Dictionary<long, double>(1 << 12);
+        static PlanetState _surfP;
+        static long _surfDay = long.MinValue;
+        static int _surfRelief = -1, _surfCoast = -1, _surfVents = -1;
+        /// <summary>Tools: points read from the remembered ground and afresh since it was last forgotten.</summary>
+        public static int SurfaceHits, SurfaceMisses;
+        /// <summary>Tools (webperf): every point read afresh, as before.</summary>
+        public static bool SurfaceCacheOff;
+
+        /// <summary>Called by the views once a frame before they set things on the ground: forgets the remembered ground when it may have changed (and
+        /// when it holds more than 250,000 points - a running world's walkers each read a new one every frame).</summary>
+        public static void SurfaceEpoch(PlanetState P, long now)
+        {
+            long day = SimTime.FloorDiv(now, SimTime.Day);
+            if (P == _surfP && day == _surfDay && P.ReliefVersion == _surfRelief && P.CoastVersion == _surfCoast && P.Vents.Count == _surfVents && _surf.Count < 250000) return;
+            _surf.Clear(); _surfP = P; _surfDay = day; _surfRelief = P.ReliefVersion; _surfCoast = P.CoastVersion; _surfVents = P.Vents.Count;
+            SurfaceHits = SurfaceMisses = 0;
+        }
+
         /// <summary>Scene position of the ground at a direction (never below the sea surface for things standing on it).</summary>
         public static Vector3 Surface(PlanetState P, Vec3d dir, float lift = 0f)
         {
-            double h = Height(P, dir);
+            double h;
+            if (SurfaceCacheOff || P != _surfP) h = Height(P, dir);
+            else
+            {
+                const double Q = 524288.0;   // (2^19 a unit: ~12 mm on the 6 km planet; each axis in 21 bits)
+                long key = ((long)System.Math.Round(dir.X * Q) + (1L << 19)) | (((long)System.Math.Round(dir.Y * Q) + (1L << 19)) << 21) | (((long)System.Math.Round(dir.Z * Q) + (1L << 19)) << 42);
+                if (_surf.TryGetValue(key, out h)) SurfaceHits++;
+                else { h = Height(P, dir); _surf[key] = h; SurfaceMisses++; }
+            }
             if (h < P.SeaLevel) h = P.SeaLevel;
             double r = P.Radius + h + lift;
             return new Vector3((float)(dir.X * r), (float)(dir.Y * r), (float)(dir.Z * r));

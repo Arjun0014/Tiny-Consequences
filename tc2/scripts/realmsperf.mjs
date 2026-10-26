@@ -13,11 +13,11 @@
 // Build/web.symbols.json; without it they stay numbered), their own time and their time with what they call, in ms a frame
 // (prof_VIEW_off.txt / _on.txt, the raw .cpuprofile beside); --layer none profiles the game as it stands.
 import fs from 'node:fs';
-import zlib from 'node:zlib';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 import { guardBrowser } from './gpusafe.mjs';
+import { wasmNames, summarise } from './cpuprof.mjs';
 import { startServer } from './serve.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -62,64 +62,6 @@ save.writeBigInt64LE(0n, 35);
 const webDir = path.join(root, 'tc2', 'web-build', 'web');
 const servedSave = path.join(webDir, '_realmsperf_world.tc2');
 fs.writeFileSync(servedSave, save);
-
-// the wasm's function names by index (Build/web.symbols.json from a --symbols build: JSON {index: name}, or "index:name" lines; brotli or gzip
-// when the build compressed it); null when the build has none
-function wasmNames(dir) {
-  const f = ['web.symbols.json', 'web.symbols.json.unityweb', 'web.symbols.json.br', 'web.symbols.json.gz'].map((n) => path.join(dir, n)).find((p) => fs.existsSync(p));
-  if (!f) { console.log('(no symbols beside the build: the wasm functions stay numbered - build with unity.mjs build-web --symbols)'); return null; }
-  let buf = fs.readFileSync(f);
-  for (const un of [(b) => b, zlib.brotliDecompressSync, zlib.gunzipSync]) {
-    let s; try { s = un(buf).toString('utf8'); } catch { continue; }
-    // (IL2CPP's names end in a hash of the method's signature: TerrainLod_Update_m2E59...; dropped)
-    try { const o = JSON.parse(s); const m = new Map(); for (const k of Object.keys(o)) m.set(Number(k), String(o[k]).replace(/_m[0-9A-F]{40}$/, '')); if (m.size) return m; } catch { /* lines? */ }
-    const m = new Map(); for (const l of s.split('\n')) { const i = l.indexOf(':'); if (i > 0 && /^\d+$/.test(l.slice(0, i))) m.set(Number(l.slice(0, i)), l.slice(i + 1).trim()); }
-    if (m.size) return m;
-  }
-  console.log('(the symbols file could not be read: ' + f + ')');
-  return null;
-}
-
-// a CPU profile in ms a frame: busy and idle, by kind, the functions' own time and their time with all they call (each counted once a sample)
-function summarise(profile, frames, names, title) {
-  const byId = new Map(); for (const n of profile.nodes) byId.set(n.id, n);
-  const parent = new Map(); for (const n of profile.nodes) for (const c of n.children || []) parent.set(c, n.id);
-  const nameOf = (cf) => {
-    const fn = cf.functionName || '';
-    const wasm = (cf.url || '').startsWith('wasm://') || /^\$?func\d+$|^wasm-function\[\d+\]$/.test(fn);
-    if (wasm) { const m = /(\d+)\]?$/.exec(fn); const i = m ? Number(m[1]) : -1; return { name: (names && names.get(i)) || fn || '(wasm)', kind: 'wasm' }; }
-    if (fn === '(idle)' || fn === '(program)' || fn === '(garbage collector)' || fn === '(root)') return { name: fn, kind: fn };
-    return { name: (fn || '(anonymous)') + (cf.url ? ' ' + path.basename(cf.url.split('?')[0]) + ':' + (cf.lineNumber + 1) : ''), kind: 'js' };
-  };
-  const label = new Map(); for (const n of profile.nodes) label.set(n.id, nameOf(n.callFrame));
-  const samples = profile.samples || [], deltas = profile.timeDeltas || [];
-  const self = new Map(), incl = new Map(), kinds = new Map();
-  let total = 0;
-  for (let s = 0; s < samples.length; s++) {
-    const dt = (s + 1 < deltas.length ? deltas[s + 1] : (deltas[s] || 0)) / 1000;   // ms; the time until the next sample is this one's
-    if (dt <= 0) continue;
-    total += dt;
-    const leaf = label.get(samples[s]);
-    self.set(leaf.name, (self.get(leaf.name) || 0) + dt);
-    kinds.set(leaf.kind, (kinds.get(leaf.kind) || 0) + dt);
-    const seen = new Set();
-    for (let id = samples[s]; id !== undefined; id = parent.get(id)) {
-      const l = label.get(id); if (!l || l.kind === '(root)' || seen.has(l.name)) continue;
-      seen.add(l.name); incl.set(l.name, (incl.get(l.name) || 0) + dt);
-    }
-  }
-  const nF = Math.max(1, frames.n), perF = (ms) => (ms / nF).toFixed(2).padStart(7);
-  const idle = kinds.get('(idle)') || 0;
-  const out = [];
-  out.push(`profile ${title}: ${(frames.t / 1000).toFixed(1)} s, ${frames.n} frames (${(frames.t / nF).toFixed(1)} ms a frame); sampled ${total.toFixed(0)} ms`);
-  out.push(`  busy ${(100 * (total - idle) / Math.max(1, total)).toFixed(1)} %, idle ${(100 * idle / Math.max(1, total)).toFixed(1)} % (idle: the main thread waiting - on the GPU, the next frame or the network)`);
-  out.push('  by kind (ms a frame): ' + [...kinds.entries()].sort((x, y) => y[1] - x[1]).map(([k, v]) => `${k} ${(v / nF).toFixed(2)}`).join(', '));
-  out.push('', 'own time (ms a frame)  - with what it calls - function');
-  for (const [n, v] of [...self.entries()].sort((x, y) => y[1] - x[1]).slice(0, 60)) out.push(`${perF(v)} ${perF(incl.get(n) || 0)}  ${n}`);
-  out.push('', 'with what it calls (ms a frame)  - own - function');
-  for (const [n, v] of [...incl.entries()].sort((x, y) => y[1] - x[1]).slice(0, 120)) out.push(`${perF(v)} ${perF(self.get(n) || 0)}  ${n}`);
-  return out.join('\n') + '\n';
-}
 
 const GPU = ['--mute-audio', '--use-angle=d3d11', '--ignore-gpu-blocklist', '--enable-gpu-rasterization', '--enable-webgl', '--enable-unsafe-webgpu', '--enable-features=Vulkan,WebGPU'];
 const port = 8643;

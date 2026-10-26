@@ -18,6 +18,7 @@ namespace TC2.Game
         Mesh _rivers, _lakes, _roads;
         Material _riverMat, _lakeMat, _roadMat;
         float _roadTimer;
+        long _roadSig = long.MinValue;   // (what the roads were last laid from)
         readonly List<TC2.Core.Agents.Way> _ways = new List<TC2.Core.Agents.Way>();
         readonly List<Vec3d> _pts = new List<Vec3d>(), _tmp = new List<Vec3d>();
         int _builtWorld = -1, _builtDrain = -1;
@@ -124,6 +125,20 @@ namespace TC2.Game
         {
             var P = w.Planet;
             w.Ways.Collect(w.Now, _ways);
+            // (session 27, context 4: the frame) built again only when a way, its wear or its route has changed, or the ground and its lakes: every six seconds
+            // a great world's whole network had been laid again, two points of ground read a stretch (s27prof1: ~3 ms of every frame on average, a hitch
+            // each time)
+            long sig = (P.ReliefVersion * 31L + P.CoastVersion) * 31L + w.Drainage.Version + Host.WorldVersion * 7919L + SimTime.FloorDiv(w.Now, 30 * SimTime.Day) * 104729L;   // (and a month's lakes and ice)
+            for (int i = 0; i < _ways.Count; i++)
+            {
+                var way = _ways[i];
+                var r = w.Settlements.Exists(way.A) && w.Settlements.Exists(way.B) ? w.Routes.Get(w, way.A, way.B) : null;
+                int n = r == null || r.Pts == null ? 0 : r.Pts.Length;
+                sig = sig * 1000003L + way.A * 31L + way.B * 17L + TC2.Core.Agents.Ways.StateOf(way.Use) * 7L + n;
+                if (n > 0) sig = sig * 31L + System.BitConverter.DoubleToInt64Bits(r.Pts[n / 2].X + r.Pts[n / 2].Y * 3.0);
+            }
+            if (sig == _roadSig) return;
+            _roadSig = sig;
             _v.Clear(); _n.Clear(); _u0.Clear(); _u1.Clear(); _t.Clear();
             for (int i = 0; i < _ways.Count; i++)
             {

@@ -31,11 +31,14 @@ namespace TC2.Game
         readonly List<Vector4> _c = new List<Vector4>(256), _w = new List<Vector4>(256);
         readonly List<float> _e = new List<float>(256), _a = new List<float>(256);
         readonly List<Vector3> _min = new List<Vector3>(), _max = new List<Vector3>();   // per batch
-        // (the property block's arrays keep the length they were first set with: always the whole batch)
         readonly Matrix4x4[] _bm = new Matrix4x4[BatchSize];
-        readonly Vector4[] _bc = new Vector4[BatchSize], _bw = new Vector4[BatchSize];
-        readonly float[] _be = new float[BatchSize], _ba = new float[BatchSize];
-        readonly MaterialPropertyBlock _mpb = new MaterialPropertyBlock();
+        // (a property block's arrays keep the length they were first set with - so one block a size, the smallest that holds the batch: session 27,
+        // context 4 - every draw had set and sent four arrays of 1,023 instances, five chimneys' as a town's homes', ~40 KB a draw: s27prof1's
+        // writeBuffer 4.5 ms a frame)
+        static readonly int[] Sizes = { 16, 64, 256, BatchSize };
+        readonly Vector4[][] _bc = new Vector4[Sizes.Length][], _bw = new Vector4[Sizes.Length][];
+        readonly float[][] _be = new float[Sizes.Length][], _ba = new float[Sizes.Length][];
+        readonly MaterialPropertyBlock[] _mpb = new MaterialPropertyBlock[Sizes.Length];
         static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
         static readonly int WallColor = Shader.PropertyToID("_WallColor");   // (the kit's walls: vertex alpha 0.25, D2-114)
         static readonly int Emission = Shader.PropertyToID("_Emission");
@@ -87,15 +90,23 @@ namespace TC2.Game
         {
             int total = _m.Count;
             if (total == 0) return;
-            var rp = new RenderParams(_mat) { shadowCastingMode = _shadows, receiveShadows = true, matProps = _mpb, camera = null };
+            var rp = new RenderParams(_mat) { shadowCastingMode = _shadows, receiveShadows = true, camera = null };
             for (int start = 0, bi = 0; start < total; start += BatchSize, bi++)
             {
                 int n = Mathf.Min(BatchSize, total - start);
-                _m.CopyTo(start, _bm, 0, n); _c.CopyTo(start, _bc, 0, n); _w.CopyTo(start, _bw, 0, n); _e.CopyTo(start, _be, 0, n); _a.CopyTo(start, _ba, 0, n);
-                _mpb.SetVectorArray(BaseColor, _bc);
-                _mpb.SetVectorArray(WallColor, _bw);
-                _mpb.SetFloatArray(Emission, _be);
-                _mpb.SetFloatArray(Anim, _ba);
+                int s = 0; while (Sizes[s] < n) s++;
+                if (_mpb[s] == null)
+                {
+                    _mpb[s] = new MaterialPropertyBlock();
+                    _bc[s] = new Vector4[Sizes[s]]; _bw[s] = new Vector4[Sizes[s]]; _be[s] = new float[Sizes[s]]; _ba[s] = new float[Sizes[s]];
+                }
+                var mpb = _mpb[s];
+                _m.CopyTo(start, _bm, 0, n); _c.CopyTo(start, _bc[s], 0, n); _w.CopyTo(start, _bw[s], 0, n); _e.CopyTo(start, _be[s], 0, n); _a.CopyTo(start, _ba[s], 0, n);
+                mpb.SetVectorArray(BaseColor, _bc[s]);
+                mpb.SetVectorArray(WallColor, _bw[s]);
+                mpb.SetFloatArray(Emission, _be[s]);
+                mpb.SetFloatArray(Anim, _ba[s]);
+                rp.matProps = mpb;
                 var bounds = World;
                 if (Cull) bounds.SetMinMax(_min[bi], _max[bi]);
                 rp.worldBounds = bounds;

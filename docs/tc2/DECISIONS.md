@@ -6078,3 +6078,46 @@ the waterline flips dry/wet stretch by stretch and every other stretch went - no
 ring does not wrap) - **but shots `s27f7` drew the beach exactly as `s27e3` did** (1,147 pixels of 1.44 M changed, people moving): the panels down the
 beach are not that flip; probed stretch by stretch with `place --ring` (session 27, context 4). The night lights at 512 a face showed no visible change
 from orbit (`s27e2`).
+
+## D2-197 — 2026-10-26 — The night from above, the regions' edges, the pages' words, and the frame by function (presentation and the book; 14 §7, 25 §8 A-C)
+
+**Context.** Session 27's fourth context judged the night views (`s27e2`: orbit@21, region@21, the village at 21:00), Web `s27book6` (year 1,000: the
+paper pages, the open book, the play pictures) and `s27f7`, and measured the frame on the integrated GPU (`s27perf4`, D2-196). The night showed the river
+as a black stroke over moonlit fields (5/12/13 against 39/68/36), the homes' lights from orbit as beige patches (204/165/115 at their brightest) and a
+rose disc over every village square and far hamlet (134/83/74); the year-1,000 near and region views showed the land's regions still edged in the grid's
+150 m staircase; the book had the chosen person's card drawn over its right-hand page; the place page said "by people of Dreford (8 households of
+Dreford (29 people) set out ...)", "177 houses (177 on stone footings)" and "(masters among them)" after each of seven crafts. And the frame, with the
+terrain no longer its cost, was not known by its parts: every measure so far had been a layer off and on.
+
+**Decision.** Presentation and the book only (sim 108 unchanged).
+1. **The night**: the river by night as the sea's shallows beside it - the night sky's share, the moon's sheen and its path as narrow as the sea's
+   (River.shader); the homes' lights a firelight amber in linear light (1, 0.47, 0.11) - the old (1, 0.62, 0.28) had been a screen colour's numbers -
+   with a town's glow on the air around it from the lights' fourth mip (~145 m: LightsView keeps mips); the old glow sprite over each village retired
+   (WorldObjectsView.EmitLights, D2-081 - the ground carries every home's light since LightsView); the sea's moon path broken by the wind's fields as the
+   sun's glint is (Water.shader).
+2. **The regions' edges**: the warp that reads the cells' shares off the point now reaches - two octaves (600 m and 220 m) at about half a cell
+   typically, rarely past a cell (TerrainLod.WarpOffset); its first version's "half a cell" had been its noise's whole reach, and Perlin's two octaves
+   spread only ±0.2 (measured: sd 0.20, 99 % within ±0.45), so it had moved a point a tenth of a cell. Near a coast the warp is shortened by half and
+   half again instead of left out.
+3. **The book holds the screen**: no person's card, life page or place page is drawn over the open book (Hud).
+4. **The pages' words**: the founding party in the sentence ("by 29 people of Dreford, 8 households who had set out to make a new home"); the homes
+   counted once ("189 households: 177 in houses (all on stone footings) and 12 in camps"); the crafts gathered by their best hand ("..., masters among
+   them at each"; with mixed hands, each group once); "At home in Kriford, resting" (Gazetteer, Biography; GazetteerTests +1).
+5. **The frame by function**: `realmsperf --profile MS` samples the page's main thread at each view (layer off and on) and names the wasm's functions from
+   a build made with `unity.mjs build-web --symbols` (Build/web.symbols.json; `tc2/scripts/cpuprof.mjs` summarises a saved profile again). What it found
+   on seed 2's year 300 (Web `s27web7`, `s27prof1`): the main thread busy 99.9 % of every frame - the frame is the CPU's, not the GPU's; at the region view
+   (paused, 56 ms a frame while sampled) **WorldObjectsView.RebuildPeople 29 ms** - every person seen set on the ground every frame through Ground.Height
+   (some ten noise octaves a point: Noise.Perlin alone 11 ms); rendering 16 ms; the HUD 5 ms; the terrain's own update no longer among the costs. In a
+   running world at the village view (71 ms): rendering 28 ms, the people 12 ms, **the hover tag 11.7 ms** (every person of the world placed on the
+   ground and on the screen eight times a second), **TerrainLod.RoadAt 8.8 ms** (every stretch of road in a town's cell measured for every vertex, on
+   coarse patches too, where no road is drawn), WaterView's road ribbons laid again every six seconds (~3 ms a frame on average, a hitch each time).
+   Built from it: the ground remembered under a direction for the day (Ground.Surface: forgotten when the day turns or the relief, coast or vents
+   change; bridge `surfacecache`); people set on the ground as this frame draws it (TerrainLod.DrawnRadius: the shown patch's triangle under them - at
+   any level of detail they stand on what is seen); the hover's scan only near the ground under the pointer; no road looked for on a coarse patch and
+   a stretch beyond any road's width passed over before its root; the roads laid again only when a way, its wear, its route or the ground changes (and
+   once a month for the lakes and ice). **The heap of a running world** (the village view held 5 min at 1 h/s, `s27heap1`): 637 MB loaded, 832 MB after
+   15 s, then flat for four minutes - a step, not a leak.
+
+**Evidence.** Shots `s27n1`/`s27n2` (0 shader errors; the river by night 70/91/112 at the village view, beside the shallows' 85/111/122; the lights
+amber from orbit, towns in a golden haze at the region view; no rose disc); Web `s27web7` 9/9 (main ecd2f16); GazetteerTests 3/3. Pending at the
+writing: the warp's shots (`s27w1`-`s27w3`), the frame's fixes measured (`s27prof2`), the shore palisade's probe (`place --ring`).

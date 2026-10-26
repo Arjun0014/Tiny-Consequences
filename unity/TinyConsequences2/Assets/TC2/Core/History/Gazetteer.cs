@@ -80,8 +80,13 @@ namespace TC2.Core.History
             {
                 // its first household and its headman (C10.2): who follows them and why
                 int f = Society.Leaders.Following(w, sid, s.HeadHh, out int kin, out int owing, out int fed);
-                sb.Append("Its first household: the ").Append(HistoryText.Plural(w.History.NameOf(EntityRef.Household(s.HeadHh)))).Append(", followed by ").Append(f).Append(f == 1 ? " household" : " households")
-                  .Append(" (").Append(kin).Append(" of kin, ").Append(owing).Append(" owing them grain, ").Append(fed).Append(" fed by them or lent to lately)");
+                // (session 27, context 4) only the bonds there are - "followed by 0 households (0 of kin, 0 owing them grain, 0 fed ...)" had been read out
+                var why = new List<string>();
+                if (kin > 0) why.Add(kin + " of kin");
+                if (owing > 0) why.Add(owing + " owing them grain");
+                if (fed > 0) why.Add(fed + " fed by them or lent to lately");
+                sb.Append("Its first household: the ").Append(HistoryText.Plural(w.History.NameOf(EntityRef.Household(s.HeadHh))))
+                  .Append(f == 0 ? ", followed by no other household yet" : ", followed by " + f + (f == 1 ? " household" : " households") + (why.Count > 0 ? " (" + string.Join(", ", why.ToArray()) + ")" : ""));
                 if (s.Head != 0 && w.People.Exists(s.Head)) sb.Append("; first among its people ").Append(w.History.NameOf(EntityRef.Person(s.Head))).Append(", ").Append(F(w.People.Get(s.Head).AgeYears(w.Now), "0")).Append(", since ").Append(Year(s.HeadSince));
                 sb.Append(".\n");
                 // its sworn men (C10.7b): fed from the first household's grain - a lord's from its tribute
