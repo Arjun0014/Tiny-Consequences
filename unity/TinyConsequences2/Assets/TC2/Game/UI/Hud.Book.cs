@@ -346,6 +346,7 @@ namespace TC2.Game
                 if (t.StartsWith("-- ", System.StringComparison.Ordinal)) { GUILayout.Label(Cap(t.Substring(3)), _pgHead); continue; }
                 if (Dated(t, out string year, out string season, out string words))
                 {
+                    first = false;   // (a raised initial opens a page's first paragraph only: s27book5 had "11 Works left" after the works' list)
                     GUILayout.BeginHorizontal();
                     GUILayout.Label(year + (season.Length > 0 ? "\n<size=11><i>" + season + "</i></size>" : ""), _pgYear, GUILayout.Width(88));   // (wide enough for "early autumn" on one line: s27web5)
                     GUILayout.Label(words, _pgLine);
@@ -355,7 +356,7 @@ namespace TC2.Game
                 int colon = t.IndexOf(": ", System.StringComparison.Ordinal), paren = t.IndexOf('(');
                 bool label = colon >= 2 && colon <= 28 && (paren < 0 || paren > colon) && !char.IsDigit(t[0]);   // ("Mother: ...", "Grain: ...")
                 if (label) t = "<color=#8c2614>" + t.Substring(0, colon) + "</color>  " + t.Substring(colon + 2);
-                GUILayout.Label(first && !label ? Initial(t, 34) : t, _pgBody);
+                GUILayout.Label(first && !label && char.IsLetter(t[0]) ? Initial(t, 34) : t, _pgBody);
                 first = false;
             }
             GUILayout.EndScrollView();
