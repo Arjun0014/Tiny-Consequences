@@ -4,7 +4,8 @@
 // it; each part the book opens is written then (its time is in the console: "[TC2] book: part ...").
 // Usage: node tc2/scripts/bookshots.mjs --save F.tc2 --lat DEG --lon DEG [--views region:6000,orbit:22000,village:1400]
 //        [--book "-1,0:0,1:0,2:0,3:0,4:0,5:0,6:0,7:0"] [--tag NAME] [--webgl2] [--play]
-// --play (session 27): the pointer over a home, a lightning aimed, cast and its "Your hand", a storm aimed from afar (play_*.png).
+// --play (session 27): the pointer over a home, a lightning aimed, cast and its "Your hand", a storm aimed from afar (play_*.png);
+// with --meteor-play also a meteor thrown near that home: its fall, its landing and what it left (play_meteor_*.png).
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -112,6 +113,23 @@ try {
     await page.waitForTimeout(1500);
     await snap('play_aimfar');
     await cmd('aim -1');
+    if (flag('--meteor-play')) {
+      // (session 27) a meteor thrown at the fields 260 m off that home: the stone falling, its landing (the burst), then its fires and scar
+      await cmd('home big 700');
+      await page.waitForTimeout(4000);
+      await cmd('aim 8');
+      await page.mouse.move(800 + 170, 450 + 60);
+      await page.waitForTimeout(1200);
+      await cmd('speed 3');
+      await page.mouse.down(); await page.waitForTimeout(80); await page.mouse.up();
+      await page.waitForTimeout(350);
+      await snap('play_meteor_fall');
+      await page.waitForTimeout(700);
+      await snap('play_meteor_land');
+      await page.waitForTimeout(6000);
+      await snap('play_meteor_after');
+      await cmd('speed 0');
+    }
   }
   await cmd(`look ${lat} ${lon} 6000`);
   for (const pg of pages) {
