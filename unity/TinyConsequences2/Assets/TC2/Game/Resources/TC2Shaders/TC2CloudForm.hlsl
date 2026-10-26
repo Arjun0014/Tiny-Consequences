@@ -34,10 +34,10 @@ half4 TC2Noise(float3 q, float lod) { return SAMPLE_TEXTURE3D_LOD(_TC2CloudNoise
 // The cloud over a direction: its density (0..1, how much of the light behind it it hides) and its thickness (how much it shades below and how
 // bright its top), from the cover and two looks at the forms - at the tile's scale and three and a half times finer. lod: the level of detail of
 // the coarser look (log2 of the noise texels a pixel spans).
-half TC2CloudDensity(float3 dir, half4 cover, float lod, float t, out half thick)
+half TC2CloudDensity(float3 dir, half4 cover, float lod, float t, out half thick, out half billow)
 {
     half deck = cover.r * (half)_TC2CloudForm.x, cu = cover.g * (half)_TC2CloudForm.y, layer = cover.b * (half)_TC2CloudForm.x, conv = cover.a;
-    thick = 0.0h;
+    thick = 0.0h; billow = 1.0h;
     if (deck + cu + layer < 0.01h) return 0.0h;
     float3 q = TC2CloudP(dir, t);
     half4 a = TC2Noise(q, max(0.0, lod));
@@ -70,6 +70,8 @@ half TC2CloudDensity(float3 dir, half4 cover, float lod, float t, out half thick
     half puff = 1.0h - smoothstep(rad * (0.85h - soft * 2.0h), rad, b.b + (b.a - 0.5h) * 0.22h + (f.a - 0.5h) * 0.10h * fineW);
     half cud = puff * formed;
     half density = 1.0h - (1.0h - dk) * (1.0h - ly) * (1.0h - cud);
+    // the heaped tops' light and shade: the billows at three scales (the cauliflower of a convective deck, the lumps of a layer)
+    billow = saturate(a.g * 0.45h + b.g * 0.35h + lerp(0.5h, f.g, fineW) * 0.20h);
     thick = dk * (1.3h + 0.9h * conv) * (0.75h + 0.5h * a.g) + ly * (0.55h + 0.35h * b.g) + cud * (0.7h + 0.6h * (1.0h - b.b));
     return density;
 }
@@ -84,8 +86,8 @@ half TC2CloudShadow(float3 positionWS, float3 sunDir, float footprint, float t)
     half4 cover = TC2Cover(toCloud);
     float texel = _TC2CloudScale.x / 64.0;
     float lod = log2(max(footprint / texel, 1e-3)) + 0.5;
-    half thick;
-    half d = TC2CloudDensity(toCloud, cover, lod, t, thick);
+    half thick, billow;
+    half d = TC2CloudDensity(toCloud, cover, lod, t, thick, billow);
     return saturate((1.0h - exp(-thick * 2.2h)) * d * 1.15h) * (half)_TC2CloudScale.w;
 }
 

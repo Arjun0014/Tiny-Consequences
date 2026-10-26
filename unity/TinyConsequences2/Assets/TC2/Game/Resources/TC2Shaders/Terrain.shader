@@ -375,7 +375,7 @@ Shader "TC2/Terrain"
                 if (below > 0.0)
                 {
                     half through = (half)exp(-below / 3.2);
-                    half3 waterCol = lerp(half3(0.07h, 0.42h, 0.50h), half3(0.010h, 0.052h, 0.155h), (half)saturate(below / 28.0)) * (0.3h + 0.7h * day);
+                    half3 waterCol = lerp(half3(0.07h, 0.42h, 0.50h), half3(0.010h, 0.052h, 0.155h), (half)saturate(below / 28.0)) * (0.3h * (half)_TC2NightLift + (1.0h - 0.3h * (half)_TC2NightLift) * day);
                     c = lerp(waterCol, c * half3(0.86h, 0.98h, 1.0h), through);
                 }
                 // the surf: a broken, moving line of foam just below the sea surface, where waves run up the shore

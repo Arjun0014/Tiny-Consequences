@@ -87,7 +87,7 @@ Shader "TC2/Water"
                 half fres = pow(1.0h - saturate(dot(n, v)), 4.0h);
                 float3 h = normalize(l.direction + v);
                 // the sun's glint: a broad soft spot from afar (a rough sea), a sharp sparkle close in
-                half spec = pow(saturate(dot(n, h)), lerp(220.0h, 30.0h, rough)) * lerp(2.6h, 0.85h, rough) * lerp(0.35h, 1.0h, l.shadowAttenuation);
+                half spec = pow(saturate(dot(n, h)), lerp(220.0h, 70.0h, rough)) * lerp(2.6h, 0.45h, rough) * lerp(0.35h, 1.0h, l.shadowAttenuation);
                 // (session 27) a cloud between the water and the sun: its shadow dims the sea and takes the glint
                 half cloud = TC2CloudShadow(i.positionWS, l.direction, length(fwidth(i.positionWS)), _TC2CloudScale.z);
                 spec *= 1.0h - cloud;

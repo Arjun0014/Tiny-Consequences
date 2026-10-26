@@ -16,12 +16,12 @@ namespace TC2.Game
         public static float AtmoTau = 1.0f;      // x the vertical optical depths (0.040, 0.095, 0.230) at 680/550/440 nm (Earth's ~0.046/0.097/0.24)
         public static float AtmoMie = 0.025f;    // the haze's vertical optical depth (grey), its scale height a third of the air's
         public static float AtmoSun = 7.0f;      // the sunlight the air scatters (x the main light's colour)
-        public static float AtmoGround = 1.0f;   // how much of the in-scattered light lies over the ground (1 = all of it; the limb keeps its own)
+        public static float AtmoGround = 0.75f;  // how much of the in-scattered light lies over the ground (1 = all of it; the limb keeps its own; session 27: 0.75 - the region view's colours clearer)
         // the clouds: the weather's cover (where it rains today; storms) as decks with ragged edges, the moist climate's air as fields of
         // fair-weather cumulus, both drawn out along the latitude bands' winds (D2-027's cover, its form elaborated)
         public static float CloudDeck = 1.0f;    // x the decks' density where it rains
         public static float CloudCu = 1.3f;      // x the cumulus fields' cover where the air is moist
-        public static float CloudStretch = 1.8f; // the forms drawn out east-west, along the bands' winds (1 = round)
+        public static float CloudStretch = 1.4f; // the forms drawn out east-west, along the bands' winds (1 = round)
         public static float CloudShade = 1.0f;   // their relief from the sun's side (0 = flat)
         public static float CloudTile = 3600f;   // (session 27) the forms' noise tile (m): its large shapes ~ a quarter of it, the cumulus' puffs ~ a thirtieth
         public static float CloudShadow = 0.6f;  // (session 27) the share of the sun a thick cloud takes from the ground, the sea and what stands there

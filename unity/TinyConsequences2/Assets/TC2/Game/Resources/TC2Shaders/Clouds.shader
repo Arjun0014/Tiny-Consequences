@@ -43,8 +43,9 @@ Shader "TC2/Clouds"
                 float span = length(fwidth(i.positionWS));
                 float texel = _TC2CloudScale.x / 64.0;
                 float lod = log2(max(span / texel, 1e-3));   // (session 27: may be below 0 - near views take the finer looks sharp)
-                half thick;
-                half density = TC2CloudDensity(up, TC2Cover(up), lod, t, thick);
+                half thick, billow;
+                half4 cov = TC2Cover(up);
+                half density = TC2CloudDensity(up, cov, lod, t, thick, billow);
                 if (density < 0.004h) return half4(0, 0, 0, 0);
                 Light l = GetMainLight();
                 float3 L = l.direction;
@@ -52,8 +53,8 @@ Shader "TC2/Clouds"
                 // relief: the forms a little toward the sun - a thicker cloud there leaves this side in its shade, a thinner one leaves it facing the sun
                 float3 sunT = L - up * dot(L, up);
                 float3 dirS = normalize(i.positionWS + sunT * (_TC2CloudScale.x * 0.035));
-                half thickS;
-                TC2CloudDensity(dirS, TC2Cover(dirS), lod, t, thickS);
+                half thickS, billowS;
+                TC2CloudDensity(dirS, TC2Cover(dirS), lod, t, thickS, billowS);
                 half relief = saturate((thickS - thick) * 1.5h) * (half)_TC2CloudForm.z;
                 half lift = saturate((thick - thickS) * 1.2h) * (half)_TC2CloudForm.z;
                 half day = saturate(mu * 3.0h + 0.2h);
@@ -64,7 +65,10 @@ Shader "TC2/Clouds"
                 half3 lit = lerp(sky, sunTint, saturate(0.30h + 0.70h * saturate(mu * 1.4h)) * (0.58h + 0.42h * body));
                 lit *= (1.0h - 0.42h * relief) * (1.0h + 0.08h * lift);
                 lit *= lerp(0.80h, 1.0h, body);                                      // (thin cloud: lit through, greyer than a top)
-                half3 c = lit * (0.08h + 0.92h * day) + half3(0.05h, 0.06h, 0.09h) * (1.0h - day);   // (by night a little moonlight: dark, never darker than the night below)
+                // the heaps: a convective deck's cauliflower and a layer's lumps in their own light and shade, the sunward lumps brighter
+                half heaped = saturate(body * (0.55h + 0.6h * cov.a));
+                lit *= lerp(1.0h, 0.70h + 0.38h * billow + 0.12h * (billow - billowS), heaped);
+                half3 c = lit * (0.08h + 0.92h * day) + half3(0.025h, 0.03h, 0.045h) * (1.0h - day);   // (by night a little moonlight: dark, never darker than the night below)
                 // the terminator: the tops still catch the sun a little past the ground's dusk
                 half rim = saturate(1.0h - abs(mu) * 5.0h) * smoothstep(-0.12h, 0.04h, mu) * 0.32h;
                 c += half3(1.0h, 0.52h, 0.30h) * rim * body;
