@@ -103,6 +103,9 @@ namespace TC2.Game
         int _builtWorld = -1, _builtCoast = -1, _builtRelief = -1;
         int _frame, _cycle;
         float _recolourTimer;
+        long _cycleNow = long.MinValue, _cycleLast = -1;   // (the world's time and last record when the colours were last refreshed)
+        /// <summary>Tools (webperf): the ground's colours never refreshed (what the refresh costs a running world's frame).</summary>
+        public static bool RecolourOff;
         int _recolourIndex;
         readonly Stopwatch _sw = new Stopwatch();
         Color[] _cellColour = new Color[0];
@@ -235,8 +238,14 @@ namespace TC2.Game
             }
             DrawCover();
             DrawForest();
+            // (session 27, the frame) a new colouring cycle only when the world has changed since the last - its time or a new record (a cast, a fire):
+            // a paused world had had every cell's colour and a patch or two a frame recoloured and re-uploaded for nothing, every 2.5 s, for ever
             _recolourTimer -= Time.unscaledDeltaTime;
-            if (_recolourTimer <= 0) { _recolourTimer = RecolourSeconds; RefreshCellColours(w); _cycle++; }
+            if (_recolourTimer <= 0 && !RecolourOff && (w.Now != _cycleNow || w.History.LastId != _cycleLast))
+            {
+                _recolourTimer = RecolourSeconds; _cycleNow = w.Now; _cycleLast = w.History.LastId;
+                RefreshCellColours(w); _cycle++;
+            }
             RecolourSome(w);
             Evict();
         }
@@ -1346,6 +1355,8 @@ namespace TC2.Game
                     if (dq < reach) _grounds.Add(new Vector4((float)at.X, (float)at.Y, (float)at.Z, worn));
                 }
             }
+            bool lattice = p.Level >= MaxLevel - 3;   // (the warp read on a lattice over a fine patch: WarpLattice)
+            if (lattice) WarpLattice(P, p);
             for (int o = 0; o < cols.Length; o++)
             {
                 Vector3 dv = p.Dirs[o];
@@ -1369,7 +1380,7 @@ namespace TC2.Game
                 }
                 else
                 {
-                    WarpCells(P, d, c, ref dw, ref cw);
+                    if (lattice && o < (N + 1) * (N + 1)) WarpTo(P, d + LatticeOffset(o), c, ref dw, ref cw); else WarpCells(P, d, c, ref dw, ref cw);
                     int n = Ground.ColourWeights(P, dw, cw, _wc, _ww);
                     col = new Color(0, 0, 0, 1);
                     float farm = 0; int owner = 0; float ow = 0;
@@ -1634,14 +1645,48 @@ namespace TC2.Game
         /// ~450 m, so the edges of what the cells hold wander as such edges do instead of following the grid's 150 m staircase (s27book4: a region of
         /// ploughland edged in steps). The share is still the cells' own, read a little off the point; never across the shore.
         /// </summary>
-        static void WarpCells(PlanetState P, Vec3d d, int c, ref Vec3d dw, ref int cw)
+        static void WarpCells(PlanetState P, Vec3d d, int c, ref Vec3d dw, ref int cw) => WarpTo(P, d + WarpOffset(P, d), c, ref dw, ref cw);
+
+        /// <summary>The warp's offset at a direction (unit-sphere lengths).</summary>
+        static Vec3d WarpOffset(PlanetState P, Vec3d d)
         {
             double f = P.Radius / 450.0, a = 0.55 * P.CellSize / P.Radius;
             double x = d.X * f, y = d.Y * f, z = d.Z * f;
-            var w = new Vec3d(d.X + a * Noise.Fbm(x + 3.1, y - 1.7, z, 2), d.Y + a * Noise.Fbm(x - 5.3, y + 7.7, z + 2.2, 2), d.Z + a * Noise.Fbm(x + 0.9, y - 4.4, z + 12.9, 2)).Normalized;
+            return new Vec3d(a * Noise.Fbm(x + 3.1, y - 1.7, z, 2), a * Noise.Fbm(x - 5.3, y + 7.7, z + 2.2, 2), a * Noise.Fbm(x + 0.9, y - 4.4, z + 12.9, 2));
+        }
+
+        static void WarpTo(PlanetState P, Vec3d moved, int c, ref Vec3d dw, ref int cw)
+        {
+            var w = moved.Normalized;
             int k = P.Grid.CellOf(w);
             if (k < 0 || P.IsLand(k) != P.IsLand(c)) return;
             dw = w; cw = k;
+        }
+
+        // (the frame) on a fine patch the warp is read on a 9 x 9 lattice over its grid and blended between (its 450 m field barely bends over a patch;
+        // per vertex it had been ~7,300 noise calls a patch at every recolouring); a coarse patch reads it per vertex (its lattice would be too sparse)
+        const int WarpLat = 9;
+        readonly Vec3d[] _warpLat = new Vec3d[WarpLat * WarpLat];
+
+        void WarpLattice(PlanetState P, Patch p)
+        {
+            int V = N + 1;
+            for (int j = 0; j < WarpLat; j++)
+                for (int i = 0; i < WarpLat; i++)
+                {
+                    Vector3 dv = p.Dirs[(j * N / (WarpLat - 1)) * V + i * N / (WarpLat - 1)];
+                    _warpLat[j * WarpLat + i] = WarpOffset(P, new Vec3d(dv.x, dv.y, dv.z));
+                }
+        }
+
+        Vec3d LatticeOffset(int o)
+        {
+            int V = N + 1, gi = o % V, gj = o / V;
+            double fx = gi * (WarpLat - 1) / (double)N, fy = gj * (WarpLat - 1) / (double)N;
+            int i0 = System.Math.Min(WarpLat - 2, (int)fx), j0 = System.Math.Min(WarpLat - 2, (int)fy);
+            double tx = fx - i0, ty = fy - j0;
+            Vec3d a = _warpLat[j0 * WarpLat + i0], b = _warpLat[j0 * WarpLat + i0 + 1], c = _warpLat[(j0 + 1) * WarpLat + i0], d = _warpLat[(j0 + 1) * WarpLat + i0 + 1];
+            return (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty;
         }
 
         /// <summary>How much of a point is the village's farmland (soft at the edge of the claimed cells).</summary>

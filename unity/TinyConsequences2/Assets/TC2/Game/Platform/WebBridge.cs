@@ -149,6 +149,7 @@ namespace TC2.Game
             if (what == "cover") { TerrainLod.CoverOff = !on; return; }   // (the ground cover near the camera: D2-081)
             if (what == "covershadow") { TerrainLod.CoverShadows = on; return; }   // (shrubs' and boulders' shadows)
             if (what == "terrainshadow") { TerrainLod.PatchShadows = on; return; }   // (session 27: the ground's patches casting shadows)
+            if (what == "recolour") { TerrainLod.RecolourOff = !on; return; }   // (session 27: the ground's colours refreshed as the world changes)
             if (what == "terrainbranch") { Shader.SetGlobalFloat("_TC2Unbranched", on ? 0f : 1f); return; }   // (session 27: off runs every block of Terrain.shader everywhere, as before its branches)
             if (what == "peoplecull") { WorldObjectsView.PeopleCull = on; return; }   // (people beyond the limb and outside the view left unposed: 14 §7)
             if (what == "placescull") { WorldObjectsView.PlacesCull = on; return; }   // (villages beyond the limb left unbuilt: 14 §7)
