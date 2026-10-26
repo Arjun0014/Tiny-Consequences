@@ -1,5 +1,51 @@
 # TC2 Session handoff
 
+## Session 27, context 2 (26 Oct 2026, from 12:12 IST; Control Room run #81 session 2) - the reader and E merged; marks, flags, standing, the meteor's fall and scar, snow on the boughs, the timeline's eras; Web s27web2
+
+### Exact state (keep current)
+- **The machine**: never draw on the RX 5600M (gpusafe.mjs; every Unity log "AMD Radeon(TM) Graphics (ID=0x1636)"); silent runs.
+- **main** = `wip/s27-int` (worktree `C:/Game Dev/tc-s27int`, the integration branch of this context; main is fast-forwarded to it between Unity jobs):
+  (`git log -1 wip/s27-int`; main runs one fast-forward behind while a Unity job holds its checkout). Merged: the open-book reader (wip/chronicle abf6eb7) and E (wip/feel 3e8ae68), then this context's slices (all presentation or
+  observers; sim 107 unchanged):
+  - the aim's mark renewed each frame (never frozen); sized for the eye, not the reach; houses under the pointer/chosen marked round their footprint in
+    their household's colour with the family ringed (`AimView.MarkAt`, `WorldObjectsView.PointedHome/HouseholdColour`); map names fly a flag in the
+    polity's colour, a seat with a gold head; the top bar measured from its words (two rows on narrow screens);
+  - `Biography.Standing` (observer, SwornTests): "first of X, lord of N villages, paying Y" / "sworn to ..." / "of the household of ..." on the hover tag
+    and the person page; a home's tag says "the first household of X";
+  - the book: `HistoryBook.Gloss` (a great founding says "today a town of N people"); the timeline's ages lit/named under the pointer, a click opens the
+    age's chapter;
+  - the planet: cumulus of many sizes (CloudNoise sizes, a 16-cell lattice) with lumpy outlines (TC2CloudForm); cloud shadows skipped at strength 0
+    (bridge `off/on cloudshadow`);
+  - E: flames red-orange with a small heart (Puff.shader, judged twice); the meteor's fall (a burning streak to the cell's heart, burst + shake on
+    landing) and its scar from the `MeteorStruck` record (dark bowl 20 m, pale rim, rays to 75 m, fading over 200 years: TerrainLod `_impacts`);
+  - W-FOREST: snow lies on the boughs' upper faces (Instanced.shader `_Anim < 0`, `TerrainLod.SnowOn`) - evergreens dark under snow; shrubs turn with
+    the trees; no green crowns over snow;
+  - standards enlarged at most 2.2x and the enlarged ones cast no shadow (the 100 m shadow bands of s27q1); shots view `chosen`/`chosen:low`.
+- Tests: integration runs `s27i` (HistoryBook 7, Powers 13, Gazetteer 2, DayAir 2, Determinism) and `s27j` (Sworn incl. Standing, Biography, Leaders,
+  HistoryBook) all passed, 0 skipped.
+- Tools (scratchpad of this context `5e178fba-...`): `gcommit.sh` - a gated commit (cc of the worktree, commit only when Game/Editor/Tests compile).
+- **The queue** (runner `tc2/out/tools/s23/runq.sh`, `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`,
+  the background task `bbgjl1nqj`): `0_u_web_s27web2` (the Web build of main c06833f = the reader, E, marks, flags, the top bar; webtest `s27web2`, bookshots
+  `s27book2 --play`), then `0_v_perf_s27` (each layer's paired frame cost on seed 2's year 300: clouds, shadows, trees, cover, people, buildings, air -
+  `tc2/out/webtest/s27perf/*.txt`), then prospecting `N_b_pro1_06..10` and `N_c_cmp_pro1`. Staged (move to `$Q/todo` after fast-forwarding main to
+  `wip/s27-int` while no Unity job runs - `0_v` is a browser job, main's checkout is free then): `$Q/stage/0_w_shots_s27b.sh` (flames v3 + the meteor's scar
+  by day/night `s27e6`/`e7`, the training ground's standards `s27q3`, the head up close `s27q4` view `chosen`, seed 42's lumpy cumulus `s27p6`, bare crowns over
+  snow `s27f4`, the rain forest's tones `s27f5`). The next Web build must carry `--meteor-play` (the meteor's fall, landing and scar in the browser).
+- **Prospecting** (`wip/prospect` 85acede, sim 108): merges cleanly onto main (`git merge-tree`); land it (D2-190) if `results/cmp_rui1_pro1.txt` is inside the
+  noise - seeds s4, s5, s1, s6, s11 done (s11: 2,836 seasons gone looking, 5 bodies found within reach).
+- **Drafts**: D2-193 (the book) and D2-194 (the powers' feel, the HUD) in this context's scratchpad `d2193_194.md` - finish with the Web evidence
+  (`WEB_EVIDENCE_19x`) and append to DECISIONS. D2-192 (people) is on the branch.
+
+### Next, in order
+1. When `0_u` ends: `tc2/out/webtest/s27web2.log` 9/9; look at `s27book2` (the new reader, the timeline, `play_*`: the house mark, the aim, the cast, Your hand);
+   `git checkout -- unity/TinyConsequences2/ProjectSettings/ProjectSettings.asset`; fix what the pictures say; D2-193, D2-194.
+2. Fast-forward main to `wip/s27-int` (during `0_v`), move `0_w` to `todo`; judge its shots; then a Web build `s27web3` with `--play --meteor-play`.
+3. `s27perf`: the costliest layer at the region and village views -> optimise it (the integrated GPU: 22-30 fps at the region/village views in `s27web1`).
+4. Prospecting's compare -> D2-190, land (merge `wip/prospect`, sim 108; every queued shots/Web job then needs saves of sim 108 or the old binary).
+5. Then on by the shots: the book (portraits? age names that repeat), A (night clouds faintly grey; the sea's broad sheen), D (warm temperate woods never
+   found in seeds 2/4 - check whether any world has them), E (sound for the meteor's fall?).
+
+
 ## Session 27 (26 Oct 2026, 10:40 - ~12:10 IST; Control Room run #81 session 1) - HANDOFF: the fourth acceptance finished; the player-facing slices A (planet), B (people), C (book) on main, E (powers' feel) on a branch; the queue RUNNING
 
 ### Exact state (verified at the handoff, ~12:09 IST)

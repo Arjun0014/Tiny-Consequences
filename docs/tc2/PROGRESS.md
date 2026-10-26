@@ -4,6 +4,16 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 27, context 2 (26 Oct 2026, from 12:12 IST; Control Room run #81 session 2) - the reader and E merged; the player-facing slices pushed on
+  by real shots.** main = the integration branch `wip/s27-int` (worktree `C:/Game Dev/tc-s27int`), fast-forwarded between Unity jobs; sim 107 unchanged
+  (presentation and observers only). Merged the open-book reader (`wip/chronicle`) and E (`wip/feel`); Web `s27web1` 9/9 (main b2370ae). Judged in shots and
+  fixed: the aim (a reach-scaled 50 m opaque ring at its heart; frozen when the HUD hid), flames twice (cream cones by day), the standards' 100 m shadow bands
+  (`s27q1`), the snowy woods as pale sage cones (`s27f1`), shrubs turning before the trees, green crowns over snow, the sea's cumulus as even ovals then
+  discs (`s27web1`, `s27p5`), the top bar running under the toggles at 1280 px. Built: house marks and family rings on hover, map flags in the polity's
+  colour, `Biography.Standing` on the tag and page (SwornTests), the book's gloss, the timeline's eras under the pointer, the ages' years in the contents,
+  the meteor's fall and its scar (from `MeteorStruck`), lightning bolts for every recorded strike, power tooltips, snow on the boughs, the rain forest's
+  tones, cloud shadows off at strength 0, shots view `chosen`. Integration tests `s27i`, `s27j` passed. In the queue: Web `s27web2` (+ `--play`), the
+  layers' frame cost (`s27perf`), then prospecting's seeds 6-10 and its compare. SESSION_HANDOFF "Session 27, context 2".
 - **Session 27 (26 Oct 2026, from 10:40 IST; Control Room) - the fourth acceptance's last jobs restarted; silent background runs; the integrated GPU only;
   the docs reconciled.** Arjun's direction (26 Oct): implementation and game quality over validation; the player-facing slices A-E (25 §8 "Next"). The
   queue's runner had stopped at 05:17 (M_a full suite 507/0/0, the three 1,000-year worlds and their books, the ore measure, prospecting's build, village #4's
