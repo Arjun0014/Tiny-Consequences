@@ -9,9 +9,9 @@
   `tc2/scripts/cpuprof.mjs`): the main thread busy 99.9 % - the CPU's frame; at the region view the people's placing on the fine relief was half the frame
   (29 of 56 ms), in a running village view the hover tag 11.7 ms and the roads' lookup 8.8 ms. Built from it (main d4057ed): the ground remembered for the
   day, people on the drawn ground, the hover near the pointer, the roads' lookup and ribbons only where and when needed, instanced arrays by size, names
-  on repaint only - re-measured in `s27prof2`. The night from above (the river by night, the lights amber with a town's glow, no rose disc, the moon's path
+  on repaint only - their measure (`s27prof2`, a Web build) held for the next session. The night from above (the river by night, the lights amber with a town's glow, no rose disc, the moon's path
   broken); the regions' warp made to reach (its first version moved a point a tenth of a cell); the palisade faced in the village's frame (the beach's
-  slabs were stretches turned off the ring - `place --ring`); the book holds the screen; the pages' words. The running world's heap plateaus (832 MB).
+  slabs were stretches turned off the ring - `place --ring`; judged continuous in `s27w4`); the book holds the screen; the pages' words. The running world's heap plateaus (832 MB).
   Web `s27web6`, `s27web7` 9/9. D2-197. SESSION_HANDOFF "Session 27, context 4".
 - **Session 27, context 3 (26 Oct 2026, from 14:52 IST; Control Room run #81 session 3) - prospecting LANDED (main sim 108, D2-190); the terrain's
   branches; the shots' findings fixed.** Judged `s27c` (P_a: soft cumulus, bare crowns over snow, the meteor's smoke) and Web `s27web4` (9/9): fixed rivers

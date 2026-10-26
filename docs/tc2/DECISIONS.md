@@ -6119,5 +6119,13 @@ terrain no longer its cost, was not known by its parts: every measure so far had
    15 s, then flat for four minutes - a step, not a leak.
 
 **Evidence.** Shots `s27n1`/`s27n2` (0 shader errors; the river by night 70/91/112 at the village view, beside the shallows' 85/111/122; the lights
-amber from orbit, towns in a golden haze at the region view; no rose disc); Web `s27web7` 9/9 (main ecd2f16); GazetteerTests 3/3. Pending at the
-writing: the warp's shots (`s27w1`-`s27w3`), the frame's fixes measured (`s27prof2`), the shore palisade's probe (`place --ring`).
+amber from orbit, towns in a golden haze at the region view; no rose disc); Web `s27web7` 9/9 (main ecd2f16); GazetteerTests 3/3, BiographyTests 4/4,
+LeadersTests 8/8, HistoryBookTests 7/7 (`s27c4`, 0 skipped; GazetteerTests 3/3 and LeadersTests 8/8 again on main's headless after the first
+household's wording, `s27w`). **The palisade**: `place --ring` on seed 2's year 300 showed Vivaiwick's ring (#4) standing
+on every dry stretch but its gates - the beach's "slabs" were not missing stretches but stretches turned off the ring (Place turned a village-frame bearing
+about a world-fixed forward; up to a right angle on that village) - now PlaceFaced: shots `s27w4` (s27f7's views) draw one continuous run of stakes down
+the beach. **The warp** (`s27w1`/`s27w2`, year 1,000 around #52 and #20, main d4057ed, 0 shader errors): the green/brown edges no longer a staircase -
+wavy at the village view; at the region view still a little jagged (a coarse patch's vertices sample a field blended over about a cell) - open. **The
+night sea** (`s27w3`): the moon's path broken into patches, still a broad pale veil from the region view - open. **Pending at the session's end**: the
+frame's fixes measured (`0_qb_web_s27prof2`, held in `$Q/hold`: a Web build of d4057ed with symbols, webtest `s27web8`, `s27prof2` profiles, bookshots
+`s27book7`).

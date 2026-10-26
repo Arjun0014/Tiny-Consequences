@@ -21,17 +21,23 @@
   D2-197 written (its pending numbers: s27prof2, the shots s27w1-s27w4).
 - **Measured**: the running world's heap plateaus (637 MB loaded, 832 MB after 15 s, flat for 4 min: `s27heap1`); Web `s27web6` 9/9 (e748638), `s27web7`
   9/9 (ecd2f16); GazetteerTests 3/3, BiographyTests 4/4, LeadersTests 8/8, HistoryBookTests 7/7 (`s27c4`).
-- **The queue now**: `0_qa_shots_s27w` (shots s27w1/w2 the staircase area of seed 2's year 1,000 - villages #52, #20; s27w3 the night sea; s27w4 the palisade at
-  s27f7's views; then main's headless rebuilt and GazetteerTests/LeadersTests), then `0_qb_web_s27prof2` (Web build of d4057ed with symbols, webtest
-  s27web8, realmsperf `--layer surfacecache --profile` paused and the running profile into `tc2/out/webtest/s27prof2/` and `s27prof2_run/`, bookshots
-  s27book7 - the book with no card over it, the hover).
+- **Judged at the end (17:45)**: `s27w4` - the palisade one continuous run of stakes down the beach (the fix: PlaceFaced); `s27w1`/`s27w2` - the regions'
+  staircase gone at the village view, still a little jagged at the region view (open); `s27w3` - the night sea's moon path broken but still a broad pale veil
+  from the region view (open). All shots 0 shader errors, on the integrated Radeon.
+- **SESSION ENDED at Arjun's word (26 Oct, ~17:50 IST)**: the queue's runner was told to stop after `0_qa_shots_s27w` (`$Q/stop`; it ended rc 0 at 17:39 -
+  main's headless rebuilt, GazetteerTests 3/3, LeadersTests 8/8, 0 skipped; `runner stopped 17:39:14`); **`0_qb_web_s27prof2` is HELD** in `$Q/hold` (not run: the frame's
+  fixes are not yet measured). Next session: `rm $Q/stop`, start the runner (`bash tc2/out/tools/s23/runq.sh` in the background, only with memory to spare),
+  `mv $Q/hold/0_qb_web_s27prof2.sh $Q/todo/`.
 
 ### Next, in order
-1. Judge `s27w1`-`s27w4` (the staircase gone? the warp's coasts; the palisade a continuous ring along the beach - compare `s27f7`; the moon path broken) and
-   `s27prof2` (`cpuprof.mjs` on its .cpuprofile files; compare with `s27prof1`: RebuildPeople, Hud_HoverTag, TerrainLod_RoadAt, writeBuffer, WaterView);
-   fill D2-197's pending evidence; 25 §8.
-2. The frame by the new profile: rendering (16-28 ms: the draws' submission - BindGroup, constant buffers, shadows), RebuildPlaces, the rest of RebuildPeople
-   (Presence.Of, PositionAt); then keep judging A-E in real shots.
+1. Run `0_qb_web_s27prof2` (Web build d4057ed+ with symbols, webtest `s27web8` must be 9/9, `s27prof2` profiles, bookshots `s27book7`). Read the profiles
+   with `node tc2/scripts/cpuprof.mjs tc2/out/webtest/s27prof2/prof_VIEW_STATE.cpuprofile --frames N` (N from that folder's report.json `profiles`) and
+   compare with `s27prof1` (RebuildPeople 29 ms region / Hud_HoverTag 11.7 / TerrainLod_RoadAt 8.8 / writeBuffer 4.5 / WaterView_BuildRoads 3). Check
+   `s27book7`: no card over the open book, the hover tag still found, houses coloured (the instanced arrays now go by size: 16/64/256/1023 - if any
+   instanced thing draws black or wrong, that change is the suspect: Instancer.Draw). Fill D2-197's "Pending" and 25 §8.
+2. The frame by the new profile: the draws' submission (bind groups, constant buffers, shadows), RebuildPlaces, Presence.Of/PositionAt in RebuildPeople.
+3. Open looks: the region view's slightly jagged region edges (a wider colour blend far off?), the night sea's broad moon veil, the person page's sparse Now
+   tab; keep judging A-E in real shots and Web builds.
 
 ## Session 27, context 3 (26 Oct 2026, from 14:52 IST; Control Room run #81 session 3) - prospecting LANDED (sim 108); the terrain's branches; rivers, ages, the meteor, regions, paper pages, night clouds, the glint, lake roads
 

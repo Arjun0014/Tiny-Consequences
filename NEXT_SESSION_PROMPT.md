@@ -24,22 +24,23 @@ listener at 0 in shots).
 
 ## Read first (this order), then work autonomously
 1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the standing prompt (architecture, rules, every direction; "Where we are (session 27)").
-2. `docs/tc2/SESSION_HANDOFF.md` - the top block **"Session 27, context 2"** (and "Session 27" under it): the exact state, the queue, "Next, in order".
+2. `docs/tc2/SESSION_HANDOFF.md` - the top block **"Session 27, context 4"** (and the contexts under it): the exact state, the queue, "Next, in order".
 3. `docs/tc2/25_CIVILISATION_ROADMAP.md` §8 - **the status ledger** (what is built, measured-only, in evaluation; the next slices A-E) and §6 (the acceptance
-   runs); `docs/tc2/DECISIONS.md` newest (D2-183-D2-189, D2-191 the planet from orbit); `docs/tc2/PROGRESS.md` CURRENT STATE.
+   runs); `docs/tc2/DECISIONS.md` newest (D2-190-D2-197; D2-197 this session's frame, night, palisade, pages); `docs/tc2/PROGRESS.md` CURRENT STATE.
 4. `git status`, `git log --oneline -15`, `git worktree list`, and the queue: `cat $Q/runq.log` (`Q` below) - which jobs ended, with what; `ls $Q/todo`.
 
-## FIRST - the state in session 27, context 4 (from 16:40 IST; keep current)
-- **main** = `wip/s27-int` = d4057ed or later (sim 108; worktree `C:/Game Dev/tc-s27int`; fast-forward main between Unity jobs: `git -C "C:/Game Dev/tiny-consequences"
-  merge --ff-only wip/s27-int`, never while a Unity job holds main's checkout). After a Web build: `git checkout -- unity/TinyConsequences2/ProjectSettings/ProjectSettings.asset`.
-- **The queue's runner** (`tc2/out/tools/s23/runq.sh`, pid 6256 at 17:30) outlived the harness's stop of its task in context 3 and runs on, each job gating on
-  RAM < 86 % / CPU < 85 % (Web builds `GR=62 gate`: a Web build takes the machine from ~60 % to ~96 % of its memory). If it is gone, restart it only when memory
-  clearly allows. Follow it with a Monitor: `tail -n 0 -F $Q/runq.log | grep --line-buffered -E "^end |^start "`.
-- **Queued at 17:32**: `0_qa_shots_s27w` (shots s27w1-w4: the regions' warp at seed 2's year 1,000 villages #52/#20, the night sea, the palisade at s27f7's views;
-  main's headless rebuilt + GazetteerTests/LeadersTests), then `0_qb_web_s27prof2` (Web build d4057ed --symbols, webtest s27web8, `s27prof2` profiles, bookshots s27book7).
-- **The frame by function**: build with `node tc2/scripts/unity.mjs build-web --jobs 2 --symbols`, profile with `realmsperf.mjs ... --profile 6000` (a layer off and
-  on) or `--layer none --pairs 0 --speed 5 --profile 8000` (the game running), re-read with `node tc2/scripts/cpuprof.mjs F.cpuprofile --frames N` (N: the run's
-  report.json `profiles`).
+## FIRST - the state at the end of session 27 (26 Oct 2026, ~17:50 IST; Arjun ended the session)
+- **main** = `wip/s27-int` (the docs commit after d4057ed; sim 108; worktree `C:/Game Dev/tc-s27int` - work there, fast-forward main between Unity jobs:
+  `git -C "C:/Game Dev/tiny-consequences" merge --ff-only wip/s27-int`, never while a Unity job holds main's checkout). Verify `git log -1 main` = `git log -1 wip/s27-int`.
+  After any Web build: `git checkout -- unity/TinyConsequences2/ProjectSettings/ProjectSettings.asset` in main's checkout.
+- **The queue is stopped** (`$Q/stop` touched; `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`,
+  hard-coded in `tc2/out/tools/s23/runq.sh` and `lib.sh` - if that scratchpad is gone, point `Q`/`S`/`N` at a live one). Its last job `0_qa_shots_s27w`
+  (shots s27w1-w4, then main's headless rebuilt) ended rc 0 at 17:39: GazetteerTests 3/3, LeadersTests 8/8, 0 skipped. **Held, not run: `$Q/hold/0_qb_web_s27prof2.sh`** - the Web build that measures this session's frame fixes. To resume: `rm $Q/stop`, start
+  `bash tc2/out/tools/s23/runq.sh` in the background from main's checkout (only with memory to spare: a Web build takes the machine from ~60 % to ~96 %),
+  `mv $Q/hold/0_qb_web_s27prof2.sh $Q/todo/`, follow with a Monitor on `tail -n 0 -F $Q/runq.log | grep --line-buffered -E "^end |^start "`.
+- **The frame by function** (new this session): build with `node tc2/scripts/unity.mjs build-web --jobs 2 --symbols`; profile with `realmsperf.mjs ...
+  --profile 6000` (a layer off and on) or `--layer none --pairs 0 --speed 5 --profile 8000` (the game running); re-read a saved profile with
+  `node tc2/scripts/cpuprof.mjs F.cpuprofile --frames N` (N: the run's report.json `profiles`). `place --load SAVE --ring [--sid N]`: each ring stretch by stretch.
 
 ## Session 27, context 3 (26 Oct 2026, 14:52 - 16:45 IST) - prospecting landed (sim 108); the shots' findings fixed; the frame's real waste found
 - **main** = `wip/s27-int` (worktree `C:/Game Dev/tc-s27int`; work there, fast-forward main between Unity jobs). At the handoff main was e748638 and a
@@ -60,12 +61,14 @@ listener at 0 in shots).
   to hold 5c62ace; shots `s27f7` - the shore palisade).
 
 ## Do next, in order
-1. Read `qa` (`s27w1`-`s27w4`: no staircase at the year-1,000 near/region ground; the palisade one continuous ring along the beach - compare `s27f7`; the
-   night sea's moon path broken) and `qb` (`s27web8` 9/9; `s27prof2` with `cpuprof.mjs` against `s27prof1`; `s27book7`: the book with no card over it, the
-   hover tag). Fill D2-197's pending evidence (DECISIONS, its last paragraph) and 25 §8.
-2. The frame by the new profile: the draws' submission (16-28 ms: bind groups, constant buffers, the shadow passes), RebuildPlaces, the rest of
-   RebuildPeople (Presence.Of, PositionAt) - measure each change paired in one page (`realmsperf --layer NAME`).
-3. Keep judging A-E in real shots and Web builds (the sea's glint at the region view; the person page's Now tab is sparse).
+1. Read `0_qa_shots_s27w`'s tests; then run the held `0_qb_web_s27prof2` (webtest `s27web8` 9/9; `s27prof2` against `s27prof1` with `cpuprof.mjs`:
+   RebuildPeople, Hud_HoverTag, TerrainLod_RoadAt, writeBuffer, WaterView_BuildRoads should all have fallen; `s27book7`: no card over the open book, the
+   hover tag found, every instanced thing in its colours - the instanced arrays now go by size (Instancer.Draw: 16/64/256/1023) and are the suspect if any
+   draws black). Fill D2-197's "Pending" (DECISIONS, its last paragraph) and 25 §8; SESSION_HANDOFF "Session 27, context 4" has the details.
+2. The frame by the new profile: the draws' submission (bind groups, constant buffers, the shadow passes), RebuildPlaces, Presence.Of/PositionAt - each change
+   measured paired in one page (`realmsperf --layer NAME`).
+3. Open looks: the region view's region edges a little jagged still; the night sea's broad moon veil from the region view; the person page's sparse Now tab;
+   keep judging A-E in real shots and Web builds.
 
 ## Rules that bite
 - **After a sim version change, rebuild main's headless (`tc2/headless/app`) before a webtest**: its determinism check compares the browser with

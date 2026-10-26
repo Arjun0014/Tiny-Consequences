@@ -443,7 +443,7 @@ D2-196 written (frame numbers pending). Rebuild main's headless before a webtest
 **Where we are (session 27, context 4, 26 Oct 2026, from 16:40 IST)**: the frame is now known by function - `realmsperf --profile` on a `--symbols` Web
 build names the wasm's functions (`tc2/scripts/cpuprof.mjs` re-reads a saved profile): the main thread is busy the whole frame (the CPU's, not the GPU's), and
 its costs were the people set on the fine relief every frame, the hover's scan of the whole world, the roads' lookup and ribbons, instanced arrays sent at
-full length, names laid out on every event - all fixed on main (d4057ed), re-measured in `s27prof2`. The night from above, the regions' warp, the palisade
+full length, names laid out on every event - all fixed on main (d4057ed); their measure `s27prof2` is held for the next session (Arjun ended session 27 at ~17:50). The night from above, the regions' warp, the palisade
 faced in the village's frame (`place --ring`), the book holding the screen and the pages' words judged in shots and Web builds (D2-197). SESSION_HANDOFF
 "Session 27, context 4" has the exact state and the queue.
 

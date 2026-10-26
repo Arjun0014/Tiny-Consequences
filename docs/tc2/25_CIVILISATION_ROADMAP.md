@@ -262,4 +262,11 @@ and the default, the air's march halved over the ground (D2-195 with `s27perf2`)
 **Session 27, context 3**: prospecting on main (D2-190, sim 108). **A** night clouds by the moon, the far glint broken, rivers far off, regions without the
 cell staircase; **B** the person and place pages as leaves of the book, in words; **C** ages that share a name named by their realm, a cast's dead told
 together; **D** pools in waterlogged woods; **E** the meteor's single fall, grey dust and its sound; the palisade's shore. The frame: the terrain's pixels are
-not most of its cost (branches x1.02/x1.06); the ground's colouring stopped on a still world - measured in `s27perf4` (D2-196).
+not most of its cost (branches x1.02/x1.06); the ground's colouring stopped on a still world - measured in `s27perf4`: the terrain paused x0.966 / x0.871, was x0.589 / x0.660 (D2-196).
+
+**Session 27, context 4**: **the frame known by function** (`realmsperf --profile` on a `--symbols` build, `cpuprof.mjs`): the main thread busy the whole frame;
+its costs - people set on the fine relief every frame, the hover's scan of the whole world, the roads' lookup and ribbons, instanced arrays at full length,
+names on every event - cut on main (d4057ed; re-measure pending, `s27prof2`). **A** the night from above (the river by night, amber lights with a town's
+glow, no rose disc, the moon's path broken), the regions' warp made to reach (the staircase gone at village views; a little jagged still at the region
+view); **B** the palisade faced in the village's frame (the beach's slabs, `place --ring`); **C** the book holds the screen, the place page's words (D2-197).
+The running world's heap plateaus (832 MB).
