@@ -1,5 +1,43 @@
 # TC2 Session handoff
 
+## Session 27, context 3 (26 Oct 2026, from 14:52 IST; Control Room run #81 session 3) - prospecting LANDED (sim 108); the terrain's branches; rivers, ages, the meteor, regions, paper pages, night clouds, the glint, lake roads
+
+### Exact state (keep current)
+- **The machine**: never draw on the RX 5600M (gpusafe.mjs; every Unity log "AMD Radeon(TM) Graphics (ID=0x1636)"); silent runs.
+- **main** = `wip/s27-int` = f9df88f (sim **108**). `wip/s27-land` (worktree `tc-s27land`) is merged and done; keep working in `tc-s27int` and fast-forward
+  main between Unity jobs (`git -C "C:/Game Dev/tiny-consequences" merge --ff-only wip/s27-int`; never while a Unity job holds main's checkout).
+- **Landed**: C5.3c prospecting (D2-190 written; 25 §8 updated). Landing checks `N_d` and `0_q1` (Prospect, Mining, Iron, OreSites, Forge, Determinism,
+  SaveLoad, HistoryBook, Chronicle 4, Powers 13 - 0 failed, 0 skipped). Sim-107 saves (`s2_ac4`) no longer load in main's binaries: use `s2_ac5`.
+- **This context's slices (presentation and the book; on main)**:
+  - **The terrain's cost** (6cde55f): Terrain.shader's blocks run only where they draw - the woods block where `i.wood.x > 0.002` (inside it the near crowns
+    only beyond 300 m and under 3 m a pixel, the far cover past 1.3 m a pixel, the turned cover and the tile's only where they show, StandRank where it
+    steps), the finer detail within 3.5 km / 400 m, the night lights by night and far; every sample inside a branch takes gradients from outside
+    (`SAMPLE_TEXTURE2D_GRAD`, `TriG`), the crowns' bump derived after the branch (`hm`, `bumpK`). Bridge `terrainbranch` (off = every block everywhere,
+    as before; global `_TC2Unbranched`) and `terrainshadow` (`TerrainLod.PatchShadows`). **Not yet verified in Unity or measured** - jobs `0_q3`, `0_q4`.
+  - Rivers far off their mean colour with the sky (River.shader `farK`); the meteor heard falling (AudioView.MakeFall: noise through a band 2.6 kHz -> 180 Hz,
+    verified as a spectrogram in Python; landing sounds held until the cast stone lands); ages that share a name named by the realm that led them
+    (`Chronicle.Eras(under:)`, `HistoryBook.Ctx.Leading`; "The Warm Years under Raimstead"; the age's opening names that realm and the one at its end;
+    ChronicleTests 4/4 with a new test, HistoryBookTests 7/7); the meteor's dust grey-brown, smaller, fire-lit only low (VolcanoView FxKind.Stone) and one
+    fall (`AimView.Thrown`: VolcanoView skips its own fall for a thrown stone and starts its flash when that stone lands); the ground's regions without the
+    grid's staircase (`TerrainLod.WarpCells`: the cells' shares read ~half a cell off along a 450 m noise, never across the shore); the person and place
+    pages as leaves of the book (`Hud.PaperPage`, `Dated`: years in the margin, rubric labels, IM FELL; bookshots `--pages person:N,place:N`); night clouds
+    lit by the moon only (Clouds.shader, `_TC2MoonDir`, `_TC2NightLift`); the far glint broken by the wind's fields (Water.shader); no road over a lake
+    (WaterView.BuildRoads - the "faint straight line through Raimstead" was a worn way along a grid column, straight for km, crossing the lake).
+- **The queue** (runner `bbgjl1nqj`, `Q` as before; follow `tail -n 0 -F $Q/runq.log | grep --line-buffered -E "^end |^start "`): `0_q2_ac5_s2` (seed 2 on
+  sim 108 to 1,000 years, snaps 300/600/1,000 in `tc2/out/civ/s2_ac5`, the year-1,000 book `tc2/out/tools/s27/book5_s2_y1000_ac5.md`; touches `$N/ac5_ok`),
+  then `0_q3_shots_s27d` (Unity shots on main: `s27d1` region/village/orbit/region with clouds/orbit@21 at y300; `s27d2` forest:broadleaf/mixed/boreal and
+  forestfar; `s27d3` y1000 region/village; `s27d4` the meteor at the village/low views - **grep "Shader error"**), then `0_q4_web_s27web5` (Web build of main,
+  webtest `s27web5`, realmsperf `--layer terrainbranch` and `terrainshadow` into `tc2/out/webtest/s27perf3/`, bookshots `s27book5` with `--play
+  --meteor-play --pages ...`). Revert `ProjectSettings.asset` after the build.
+
+### Next, in order
+1. Judge `s27d*` (any "Shader error" -> fix Terrain.shader first; seams where a block starts; the regions' edges; night clouds; the glint; the meteor) and
+   `s27web5` (9/9), `s27perf3` (terrainbranch on/off = the branches' gain; terrainshadow = the patches' shadow pass), `s27book5` (`page_*`, `play_meteor_*`).
+   Fix what the pictures say; then D2-196 (this context's presentation: terrain branches with the measure, rivers, ages, meteor, warp, pages, clouds, glint,
+   lake roads).
+2. If the branches gain little, the next terrain cost is the vertex/patch count or the shadow pass (`terrainshadow`).
+3. W-FOREST: rain and wet woods read alike (both dark canopy with palms, s27f1); broadleaf woods sparse in seed 4.
+
 ## Session 27, context 2 (26 Oct 2026, from 12:12 IST; Control Room run #81 session 2) - the reader and E merged; marks, flags, standing, the meteor's fall and scar, snow on the boughs, the timeline's eras; Web s27web2
 
 ### Exact state (keep current)

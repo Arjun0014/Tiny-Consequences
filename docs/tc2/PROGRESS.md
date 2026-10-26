@@ -4,6 +4,13 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 27, context 3 (26 Oct 2026, from 14:52 IST; Control Room run #81 session 3) - prospecting LANDED (main sim 108, D2-190); the terrain's
+  branches; the shots' findings fixed.** Judged `s27c` (P_a: soft cumulus, bare crowns over snow, the meteor's smoke) and Web `s27web4` (9/9): fixed rivers
+  far off (a dark tube over the fields), the meteor's salmon dust cloud over a quarter of the screen and its two falls, the regions' 150 m staircase edges,
+  the night side's grey clouds, the sea's smooth pale glint, the road across a lake ("the straight line through Raimstead"); built the terrain's branches
+  (Terrain.shader runs each block only where it draws; bridge `terrainbranch`/`terrainshadow`), the meteor's fall heard, the ages that share a name named by
+  their realm (ChronicleTests +1), the person and place pages as leaves of the book. Seed 2's saves remade on sim 108 (`s2_ac5`); shots `s27d*`, Web
+  `s27web5` with the terrain measured in the queue. SESSION_HANDOFF "Session 27, context 3".
 - **Session 27, context 2 (26 Oct 2026, from 12:12 IST; Control Room run #81 session 2) - the reader and E merged; the player-facing slices pushed on
   by real shots.** main = the integration branch `wip/s27-int` (worktree `C:/Game Dev/tc-s27int`), fast-forwarded between Unity jobs; sim 107 unchanged
   (presentation and observers only). Merged the open-book reader (`wip/chronicle`) and E (`wip/feel`); Web `s27web1` 9/9 (main b2370ae). Judged in shots and
