@@ -60,7 +60,7 @@ namespace TC2.Game
         Instancer _handcarts, _oxcarts, _cartLoads, _oxen;   // households' carts out with their people, a load on them, the ox before an ox cart (C4.2)
         Instancer _parked, _parkedOx;                        // and parked in their yards (rebuilt with the places, not every frame)
         Instancer _stonePiles;     // stone carried home and stacked by the store (C1.3)
-        Instancer[] _trees;
+        Instancer[] _trees, _treesFar;   // (session 27: a far village's yard trees cast no shadow - DetailFar)
         Material _mat;
         float _treeTimer, _placeTimer;
         public int PeopleDrawn, PeopleBusy, TreesDrawn, BoatsAfloat;   // (PeopleBusy: drawn at work or on the move - Presence.Busy)
@@ -245,6 +245,8 @@ namespace TC2.Game
             _woodpiles = new Instancer(ProcMeshes.Woodpile(), _mat, true);   // the village's woodstore, by the homes (D2-081)
             _trees = new Instancer[TreeModels.Length];
             for (int i = 0; i < TreeModels.Length; i++) _trees[i] = new Instancer(Models.Get(TreeModels[i], i <= ConiferSmall ? (System.Func<Mesh>)ProcMeshes.Conifer : ProcMeshes.Broadleaf), _mat, true);
+            _treesFar = new Instancer[TreeModels.Length];
+            for (int i = 0; i < TreeModels.Length; i++) _treesFar[i] = new Instancer(Models.Get(TreeModels[i], i <= ConiferSmall ? (System.Func<Mesh>)ProcMeshes.Conifer : ProcMeshes.Broadleaf), _mat, false);
             _flames = new Instancer(ProcMeshes.Flame(), _mat, false);
         }
 
@@ -380,7 +382,7 @@ namespace TC2.Game
                 for (int i = 0; i < _works.Length; i++) _works[i]?.Draw(cam);
                 _ricks.Draw(cam); _graves.Draw(cam); _gravesOld.Draw(cam); _standards.Draw(cam); _standardsBig.Draw(cam); _muck.Draw(cam); _huts.Draw(cam); _tents.Draw(cam); _ruins.Draw(cam); _walls.Draw(cam); _stoneWalls.Draw(cam); _towers.Draw(cam); _woodpiles.Draw(cam);
             }
-            if ((Off & 1) == 0) for (int i = 0; i < _trees.Length; i++) _trees[i].Draw(cam);
+            if ((Off & 1) == 0) for (int i = 0; i < _trees.Length; i++) { _trees[i].Draw(cam); _treesFar[i].Draw(cam); }
             _flames.Draw(cam);
             if ((Off & 2) == 0) { _people.Draw(cam); _lordsP.Draw(cam); _swornP.Draw(cam); _rings.Draw(cam); _afloat.Draw(cam); _afloatP.Draw(cam); _floors.Draw(cam); }
             if ((Off & 4) == 0) { _beached.Draw(cam); _beachedP.Draw(cam); }
@@ -1670,7 +1672,7 @@ namespace TC2.Game
             var P = w.Planet;
             if (Rig == null) return;
             float camDist = Rig.Cam != null ? Vector3.Distance(Rig.Cam.transform.position, Rig.FocusPoint) : 5000f;
-            for (int i = 0; i < _trees.Length; i++) _trees[i].Clear();
+            for (int i = 0; i < _trees.Length; i++) { _trees[i].Clear(); _treesFar[i].Clear(); }
             TreesDrawn = 0;
             if (camDist > 3200f) return;
             float ex = Mathf.Clamp(camDist / 1600f, 1f, 1.5f);
@@ -1679,6 +1681,7 @@ namespace TC2.Game
                 ref var s = ref w.Settlements.Get(sid);
                 if (!s.Inhabited) continue;
                 if (Vector3.Distance(PlanetGeo.Surface(P, s.Anchor), Rig.FocusPoint) > 2500f) continue;
+                var trees = Rig.Cam != null && (PlanetGeo.Surface(P, s.Anchor) - Rig.Cam.transform.position).sqrMagnitude > DetailFar * DetailFar ? _treesFar : _trees;
                 // (the village's works and their ground: no yard tree is drawn on a work - one grew out of a kiln's dome, C3.2)
                 _workDiscs.Clear();
                 var wl = w.BuildingsOf(sid);
@@ -1702,7 +1705,7 @@ namespace TC2.Game
                         if (OnWork(x, y)) continue;
                         int kind = k == 2 ? Bush : BroadleafRound;
                         float sc = k == 2 ? 0.8f : 0.55f + 0.2f * k;
-                        _trees[kind].Add(1, new Color(0.98f, 0.98f, 0.98f, 0.98f), Place(P, s, x, y, k * 70f, sc * ex));
+                        trees[kind].Add(1, new Color(0.98f, 0.98f, 0.98f, 0.98f), Place(P, s, x, y, k * 70f, sc * ex));
                         TreesDrawn++;
                     }
                 }
