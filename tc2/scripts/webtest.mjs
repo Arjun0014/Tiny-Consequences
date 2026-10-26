@@ -8,6 +8,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
+import { guardBrowser } from './gpusafe.mjs';
 import { startServer } from './serve.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -33,6 +34,7 @@ const port = 8642;
 const server = await startServer({ port, quiet: true });
 // WebGPU needs a browser with Dawn's shader compilers (installed Chrome); Playwright's Chromium lacks dxil.dll.
 const useChrome = !flag('--webgl2') && !flag('--no-gpu') && !flag('--chromium');
+guardBrowser('webtest');   // (session 27: the integrated GPU only - never the RX 5600M)
 const browser = await chromium.launch({ headless: true, channel: useChrome ? 'chrome' : undefined, args: flag('--no-gpu') ? SOFT : GPU });
 report.browser = useChrome ? 'chrome' : 'chromium';
 const context = await browser.newContext({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });

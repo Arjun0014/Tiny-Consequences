@@ -3,6 +3,7 @@
 // from IndexedDB after the start, after a fast run, after an explicit save and its answer, a moment later, and after a reload; with the game's [TC2] lines.
 // Usage: node tc2/scripts/saveprobe.mjs [--burst 6] [--secs 3]
 import { chromium } from '@playwright/test';
+import { guardBrowser } from './gpusafe.mjs';
 import { startServer } from './serve.mjs';
 
 const a = process.argv.slice(2);
@@ -11,6 +12,7 @@ const burst = opt('--burst', '6'), secs = Number(opt('--secs', '3'));
 const GPU = ['--mute-audio', '--use-angle=d3d11', '--ignore-gpu-blocklist', '--enable-gpu-rasterization', '--enable-webgl', '--enable-unsafe-webgpu', '--enable-features=Vulkan,WebGPU'];
 const port = 8644;
 const server = await startServer({ port, quiet: true });
+guardBrowser('saveprobe');   // (session 27: the integrated GPU only - never the RX 5600M)
 const browser = await chromium.launch({ headless: true, channel: 'chrome', args: GPU });
 const page = await (await browser.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
 const lines = [];

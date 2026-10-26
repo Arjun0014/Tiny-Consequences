@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
+import { guardBrowser } from './gpusafe.mjs';
 import { startServer } from './serve.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -24,6 +25,7 @@ fs.mkdirSync(outDir, { recursive: true });
 const GPU = ['--mute-audio', '--use-angle=d3d11', '--ignore-gpu-blocklist', '--enable-gpu-rasterization', '--enable-webgl', '--enable-unsafe-webgpu', '--enable-features=Vulkan,WebGPU'];
 const port = 8644;
 const server = await startServer({ port, quiet: true });
+guardBrowser('webcatchup');   // (session 27: the integrated GPU only - never the RX 5600M)
 const browser = await chromium.launch({ headless: true, channel: webgl2 ? undefined : 'chrome', args: GPU });
 const page = await (await browser.newContext({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 })).newPage();
 const state = () => page.evaluate(() => window.__TC2 || null);

@@ -4,6 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { guardGpu } from './gpusafe.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..', '..');
@@ -20,6 +21,7 @@ const stamp = new Date().toISOString().replace(/[:.]/g, '-');
 const log = path.join(outDir, 'logs', `unity-${cmd}-${stamp}.log`);
 
 function run(extra, { quit = true } = {}) {
+  guardGpu('unity ' + cmd, [unity]);   // (session 27: the integrated GPU only - never the RX 5600M)
   const a = ['-batchmode', '-projectPath', project, '-logFile', log, ...(quit ? ['-quit'] : []), ...extra];
   const t0 = Date.now();
   console.log('unity ' + a.join(' '));
@@ -31,6 +33,10 @@ function run(extra, { quit = true } = {}) {
   let status = r.status ?? 1;
   // Unity can exit 0 when scripts fail to compile (the method never ran): treat compiler errors as failure
   if (existsSync(log) && /error CS\d+/.test(readFileSync(log, 'utf8'))) { console.log('compiler errors in the log'); status = status || 3; }
+  // (session 27) the GPU it drew on, from its log - the RX 5600M must never appear
+  const gpu = existsSync(log) ? (readFileSync(log, 'utf8').match(/Renderer:\s*(.+)/) || [])[1] : null;
+  if (gpu) console.log('gpu ' + gpu.trim());
+  if (gpu && /5600/.test(gpu)) { console.log('WARNING: Unity drew on the RX 5600M'); status = status || 5; }
   console.log(`exit ${status} after ${secs} s; log ${log}`);
   return status;
 }
