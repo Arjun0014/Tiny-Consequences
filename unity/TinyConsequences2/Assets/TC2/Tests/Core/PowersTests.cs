@@ -53,6 +53,12 @@ namespace TC2.Tests.Core
             foreach (var b in ch.Blocks)
                 if (b.Kind == BookKind.Line && b.Event != cast) { lines++; Assert.IsTrue(w.History.TryGet(b.Event, out var be) && be.Root == cast, "every line it tells came of the cast"); }
             Assert.Greater(lines, 0, "and what came of it");
+            // (session 27) the HUD's "your hand" counts the same records the book follows, and says what they were
+            ulong before = w.StateHash();
+            string came = HistoryBook.CameOf(w, cast, out int n);
+            Assert.AreEqual(followed, n, "your hand counts every record rooted in the cast");
+            Assert.IsNotEmpty(came, "and tells them");
+            Assert.AreEqual(before, w.StateHash(), "reading it writes nothing");
         }
 
         [Test]

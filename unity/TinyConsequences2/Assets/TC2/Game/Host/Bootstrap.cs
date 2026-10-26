@@ -71,6 +71,8 @@ namespace TC2.Game
             sea.Host = host; sea.Rig = rig;
             var audio = views.AddComponent<AudioView>();   // (the world's sound, an observer: F10.1)
             audio.Host = host; audio.Rig = rig;
+            var aim = views.AddComponent<AimView>();   // (the powers as play: their marks on the ground, session 27)
+            aim.Host = host; aim.Rig = rig;
             var realms = views.AddComponent<RealmsView>();   // (the realms map layer, D2-167: off until the HUD's Realms or R)
             realms.Host = host; realms.Rig = rig;
 

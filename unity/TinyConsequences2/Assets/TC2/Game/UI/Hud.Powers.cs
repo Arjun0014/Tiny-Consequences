@@ -13,40 +13,40 @@ namespace TC2.Game
     /// </summary>
     public sealed partial class Hud
     {
-        struct Power { public string Name, Doing, Help; public CommandKind Kind; public long Arg, Recharge; public double Reach; }
+        struct Power { public string Name, Doing, Help; public CommandKind Kind; public long Arg, Recharge; public double Reach; public Color Col; }
 
         // two rows: the sky and the ground's powers, then life's and the land's (Lightning stays first: the Web test aims power 0)
         static readonly Power[] Powers =
         {
-            new Power { Name = "Lightning", Doing = "Strike", Kind = CommandKind.GodLightning, Recharge = SimTime.Day, Reach = 60,
+            new Power { Name = "Lightning", Col = new Color(1.00f, 0.93f, 0.55f), Doing = "Strike", Kind = CommandKind.GodLightning, Recharge = SimTime.Day, Reach = 60,
                         Help = "a bolt from the sky: it can kindle the woods, the fields or a roof" },
-            new Power { Name = "Storm", Doing = "Raise a storm", Kind = CommandKind.GodStorm, Arg = 50, Recharge = 30 * SimTime.Day, Reach = 2000,
+            new Power { Name = "Storm", Col = new Color(0.55f, 0.66f, 0.85f), Doing = "Raise a storm", Kind = CommandKind.GodStorm, Arg = 50, Recharge = 30 * SimTime.Day, Reach = 2000,
                         Help = "a gale of 50 m/s that lives and wanders as storms do: roofs, crops, boats at sea" },
-            new Power { Name = "Rain", Doing = "Bring rain", Kind = CommandKind.GodRain, Recharge = SimTime.Year / 2, Reach = World.RainReach,
+            new Power { Name = "Rain", Col = new Color(0.40f, 0.68f, 1.00f), Doing = "Bring rain", Kind = CommandKind.GodRain, Recharge = SimTime.Year / 2, Reach = World.RainReach,
                         Help = "a soaking rain for some days on the land round it: the soil drinks, the crops take it, fires go out" },
-            new Power { Name = "Drought", Doing = "Withhold the rain", Kind = CommandKind.GodDrought, Recharge = 2 * SimTime.Year, Reach = World.DroughtReach,
+            new Power { Name = "Drought", Col = new Color(0.95f, 0.70f, 0.30f), Doing = "Withhold the rain", Kind = CommandKind.GodDrought, Recharge = 2 * SimTime.Year, Reach = World.DroughtReach,
                         Help = "no rain for a summer on the land round it: the soil dries, crops wilt, fire takes more readily" },
-            new Power { Name = "Warmth", Doing = "Warm the air", Kind = CommandKind.GodWarm, Recharge = 2 * SimTime.Year, Reach = World.AirReach,
+            new Power { Name = "Warmth", Col = new Color(1.00f, 0.55f, 0.25f), Doing = "Warm the air", Kind = CommandKind.GodWarm, Recharge = 2 * SimTime.Year, Reach = World.AirReach,
                         Help = "a summer 5 C warmer on the land round it: crops grow where it is cold (and wilt where it is hot), the soil dries, homes burn less wood" },
-            new Power { Name = "Cold", Doing = "Chill the air", Kind = CommandKind.GodCold, Recharge = 2 * SimTime.Year, Reach = World.AirReach,
+            new Power { Name = "Cold", Col = new Color(0.70f, 0.90f, 1.00f), Doing = "Chill the air", Kind = CommandKind.GodCold, Recharge = 2 * SimTime.Year, Reach = World.AirReach,
                         Help = "a summer 5 C colder on the land round it: crops grow slowly or fail where it is cool, homes burn more wood, frost keeps the herds in" },
-            new Power { Name = "Quake", Doing = "Shake the ground", Kind = CommandKind.GodQuake, Arg = 7, Recharge = 2 * SimTime.Year, Reach = 3000,
+            new Power { Name = "Quake", Col = new Color(0.80f, 0.58f, 0.36f), Doing = "Shake the ground", Kind = CommandKind.GodQuake, Arg = 7, Recharge = 2 * SimTime.Year, Reach = 3000,
                         Help = "a magnitude-7 quake: homes may fall, slopes slide, the sea may come" },
-            new Power { Name = "Eruption", Doing = "Split the earth", Kind = CommandKind.GodEruption, Arg = 3, Recharge = 10 * SimTime.Year, Reach = 2500,
+            new Power { Name = "Eruption", Col = new Color(1.00f, 0.38f, 0.15f), Doing = "Split the earth", Kind = CommandKind.GodEruption, Arg = 3, Recharge = 10 * SimTime.Year, Reach = 2500,
                         Help = "the nearest vent within 2.5 km wakes, or the ground opens a new one" },
-            new Power { Name = "Meteor", Doing = "Throw down a stone", Kind = CommandKind.GodMeteor, Recharge = 20 * SimTime.Year, Reach = World.BlastM,
+            new Power { Name = "Meteor", Col = new Color(1.00f, 0.62f, 0.22f), Doing = "Throw down a stone", Kind = CommandKind.GodMeteor, Recharge = 20 * SimTime.Year, Reach = World.BlastM,
                         Help = "a stone from the sky: what stands near it falls, those at home there die, it burns and the ground shakes" },
-            new Power { Name = "Plague", Doing = "Send a sickness", Kind = CommandKind.GodPlague, Recharge = 5 * SimTime.Year, Reach = World.GodReach,
+            new Power { Name = "Plague", Col = new Color(0.66f, 0.85f, 0.30f), Doing = "Send a sickness", Kind = CommandKind.GodPlague, Recharge = 5 * SimTime.Year, Reach = World.GodReach,
                         Help = "a new pestilence breaks out in the nearest village: it spreads as sicknesses do" },
-            new Power { Name = "Blight", Doing = "Blight the fields", Kind = CommandKind.GodBlight, Recharge = SimTime.Year, Reach = World.GodReach,
+            new Power { Name = "Blight", Col = new Color(0.70f, 0.66f, 0.30f), Doing = "Blight the fields", Kind = CommandKind.GodBlight, Recharge = SimTime.Year, Reach = World.GodReach,
                         Help = "the standing crop of the villages round it fails (nothing when the fields are bare)" },
-            new Power { Name = "Bounty", Doing = "Renew the land", Kind = CommandKind.GodBounty, Recharge = 10 * SimTime.Year, Reach = World.GodReach,
+            new Power { Name = "Bounty", Col = new Color(0.85f, 0.90f, 0.40f), Doing = "Renew the land", Kind = CommandKind.GodBounty, Recharge = 10 * SimTime.Year, Reach = World.GodReach,
                         Help = "the fields round a place as when first broken: their crops full again until they tire" },
-            new Power { Name = "Cull", Doing = "Cull the hunters", Kind = CommandKind.GodCull, Recharge = 5 * SimTime.Year, Reach = World.GodReach,
+            new Power { Name = "Cull", Col = new Color(0.85f, 0.35f, 0.30f), Doing = "Cull the hunters", Kind = CommandKind.GodCull, Recharge = 5 * SimTime.Year, Reach = World.GodReach,
                         Help = "nine in ten of the wolves, foxes and bears round a place (at sea the seals and hunting fish): herds safer, game thicker - until more wander in" },
-            new Power { Name = "Bring", Doing = "Bring game", Kind = CommandKind.GodBring, Recharge = 5 * SimTime.Year, Reach = World.GodReach,
+            new Power { Name = "Bring", Col = new Color(0.50f, 0.88f, 0.55f), Doing = "Bring game", Kind = CommandKind.GodBring, Recharge = 5 * SimTime.Year, Reach = World.GodReach,
                         Help = "the game the land round it lacks most - a herd hunted out comes back - as thick as it lives over its range (at sea a shoal): more to hunt, and more mouths on the grass" },
-            new Power { Name = "Ore", Doing = "Lay bare a vein of copper", Kind = CommandKind.GodOre, Recharge = 20 * SimTime.Year, Reach = 120,
+            new Power { Name = "Ore", Col = new Color(0.40f, 0.85f, 0.70f), Doing = "Lay bare a vein of copper", Kind = CommandKind.GodOre, Recharge = 20 * SimTime.Year, Reach = 120,
                         Help = "rich copper ore in the rock at a place: someone must go there and see it - then a mine, smiths and trade may follow" },
         };
         const int FirstRow = 9;
@@ -105,6 +105,10 @@ namespace TC2.Game
             if (!GroundUnder(Input.mousePosition, out _, out int cell)) return;
             var pw = Powers[_aim];
             w.Issue(new Command { Time = w.Now, Kind = pw.Kind, Cell = cell, Arg = pw.Arg });
+            // (session 27: the powers as play) the hand seen: a burst where it fell, the ground shaken by the heaviest
+            if (GroundUnder(Input.mousePosition, out var at, out _)) AimView.Cast(at, pw.Reach, pw.Col);
+            float shake = pw.Kind == CommandKind.GodMeteor ? 1f : pw.Kind == CommandKind.GodQuake ? 0.85f : pw.Kind == CommandKind.GodEruption ? 0.7f : pw.Kind == CommandKind.GodStorm ? 0.3f : pw.Kind == CommandKind.GodLightning ? 0.25f : 0.1f;
+            if (Rig != null) Rig.Shake(shake, 0.6f + shake * 1.4f);
             _aim = -1;
         }
 
@@ -123,6 +127,67 @@ namespace TC2.Game
             return false;
         }
 
+        // (session 27: the powers as play) your hand: the last casts and what has come of each so far, read from the ledger once a second
+        readonly System.Collections.Generic.List<(long id, string what, long time, string came, int n)> _hand = new System.Collections.Generic.List<(long, string, long, string, int)>();
+        float _handAt;
+        GUIStyle _handLine;
+
+        void YourHand(World w, float sw, float sh)
+        {
+            if (Time.unscaledTime - _handAt > 1f)
+            {
+                _handAt = Time.unscaledTime;
+                _hand.Clear();
+                var h = w.History;
+                for (int i = h.Count - 1, seen = 0; i >= 0 && seen < 40000 && _hand.Count < 3; i--, seen++)
+                {
+                    var e = h.At(i);
+                    if (w.Now - e.Time > 10 * SimTime.Year) break;
+                    if (e.Kind != TC2.Core.History.HistoryKind.GodCommand) continue;
+                    string what = TC2.Core.History.HistoryText.Describe(w, in e).TrimEnd('.');
+                    if (what.StartsWith("You ", StringComparison.Ordinal)) what = char.ToUpperInvariant(what[4]) + what.Substring(5);
+                    string came = TC2.Core.History.HistoryBook.CameOf(w, e.Id, out int n);
+                    _hand.Add((e.Id, what, e.Time, came, n));
+                }
+            }
+            if (_hand.Count == 0) return;
+            if (_handLine == null) { _handLine = new GUIStyle(_small) { fontSize = 12, wordWrap = true, richText = true, padding = new RectOffset(4, 4, 2, 3) }; _handLine.hover.textColor = new Color(1f, 0.86f, 0.45f); }
+            float hw = 420f, lineH = 34f;
+            var r = new Rect(_powersRect.x, _powersRect.y - 10f - (lineH * _hand.Count + 22f), hw, lineH * _hand.Count + 22f);
+            GUILayout.BeginArea(r, _box);
+            GUILayout.Label("<b>Your hand</b>  <size=11>what has come of it so far - the book's last part tells all</size>", _small);
+            for (int k = 0; k < _hand.Count; k++)
+            {
+                var x = _hand[k];
+                long ago = w.Now - x.time;
+                string when = ago < SimTime.Day ? "today" : ago < SimTime.Year ? (ago / SimTime.Day) + " days ago" : (ago / (double)SimTime.Year).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + " years ago";
+                string line = "<b>" + x.what + "</b> <size=11>(" + when + ")</size>\n" + (x.came.Length > 0 ? x.came : "<i>nothing yet that the world remembers</i>");
+                if (GUILayout.Button(line, _handLine)) OpenBookAt(TC2.Core.History.HistoryBook.YourActionsPart, k);
+            }
+            GUILayout.EndArea();
+        }
+
+        /// <summary>(session 27) The places a power aimed here would reach, by the world's own measure: the villages within its reach (the nearest
+        /// within it for a sickness), with their people - what the player is about to touch.</summary>
+        static string InReach(World w, Vec3d dir, in Power pw)
+        {
+            var near = new System.Collections.Generic.List<(double d, int sid)>();
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                ref var s = ref w.Settlements.Get(sid);
+                if (!s.Inhabited) continue;
+                double d = Vec3d.ArcDistance(dir, s.Anchor, w.Planet.Radius);
+                if (d <= pw.Reach) near.Add((d, sid));
+            }
+            if (near.Count == 0) return "no village within its reach";
+            near.Sort((a, b) => a.d.CompareTo(b.d));
+            if (pw.Kind == CommandKind.GodPlague) near.RemoveRange(1, near.Count - 1);
+            var names = new System.Collections.Generic.List<string>();
+            for (int i = 0; i < near.Count && i < 4; i++)
+                names.Add(w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(near[i].sid)) + " (" + w.Settlements.Get(near[i].sid).Population + ")");
+            return (pw.Kind == CommandKind.GodPlague ? "it would break out in " : "within its reach: ") + string.Join(", ", names.ToArray()) + (near.Count > 4 ? " and " + (near.Count - 4) + " more" : "");
+        }
+
         /// <summary>The bar of powers (bottom centre) and, while aiming, the ring where the power falls and what it is.</summary>
         void PowerBar(World w, float sw, float sh)
         {
@@ -133,47 +198,52 @@ namespace TC2.Game
                 _powerOff = new GUIStyle(_btn) { fontSize = 13, padding = new RectOffset(10, 10, 5, 5) };
                 _aimLabel = new GUIStyle(_label) { fontSize = 13, alignment = TextAnchor.UpperLeft };
             }
-            float bw = 900f, bh = 72f;
-            _powersRect = new Rect((sw - bw) * 0.5f, sh - bh - 46f, bw, bh);
-            GUILayout.BeginArea(_powersRect, _box);
+            float bw = 960f, bh = 78f;
+            _powersRect = new Rect((sw - bw) * 0.5f, sh - bh - 44f, bw, bh);
+            GUI.Box(_powersRect, GUIContent.none, _box);
+            GUILayout.BeginArea(new Rect(_powersRect.x + 8f, _powersRect.y + 6f, _powersRect.width - 16f, _powersRect.height - 10f));
             for (int row = 0; row < 2; row++)
             {
                 GUILayout.BeginHorizontal();
-                GUILayout.Label(row == 0 ? "Powers" : "", _small, GUILayout.Width(52));
+                GUILayout.Label(row == 0 ? "<b>Your hand</b>" : "", _small, GUILayout.Width(70));
                 for (int k = row == 0 ? 0 : FirstRow; k < (row == 0 ? FirstRow : Powers.Length); k++)
                 {
                     long wait = Recharging(w, k);
-                    string text = Powers[k].Name + (wait > 0 ? " (" + Wait(wait) + ")" : "");
-                    GUI.enabled = wait == 0;
+                    var pw = Powers[k];
                     bool on = _aim == k;
-                    if (GUILayout.Toggle(on, text, on ? _powerOn : _powerOff) != on) _aim = on ? -1 : k;
+                    var content = new GUIContent(pw.Name, pw.Help + (wait > 0 ? " - back in " + Wait(wait) : ""));
+                    Rect br = GUILayoutUtility.GetRect(content, on ? _powerOn : _powerOff, GUILayout.MinWidth(72));
+                    GUI.enabled = wait == 0;
+                    if (GUI.Toggle(br, on, content, on ? _powerOn : _powerOff) != on) _aim = on ? -1 : k;
                     GUI.enabled = true;
+                    if (Event.current.type == EventType.Repaint)
+                    {
+                        // its colour on its left edge; while it comes back, how far it has come, along its foot
+                        GUI.color = wait > 0 ? new Color(pw.Col.r, pw.Col.g, pw.Col.b, 0.35f) : pw.Col;
+                        GUI.DrawTexture(new Rect(br.x + 1f, br.y + 3f, 3f, br.height - 6f), _dot);
+                        if (wait > 0)
+                        {
+                            float done = 1f - Mathf.Clamp01(wait / (float)pw.Recharge);
+                            GUI.color = new Color(0f, 0f, 0f, 0.45f); GUI.DrawTexture(new Rect(br.x + 4f, br.yMax - 4f, br.width - 8f, 2f), _dot);
+                            GUI.color = pw.Col; GUI.DrawTexture(new Rect(br.x + 4f, br.yMax - 4f, (br.width - 8f) * done, 2f), _dot);
+                        }
+                        GUI.color = Color.white;
+                    }
                 }
                 GUILayout.FlexibleSpace();
                 GUILayout.EndHorizontal();
             }
             GUILayout.EndArea();
-            // (over a page, the book or a bar a click is theirs, not the power's: the ring and its words only over open ground - last frame's PointerOverUi)
+            // (over a page, the book or a bar a click is theirs, not the power's: the mark and its words only over open ground - last frame's PointerOverUi)
+            AimView.Aiming = false;
             if (_aim < 0 || PointerOverUi || !GroundUnder(Input.mousePosition, out var dir, out int cell)) return;
-            // the ring where it falls, on the ground round the point aimed at
-            var P = w.Planet; var pw = Powers[_aim];
-            Vec3d up = dir;
-            Vec3d e = Vec3d.Cross(new Vec3d(0, 1, 0), up); if (e.Length < 1e-6) e = new Vec3d(1, 0, 0); e = e.Normalized;
-            Vec3d n = Vec3d.Cross(up, e).Normalized;
-            double ang = pw.Reach / P.Radius;
-            for (int i = 0; i < 32; i++)
-            {
-                double a = 2 * Math.PI * i / 32;
-                Vec3d p = (up * Math.Cos(ang) + (e * Math.Cos(a) + n * Math.Sin(a)) * Math.Sin(ang)).Normalized;
-                Vector3 sp = Rig.Cam.WorldToScreenPoint(PlanetGeo.Surface(P, p, 2f));
-                if (sp.z <= 0) continue;
-                GUI.color = new Color(1f, 0.85f, 0.4f, 0.9f);
-                GUI.DrawTexture(new Rect(sp.x / _scale - 2, (Screen.height - sp.y) / _scale - 2, 4, 4), _dot);
-                GUI.color = Color.white;
-            }
+            // (session 27) its reach laid on the ground (AimView), and the villages it would reach named
+            var P = w.Planet; var pwr = Powers[_aim];
+            AimView.Aiming = true; AimView.AimDir = dir; AimView.AimReach = pwr.Reach; AimView.AimColor = pwr.Col;
+            string reach = InReach(w, dir, pwr);
             Vector2 m = Event.current.mousePosition;
             string where = TC2.Core.History.HistoryText.At(w.PlaceName(cell));
-            GUI.Label(new Rect(m.x + 18, m.y + 12, 420, 60), "<b>" + pw.Doing + "</b> " + where + "\n<size=11>" + pw.Help + " - click to cast, right-click to stop</size>", _aimLabel);
+            GUI.Label(new Rect(m.x + 18, m.y + 12, 460, 90), "<b>" + pwr.Doing + "</b> " + where + (reach.Length > 0 ? "\n<size=12>" + reach + "</size>" : "") + "\n<size=11>" + pwr.Help + " - click to cast, right-click to stop</size>", _aimLabel);
         }
     }
 }
