@@ -30,13 +30,22 @@
   webtest `s27web5`, realmsperf `--layer terrainbranch` and `terrainshadow` into `tc2/out/webtest/s27perf3/`, bookshots `s27book5` with `--play
   --meteor-play --pages ...`). Revert `ProjectSettings.asset` after the build.
 
+- **Judged since (16:15)**: `s27d1`-`s27d4` (sim 108 saves, main 6d0d379..d48eb74): **0 shader errors** in every run (the branched Terrain.shader, Clouds,
+  Water, River compile in Unity; the Web build of 836d6a9 compiled them for WebGPU too); no seams where a block starts; night side dark with the moon's
+  clouds only; the region's river a light line; the glint broken into patches (still a little hazy). Found and fixed after: the pools laid dark water over
+  the snowy boreal woods and fields' edges (836d6a9: only where the wood stands, never under snow); the village view's river still a dark teal (a647a8e:
+  the shallows' tone); the palisade as separate dark slabs (6d94a8c: seven stakes over 2.1 m, weathered); the night lights as blobs (4d8b572: 512 a face,
+  R8); the console's twelve warnings (de61f38). Also on main: Your Actions folds a cast's dead (654b79e, PowersTests 13/13), the person page in words
+  (fe38185, d48eb74; BiographyTests 4/4).
+- **Queue now**: `0_q4_web_s27web5` (built 836d6a9 at 16:12; webtest, `s27perf3` terrainbranch/terrainshadow/shadows/buildings, bookshots `s27book5` with
+  `--pages`), then `0_q5_shots_s27e` (main de61f38: `s27e1` snowy woods and the village's river, `s27e2` orbit@21 and region@21 - the lights, `s27e3`
+  low/close - the palisade). D2-196 draft: `tc2/out/tools/s27/d2196.md` (fill its Evidence from `s27perf3`, `s27web5`, `s27e*`).
+
 ### Next, in order
-1. Judge `s27d*` (any "Shader error" -> fix Terrain.shader first; seams where a block starts; the regions' edges; night clouds; the glint; the meteor) and
-   `s27web5` (9/9), `s27perf3` (terrainbranch on/off = the branches' gain; terrainshadow = the patches' shadow pass), `s27book5` (`page_*`, `play_meteor_*`).
-   Fix what the pictures say; then D2-196 (this context's presentation: terrain branches with the measure, rivers, ages, meteor, warp, pages, clouds, glint,
-   lake roads).
-2. If the branches gain little, the next terrain cost is the vertex/patch count or the shadow pass (`terrainshadow`).
-3. W-FOREST: rain and wet woods read alike (both dark canopy with palms, s27f1); broadleaf woods sparse in seed 4.
+1. Judge `s27web5` (9/9), `s27perf3` (terrainbranch on/off = the branches' gain; terrainshadow; shadows; buildings), `s27book5` (`page_*` - the paper pages,
+   `play_meteor_*` - one fall, grey dust), `s27e*`. Fix what the pictures say; write D2-196 into DECISIONS from the draft; 25 §8.
+2. The frame: the slowest view is the village view (~16 fps on s27web3): cut by what `s27perf3` says costs most (shadows? buildings?).
+3. W-FOREST: rain and wet woods (pools now on waterlogged ground - judge in a wet wood's shot when one is near a village).
 
 ## Session 27, context 2 (26 Oct 2026, from 12:12 IST; Control Room run #81 session 2) - the reader and E merged; marks, flags, standing, the meteor's fall and scar, snow on the boughs, the timeline's eras; Web s27web2
 
