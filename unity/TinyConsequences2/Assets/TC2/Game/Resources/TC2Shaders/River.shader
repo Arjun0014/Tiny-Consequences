@@ -83,7 +83,7 @@ Shader "TC2/River"
                 half lit = saturate(dot(n, l.direction) * 0.6h + 0.4h) * lerp(0.45h, 1.0h, l.shadowAttenuation);
                 half3 sky = lerp(_Sky.rgb, _TC2FogColor.rgb, 0.5h);
                 half3 body = lerp(_Shallow.rgb, _Deep.rgb, depth * 0.85h) * (0.35h + 0.65h * lit);
-                body = lerp(body, half3(0.05h, 0.16h, 0.22h) * (0.55h + 0.45h * lit) + sky * 0.10h, farK);
+                body = lerp(body, half3(0.09h, 0.27h, 0.34h) * (0.60h + 0.40h * lit) + sky * 0.14h, farK);   // (the sea's shallows' tone: s27d1 still read a dark teal line)
                 half fres = pow(1.0h - saturate(dot(n, v)), 4.0h);
                 float3 h = normalize(l.direction + v);
                 half spec = pow(saturate(dot(n, h)), lerp(40.0h, 200.0h, near)) * lerp(0.8h, 2.2h, near) * l.shadowAttenuation;
