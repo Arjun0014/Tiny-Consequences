@@ -40,6 +40,8 @@ listener at 0 in shots).
   consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`): running `0_r1_web_s27web1` (Web build of b2370ae from 12:00, webtest `s27web1`, bookshots
   `s27book1`); then `0_q2` (people shots `s27q2`), `0_s1` (forest kinds `s27f1`), prospecting seeds `N_b_pro1_05..10`, `N_c_cmp_pro1`. If the runner has
   stopped and `$Q/todo` still holds jobs, restart it in the background (`rm -f $Q/stop; bash tc2/out/tools/s23/runq.sh`).
+  At 12:12 the Web build `0_r1` was still compiling (no result yet); the Monitor on `$Q/runq.log` (`baxiwgpkg`) has expired - re-arm one
+  (`tail -n 0 -F $Q/runq.log | grep --line-buffered -E "^end |runner stopped"`) to follow the jobs.
 - **Prospecting** (`wip/prospect` 85acede, sim 108): its control's annals = the baseline byte for byte (the state hash differs only by the new hashed field
   `ProspectAt`); land it (D2-190) if `results/cmp_rui1_pro1.txt` is inside the noise.
 
