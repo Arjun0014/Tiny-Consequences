@@ -173,6 +173,7 @@ Shader "TC2/Instanced"
             #pragma multi_compile_fragment _ _SHADOWS_SOFT
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "TC2CloudForm.hlsl"
 
             CBUFFER_START(UnityPerMaterial)
                 half4 _AmbientSky;
@@ -241,6 +242,8 @@ Shader "TC2/Instanced"
                 // the planet hides a sun below the horizon (shadow maps reach only near the camera): round shapes such as
                 // canopies would otherwise catch it from beneath at night
                 half sunUp = saturate(dot(up, l.direction) * 4.0h + 0.35h);
+                // (session 27) under a cloud's shadow as the ground round it is (TC2CloudForm.hlsl)
+                sunUp *= 1.0h - TC2CloudShadow(i.positionWS, l.direction, length(fwidth(i.positionWS)), _TC2CloudScale.z);
                 half3 c = albedo * (amb * lerp(half3(0.34h, 0.38h, 0.52h), half3(1.0h, 1.0h, 1.0h), day) + l.color * wrap * lerp(0.3h, 1.0h, l.shadowAttenuation) * 1.15h * sunUp + half3(0.13h, 0.17h, 0.29h) * moon) + glow;
                 float dist = length(i.positionWS - _WorldSpaceCameraPos);
                 half fog = 1.0h - exp(-dist * _TC2FogDensity);

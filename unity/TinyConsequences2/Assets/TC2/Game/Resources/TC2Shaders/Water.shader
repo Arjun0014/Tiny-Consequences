@@ -27,6 +27,7 @@ Shader "TC2/Water"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
+            #include "TC2CloudForm.hlsl"
 
             CBUFFER_START(UnityPerMaterial)
                 half4 _Deep; half4 _Shallow; half4 _Sky; half _Alpha; float _DepthScale;
@@ -70,8 +71,13 @@ Shader "TC2/Water"
                 half far = 1.0h - near;
                 half w1 = Noise2(uvA / 900.0 + float2(t * 0.002, t * 0.0013)) - 0.5h;
                 half w2 = Noise2(uvA / 2600.0 - float2(t * 0.0011, 0.0)) - 0.5h;
-                float3 n = normalize(up + (tangent * (r1 * 0.22 + r2 * 0.12) + bitangent * (r2 * 0.22 - r1 * 0.10)) * near
-                                        + (tangent * w1 + bitangent * w2) * 0.16 * far);
+                // (session 27) ripples only as far as a pixel resolves them - finer than a pixel they were a speckle of glints from afar; what a pixel
+                // cannot resolve roughens the sea instead (a broader, dimmer glint)
+                float fp = length(fwidth(i.positionWS));
+                half a1 = (half)saturate(1.0 - fp / 9.0), a2 = (half)saturate(1.0 - fp / 2.2), aw = (half)saturate(1.0 - fp / 160.0);
+                half rough = 1.0h - 0.5h * (a1 + a2);
+                float3 n = normalize(up + (tangent * (r1 * 0.22 * a1 + r2 * 0.12 * a2) + bitangent * (r2 * 0.22 * a2 - r1 * 0.10 * a1)) * near
+                                        + (tangent * w1 + bitangent * w2) * 0.16 * far * aw);
                 // the sea floor below is coloured by its own depth (sand in the shallows): the water lets it through
                 Light l = GetMainLight(TransformWorldToShadowCoord(i.positionWS));
                 half day = saturate(dot(up, l.direction) * 3.0h + 0.2h);
@@ -80,7 +86,11 @@ Shader "TC2/Water"
                 half fres = pow(1.0h - saturate(dot(n, v)), 4.0h);
                 float3 h = normalize(l.direction + v);
                 // the sun's glint: a broad soft spot from afar (a rough sea), a sharp sparkle close in
-                half spec = pow(saturate(dot(n, h)), lerp(26.0h, 220.0h, near)) * lerp(0.95h, 2.6h, near) * lerp(0.35h, 1.0h, l.shadowAttenuation);
+                half spec = pow(saturate(dot(n, h)), lerp(220.0h, 30.0h, rough)) * lerp(2.6h, 0.85h, rough) * lerp(0.35h, 1.0h, l.shadowAttenuation);
+                // (session 27) a cloud between the water and the sun: its shadow dims the sea and takes the glint
+                half cloud = TC2CloudShadow(i.positionWS, l.direction, length(fwidth(i.positionWS)), _TC2CloudScale.z);
+                spec *= 1.0h - cloud;
+                body *= 1.0h - 0.6h * cloud;
                 // the moon's path on the water at night
                 float3 hm = normalize(_TC2MoonDir.xyz + v);
                 half moon = pow(saturate(dot(n, hm)), 90.0h) * 0.55h * (1.0h - day);

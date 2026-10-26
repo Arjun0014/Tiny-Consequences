@@ -23,6 +23,7 @@ Shader "TC2/Terrain"
             #pragma multi_compile_fragment _ _SHADOWS_SOFT
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "TC2CloudForm.hlsl"
 
             CBUFFER_START(UnityPerMaterial)
                 half4 _AmbientSky;
@@ -35,10 +36,9 @@ Shader "TC2/Terrain"
             float _TC2CanopyTile;
             float _TC2CanopyK;
             float4 _TC2CoverMean;
-            TEXTURECUBE(_TC2Clouds); SAMPLER(sampler_TC2Clouds);
             float4 _TC2SunDir;
             float4 _TC2MoonDir;
-            float _TC2CloudShell;
+            TEXTURECUBE(_TC2Lights); SAMPLER(sampler_TC2Lights);   // (session 27: the homes lived in, LightsView)
             float4 _TC2FogColor;
             float _TC2FogDensity;
             float _TC2Year;   // the world's year (whole years since it began): which strips rest turns with it
@@ -353,13 +353,19 @@ Shader "TC2/Terrain"
                 half hemi = dot(nl, up) * 0.5h + 0.5h;
                 half day = saturate(dot(up, l.direction) * 3.0h + 0.25h);
                 half3 amb = lerp(_AmbientGround.rgb, _AmbientSky.rgb, hemi) * lerp(half3(0.30h, 0.34h, 0.50h), half3(1.0h, 1.0h, 1.0h), day) * floorOcc;
-                // the shadow of the cloud between this point and the sun
-                float3 toCloud = normalize(i.positionWS + _TC2SunDir.xyz * max(0.0, _TC2CloudShell - length(i.positionWS)));
-                half2 cc = SAMPLE_TEXTURECUBE_LOD(_TC2Clouds, sampler_TC2Clouds, toCloud, 0).rg;   // (the decks; the cumulus fields' puffs as a lighter dapple)
-                half cloud = smoothstep(0.38h, 0.78h, max(cc.r, cc.g * 0.55h) * 0.95h);
-                half3 sun = l.color * wrap * lerp(0.25h, 1.0h, l.shadowAttenuation) * 1.2h * (1.0h - 0.55h * cloud) * saturate(dot(up, l.direction) * 4.0h + 0.35h);
+                // the shadow of the cloud between this point and the sun - the shell's own forms (session 27: TC2CloudForm.hlsl), so it falls where its cloud is
+                half cloud = TC2CloudShadow(i.positionWS, _TC2SunDir.xyz, length(fwidth(i.positionWS)), _TC2CloudScale.z);
+                half3 sun = l.color * wrap * lerp(0.25h, 1.0h, l.shadowAttenuation) * 1.2h * (1.0h - cloud) * saturate(dot(up, l.direction) * 4.0h + 0.35h);
                 half moon = saturate(dot(nl, _TC2MoonDir.xyz) * 0.7h + 0.3h) * (1.0h - day);
                 half3 c = albedo * (amb + sun + half3(0.13h, 0.17h, 0.29h) * moon);
+                // (session 27) the night side's lights: where people keep a fire (LightsView: every home lived in), a warm glow after dusk, from
+                // the region view outward - nearer, the houses' own windows are lit (Instanced.shader)
+                {
+                    half lights = SAMPLE_TEXTURECUBE_LOD(_TC2Lights, sampler_TC2Lights, up, 0).r;
+                    half night = saturate(-dot(up, l.direction) * 5.0h + 0.10h);
+                    half farL = smoothstep(700.0h, 2600.0h, (half)dist);
+                    c += half3(1.0h, 0.60h, 0.26h) * saturate(lights * 1.6h) * night * farL * 1.5h;
+                }
                 // under the sea, the water's own colour by the depth of water above (Beer-Lambert): the sand of the shallows
                 // shows clear and turquoise, the deep goes blue; the sea's surface on top adds only sky and sun (D2-040)
                 float below = _TC2SeaRadius - length(i.positionWS) - d1 * 2.2;   // (the beach's own noise: its edge and the water's move together)

@@ -232,6 +232,37 @@ namespace TC2.Core.Planet
             }
         }
 
+        /// <summary>The weather's blocks (a buffer of this length for <see cref="DayAir"/>).</summary>
+        public int WeatherBlocks => _blocks;
+
+        /// <summary>
+        /// (the view's clouds, session 27) A day's air over every cell as <see cref="Weather"/> drew it: <paramref name="draw"/> the smooth part of
+        /// the day's draw - the spells over the blocks, a uniform 0..1 (rain falls where the whole draw lies under the chance) - and
+        /// <paramref name="chance"/> that day's chance of rain. Recomputed from the seed and the day with the same keyed draws, so a load or a day
+        /// away gives the same air; it writes only the caller's buffers (<paramref name="blocks"/> of <see cref="WeatherBlocks"/>) - never the world.
+        /// </summary>
+        public void DayAir(World w, long day, double[] blocks, float[] draw, float[] chance)
+        {
+            var P = w.Planet;
+            ulong seed = w.Seed;
+            double yf = SimTime.YearFraction(day * SimTime.Day);
+            double seasonN = DMath.Sin(DMath.TwoPi * (yf - 0.125));
+            for (int b = 0; b < _blocks; b++)
+                blocks[b] = KeyedRng.Normal(KeyedRng.Hash(seed, RngStream.Weather, (ulong)b + 200000UL, (ulong)day), KeyedRng.Hash(seed, RngStream.Weather, (ulong)b + 300000UL, (ulong)day));
+            for (int c = 0; c < P.Cells; c++)
+            {
+                double season = seasonN * _hemi[c];
+                double moist = DMath.Min(1.0, P.Moist[c] * P.MoistFactor);
+                double pBase = 0.06 + 0.5 * moist;
+                double pRain = DMath.Clamp(pBase * (1.0 + _wetSeason[c] * season) + 0.08 * season * moist, 0.02, 0.85);
+                double z = 0;
+                int o = c * Taps;
+                for (int k = 0; k < Taps; k++) z += _tapWeight[o + k] * blocks[_tapBlock[o + k]];
+                draw[c] = (float)Logistic(z);
+                chance[c] = (float)pRain;
+            }
+        }
+
         /// <summary>The day's runoff down the rivers; the monthly-smoothed flow defines rivers (and floods later).</summary>
         void Rivers(World w)
         {
