@@ -105,9 +105,15 @@ namespace TC2.Core.History
             var sb = new StringBuilder();
             sb.Append(p.At == 0 ? "On the road" : (p.At == p.Home ? "At home in " + Place(w, p.At) : "Visiting " + Place(w, p.At))).Append(": ")
               .Append(HistoryText.Doing(w, in p)).Append(p.T1 > w.Now ? ", until " + SimTime.FormatShort(p.T1) : "").Append(".\n");
-            sb.Append("Health ").Append(F(p.Health, "0.00")).Append(", fed ").Append(F(p.Nutrition, "0.00")).Append(", ").Append(F(p.Reserve, "0")).Append(" days of reserve in the body");
-            if (p.Hurt > 0.01f) sb.Append(", wounded (").Append(F(p.Hurt, "0.00")).Append(p.Hurt >= 0.4f ? ", abed" : "").Append(")");
-            if (p.Sick != 0) sb.Append(p.SickPhase == Health.Disease.Latent ? ", carrying " : ", sick with ").Append(w.History.NameOf(new EntityRef(EntityKind.Pathogen, p.Sick)));
+            // (session 27: the page a leaf of the book) how they fare in words, as the inspector's card says it - "Health 1.00, fed 1.00, 42 days of reserve"
+            // had read as a tool's output
+            bool ill = p.Sick != 0 && p.SickPhase != Health.Disease.Latent;
+            string sickness = p.Sick != 0 ? w.History.NameOf(new EntityRef(EntityKind.Pathogen, p.Sick)) : "";
+            string fares = ill ? "sick with " + sickness : p.Health >= 0.9f ? "in good health" : p.Health >= 0.6f ? "unwell" : p.Health >= 0.3f ? "ailing" : "near death";
+            sb.Append(char.ToUpperInvariant(fares[0])).Append(fares.Substring(1)).Append(" and ").Append(p.Nutrition >= 0.8f ? "well fed" : p.Nutrition >= 0.5f ? "hungry" : "starving")
+              .Append(", with ").Append(p.Reserve >= 30f ? "flesh to spare for a month or more" : p.Reserve >= 14f ? "some weeks' flesh to spare" : p.Reserve >= 5f ? "a few days' flesh to spare" : "nothing to spare in the body");
+            if (p.Hurt > 0.01f) sb.Append(p.Hurt >= 0.4f ? ", badly wounded and abed" : p.Hurt >= 0.15f ? ", wounded" : ", lightly hurt");
+            if (p.Sick != 0 && !ill) sb.Append(", carrying ").Append(sickness).Append(" unknowing");
             if (p.PregDue != 0) sb.Append(", with child (due ").Append(SimTime.FormatShort(p.PregDue)).Append(")");
             sb.Append(".\n");
             if (p.CargoQty > 0f) sb.Append("Carrying ").Append(F(p.CargoQty, "0.0")).Append(p.Cargo == Trade.Metal ? " kg of copper" : p.Cargo == Trade.Iron ? " kg of iron" : p.Cargo == Trade.Grain ? " days' grain" : p.Cargo == Trade.Fibre ? " kg of fibre" : p.Cargo == Trade.Wares ? " wares (a person's cloth and goods each)" : p.Cargo == Trade.Pots ? " kg of pots and jars" : " hides").Append(Trade.KgOf(p.Cargo) * p.CargoQty > Trade.LoadKg + 1e-6 && Carts.Usable(w, p.Household) != Carts.None ? " on the household's " + Carts.NameOf(Carts.Usable(w, p.Household)) : "").Append(".\n");
@@ -174,14 +180,22 @@ namespace TC2.Core.History
         {
             ref var p = ref w.People.Get(pid);
             var sb = new StringBuilder();
-            sb.Append("Skills (a knack of their own, grown by practice): farming ").Append(F(p.SkFarm, "0.00")).Append(", woodcraft ").Append(F(p.SkWood, "0.00"))
-              .Append(", hunting ").Append(F(p.SkHunt, "0.00")).Append(", fishing ").Append(F(p.SkFish, "0.00")).Append(".\n");
+            // (session 27) skills and crafts in words, by how far practice has taken them ("farming 1.00, woodcraft 0.32" had read as a tool's output)
+            var levels = new List<string>[4];
+            for (int k = 0; k < 4; k++) levels[k] = new List<string>();
+            void Skill(string what, float s) { int k = Level(s); if (k >= 0) levels[k].Add(what); }
+            Skill("farming", p.SkFarm); Skill("woodwork", p.SkWood); Skill("hunting", p.SkHunt); Skill("fishing", p.SkFish);
+            var said = new List<string>();
+            for (int k = 0; k < 4; k++) if (levels[k].Count > 0) said.Add((k == 0 ? "a master of " : k == 1 ? "skilled at " : k == 2 ? "a fair hand at " : "a beginner at ") + And(levels[k]));
+            sb.Append(said.Count > 0 ? "Skills: " + string.Join("; ", said) + " - each grown by practice.\n" : "No skill yet beyond the everyday.\n");
             string roles = Roles(w, in p);
             if (roles.Length > 0) sb.Append("Known for: ").Append(roles).Append(".\n");
-            var crafts = new StringBuilder();
-            Craft(crafts, "nets", p.KNets); Craft(crafts, "the loom", p.KLoom); Craft(crafts, "querns", p.KQuern); Craft(crafts, "pots", p.KPottery);
-            Craft(crafts, "the ard", p.KArd); Craft(crafts, "copper", p.KMetal); Craft(crafts, "the bloomery (iron)", p.KIron); Craft(crafts, "boats of planks", p.KBoat);
-            sb.Append(crafts.Length > 0 ? "Crafts they carry: " + crafts + ".\n" : "No craft beyond the everyday.\n");
+            var knows = new List<string>(); var learning = new List<string>();
+            void Craft(string what, float k) { if (k >= 0.5f) knows.Add(what); else if (k >= 0.1f) learning.Add(what); }
+            Craft("nets", p.KNets); Craft("the loom", p.KLoom); Craft("querns", p.KQuern); Craft("pots", p.KPottery);
+            Craft("the ard", p.KArd); Craft("copper", p.KMetal); Craft("the bloomery (iron)", p.KIron); Craft("boats of planks", p.KBoat);
+            if (knows.Count + learning.Count == 0) sb.Append("No craft beyond the everyday.\n");
+            else sb.Append("Crafts they carry: ").Append(knows.Count > 0 ? And(knows) : "none yet").Append(learning.Count > 0 ? "; learning " + And(learning) : "").Append(".\n");
             // works they were first at (history keeps the leader as Other)
             var evs = w.History.EventsOf(EntityRef.Person(pid));
             if (evs != null)
@@ -191,12 +205,11 @@ namespace TC2.Core.History
             return sb.ToString();
         }
 
-        static void Craft(StringBuilder sb, string what, float k)
-        {
-            if (k < 0.1f) return;
-            if (sb.Length > 0) sb.Append(", ");
-            sb.Append(what).Append(' ').Append(F(k, "0.00")).Append(k >= 0.5f ? " (competent)" : "");
-        }
+        /// <summary>How far practice has taken a skill (0-1): 0 a master, 1 skilled, 2 a fair hand, 3 a beginner, -1 not yet.</summary>
+        static int Level(float s) => s >= 0.9f ? 0 : s >= 0.6f ? 1 : s >= 0.3f ? 2 : s >= 0.1f ? 3 : -1;
+
+        /// <summary>"a", "a and b", "a, b and c".</summary>
+        static string And(List<string> l) => l.Count == 1 ? l[0] : string.Join(", ", l.GetRange(0, l.Count - 1)) + " and " + l[l.Count - 1];
 
         /// <summary>The plank boats a person led the building of (history keeps the leader of a boat's building as its record's Other).</summary>
         public static int PlankBoats(World w, int pid)
@@ -238,9 +251,18 @@ namespace TC2.Core.History
         {
             ref var p = ref w.People.Get(pid);
             var sb = new StringBuilder();
-            sb.Append("Fighting skill ").Append(F(p.SkFight, "0.00")).Append(p.Fights > 0 ? ", " + p.Fights + (p.Fights == 1 ? " fight" : " fights") + " lived through" : ", never in a fight")
-              .Append(p.AgeYears(w.Now) < 16 ? "; too young to come out to a fight.\n" : !Conflict.Fit(in p, w.Now) ? "; not fit to come out to a fight now.\n"
-                  : "; strikes at " + F(w.Conflict.Strength(in p), "0.00") + " (health, years, wounds, arms, skill).\n");
+            // (session 27) in words: how practised in a fight, how hard they would strike now (their health, years, wounds, their village's arms, their practice -
+            // 1 a grown body in health, unarmed and untrained)
+            int fk = Level(p.SkFight);
+            sb.Append("In a fight: ").Append(fk == 0 ? "a master" : fk == 1 ? "skilled" : fk == 2 ? "a fair hand" : fk == 3 ? "a beginner" : "untrained")
+              .Append(p.Fights > 0 ? ", " + p.Fights + (p.Fights == 1 ? " fight" : " fights") + " lived through" : ", never in a fight");
+            if (p.AgeYears(w.Now) < 16) sb.Append("; too young to come out to a fight.\n");
+            else if (!Conflict.Fit(in p, w.Now)) sb.Append("; not fit to come out to a fight now.\n");
+            else
+            {
+                double st = w.Conflict.Strength(in p);
+                sb.Append(st >= 1.8 ? "; formidable now - armed and practised" : st >= 1.3 ? "; strikes harder than most" : st >= 0.95 ? "; strikes as hard as most" : st >= 0.6 ? "; no great strength in a fight" : "; weak in a fight").Append(".\n");
+            }
             if (p.Band != 0 && w.Bands.Exists(p.Band)) { var b = w.Bands.Get(p.Band); sb.Append("With a band of ").Append(b.Size).Append(" from ").Append(Place(w, b.Origin)).Append(" against ").Append(Place(w, b.Target)).Append(".\n"); }
             int n = 0;
             for (int id = w.Deeds.First(); id != 0; id = w.Deeds.Next(id))
@@ -257,7 +279,7 @@ namespace TC2.Core.History
             if (hsid == 0 || !w.Settlements.Exists(hsid)) return sb.ToString();
             ref var hs = ref w.Settlements.Get(hsid);
             if (hs.Lord != 0) sb.Append(Place(w, p.Home)).Append(" pays tribute to ").Append(Place(w, hs.Lord)).Append(".\n");
-            if (hs.Foe != 0) sb.Append(Place(w, p.Home)).Append(" holds a wrong against ").Append(Place(w, hs.Foe)).Append(" (").Append(F(hs.FoeWorth, "0")).Append(").\n");
+            if (hs.Foe != 0) sb.Append(Place(w, p.Home)).Append(" holds a wrong against ").Append(Place(w, hs.Foe)).Append(", weighed at ").Append(F(hs.FoeWorth, "0")).Append(" days' food.\n");
             return sb.ToString();
         }
 
@@ -274,8 +296,14 @@ namespace TC2.Core.History
             var sb = new StringBuilder();
             sb.Append("The ").Append(HistoryText.Plural(w.History.NameOf(EntityRef.Household(p.Household)))).Append(" live in a ").Append(HomeWord(w, in hh));
             if (hh.Building != 0 && w.Buildings.Exists(hh.Building)) sb.Append(" raised in ").Append(Year(w.Buildings.Get(hh.Building).Built));
-            sb.Append(". Larder ").Append(F(hh.Larder, "0")).Append(" days' food, ").Append(F(hh.Ready, "0.0")).Append(" made ready; water ").Append(F(hh.Water, "0")).Append(" l; ")
-              .Append(hh.Indoor < Hearth.Comfort - 0.5 ? F(hh.Indoor, "0") + " C indoors" + (hh.Indoor < Hearth.ChillLine ? ", cold" : "") : "warm enough indoors").Append("; clothes and tools ").Append(F((double)hh.Gear / System.Math.Max(1, w.Members(p.Household).Count), "0.00")).Append(" a head").Append(hh.Wares > 0.05f ? " (" + F((double)hh.Wares / System.Math.Max(1, w.Members(p.Household).Count), "0.00") + " of it wares from a weaver's shed)" : "").Append(".\n");
+            // (session 27) in words ("Larder 1 days' food, 0.0 made ready; water 24 l; clothes and tools 1.25 a head" had read as a tool's output)
+            int heads = System.Math.Max(1, w.Members(p.Household).Count);
+            double gear = (double)hh.Gear / heads, wares = hh.Gear > 0.05f ? (double)hh.Wares / (double)hh.Gear : 0.0;
+            sb.Append(". ").Append(hh.Larder < 1.0 ? "Little food at home" : hh.Larder < 2.0 ? "Food at home for a day" : "Food at home for " + F(hh.Larder, "0") + " days")
+              .Append(hh.Ready > 0.05f ? ", some of it made ready" : "").Append("; ").Append(F(hh.Water, "0")).Append(" litres of water; ")
+              .Append(hh.Indoor < Hearth.Comfort - 0.5 ? (hh.Indoor < Hearth.ChillLine ? "cold indoors (" : "cool indoors (") + F(hh.Indoor, "0") + " C)" : "warm enough indoors")
+              .Append("; ").Append(gear >= 1.0 ? "clothes and tools enough for all" : gear >= 0.6 ? "clothes and tools worn thin" : "short of clothes and tools")
+              .Append(wares >= 0.5 ? ", most of them wares from a weaver's shed" : wares > 0.05 ? ", some of them wares from a weaver's shed" : "").Append(".\n");
             // its grain in the village's granary and what it owes or is owed (C3.3)
             if (!Holdings.Off) sb.Append(Holdings.Line(w, p.Household));
             // its pots (C3.2): fired by its own hands where it has clay, from a kiln, or none - and the wood its cooking burns for it
