@@ -185,6 +185,18 @@ namespace TC2.Game
                 ref var s = ref w.Settlements.Get(sid);
                 if (!s.Inhabited) continue;
                 double d = Vec3d.ArcDistance(dir, s.Anchor, w.Planet.Radius);
+                if (d > pw.Reach + 450.0) continue;
+                if (d > pw.Reach)
+                {
+                    // (session 27) a village is within reach where its buildings are, not only its square (a lightning aimed inside a town had said "no
+                    // village within its reach")
+                    var bl = w.BuildingsOf(sid);
+                    for (int i = 0; i < bl.Count && d > pw.Reach; i++)
+                    {
+                        ref var b = ref w.Buildings.Get(bl[i]);
+                        d = System.Math.Min(d, Vec3d.ArcDistance(dir, s.LocalToSphere(b.X, b.Y, w.Planet.Radius), w.Planet.Radius));
+                    }
+                }
                 if (d <= pw.Reach) near.Add((d, sid));
             }
             if (near.Count == 0) return "no village within its reach";
