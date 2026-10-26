@@ -146,8 +146,15 @@ namespace TC2.Game
                 Vector3 sidePrev = Vector3.zero;
                 for (int k = 0; k + 1 < _pts.Count; k++)
                 {
-                    if (!P.IsLand(P.Grid.CellOf(_pts[k])) && !P.IsLand(P.Grid.CellOf(_pts[k + 1]))) { sidePrev = Vector3.zero; continue; }   // (no road over the sea)
-                    Vector3 a = PlanetGeo.Surface(P, _pts[k], 0.4f), b = PlanetGeo.Surface(P, _pts[k + 1], 0.4f);
+                    int ca = P.Grid.CellOf(_pts[k]), cb = P.Grid.CellOf(_pts[k + 1]);
+                    if (!P.IsLand(ca) && !P.IsLand(cb)) { sidePrev = Vector3.zero; continue; }   // (no road over the sea)
+                    // (session 27) no road over a lake: its route runs through the lake's cells (they are land to the routes; walkers go round the water,
+                    // D2-156), and the ribbon had crossed the water in a straight line (s27q3); a stretch that enters a lake stops short of its water
+                    bool la = P.IsLake(ca), lb = P.IsLake(cb);
+                    if (la && lb) { sidePrev = Vector3.zero; continue; }
+                    Vec3d pa = _pts[k], pb = _pts[k + 1];
+                    if (la) pa = (pa * 0.4 + pb * 0.6).Normalized; else if (lb) pb = (pa * 0.6 + pb * 0.4).Normalized;
+                    Vector3 a = PlanetGeo.Surface(P, pa, 0.4f), b = PlanetGeo.Surface(P, pb, 0.4f);
                     Vector3 up = (a + b).normalized;
                     Vector3 side = Vector3.Cross(up, b - a).normalized;
                     if (sidePrev == Vector3.zero) sidePrev = side;
