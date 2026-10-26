@@ -5861,3 +5861,29 @@ people at 300 x1.04 (t 1.5), deaths a person-year x0.98 (t -1.6), hunger x1.26 (
 loads of stone carried back. **In the picture at 300** (`place --ruins`, `results/ruins_s*_{hal1,rui1}_y300.txt`): fallen homes' ruins inside the lived
 ring 2,885 -> 2,250 over ten worlds (-22 %; fewer in nine of ten), in 196 -> 152 villages; most left stand in villages that shrank (seed 2's plague: 996
 -> 874), where nobody seeks a lot - as deserted tofts did.
+
+## D2-191 — 2026-10-26 — The planet from orbit: clouds read four ways from the weather, with forms and shadows of their own; the night side dark but for its homes (25 §8 A; presentation)
+
+**Context.** Arjun (26 Oct): "make the planet genuinely read like a beautiful small Earth from orbit ... convincing cloud forms and coverage, more clouds
+where the weather supports them, better large-scale structure, shadows, storms and readable weather; do not fake climate state." The shots before
+(`s25m_*`): rain decks drawn as smeared white brush strokes, cumulus as a uniform speckle of dots, the cloud shadows from a 64-texel cover (blurred), a
+night side as bright as dusk from orbit, a speckled glint on the far sea.
+
+**Decision.** (1) **What the sky holds, from the weather** (`CloudView`): a cover cubemap in four channels - the rain's decks (where it rains today, and the
+storms' spirals), fair-weather cumulus (moist, warm air; over land only while the sun heats the ground, over warm seas all day), **the layered cloud of a
+damp day** - the weather's own draw near rain (`PlanetSystems.DayAir`: the smooth part of the day's keyed draw and the day's chance of rain, recomputed
+from the seed and the day; an observer, `DayAirTests` 2/2: rain fell only where the draw allowed it and wherever it made it sure; the same after a save
+and load; reading it writes nothing) - and how warm and convective the air is (heaped towers in warm rain, sheets in cool). (2) **Their forms**: a tileable
+3-D noise made at start (`CloudNoise`: shapes, billows, puffs, grain) laid round the planet drawn out along the parallels (no seam; the poles from the plain
+position), three looks of it at their own level of detail (`TC2CloudForm.hlsl`): decks with ragged edges heaped into cauliflower where the air is warm,
+layers broken into stratocumulus cells, cumulus as separate puffs in fields with clear lanes; edges as crisp as a pixel allows; the heaps lit and shaded
+(their billows, the sunward lumps brighter), reddened where the sun is low, a rim at the terminator. (3) **Their shadows** from the same forms on the
+ground, the sea and what stands there (so a shadow falls where its cloud is). (4) **The night from orbit**: the night's sky and moon light on the ground
+fades with the camera's height (`Look.NightFar` 0.16), and **the night side's lights** are the homes lived in (`LightsView`: a soft point at each, a fine
+grain - a place glows in the shape of its homes; an abandoned village dark). (5) The sea's ripples only where a pixel resolves them (the speckle gone), its
+broad sheen dimmer. (6) The air's veil over the ground 0.75 (the region view's colours clearer).
+
+**Evidence.** Shots on the integrated GPU, seed 2's year-300 world (`s27p1`-`s27p3`: orbit at 10:30, 17:00 and 21:00, region, village): scattered shaded
+cumulus over land and sea, heaped convective decks, cloud shadows readable on the land, dusk-reddened clouds by the terminator, a dark night side lit by its
+places; Unity C# compiles; no shader errors in the batch logs. The cloud noise takes ~1.1 s to make in the editor (once, at start). Web build: `s27web1`.
+**Not done**: oceans' colour by depth from orbit and land texture at orbit are as before; the lights read as warm blobs a place, not streets.
