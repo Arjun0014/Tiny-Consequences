@@ -38,7 +38,7 @@ namespace TC2.Game
             public Vector2[] Plots;   // field plot coordinates in the owning village's frame (m)
             public Vector2[] Farm;    // x: share of the land the village works, y: crop stage
             public Vector4[] Wood;    // the woods here (D2-079): x forest share, y conifers' share, z the leaves' season, w snow
-            public Vector2[] Kind;    // the kind of wood (W-FOREST): x how tropical (warmth), y how seasonally dry among the tropical
+            public Vector3[] Kind;    // the kind of wood (W-FOREST): x how tropical (warmth), y how seasonally dry among the tropical, z how waterlogged its ground (session 27: pools)
             public Vector4[] Land;    // the land's own (D2-081): x dryness of the climate, y meadow (grass where no wood), z bare earth or rock, w beach
             public float[] Fell;      // the woods' felled share not grown back (W-FELL: where their stumps stand; read by the trees' placing only)
             public Vector4[] Realm;   // the realms map layer (D2-167, RealmsView): the realm's map colour premultiplied by how much of the land here is its village's (rgb x w, w); zero off
@@ -415,7 +415,7 @@ namespace TC2.Game
             int count = V * V + 4 * V;
             var pos = new Vector3[count];
             var nrm = new Vector3[count];
-            if (p.Dirs == null || p.Dirs.Length != count) { p.Dirs = new Vector3[count]; p.Cells = new int[count]; p.Rel = new float[count]; p.Slope = new float[count]; p.Colours = new Color[count]; p.Plots = new Vector2[count]; p.Farm = new Vector2[count]; p.Wood = new Vector4[count]; p.Kind = new Vector2[count]; p.Land = new Vector4[count]; p.Fell = new float[count]; p.Realm = new Vector4[count]; p.RealmS = new Vector2[count]; p.RealmSid = new int[count]; p.RealmW = new float[count]; }
+            if (p.Dirs == null || p.Dirs.Length != count) { p.Dirs = new Vector3[count]; p.Cells = new int[count]; p.Rel = new float[count]; p.Slope = new float[count]; p.Colours = new Color[count]; p.Plots = new Vector2[count]; p.Farm = new Vector2[count]; p.Wood = new Vector4[count]; p.Kind = new Vector3[count]; p.Land = new Vector4[count]; p.Fell = new float[count]; p.Realm = new Vector4[count]; p.RealmS = new Vector2[count]; p.RealmSid = new int[count]; p.RealmW = new float[count]; }
             for (int j = 0; j < V; j++)
                 for (int i = 0; i < V; i++)
                 {
@@ -1354,7 +1354,7 @@ namespace TC2.Game
                 float rel = p.Rel[o], slope = p.Slope[o];
                 Color col;
                 p.Wood[o] = Vector4.zero;
-                p.Kind[o] = Vector2.zero;
+                p.Kind[o] = Vector3.zero;
                 p.Land[o] = Vector4.zero;
                 p.Fell[o] = 0f;   // (W-FELL: none in the sea - a pooled patch kept its last land's stumps, and since the stumps are placed where no wood
                                   // stands, they would have stood in the water)
@@ -1551,7 +1551,10 @@ namespace TC2.Game
                         // (W-FOREST) the far canopy's kind: the rain forest's deep greens where it is hot, the dry tropics' olive where hot and
                         // seasonally dry - ForestTypes' own thresholds, smoothed so the woods blend across a climate's edge
                         float warm = Edge(16f, 22f, tm);
-                        p.Kind[o] = new Vector2(warm, SeasonalTropic(tm, moist));   // (pass 2b: the same seasonal tropics as the leaves' fall, so they wither khaki, never autumn's rust)
+                        // (session 27, W-FOREST) a wood on waterlogged ground - a carr, a swamp (ForestTypes.Wet: soil water or water standing) - has pools between
+                        // its thickets: the terrain draws them in its floor's gaps (the rain forest and the swamp had read alike)
+                        float pools = tm > 0f ? Edge(0.70f, 0.95f, ForestTypes.Wetness(P, c)) * (1f - Edge(0.3f, 0.7f, riverNear)) : 0f;
+                        p.Kind[o] = new Vector3(warm, SeasonalTropic(tm, moist), pools);   // (pass 2b: the same seasonal tropics as the leaves' fall, so they wither khaki, never autumn's rust)
                     }
                     // the land's own (D2-081): how dry its climate is (leaves olive, grass straw), how near a river's water (D2-084: its
                     // corridor), bare earth or rock, the beach's width

@@ -46,8 +46,8 @@ Shader "TC2/Terrain"
             float _TC2SeaRadius;
             float _TC2Unbranched;   // (session 27, tools: 1 runs every branch below as if taken - the frame's cost of the branches measured; 0 in the game)
 
-            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; half4 color : COLOR; float2 uv0 : TEXCOORD0; float2 uv1 : TEXCOORD1; float4 uv2 : TEXCOORD2; float4 uv3 : TEXCOORD3; float2 uv4 : TEXCOORD4; float4 uv5 : TEXCOORD5; float2 uv6 : TEXCOORD6; };
-            struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; float3 normalWS : TEXCOORD1; half4 color : COLOR; float4 farm : TEXCOORD2; half4 wood : TEXCOORD3; half4 land : TEXCOORD4; half2 kind : TEXCOORD5; half4 realm : TEXCOORD6; half realmS : TEXCOORD7; };
+            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; half4 color : COLOR; float2 uv0 : TEXCOORD0; float2 uv1 : TEXCOORD1; float4 uv2 : TEXCOORD2; float4 uv3 : TEXCOORD3; float3 uv4 : TEXCOORD4; float4 uv5 : TEXCOORD5; float2 uv6 : TEXCOORD6; };
+            struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; float3 normalWS : TEXCOORD1; half4 color : COLOR; float4 farm : TEXCOORD2; half4 wood : TEXCOORD3; half4 land : TEXCOORD4; half3 kind : TEXCOORD5; half4 realm : TEXCOORD6; half realmS : TEXCOORD7; };
 
             Varyings vert(Attributes v)
             {
@@ -60,7 +60,7 @@ Shader "TC2/Terrain"
                 o.farm = float4(v.uv0, v.uv1);
                 o.wood = v.uv2;
                 o.land = v.uv3;
-                o.kind = v.uv4;   // (W-FOREST: x how tropical, y how seasonally dry)
+                o.kind = v.uv4;   // (W-FOREST: x how tropical, y how seasonally dry, z how waterlogged the wood's ground - its pools)
                 o.realm = v.uv5;  // (D2-167: the realms layer's map colour premultiplied by the land's weight - rgb x w, w; zero when it is off)
                 o.realmS = v.uv6.x;   // (and the fill's strength, premultiplied alike: the seat's stronger)
                 return o;
@@ -303,6 +303,18 @@ Shader "TC2/Terrain"
                     // (W-FOREST pass 2b) the dry tropics' leaves wither khaki in the dry season (TerrainLod.Tints' `withered`), not autumn's rust
                     half dryT = saturate(seas / max(warm, 0.01h)) * warm;
                     half3 litter = lerp(albedo, half3(0.060h, 0.050h, 0.028h), 0.45h * dl) * (1.0h - 0.25h * dl);   // (leaf litter)
+                    // (session 27, W-FOREST) pools between a carr's or a swamp's thickets where its ground is waterlogged (i.kind.z, the simulation's soil
+                    // and standing water): dark water giving back a little of the sky, in patches of a few metres; far off a darker, wetter floor
+                    UNITY_BRANCH
+                    if (i.kind.z > 0.01h || every)
+                    {
+                        half wetK = (half)i.kind.z;
+                        half pn = TriG(i.positionWS, ub, 1.0 / 23.0, dpx, dpy);
+                        half pool = smoothstep(0.50h, 0.60h, pn + 0.22h * wetK - 0.10h) * wetK;
+                        pool = lerp(pool, 0.45h * wetK, smoothstep(2.0h, 6.0h, (half)pxw));
+                        half3 water = lerp(half3(0.030h, 0.045h, 0.042h), (half3)_TC2FogColor.rgb * 0.55h, 0.30h);
+                        litter = lerp(litter, water, pool * 0.85h);
+                    }
                     // near: each crown lit as the dome or spire it is, the floor between them in the shadow of the crowns toward the sun
                     half mask = 0.0h;
                     half3 nearCol = litter;
