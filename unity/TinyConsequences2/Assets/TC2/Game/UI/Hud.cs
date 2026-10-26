@@ -562,7 +562,7 @@ namespace TC2.Game
 
             // the History Book
             _bookRect = Rect.zero;
-            if (_book) { _bookRect = new Rect(sw * 0.5f - Mathf.Min(480, sw * 0.5f - 20), 60, Mathf.Min(960, sw - 40), sh - 130); Book(_bookRect, w); }
+            if (_book) { float bw = Mathf.Min(1280f, sw - 60f); _bookRect = new Rect(sw * 0.5f - bw * 0.5f, 62, bw, sh - 112); Book(_bookRect, w); }
 
             // inspector
             Rect insp = new Rect(sw - 400, 190, 390, 300);
@@ -964,94 +964,7 @@ namespace TC2.Game
                 _bookPart = 0; _bookChapter = _openAt < 0 || _openAt >= n ? n - 1 : _openAt; _openAt = -2;
                 _bookScroll = Vector2.zero;
             }
-            GUILayout.BeginArea(r, _sheet);
-            GUILayout.BeginHorizontal();
-            // the left page: the title, the contents
-            GUILayout.BeginVertical(GUILayout.Width(Mathf.Min(300f, r.width * 0.32f)));
-            GUILayout.Label(_writer.Book.Title, _inkTitle);
-            GUILayout.Label(_writer.Book.Sub, _inkSub);
-            _listScroll = GUILayout.BeginScrollView(_listScroll);
-            if (GUILayout.Button("Preface", _bookPart == -1 ? _tocSel : _tocPart)) { _bookPart = -1; _bookScroll = Vector2.zero; _line = 0; }
-            if (GUILayout.Button("A Timeline of the World", _bookPart == TimelinePart ? _tocSel : _tocPart)) { _bookPart = TimelinePart; _bookScroll = Vector2.zero; _line = 0; }
-            for (int i = 0; i < HistoryBook.PartTitles.Length; i++)
-            {
-                if (GUILayout.Button(HistoryBook.Roman(i + 1) + ". " + HistoryBook.PartTitles[i], _tocPart) && _bookPart != i) { Part(i); _bookPart = i; _bookChapter = 0; _bookScroll = Vector2.zero; _line = 0; }
-                if (_bookPart != i || _parts[i] == null) continue;
-                var chs = _parts[i].Chapters;
-                for (int k = 0; k < chs.Count; k++)
-                    if (GUILayout.Button(chs[k].Title, k == _bookChapter ? _tocSel : _toc) && k != _bookChapter) { _bookChapter = k; _bookScroll = Vector2.zero; _line = 0; }
-            }
-            GUILayout.EndScrollView();
-            GUILayout.EndVertical();
-            GUILayout.Space(18);
-            // the right page: the preface, or the chapter
-            GUILayout.BeginVertical();
-            BookChapter ch = null;
-            if (_bookPart == TimelinePart) TimelinePage(w, r);
-            else if (_bookPart < 0)
-            {
-                GUILayout.Label("Preface", _inkTitle);
-                GUILayout.Label("the world in year " + _writer.Book.Year, _inkSub);
-                _bookScroll = GUILayout.BeginScrollView(_bookScroll);
-                foreach (var para in _writer.Book.Preface) GUILayout.Label(para, _ink);
-                GUILayout.EndScrollView();
-            }
-            else
-            {
-                var part = _parts[_bookPart];
-                if (_bookChapter >= part.Chapters.Count) _bookChapter = part.Chapters.Count - 1;
-                if (_bookChapter < 0) { GUILayout.Label(HistoryBook.PartTitles[_bookPart], _inkTitle); GUILayout.Label(part.Intro ?? "", _ink); }
-                else
-                {
-                    ch = part.Chapters[_bookChapter];
-                    GUILayout.Label(ch.Title, _inkTitle);
-                    if (!string.IsNullOrEmpty(ch.Sub)) GUILayout.Label(ch.Sub, _inkSub);
-                    _bookScroll = GUILayout.BeginScrollView(_bookScroll, GUILayout.Height(r.height * (_line != 0 ? 0.52f : 0.80f)));
-                    if (_bookChapter == 0 && !string.IsNullOrEmpty(part.Intro)) GUILayout.Label("<i>" + part.Intro + "</i>", _inkFact);
-                    if (ch.MapSeat > 0 && w.Settlements.Exists(ch.MapSeat)) RealmMap(w, ch, r.width);
-                    foreach (var b in ch.Blocks)
-                    {
-                        switch (b.Kind)
-                        {
-                            case BookKind.Heading: GUILayout.Label(b.Text, _inkHead); break;
-                            case BookKind.Fact: GUILayout.Label(b.Text, _inkFact); break;
-                            case BookKind.Line: if (GUILayout.Button(b.Text, _line == b.Event ? _inkLineSel : _inkLine)) { _line = _line == b.Event ? 0 : b.Event; _whyScroll = Vector2.zero; } break;
-                            default: GUILayout.Label(b.Text, _ink); break;
-                        }
-                    }
-                    GUILayout.EndScrollView();
-                }
-            }
-            // a chosen line's causes, back to their root
-            if (_line != 0 && w.History.TryGet(_line, out var chosen))
-            {
-                GUILayout.BeginHorizontal();
-                GUILayout.Label("<b>Why?</b>  <size=11>each cause is a record of its own; its root is " + chosen.RootKind + "</size>", _ink);
-                if (Place(w, chosen, out double lat, out double lon) && GUILayout.Button("Go there", _inkBtn, GUILayout.Width(80))) { Rig.Lat = lat; Rig.Lon = lon; }
-                GUILayout.EndHorizontal();
-                _whyScroll = GUILayout.BeginScrollView(_whyScroll);
-                int n = w.History.CausalChain(_line, _chain);
-                for (int i = 0; i < n; i++)
-                {
-                    if (!w.History.TryGet(_chain[i], out var e)) { GUILayout.Label("<- (a record forgotten)", _inkFact); break; }
-                    string row = (i == 0 ? "" : "<- ") + HistoryText.Dated(w, e);
-                    if (GUILayout.Button(row, _chain[i] == _line ? _inkLineSel : _inkLine) && _chain[i] != _line) { _line = _chain[i]; break; }
-                }
-                GUILayout.EndScrollView();
-            }
-            GUILayout.FlexibleSpace();
-            // turning the pages
-            GUILayout.BeginHorizontal();
-            if (_bookPart >= 0 && GUILayout.Button("< previous", _inkBtn, GUILayout.Width(90))) Turn(-1);
-            GUILayout.FlexibleSpace();
-            if (ch != null && ch.Settlement > 0 && w.Settlements.Exists(ch.Settlement) && GUILayout.Button("Go to " + w.History.NameOf(EntityRef.Settlement(ch.Settlement)), _inkBtn))
-            { var a = w.Settlements.Get(ch.Settlement).Anchor; Rig.Lat = a.Latitude; Rig.Lon = a.Longitude; }
-            GUILayout.FlexibleSpace();
-            if (GUILayout.Button("next >", _inkBtn, GUILayout.Width(90))) Turn(1);
-            GUILayout.EndHorizontal();
-            GUILayout.EndVertical();
-            GUILayout.EndHorizontal();
-            GUILayout.EndArea();
+            BookSpread(r, w);   // (session 27: the book as an open book - Hud.Book.cs)
         }
 
         // (the book's realm maps, 25 §8) a realm's portrait: the land round its seat at its height, its villages in its ink, the rest in grey - the
@@ -1148,11 +1061,12 @@ namespace TC2.Game
             GUILayout.Label("A Timeline of the World", _inkTitle);
             GUILayout.Label(tl.To > tl.From ? "years " + tl.From + " to " + tl.To + ": its ages, its realms and its people" : "its first days", _inkSub);
             _bookScroll = GUILayout.BeginScrollView(_bookScroll, GUILayout.Height(r.height * 0.80f));
-            float cw = Mathf.Max(200f, r.width - Mathf.Min(300f, r.width * 0.32f) - 90f);
+            float cw = Mathf.Max(200f, r.width * 0.64f - 100f);   // (the right leaf's text width: Hud.Book.cs)
             float ch = 250f;
             Rect ages = GUILayoutUtility.GetRect(cw, 20f);
             Rect chart = GUILayoutUtility.GetRect(cw, ch);
-            Rect axis = GUILayoutUtility.GetRect(cw, 16f);
+            Rect axis = GUILayoutUtility.GetRect(cw, 22f);
+            if (_inkFactCentre == null) _inkFactCentre = new GUIStyle(_inkFact) { alignment = TextAnchor.UpperCenter, padding = new RectOffset(0, 0, 0, 0) };
             int n = tl.To - tl.From + 1;
             if (Event.current.type == EventType.Repaint && n > 1)
             {
@@ -1171,7 +1085,7 @@ namespace TC2.Game
                 for (int y = (tl.From / 100 + 1) * 100; y <= tl.To; y += 100)
                 {
                     float x = chart.x + cw * (y - tl.From) / (float)(n - 1);
-                    GUI.Label(new Rect(x - 20f, axis.y, 40f, axis.height), y.ToString(CultureInfo.InvariantCulture), _inkFact);
+                    GUI.Label(new Rect(x - 30f, axis.y, 60f, axis.height + 6f), y.ToString(CultureInfo.InvariantCulture), _inkFactCentre);
                 }
             }
             // the realms' inks, the people's line
@@ -1181,9 +1095,10 @@ namespace TC2.Game
             for (int i = 0; i < tl.Realms.Count; i++)
             {
                 var rr = tl.Realms[i];
-                Rect line = GUILayoutUtility.GetRect(cw, 18f);
-                if (Event.current.type == EventType.Repaint) { GUI.color = RealmInk[i % RealmInk.Length]; GUI.DrawTexture(new Rect(line.x, line.y + 4f, 14f, 10f), _dot); GUI.color = Color.white; }
-                GUI.Label(new Rect(line.x + 20f, line.y, line.width - 20f, line.height), rr.Name + " - at its height " + rr.Peak + " villages, year " + rr.PeakYear, _ink);
+                string legend = rr.Name + " - at its height " + rr.Peak + " villages, year " + rr.PeakYear;
+                Rect line = GUILayoutUtility.GetRect(cw, Mathf.Max(18f, _ink.CalcHeight(new GUIContent(legend), cw - 20f)));
+                if (Event.current.type == EventType.Repaint) { GUI.color = RealmInk[i % RealmInk.Length]; GUI.DrawTexture(new Rect(line.x, line.y + 6f, 14f, 10f), _dot); GUI.color = Color.white; }
+                GUI.Label(new Rect(line.x + 20f, line.y, line.width - 20f, line.height), legend, _ink);
             }
             if (tl.Marks.Count > 0)
             {
@@ -1194,6 +1109,8 @@ namespace TC2.Game
         }
 
         /// <summary>The timeline's chart in pixels: the realms stacked in their inks over the world's places, the people's line, on clear paper.</summary>
+        GUIStyle _inkFactCentre;
+
         Texture2D DrawTimeline(BookTimeline tl, TC2.Core.Simulation.World w)
         {
             const int TW = 720, TH = 250;
@@ -1206,6 +1123,7 @@ namespace TC2.Game
                 int places = 1;
                 var a = w.Annals;
                 for (int i = 0; i < a.Count; i++) places = Mathf.Max(places, a[i].Places);
+                int prevPy = -1;
                 for (int x = 0; x < TW; x++)
                 {
                     int k = Mathf.Clamp(Mathf.RoundToInt(x * (n - 1) / (float)(TW - 1)), 0, n - 1);
@@ -1220,11 +1138,14 @@ namespace TC2.Game
                         for (int j = y; j < Mathf.Min(TH, y + hgt); j++) px[j * TW + x] = c32;
                         y += hgt;
                     }
-                    // the people: a dark line two pixels thick
+                    // the people: a dark line two pixels thick, joined to the column before it (a fall or a rise between two columns is drawn, not a gap)
                     if (tl.MaxPeople > 0 && tl.People[k] > 0)
                     {
                         int py = Mathf.Clamp(Mathf.RoundToInt(tl.People[k] / (float)tl.MaxPeople * (TH - 4)), 0, TH - 2);
-                        px[py * TW + x] = new Color32(40, 28, 18, 235); px[(py + 1) * TW + x] = new Color32(40, 28, 18, 235);
+                        int lo = py, hi = py + 1;
+                        if (prevPy >= 0) { lo = Mathf.Min(lo, prevPy); hi = Mathf.Max(hi, prevPy + 1); }
+                        for (int j = lo; j <= hi; j++) px[j * TW + x] = new Color32(40, 28, 18, 235);
+                        prevPy = py;
                     }
                 }
                 // the moments: a short tick at the top
