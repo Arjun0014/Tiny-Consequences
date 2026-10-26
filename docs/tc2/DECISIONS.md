@@ -5910,7 +5910,11 @@ Rings and marks go when the HUD is hidden or the pointer is far (none left where
 caps and shields - a retinue; `s27q2`: Raimstead, a town of 1,050 - its market crowd in many household dyes, its standard in the realm's magenta);
 Unity C# compiles. The marks and flags are HUD-driven (IMGUI), judged in the Web build `s27web2` (9/9): the hovered home ringed in its household's
 colour with its tag (`s27book2 play_hover`); the flags at 1280x720 - where two unbound hamlets flew near pinks and read as one realm, so a village alone
-now flies none; the standing line (`Biography.Standing`, SwornTests) came after the build.
+now flies none; the standing line (`Biography.Standing`, SwornTests) came after the build. After it, from the same pictures: **the inspector is a card in words** (who and their
+standing, of which village in whose house, what they are doing, in good health / unwell / sick with ..., well fed / hungry / starving, the household's
+beasts and days of food, what they know and are best at, the last of their life) where it had been a dump of numbers ("health 1.00 fed 1.00 reserve 25
+days", "knows: nets 0.86"); the person and place pages' histories dated as the book dates them (not the feed's "Y12 d44 18:59 [Personal/People]";
+BiographyTests); **a place's present troubles on the map** ("34 sick" - its people abed, unseen indoors - and "famine" of the last weeks).
 
 ## D2-193 — 2026-10-26 — The History Book as a chronicle: weighted lines, an age's story and notes, Discoveries and Works, an open-book reader, eras on the timeline (25 §8 C; an observer)
 

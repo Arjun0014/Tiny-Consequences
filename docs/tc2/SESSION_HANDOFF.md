@@ -21,6 +21,11 @@
   - W-FOREST: snow lies on the boughs' upper faces (Instanced.shader `_Anim < 0`, `TerrainLod.SnowOn`) - evergreens dark under snow; shrubs turn with
     the trees; no green crowns over snow;
   - standards enlarged at most 2.2x and the enlarged ones cast no shadow (the 100 m shadow bands of s27q1); shots view `chosen`/`chosen:low`.
+  - after Web s27web2: the date in the UI type; the book's foot clear at 720 px; flags only for a realm's villages; an age's great events at most three
+    of a kind; the aim's reach measured to a village's buildings; "Your hand" sized to its lines; power tooltips (drawn last); the pages above the power bar;
+    the inspector a card in words and the pages' histories dated as the book (BiographyTests); "N sick" / "famine" on the map lines; the opening in the
+    book's type; the air's march halved over the ground; bare crowns wherever snow lies; lumpy, soft cumulus. (The two long "shadow" bands of s27q1/q3 are
+    field boundaries in perspective - not a fault.)
 - Tests: integration runs `s27i` (HistoryBook 7, Powers 13, Gazetteer 2, DayAir 2, Determinism) and `s27j` (Sworn incl. Standing, Biography, Leaders,
   HistoryBook) all passed, 0 skipped.
 - Tools (scratchpad of this context `5e178fba-...`): `gcommit.sh` - a gated commit (cc of the worktree, commit only when Game/Editor/Tests compile).
