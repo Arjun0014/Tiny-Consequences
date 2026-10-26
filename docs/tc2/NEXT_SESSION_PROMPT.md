@@ -440,6 +440,13 @@ their realm, Your Actions folding a cast's dead, the person and place pages as l
 only x1.02/x1.06); every terrain measure had been taken paused while the ground's colouring ran on for ever - stopped on a still world; `s27perf4` measures it.
 D2-196 written (frame numbers pending). Rebuild main's headless before a webtest after a sim version change. SESSION_HANDOFF "Session 27, context 3".
 
+**Where we are (session 27, context 4, 26 Oct 2026, from 16:40 IST)**: the frame is now known by function - `realmsperf --profile` on a `--symbols` Web
+build names the wasm's functions (`tc2/scripts/cpuprof.mjs` re-reads a saved profile): the main thread is busy the whole frame (the CPU's, not the GPU's), and
+its costs were the people set on the fine relief every frame, the hover's scan of the whole world, the roads' lookup and ribbons, instanced arrays sent at
+full length, names laid out on every event - all fixed on main (d4057ed), re-measured in `s27prof2`. The night from above, the regions' warp, the palisade
+faced in the village's frame (`place --ring`), the book holding the screen and the pages' words judged in shots and Web builds (D2-197). SESSION_HANDOFF
+"Session 27, context 4" has the exact state and the queue.
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.

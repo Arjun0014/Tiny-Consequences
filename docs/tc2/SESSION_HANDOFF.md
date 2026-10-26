@@ -1,5 +1,38 @@
 # TC2 Session handoff
 
+## Session 27, context 4 (26 Oct 2026, from 16:40 IST; Control Room run #81 session 4) - the frame by function; the night from above; the regions' edges; the palisade faced; the pages' words
+
+### Exact state (keep current)
+- **The machine**: never draw on the RX 5600M (gpusafe.mjs; every Unity log "AMD Radeon(TM) Graphics (ID=0x1636)"); silent runs. **A Web build takes the
+  machine from ~60 % to ~96 % of its memory** (Unity, its import worker, IL2CPP, Burst, then wasm-opt at 1.4 GB): Web build jobs gate on `GR=62 gate`
+  before starting; nothing else heavy beside one.
+- **The queue's runner survived the harness's stop** (session 27, context 3: the task shell was stopped, `runq.sh` pid 6256 and the q6 job lived on and
+  finished; its jobs gate on RAM < 86 %). It is the runner in use; `Q` as before; follow with a Monitor on `tail -n 0 -F $Q/runq.log | grep -E "^end |^start "`.
+- **main** = `wip/s27-int` = d4057ed (sim **108**; worktree `C:/Game Dev/tc-s27int`; fast-forward main between Unity jobs).
+- **This context's slices (presentation and the book; on main)**: D2-196's frame numbers filled (s27perf4: the terrain paused x0.966 region / x0.871
+  village, was x0.589 / x0.660; the colouring running x0.926 / x0.962); the night from above (river by night as the shallows, the lights amber in linear
+  light with a town's glow from the lights' mips, the old glow sprite over villages retired, the sea's moon path broken by the wind); the book holds the
+  screen (no card or page over it); the pages' words (founding party, homes counted once, crafts by their best hand, "at home" once, the first household's
+  following without zeros); **the frame by function** - `realmsperf --profile MS` + `unity.mjs build-web --symbols` + `tc2/scripts/cpuprof.mjs` (re-summarise a
+  saved .cpuprofile: `node tc2/scripts/cpuprof.mjs F.cpuprofile --frames N`): the main thread busy 99.9 % (the CPU's frame); fixes built from it (the ground
+  remembered for the day, people on the drawn ground `TerrainLod.DrawnRadius`, the hover near the pointer, RoadAt, roads laid only on change, instanced
+  arrays by size, names on repaint only); **the palisade faced in the village's frame** (PlaceFaced - the beach "slabs" were stretches turned up to a right
+  angle off the ring; `place --ring` showed every dry stretch standing; D2-196's shore two-pass was not the cause); the regions' warp made to reach.
+  D2-197 written (its pending numbers: s27prof2, the shots s27w1-s27w4).
+- **Measured**: the running world's heap plateaus (637 MB loaded, 832 MB after 15 s, flat for 4 min: `s27heap1`); Web `s27web6` 9/9 (e748638), `s27web7`
+  9/9 (ecd2f16); GazetteerTests 3/3, BiographyTests 4/4, LeadersTests 8/8, HistoryBookTests 7/7 (`s27c4`).
+- **The queue now**: `0_qa_shots_s27w` (shots s27w1/w2 the staircase area of seed 2's year 1,000 - villages #52, #20; s27w3 the night sea; s27w4 the palisade at
+  s27f7's views; then main's headless rebuilt and GazetteerTests/LeadersTests), then `0_qb_web_s27prof2` (Web build of d4057ed with symbols, webtest
+  s27web8, realmsperf `--layer surfacecache --profile` paused and the running profile into `tc2/out/webtest/s27prof2/` and `s27prof2_run/`, bookshots
+  s27book7 - the book with no card over it, the hover).
+
+### Next, in order
+1. Judge `s27w1`-`s27w4` (the staircase gone? the warp's coasts; the palisade a continuous ring along the beach - compare `s27f7`; the moon path broken) and
+   `s27prof2` (`cpuprof.mjs` on its .cpuprofile files; compare with `s27prof1`: RebuildPeople, Hud_HoverTag, TerrainLod_RoadAt, writeBuffer, WaterView);
+   fill D2-197's pending evidence; 25 §8.
+2. The frame by the new profile: rendering (16-28 ms: the draws' submission - BindGroup, constant buffers, shadows), RebuildPlaces, the rest of RebuildPeople
+   (Presence.Of, PositionAt); then keep judging A-E in real shots.
+
 ## Session 27, context 3 (26 Oct 2026, from 14:52 IST; Control Room run #81 session 3) - prospecting LANDED (sim 108); the terrain's branches; rivers, ages, the meteor, regions, paper pages, night clouds, the glint, lake roads
 
 ### Exact state (keep current)

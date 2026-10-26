@@ -29,19 +29,17 @@ listener at 0 in shots).
    runs); `docs/tc2/DECISIONS.md` newest (D2-183-D2-189, D2-191 the planet from orbit); `docs/tc2/PROGRESS.md` CURRENT STATE.
 4. `git status`, `git log --oneline -15`, `git worktree list`, and the queue: `cat $Q/runq.log` (`Q` below) - which jobs ended, with what; `ls $Q/todo`.
 
-## FIRST - the state at the very end of session 27, context 3 (16:40 IST)
-- **The job queue's runner (task `bbgjl1nqj`) and the main fast-forward waiter (task `b2qjknhr7`) were stopped by Claude Code: the machine ran critically
-  low on memory.** Nothing failed in them. The harness asked that they not be restarted unasked: report it to Arjun and restart the runner only when
-  he agrees or memory clearly allows (`gate` in `tc2/out/tools/s23/lib.sh`; one heavy job at a time).
-- The Web build of q6 (main **e748638**) was left running on its own (Unity, log `tc2/out/logs/unity-build-web-2026-10-26T11-04-19-927Z.log`, linking
-  the wasm at 16:39); **q6's later steps did not run** (no webtest `s27web6`, no `s27perf4`, no bookshots `s27book6`). `$Q/run_0_q6_web_s27web6.sh` is
-  stale (move it to `$Q/done`); `$Q/todo/0_q7_shots_s27f.sh` still waits.
-- **main is behind**: main = e748638, `wip/s27-int` = the docs and fixes after it (the shore palisade 5c62ace, D2-196, this prompt). Once no Unity job
-  runs in main's checkout (the build log ends with its result): `git checkout -- unity/TinyConsequences2/ProjectSettings/ProjectSettings.asset
-  NEXT_SESSION_PROMPT.md` (this file was copied there uncommitted), then `git merge --ff-only wip/s27-int` in `C:/Game Dev/tiny-consequences`.
-- Then (with the runner restarted): the webtest and the measures against main's build - if the orphaned build finished, run q6's remaining steps
-  (webtest `--tag s27web6`, `realmsperf --layer terrain` paused and `--layer recolour --speed 5`, bookshots `s27book6`) from it; better, rebuild from main
-  after the fast-forward so the shore palisade is in it; then q7 (`s27f7`).
+## FIRST - the state in session 27, context 4 (from 16:40 IST; keep current)
+- **main** = `wip/s27-int` = d4057ed or later (sim 108; worktree `C:/Game Dev/tc-s27int`; fast-forward main between Unity jobs: `git -C "C:/Game Dev/tiny-consequences"
+  merge --ff-only wip/s27-int`, never while a Unity job holds main's checkout). After a Web build: `git checkout -- unity/TinyConsequences2/ProjectSettings/ProjectSettings.asset`.
+- **The queue's runner** (`tc2/out/tools/s23/runq.sh`, pid 6256 at 17:30) outlived the harness's stop of its task in context 3 and runs on, each job gating on
+  RAM < 86 % / CPU < 85 % (Web builds `GR=62 gate`: a Web build takes the machine from ~60 % to ~96 % of its memory). If it is gone, restart it only when memory
+  clearly allows. Follow it with a Monitor: `tail -n 0 -F $Q/runq.log | grep --line-buffered -E "^end |^start "`.
+- **Queued at 17:32**: `0_qa_shots_s27w` (shots s27w1-w4: the regions' warp at seed 2's year 1,000 villages #52/#20, the night sea, the palisade at s27f7's views;
+  main's headless rebuilt + GazetteerTests/LeadersTests), then `0_qb_web_s27prof2` (Web build d4057ed --symbols, webtest s27web8, `s27prof2` profiles, bookshots s27book7).
+- **The frame by function**: build with `node tc2/scripts/unity.mjs build-web --jobs 2 --symbols`, profile with `realmsperf.mjs ... --profile 6000` (a layer off and
+  on) or `--layer none --pairs 0 --speed 5 --profile 8000` (the game running), re-read with `node tc2/scripts/cpuprof.mjs F.cpuprofile --frames N` (N: the run's
+  report.json `profiles`).
 
 ## Session 27, context 3 (26 Oct 2026, 14:52 - 16:45 IST) - prospecting landed (sim 108); the shots' findings fixed; the frame's real waste found
 - **main** = `wip/s27-int` (worktree `C:/Game Dev/tc-s27int`; work there, fast-forward main between Unity jobs). At the handoff main was e748638 and a
@@ -62,11 +60,12 @@ listener at 0 in shots).
   to hold 5c62ace; shots `s27f7` - the shore palisade).
 
 ## Do next, in order
-1. Read q6: webtest `s27web6` 9/9; `s27perf4/terrain.txt` (compare `s27perf2`'s x0.589/x0.660) and `recolour_running.txt`; `s27book6` pages and meteor.
-   Fill D2-196's pending numbers (DECISIONS, the paragraph ending "pending at the context handoff"). Read q7 `s27f7`.
-2. The frame by those numbers (SESSION_HANDOFF "Session 27, context 3" -> Next 3): the terrain's draws/vertices or soft-shadow taps if it is still large
-   paused; the colouring spread thinner or cached per patch if it costs a running world much. Then buildings (x0.84-0.88).
-3. Then by the shots: night lights from orbit, the sea's glint at the region view; keep judging A-E in real shots and Web builds.
+1. Read `qa` (`s27w1`-`s27w4`: no staircase at the year-1,000 near/region ground; the palisade one continuous ring along the beach - compare `s27f7`; the
+   night sea's moon path broken) and `qb` (`s27web8` 9/9; `s27prof2` with `cpuprof.mjs` against `s27prof1`; `s27book7`: the book with no card over it, the
+   hover tag). Fill D2-197's pending evidence (DECISIONS, its last paragraph) and 25 §8.
+2. The frame by the new profile: the draws' submission (16-28 ms: bind groups, constant buffers, the shadow passes), RebuildPlaces, the rest of
+   RebuildPeople (Presence.Of, PositionAt) - measure each change paired in one page (`realmsperf --layer NAME`).
+3. Keep judging A-E in real shots and Web builds (the sea's glint at the region view; the person page's Now tab is sparse).
 
 ## Rules that bite
 - **After a sim version change, rebuild main's headless (`tc2/headless/app`) before a webtest**: its determinism check compares the browser with
