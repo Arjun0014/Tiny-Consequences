@@ -1,7 +1,7 @@
 // TC2 clouds (D2-027; session 25: the planet from space; session 27: forms from a 3-D noise, the weather's four covers): a shell whose cover is the
 // world's weather (TC2CloudForm.hlsl: the rain's decks and the storms' bands, fair-weather cumulus where the sun heats moist ground, the layered
 // cloud of a damp day round the rain, heaped towers where the air is warm). Thick clouds bright on top, thin ones grey and see-through; the side away
-// from the sun in the shade of the forms sunward of it; the light reddened where the sun is low, a rim of it at the terminator, a faint grey at night.
+// from the sun in the shade of the forms sunward of it; the light reddened where the sun is low, a rim of it at the terminator, the moon's at night.
 // Fades out as the camera comes under the layer (_TC2CloudFade). Reads the cover and the time only; its tunables in Look.cs.
 Shader "TC2/Clouds"
 {
@@ -23,6 +23,8 @@ Shader "TC2/Clouds"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             #include "TC2CloudForm.hlsl"
             float _TC2CloudFade;
+            float4 _TC2MoonDir;     // (session 27) the moon, and how much of the night's light the view lets through (the ground's own: Terrain.shader)
+            float _TC2NightLift;
 
             struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; };
             struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; };
@@ -68,7 +70,10 @@ Shader "TC2/Clouds"
                 // the heaps: a convective deck's cauliflower and a layer's lumps in their own light and shade, the sunward lumps brighter
                 half heaped = saturate(body * (0.55h + 0.6h * cov.a));
                 lit *= lerp(1.0h, 0.70h + 0.38h * billow + 0.12h * (billow - billowS), heaped);
-                half3 c = lit * (0.08h + 0.92h * day) + half3(0.025h, 0.03h, 0.045h) * (1.0h - day);   // (by night a little moonlight: dark, never darker than the night below)
+                // by night only the moon's light, where it is up, as the ground below takes it (session 27: a fixed grey had drawn the night side's
+                // clouds as pale shapes over a black sea, moon or none - s27p3 orbit_21)
+                half moon = saturate((half)dot(up, _TC2MoonDir.xyz) * 0.7h + 0.3h) * (half)_TC2NightLift * (1.0h - day);
+                half3 c = lit * day + half3(0.09h, 0.115h, 0.19h) * moon * (0.6h + 0.4h * body);
                 // the terminator: the tops still catch the sun a little past the ground's dusk
                 half rim = saturate(1.0h - abs(mu) * 5.0h) * smoothstep(-0.12h, 0.04h, mu) * 0.32h;
                 c += half3(1.0h, 0.52h, 0.30h) * rim * body;
