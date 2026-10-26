@@ -24,6 +24,13 @@
 - Tests: integration runs `s27i` (HistoryBook 7, Powers 13, Gazetteer 2, DayAir 2, Determinism) and `s27j` (Sworn incl. Standing, Biography, Leaders,
   HistoryBook) all passed, 0 skipped.
 - Tools (scratchpad of this context `5e178fba-...`): `gcommit.sh` - a gated commit (cc of the worktree, commit only when Game/Editor/Tests compile).
+- **The frame on the integrated GPU** (`tc2/out/webtest/s27perf/*.txt`, Web s27web2, seed 2's year 300 - 11,272 people, 54 places - paired in one page):
+  12.4 fps at the region view (6 km), 8.4 at the village view (1.4 km). Buildings x0.38 / x0.61 (drawn and cast), shadows x0.64 / x0.50, air x0.90 /
+  x0.92, the villages' trees - / x0.89, people - / x0.91; clouds and cover ~1. Shadow set-ups against 4 cascades x3.2: 4 x1.6 -> x1.02/x1.02 (reach is not
+  the cost), 2 x1.6 -> x1.12/x1.29, 2 x1.0 -> x1.22/x1.29, 1 x1.0 -> x1.25/x1.51 (each cascade is a pass over every caster). Built from it: villages beyond
+  2.2 km of the camera without their homes' small details and casting no shadow (homes and yard trees: `WorldObjectsView.DetailFar`, bridge `fardetail`),
+  and the light shadows graded by height and made the default (`Sky.ShadowLite`: 4 cascades below 300 m, 2 below 900 m, 1 above). `0_y_perf2_s27` measures
+  them on s27web3 (fardetail, shadowlite, cloudshadow, names, terrain) - then D2-195.
 - **The queue** (runner `tc2/out/tools/s23/runq.sh`, `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`,
   the background task `bbgjl1nqj`): `0_u_web_s27web2` (the Web build of main c06833f = the reader, E, marks, flags, the top bar; webtest `s27web2`, bookshots
   `s27book2 --play`), then `0_v_perf_s27` (each layer's paired frame cost on seed 2's year 300: clouds, shadows, trees, cover, people, buildings, air -
