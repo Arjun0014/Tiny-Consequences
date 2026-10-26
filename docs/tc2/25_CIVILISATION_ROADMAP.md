@@ -201,7 +201,7 @@ F9 (the god's powers beyond those that exist), F10 (art and presentation: animat
 ten seeds against a control; a matched placebo for any lean; real shots), and the 1,000-year acceptance (§6) passed on several seeds - judged in real
 shots at the ages and in the History Book (D2-171). Then the player-facing game.
 
-**Status (reconciled 26 Oct 2026, session 27; main sim 107)** - what is BUILT and on main:
+**Status (reconciled 26 Oct 2026, session 27; main sim 108)** - what is BUILT and on main:
 - **Governance (C10)**: the asking (D2-168: realms of 8-16 villages by 300, a cycle of hegemonies over 900 years), the lord's death (D2-173: bonds lapse
   with the first at the lord's seat, heirs win them back - raids x0.64), the lord's peace (D2-174: no bands inside a realm; war moves to the realms'
   edges), the lord's household (D2-186: a first household's surplus keeps the landless; a lord's realm's come to its seat). By year 1,000 three lords take
@@ -226,8 +226,8 @@ shots at the ages and in the History Book (D2-171). Then the player-facing game.
   as a book** (D2-171: eight parts written after the fact - Ages, Realms and Rulers, Wars and Feuds, Famine/Plague/Disaster, Places, Lives, Threads of
   Cause, A Chronology - a Timeline page and **each realm's chapter opening on its map**), great worlds in the browser (D2-182: unseen people unposed,
   saves streamed).
-- **In evaluation, not on main**: C5.3c prospecting (`wip/prospect`, sim 108: a village whose smiths lack ore looks for it twice a year - within reach, then
-  farther as a scout); its control and ten seeds run in the queue; D2-190 if clean.
+- **Metal (C5)**: **prospecting** on main since session 27 (D2-190, sim 108: a village whose smiths lack ore looks for it twice a year - within reach as
+  founders do, then farther as a scout; ten seeds inside the noise, hunger a person-year x0.73, the metal worlds finding 5-115 bodies within reach).
 - **The 1,000-year acceptance (§6)**: four runs; the fourth (sim 107, seeds 2/4/7) judged in its books and measures - a wild planet to kingdoms in tiers,
   plagues, stone-walled towns, ruins rebuilt, maps that keep changing in two of three seeds. Its last shots and the Web build over year 1,000 are in the
   queue (session 27; see §6 "Fourth run").

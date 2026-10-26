@@ -5996,3 +5996,26 @@ strength 0).
 against the old four cascades x1.06 / x1.31; cloud shadows x0.97 / x1.00 (kept); the HUD's names x0.99 / x0.99. What is left: **the terrain x0.59 of the
 region view's frame and x0.66 of the village view's** (about 15 and 24 ms: its canopy, plots, cover and lighting in one shader) - the next cost.
 Web `s27web3` 9/9 with all of it; real shots at every view since (`s27e6`-`s27q4`) show the near villages unchanged (detail and shadows within 2.2 km).
+
+## D2-190 — 2026-10-26 — Prospecting: a village whose smiths lack ore looks for it, then farther (C5.3c; sim 108)
+
+**Context.** C5.1-C5.3b made copper and iron real chains (bodies of ore seen, mined, carried, smelted, traded), but a body became known only by being
+seen - founders looking over a new place's land, scouts, passers-by. Measured first (`place --ore`, ten worlds on sim 107): in the metal worlds smelting
+reached every village while only 14-17 knew ore; 18-52 villages smelted without knowing any body, their nearest mostly 2-5 km out and some within 2 km
+unseen - they lived on traded metal or none, though a day's look would have found it.
+
+**Decision.** (C5.3c, `Core/Places/Mining.cs`, `Settlement.ProspectAt`) A village **lacks ore** when someone in it smelts the metal, its tools or arms
+want it, and it knows no body within reach. Twice a year such a village **looks for it**: its people look over the land within their reach as founders
+do - the nearest body of what they lack becomes known and its finding is told (the mine, the carrying and the smelting then follow by the rules already
+there); finding none within reach, someone goes farther as a scout does, and ore in sight raises a site beside it for whoever leaves next (D2-103). No
+village is given ore: it learns of a body that lies in the ground. Switches `--oldprospect` (the old rules), `--prospecttally`; `ProspectTests` 2/2.
+
+**Evidence.** Control: `--oldprospect` reproduces the old annals byte for byte (seed 4 `_proc` = `_rui1`; the state hash differs only by the new
+`Settlement.ProspectAt`, always hashed). **Ten seeds `_pro1` against `_rui1`** (`tc2/out/tools/s26/results/cmp_rui1_pro1.txt`): people x1.02 (t 0.38),
+births and deaths a person-year x1.00, hunger a person-year x0.73 (t -1.29), famines a person-year x0.76 (t -1.48), raids x1.13 (t 1.38), palisades x1.16
+(t 1.73), loot x1.27 (t 1.74), sickness x1.11 (n 6, t 1.13) - inside the noise; the six worlds where nobody smelts (seeds 5, 1, 6, 3, 8, 42)
+never looked and run identically. The four metal worlds looked 2,836-7,464 seasons and found 5-115 bodies within reach (seed 4: 115, 32 villages with a
+mine or pits against 16; seed 7: 82; seed 2: 18 and six scouted; seed 11: 5); copper ore dug x1.05-1.78. What remains: villages that look and find
+nothing within reach still lack (seed 2: 38 for copper, their nearest bodies 2-8 km out) - their metal comes by trade. Landing branch tests
+(`N_d`, `0_q1`): Prospect, Mining 6, Iron 8, OreSites 2, Forge 8, Determinism 7, SaveLoad 8, HistoryBook 7, Chronicle 4, Powers 13 - 0 failed, 0 skipped.
+Landed on main 4778bda; seed 2's saves remade on sim 108 (`tc2/out/civ/s2_ac5`, years 300, 600, 1,000) for the shots and the Web pages.
