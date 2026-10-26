@@ -29,6 +29,20 @@ listener at 0 in shots).
    runs); `docs/tc2/DECISIONS.md` newest (D2-183-D2-189, D2-191 the planet from orbit); `docs/tc2/PROGRESS.md` CURRENT STATE.
 4. `git status`, `git log --oneline -15`, `git worktree list`, and the queue: `cat $Q/runq.log` (`Q` below) - which jobs ended, with what; `ls $Q/todo`.
 
+## FIRST - the state at the very end of session 27, context 3 (16:40 IST)
+- **The job queue's runner (task `bbgjl1nqj`) and the main fast-forward waiter (task `b2qjknhr7`) were stopped by Claude Code: the machine ran critically
+  low on memory.** Nothing failed in them. The harness asked that they not be restarted unasked: report it to Arjun and restart the runner only when
+  he agrees or memory clearly allows (`gate` in `tc2/out/tools/s23/lib.sh`; one heavy job at a time).
+- The Web build of q6 (main **e748638**) was left running on its own (Unity, log `tc2/out/logs/unity-build-web-2026-10-26T11-04-19-927Z.log`, linking
+  the wasm at 16:39); **q6's later steps did not run** (no webtest `s27web6`, no `s27perf4`, no bookshots `s27book6`). `$Q/run_0_q6_web_s27web6.sh` is
+  stale (move it to `$Q/done`); `$Q/todo/0_q7_shots_s27f.sh` still waits.
+- **main is behind**: main = e748638, `wip/s27-int` = the docs and fixes after it (the shore palisade 5c62ace, D2-196, this prompt). Once no Unity job
+  runs in main's checkout (the build log ends with its result): `git checkout -- unity/TinyConsequences2/ProjectSettings/ProjectSettings.asset
+  NEXT_SESSION_PROMPT.md` (this file was copied there uncommitted), then `git merge --ff-only wip/s27-int` in `C:/Game Dev/tiny-consequences`.
+- Then (with the runner restarted): the webtest and the measures against main's build - if the orphaned build finished, run q6's remaining steps
+  (webtest `--tag s27web6`, `realmsperf --layer terrain` paused and `--layer recolour --speed 5`, bookshots `s27book6`) from it; better, rebuild from main
+  after the fast-forward so the shore palisade is in it; then q7 (`s27f7`).
+
 ## Session 27, context 3 (26 Oct 2026, 14:52 - 16:45 IST) - prospecting landed (sim 108); the shots' findings fixed; the frame's real waste found
 - **main** = `wip/s27-int` (worktree `C:/Game Dev/tc-s27int`; work there, fast-forward main between Unity jobs). At the handoff main was e748638 and a
   background waiter (task `b2qjknhr7`) fast-forwards it to `wip/s27-int` (c16b86c or later) once the running Web build exits - verify
