@@ -26,7 +26,8 @@ namespace TC2.Game
 
         void Start()
         {
-            _lights = new Cubemap(Size, TextureFormat.R8, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear, name = "tc2-lights" };   // (one byte a texel: the refill stays cheap)
+            // (one byte a texel: the refill stays cheap; its mips are a town's glow on the air around it - Terrain.shader reads the fourth)
+            _lights = new Cubemap(Size, TextureFormat.R8, true) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Trilinear, name = "tc2-lights" };
             _acc = new float[6][];
             for (int f = 0; f < 6; f++) _acc[f] = new float[Size * Size];
             _px = new byte[Size * Size];
@@ -72,7 +73,7 @@ namespace TC2.Game
                 for (int i = 0; i < a.Length; i++) _px[i] = (byte)(Mathf.Clamp01(a[i]) * 255f + 0.5f);
                 _lights.SetPixelData(_px, 0, (CubemapFace)f);   // (rows as CloudView fills its faces: v down)
             }
-            _lights.Apply(false);
+            _lights.Apply(true);   // (the mips from the homes again)
         }
 
         /// <summary>A home's light: a soft point over the texel its direction falls in and its neighbours (bilinear weights).</summary>

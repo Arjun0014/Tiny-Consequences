@@ -254,33 +254,9 @@ namespace TC2.Game
         Vector3 _kilnTop;    // the kiln's vent in its model's frame (C3.2): smoke while a potter works at it
 
         readonly List<Vector4> _smoke = new List<Vector4>();   // chimney tops with smoke (xyz) and how much (w)
-        readonly List<Vector4> _lights = new List<Vector4>();  // villages at night (xyz) and how many of their homes are lit (w)
         readonly List<Vector4> _watch = new List<Vector4>();   // the watch fires at village stores tonight (xyz)
-
-        /// <summary>
-        /// A village's lights at night seen from high above (D2-081): a warm glow over the village, as wide and as bright as the homes
-        /// whose people are awake inside (lit windows, hearths) - the same homes whose windows the near view lights; nothing when all
-        /// sleep. Drawn only when the camera is too high to see the windows themselves.
-        /// </summary>
-        void EmitLights()
-        {
-            if (_lights.Count == 0 || Rig == null || Rig.Cam == null) return;
-            Vector3 cam = Rig.Cam.transform.position;
-            float R = (float)Host.World.Planet.Radius, alt = cam.magnitude - R;
-            float show = Mathf.InverseLerp(1500f, 4000f, alt);
-            if (show <= 0f) return;
-            for (int i = 0; i < _lights.Count; i++)
-            {
-                var v = _lights[i];
-                Vector3 at = new Vector3(v.x, v.y, v.z);
-                float lit = v.w;
-                // (a glow some pixels across at any height: wider as the camera rises, by the village's lit homes; session 25: a town's
-                // lights from orbit a bright point of a few pixels, not a pink disc - half the width, a brighter core)
-                float size = Mathf.Max(45f, alt * 0.0062f) * (0.6f + 0.25f * Mathf.Sqrt(lit));
-                float glow = show * Mathf.Clamp01(0.45f + lit / 10f) * 1.35f;
-                Puffs.Add(at + at.normalized * (size * 0.1f), size, 0.05f * show, 0f, glow * 1.6f, Mathf.Repeat(i * 0.618f, 1f), 0f);
-            }
-        }
+        // (session 27, context 4: a village's glow at night seen from high above had been a soft sprite over its middle, D2-081 - drawn as a rose
+        // disc over the square and over far hamlets, s27e2 region@21; the ground itself now carries every home's light, LightsView)
 
         /// <summary>The watch fires (D2-071): a small fire by a village's store while someone keeps the watch there at night.</summary>
         void EmitWatch()
@@ -387,7 +363,6 @@ namespace TC2.Game
             if ((Off & 2) == 0) { _people.Draw(cam); _lordsP.Draw(cam); _swornP.Draw(cam); _rings.Draw(cam); _afloat.Draw(cam); _afloatP.Draw(cam); _floors.Draw(cam); }
             if ((Off & 4) == 0) { _beached.Draw(cam); _beachedP.Draw(cam); }
             EmitSmoke(w);
-            EmitLights();
         }
 
         static bool SomeoneAwakeHome(TC2.Core.Simulation.World w, int household, out bool cooking)
@@ -681,7 +656,7 @@ namespace TC2.Game
             for (int i = 0; i < _works.Length; i++) _works[i]?.Clear();
             DrawOre(w, P);
             _ricks.Clear(); _graves.Clear(); _gravesOld.Clear(); _standards.Clear(); _standardsBig.Clear(); _muck.Clear(); _huts.Clear(); _tents.Clear(); _ruins.Clear(); _beached.Clear(); _beachedP.Clear(); _walls.Clear(); _stoneWalls.Clear(); _towers.Clear(); _woodpiles.Clear();
-            _smoke.Clear(); _lights.Clear(); _watch.Clear();
+            _smoke.Clear(); _watch.Clear();
             MuckHeaps = 0; MuckLargestKg = 0;   // (tools: the heaps drawn, and where the largest stands - the "muck" shot views)
             // (the frame pass, 14 §7) a village wholly beyond the planet's limb is not built: none of its buildings, lights or smoke can be seen - its
             // farthest work is within `PlacesReach` of its anchor, and the places are built again as soon as the camera has moved a quarter of that
@@ -717,7 +692,6 @@ namespace TC2.Game
                 // its buildings (D2-059): lived in, standing empty, fallen in - an abandoned village's too, as they decay
                 // (and how many days its woodstore holds against what its hearths burn: the woodpiles by the homes, D2-081)
                 double woodDays = s.FuelDay > 1e-6f ? s.Woodstore / s.FuelDay : (s.Woodstore > 0 ? 30.0 : 0.0);
-                int litHomes = 0;
                 ReadPlots(w, sid);   // (what each building's ground leaves it: C13.3)
                 MuckShares(w, sid);  // (whose beasts made the yards' muck: C3.7c)
                 var bl = w.BuildingsOf(sid);
@@ -727,7 +701,7 @@ namespace TC2.Game
                     byte bk = w.Buildings.Get(bl[i]).Kind;
                     if (Boats.IsBoat(bk)) { DrawBoat(w, P, in s, bl[i], ex); continue; }   // (a household's dugout at the landing: C9.1)
                     if (!Structures.IsHome(bk)) { DrawWork(w, P, in s, bl[i], ex); continue; }
-                    if (DrawHome(w, P, in s, bl[i], ex, dark, tOut, woodDays)) litHomes++;
+                    DrawHome(w, P, in s, bl[i], ex, dark, tOut, woodDays);
                 }
                 // households without a home camp on their lot (not those on the road to another village), a fire smoking by the tent
                 var hhs = w.HouseholdsOf(sid);
@@ -739,7 +713,6 @@ namespace TC2.Game
                     float age = 0.88f + 0.2f * (float)KeyedRng.Unit(KeyedRng.Mix((ulong)hhs[i] + 77));
                     bool awake = SomeoneAwakeHome(w, hhs[i], out bool cooking);
                     bool lit = dark && awake;
-                    if (lit) litHomes++;
                     var tm = PlaceFaced(P, s, h.HomeX, h.HomeY, tface, Mathf.Min(ex, 1.3f));
                     _tents.Add((int)(age * 10) + (lit ? 100 : 0), new Color(age, age * 0.97f, age * 0.92f, 1f), tm, lit ? -1f : 0f);
                     if (awake && (cooking || h.Indoor - Hearth.Indoors(tOut, h.Shelter, 0.0) > 0.5))
@@ -748,8 +721,7 @@ namespace TC2.Game
                         _smoke.Add(new Vector4(top.x, top.y, top.z, cooking ? 0.8f : 0.45f));
                     }
                 }
-                // after dark, the village's lit homes seen from high above; the watch fire by its store
-                if (s.Inhabited && dark && litHomes > 0) _lights.Add(new Vector4(center.x, center.y, center.z, litHomes));
+                // after dark, the watch fire by its store (the village's lights seen from high above are the ground's own: LightsView)
                 if (s.Inhabited && dark && s.Watcher != 0 && (s.Works & Construction.Granary) != 0)
                 {
                     Construction.GranarySpot(in s, out double wx, out double wy);

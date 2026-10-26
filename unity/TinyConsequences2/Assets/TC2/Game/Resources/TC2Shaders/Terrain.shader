@@ -450,9 +450,14 @@ Shader "TC2/Terrain"
                     if (night * farL > 0.0h || every)
                     {
                         half lights = SAMPLE_TEXTURECUBE_LOD(_TC2Lights, sampler_TC2Lights, up, 0).r;
+                        // (session 27, context 4) and a town's glow on the air around it: the homes' map four times coarser (~145 m a texel), so a
+                        // town sits in a soft amber haze and a hamlet stays a few points
+                        half halo = SAMPLE_TEXTURECUBE_LOD(_TC2Lights, sampler_TC2Lights, up, 3).r;
                         half grain = TriG(i.positionWS, bw, 1.0 / 19.0, dpx, dpy);
                         half lit = saturate(lights * 1.4h) * (0.35h + 1.3h * grain * grain);
-                        c += half3(1.0h, 0.62h, 0.28h) * lit * lit * night * farL * 2.2h;
+                        // (a firelight amber in linear light: the old (1, 0.62, 0.28) was a screen colour's numbers and read from orbit as beige
+                        // patches, 204/165/115 at their brightest - s27e2 orbit@21)
+                        c += half3(1.0h, 0.47h, 0.11h) * (lit * lit * 2.4h + saturate(halo * 1.6h) * 0.22h) * night * farL;
                     }
                 }
                 // under the sea, the water's own colour by the depth of water above (Beer-Lambert): the sand of the shallows

@@ -33,6 +33,8 @@ Shader "TC2/River"
             TEXTURE2D(_TC2Detail); SAMPLER(sampler_TC2Detail);
             float4 _TC2FogColor;
             float _TC2FogDensity;
+            float4 _TC2MoonDir;     // (session 27, context 4) the night as the ground and the sea's shallows have it (Terrain.shader, Water.shader)
+            float _TC2NightLift;
 
             // uv0.xyz: the unit side vector (the ribbon's across, or a joint's radius), uv0.w: where across (-1 .. 1; 0 on the line)
             // uv1.x: half the drawn width near the camera (m), uv1.y: the river's rank among the planet's (0-1)
@@ -87,7 +89,14 @@ Shader "TC2/River"
                 half fres = pow(1.0h - saturate(dot(n, v)), 4.0h);
                 float3 h = normalize(l.direction + v);
                 half spec = pow(saturate(dot(n, h)), lerp(40.0h, 200.0h, near)) * lerp(0.8h, 2.2h, near) * l.shadowAttenuation;
-                half3 c = (body + sky * fres * 0.55h) * (0.12h + 0.88h * day) + l.color * spec * day;
+                // (session 27, context 4) by night as the sea's shallows beside it - the night sky's share and the moon's sheen and path - not a
+                // tenth of the day's colour: s27e2's village view at 21:00 had the river a black stroke (5/12/13) over moonlit fields (39/68/36)
+                half nightK = 0.30h * (half)_TC2NightLift;
+                half moonUp = saturate((half)dot(up, _TC2MoonDir.xyz) * 0.7h + 0.3h) * (1.0h - day) * (half)_TC2NightLift;
+                float3 hm = normalize(_TC2MoonDir.xyz + v);
+                half moonPath = pow(saturate(dot(n, hm)), lerp(30.0h, 90.0h, near)) * 0.5h * (1.0h - day) * (half)_TC2NightLift;
+                half3 c = (body + sky * fres * 0.55h) * (nightK + (1.0h - nightK) * day) + l.color * spec * day
+                        + half3(0.13h, 0.17h, 0.29h) * moonUp * 0.6h + half3(0.62h, 0.70h, 0.85h) * moonPath;
                 // wet earth along the banks, near the camera
                 c = lerp(c, half3(0.17h, 0.15h, 0.10h) * (0.3h + 0.7h * day), smoothstep(0.80h, 0.97h, across) * near * 0.55h);
                 half alpha = (0.94h - 0.30h * smoothstep(0.82h, 1.0h, across)) * (half)i.river.y;
