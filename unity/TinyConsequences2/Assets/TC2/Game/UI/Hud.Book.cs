@@ -347,7 +347,7 @@ namespace TC2.Game
                 if (Dated(t, out string year, out string season, out string words))
                 {
                     GUILayout.BeginHorizontal();
-                    GUILayout.Label(year + (season.Length > 0 ? "\n<size=11><i>" + season + "</i></size>" : ""), _pgYear, GUILayout.Width(66));
+                    GUILayout.Label(year + (season.Length > 0 ? "\n<size=11><i>" + season + "</i></size>" : ""), _pgYear, GUILayout.Width(88));   // (wide enough for "early autumn" on one line: s27web5)
                     GUILayout.Label(words, _pgLine);
                     GUILayout.EndHorizontal();
                     continue;

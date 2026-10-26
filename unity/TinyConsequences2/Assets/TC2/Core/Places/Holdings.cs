@@ -843,7 +843,7 @@ namespace TC2.Core.Places
                 if (d > most) { most = d; mostHid = hl[i]; }
             }
             var sb = new System.Text.StringBuilder();
-            sb.Append("Grain: its households keep ").Append(held.ToString("0", System.Globalization.CultureInfo.InvariantCulture)).Append(" days' grain in its store, the village ").Append(s.Common.ToString("0", System.Globalization.CultureInfo.InvariantCulture)).Append(" of its own");
+            sb.Append("Grain: its households keep ").Append(held.ToString("0", System.Globalization.CultureInfo.InvariantCulture)).Append(" days' grain in its store").Append(s.Common >= 0.5 ? ", the village " + s.Common.ToString("0", System.Globalization.CultureInfo.InvariantCulture) + " of its own" : "");   // (session 27: no "the village 0 of its own")
             if (n > 1) sb.Append("; from ").Append(Days(least)).Append(" to ").Append(Days(most)).Append(" days of their food a household (the most, the ").Append(TC2.Core.History.HistoryText.Plural(w.History.NameOf(EntityRef.Household(mostHid)))).Append(")");
             int debtors = 0, last = 0; double debt = 0; var by = new Dictionary<int, int>();
             var hs = w.Holdings;

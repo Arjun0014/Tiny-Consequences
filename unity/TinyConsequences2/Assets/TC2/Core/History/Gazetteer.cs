@@ -252,7 +252,10 @@ namespace TC2.Core.History
             Ore(w, sid, Mining.Copper, sb);
             Ore(w, sid, Mining.Iron, sb);
             if (s.Charcoal > 0 || Charcoal.Site(w, sid) != 0) sb.Append("Charcoal: ").Append(F(s.Charcoal, "0")).Append(" kg in store").Append(Charcoal.Site(w, sid) != 0 ? ", burnt at its hearth by the woods" : "").Append(s.ClampUntil > w.Now ? " (a clamp smouldering)" : "").Append(".\n");
-            sb.Append("Tools: metal for ").Append(F(100 * Tech.ToolShare(in s), "0")).Append(" % of its people (").Append(F(s.Metal, "0")).Append(" kg of copper, ").Append(F(s.Iron, "0")).Append(" kg of iron)");
+            // (session 27: the page a leaf of the book - no "0 kg of copper, 0 kg of iron")
+            double share = Tech.ToolShare(in s);
+            if (share < 0.005 && s.Metal < 0.5 && s.Iron < 0.5) sb.Append("Tools: of wood and stone");
+            else sb.Append("Tools: metal for ").Append(F(100 * share, "0")).Append(" % of its people (").Append(s.Metal >= 0.5 ? F(s.Metal, "0") + " kg of copper" : "no copper").Append(s.Iron >= 0.5 ? ", " + F(s.Iron, "0") + " kg of iron" : "").Append(")");
             if (s.Arms > 0.5) sb.Append("; arms ").Append(F(s.Arms, "0")).Append(s.IronArms > 0.5 ? " (" + F(s.IronArms, "0") + " of iron)" : "");
             sb.Append(".\n");
             if (Forge.Smithy(w, sid) != 0)
@@ -290,15 +293,22 @@ namespace TC2.Core.History
             {
                 double held = System.Math.Min(s.Granary, Structures.StoreCapacity(in s));
                 bool clay = w.Learning.Clay(s.Cell);
-                sb.Append("Pots and jars: ").Append(clay ? "clay within reach" : "no clay within reach").Append("; ").Append(F(s.Jars, "0")).Append(" kg of jars in its granaries keep ")
-                  .Append(F(100 * Pottery.Sealed(in s), "0")).Append(" % of the ").Append(F(held, "0")).Append(" days' grain there sealed; ").Append(F(s.Pots, "0")).Append(" kg of ware in store");
+                sb.Append("Pots and jars: ").Append(clay ? "clay within reach" : "no clay within reach");
+                if (s.Jars >= 0.5) sb.Append("; ").Append(F(s.Jars, "0")).Append(" kg of jars in its granaries keep ").Append(F(100 * Pottery.Sealed(in s), "0")).Append(" % of the ").Append(F(held, "0")).Append(" days' grain there sealed");
+                else sb.Append("; no jars in its granaries");
+                if (s.Pots >= 0.5) sb.Append("; ").Append(F(s.Pots, "0")).Append(" kg of ware in store");
                 int own = 0, kiln = 0, none = 0; var hl = w.HouseholdsOf(sid);
                 for (int i = 0; i < hl.Count; i++)
                 {
                     if (Pottery.FiresOwn(w, sid, Pottery.Best(w, hl[i]))) own++;
                     else if ((double)w.Households.Get(hl[i]).Pots > 0.5 * w.Members(hl[i]).Count) kiln++; else none++;
                 }
-                sb.Append("; its hearths: ").Append(own).Append(" fire their own pots, ").Append(kiln).Append(" cook in kiln pots, ").Append(none).Append(" in none");
+                // (session 27) only the hearths there are: no "0 cook in kiln pots, 0 in none"
+                var hearths = new System.Collections.Generic.List<string>();
+                if (own > 0) hearths.Add(own + " fire their own pots");
+                if (kiln > 0) hearths.Add(kiln + " cook in kiln pots");
+                if (none > 0) hearths.Add(none + " cook without fired pots");
+                if (hearths.Count > 0) sb.Append("; its hearths: ").Append(string.Join(", ", hearths));
                 if (s.PotsSold > 0.5f) sb.Append("; it sold ").Append(F(s.PotsSold, "0")).Append(" kg lately (halving each year)");
                 sb.Append(".\n");
                 if (Pottery.Kiln(w, sid) != 0)
