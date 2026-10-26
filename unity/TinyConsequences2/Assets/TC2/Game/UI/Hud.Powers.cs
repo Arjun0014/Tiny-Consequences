@@ -133,7 +133,7 @@ namespace TC2.Game
         // (session 27: the powers as play) your hand: the last casts and what has come of each so far, read from the ledger once a second
         readonly System.Collections.Generic.List<(long id, string what, long time, string came, int n)> _hand = new System.Collections.Generic.List<(long, string, long, string, int)>();
         float _handAt;
-        GUIStyle _handLine;
+        GUIStyle _handLine, _tipStyle;
 
         void YourHand(World w, float sw, float sh)
         {
@@ -204,11 +204,13 @@ namespace TC2.Game
             float bw = 960f, bh = 78f;
             _powersRect = new Rect((sw - bw) * 0.5f, sh - bh - 44f, bw, bh);
             GUI.Box(_powersRect, GUIContent.none, _box);
-            GUILayout.BeginArea(new Rect(_powersRect.x + 8f, _powersRect.y + 6f, _powersRect.width - 16f, _powersRect.height - 10f));
+            var area = new Rect(_powersRect.x + 8f, _powersRect.y + 6f, _powersRect.width - 16f, _powersRect.height - 10f);
+            GUILayout.BeginArea(area);
+            int hovered = -1; Rect hoveredRect = Rect.zero;
             for (int row = 0; row < 2; row++)
             {
                 GUILayout.BeginHorizontal();
-                GUILayout.Label(row == 0 ? "<b>Your hand</b>" : "", _small, GUILayout.Width(70));
+                GUILayout.Label(row == 0 ? "<b>Powers</b>" : "", _small, GUILayout.Width(70));   // (the casts' consequences are "Your hand", above the bar)
                 for (int k = row == 0 ? 0 : FirstRow; k < (row == 0 ? FirstRow : Powers.Length); k++)
                 {
                     long wait = Recharging(w, k);
@@ -219,6 +221,7 @@ namespace TC2.Game
                     GUI.enabled = wait == 0;
                     if (GUI.Toggle(br, on, content, on ? _powerOn : _powerOff) != on) _aim = on ? -1 : k;
                     GUI.enabled = true;
+                    if (br.Contains(Event.current.mousePosition)) { hovered = k; hoveredRect = br; }
                     if (Event.current.type == EventType.Repaint)
                     {
                         // its colour on its left edge; while it comes back, how far it has come, along its foot
@@ -237,6 +240,17 @@ namespace TC2.Game
                 GUILayout.EndHorizontal();
             }
             GUILayout.EndArea();
+            // (session 27) the power under the pointer told above the bar: what it does, and when it is back (its tooltip was never drawn)
+            if (hovered >= 0 && _aim < 0 && Event.current.type == EventType.Repaint)
+            {
+                var hp = Powers[hovered];
+                long hw = Recharging(w, hovered);
+                if (_tipStyle == null) _tipStyle = new GUIStyle(_mapTag) { wordWrap = true, padding = new RectOffset(9, 9, 6, 7) };
+                var tc = new GUIContent("<b>" + hp.Doing + "</b>: " + hp.Help + (hw > 0 ? "\n<color=#f2c35f>back in " + Wait(hw) + "</color>" : "") + "\n<size=11><i>click, then click the ground where it falls</i></size>");
+                float tw = 400f, th = _tipStyle.CalcHeight(tc, tw);
+                float cx = area.x + hoveredRect.center.x;
+                GUI.Box(new Rect(Mathf.Clamp(cx - tw * 0.5f, 4f, sw - tw - 4f), _powersRect.y - th - 8f, tw, th), tc, _tipStyle);
+            }
             // (over a page, the book or a bar a click is theirs, not the power's: the mark and its words only over open ground - last frame's PointerOverUi)
             if (_aim < 0 || PointerOverUi || !GroundUnder(Input.mousePosition, out var dir, out int cell)) return;
             // (session 27) its reach laid on the ground (AimView), and the villages it would reach named
