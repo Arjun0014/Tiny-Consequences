@@ -43,8 +43,12 @@
   `wip/s27-int` while no Unity job runs - `0_v` is a browser job, main's checkout is free then): `$Q/stage/0_w_shots_s27b.sh` (flames v3 + the meteor's scar
   by day/night `s27e6`/`e7`, the training ground's standards `s27q3`, the head up close `s27q4` view `chosen`, seed 42's lumpy cumulus `s27p6`, bare crowns over
   snow `s27f4`, the rain forest's tones `s27f5`). The next Web build must carry `--meteor-play` (the meteor's fall, landing and scar in the browser).
-- **Prospecting** (`wip/prospect` 85acede, sim 108): merges cleanly onto main (`git merge-tree`); land it (D2-190) if `results/cmp_rui1_pro1.txt` is inside the
-  noise - seeds s4, s5, s1, s6, s11 done (s11: 2,836 seasons gone looking, 5 bodies found within reach).
+- **Prospecting** (`wip/prospect` 85acede, sim 108): merged onto main's tip in the landing worktree **`C:/Game Dev/tc-s27land` (`wip/s27-land` 142ffc5)**; its
+  tests `N_d_land_tests` run after the compare `N_c_cmp_pro1` (`tc2/out/tools/s26/results/cmp_rui1_pro1.txt`). **Land only after `P_a_shots_s27c` and
+  `P_b_web_s27web4` finish** (they load sim-107 saves): then fast-forward main to `wip/s27-land` (merge `wip/s27-int` into it first if it moved), write
+  D2-190, and regenerate the shots' saves with the sim-108 binary (seed 2 to years 300 and 1,000 as `s2_ac4` was: `tc2/out/tools/s26/make_ac4.sh` shows
+  how) before any later shots or bookshots job. Seeds done: s4 (7,464 seasons gone looking, 115 bodies found within reach), s5, s1, s6 (no metal), s11
+  (2,836 / 5), s2 (7,174 / 18, 6 scouted).
 - **Drafts**: D2-193 (the book) and D2-194 (the powers' feel, the HUD) in this context's scratchpad `d2193_194.md` - finish with the Web evidence
   (`WEB_EVIDENCE_19x`) and append to DECISIONS. D2-192 (people) is on the branch.
 
