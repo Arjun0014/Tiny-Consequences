@@ -106,9 +106,12 @@ namespace TC2.Game
             var pw = Powers[_aim];
             w.Issue(new Command { Time = w.Now, Kind = pw.Kind, Cell = cell, Arg = pw.Arg });
             // (session 27: the powers as play) the hand seen: a burst where it fell, the ground shaken by the heaviest
-            if (GroundUnder(Input.mousePosition, out var at, out _)) AimView.Cast(at, pw.Reach, pw.Col);
+            // (the meteor: the stone seen falling to where the world strikes - the cell's heart, where its fires and its scar will be - and the burst and the
+            // shaking when it lands)
             float shake = pw.Kind == CommandKind.GodMeteor ? 1f : pw.Kind == CommandKind.GodQuake ? 0.85f : pw.Kind == CommandKind.GodEruption ? 0.7f : pw.Kind == CommandKind.GodStorm ? 0.3f : pw.Kind == CommandKind.GodLightning ? 0.25f : 0.1f;
-            if (Rig != null) Rig.Shake(shake, 0.6f + shake * 1.4f);
+            bool meteor = pw.Kind == CommandKind.GodMeteor;
+            if (meteor) AimView.Cast(w.Planet.Grid.Center[cell], pw.Reach, pw.Col, shake, true);
+            else if (GroundUnder(Input.mousePosition, out var at, out _)) AimView.Cast(at, pw.Reach, pw.Col, shake);
             _aim = -1;
         }
 

@@ -1096,6 +1096,29 @@ namespace TC2.Game
         readonly System.Collections.Generic.List<int> _near = new System.Collections.Generic.List<int>();
         /// <summary>Works out on the land near this patch - quarries (C1.3): cut rock where they stand, no fields or woods over them.</summary>
         readonly System.Collections.Generic.List<Vec3d> _sites = new System.Collections.Generic.List<Vec3d>();
+        // (session 27) the meteors' strikes the ledger records (where, when) and those near the patch being coloured: their scars on the ground
+        readonly System.Collections.Generic.List<Vector4> _impacts = new System.Collections.Generic.List<Vector4>(), _impactsNear = new System.Collections.Generic.List<Vector4>();
+        TC2.Core.Simulation.World _impactWorld;
+        long _impactSeen;
+        /// <summary>m: a strike's bowl, its rim's outer edge and how far its thrown earth and scorch reach; years until its scar has grown over.</summary>
+        const float ScarBowl = 20f, ScarRim = 29f, ScarThrow = 75f, ScarYears = 200f;
+
+        /// <summary>The meteors' strikes the ledger holds, kept up as it grows (each record read once; a new world read whole).</summary>
+        void UpdateImpacts(TC2.Core.Simulation.World w)
+        {
+            var h = w.History;
+            if (!ReferenceEquals(w, _impactWorld)) { _impactWorld = w; _impacts.Clear(); _impactSeen = 0; }
+            if (h.LastId == _impactSeen) return;
+            for (int i = h.Count - 1; i >= 0; i--)
+            {
+                var e = h.At(i);
+                if (e.Id <= _impactSeen) break;
+                if (e.Kind != TC2.Core.History.HistoryKind.MeteorStruck || e.Cell < 0 || e.Cell >= w.Planet.Cells) continue;
+                Vec3d at = w.Planet.Grid.Center[e.Cell];
+                _impacts.Add(new Vector4((float)at.X, (float)at.Y, (float)at.Z, (float)(e.Time / (double)SimTime.Year)));
+            }
+            _impactSeen = h.LastId;
+        }
         readonly System.Collections.Generic.List<Vector4> _grounds = new System.Collections.Generic.List<Vector4>();   // training grounds (xyz) and how beaten (w)
         readonly System.Collections.Generic.List<int> _graveNear = new System.Collections.Generic.List<int>();   // villages whose burial ground lies on the patch (D2-154)
         readonly System.Collections.Generic.List<Vec3d> _graveAt = new System.Collections.Generic.List<Vec3d>();
@@ -1229,6 +1252,7 @@ namespace TC2.Game
         static readonly Color Rock = new Color(0.47f, 0.44f, 0.40f), RockDark = new Color(0.33f, 0.31f, 0.30f);
 
         static readonly Color VolcanoRock = new Color(0.25f, 0.22f, 0.21f), VolcanoAsh = new Color(0.46f, 0.41f, 0.36f), VolcanoCrater = new Color(0.17f, 0.14f, 0.13f);
+        static readonly Color ScarBowlCol = new Color(0.21f, 0.18f, 0.15f), ScarRimCol = new Color(0.62f, 0.55f, 0.45f), ScarScorch = new Color(0.30f, 0.27f, 0.22f);   // (a meteor's scar: session 27)
         // (beach sand and wet sand: the terrain shader's, drawn per pixel since D2-081)
         static readonly Color Snow = new Color(0.95f, 0.96f, 0.98f), Glacier = new Color(0.86f, 0.92f, 0.97f);
         static readonly Color Shelf = new Color(0.82f, 0.78f, 0.60f), Abyss = new Color(0.05f, 0.11f, 0.17f);
@@ -1287,6 +1311,18 @@ namespace TC2.Game
                     Vec3d at = st.LocalToSphere(st.GraveX, st.GraveY, P.Radius);
                     double dq = System.Math.Acos(System.Math.Min(1.0, at.X * pc.x + at.Y * pc.y + at.Z * pc.z));
                     if (dq < greach) { _graveNear.Add(sid); _graveAt.Add(at); }
+                }
+                // (session 27) the meteors' strikes near the patch, with how fresh their scars are
+                UpdateImpacts(w);
+                _impactsNear.Clear();
+                float nowY = (float)(w.Now / (double)SimTime.Year);
+                for (int q = 0; q < _impacts.Count; q++)
+                {
+                    Vector4 iv = _impacts[q];
+                    float fresh = 1f - Mathf.Clamp01((nowY - iv.w) / ScarYears);
+                    if (fresh <= 0f) continue;
+                    double dq = System.Math.Acos(System.Math.Min(1.0, iv.x * pc.x + iv.y * pc.y + iv.z * pc.z));
+                    if (dq < reach) _impactsNear.Add(new Vector4(iv.x, iv.y, iv.z, fresh));
                 }
                 // the beaten earth of training grounds (C1.5, D2-114): bare by the hours of practice put in there (b.Use) - none before
                 _grounds.Clear();
@@ -1370,6 +1406,21 @@ namespace TC2.Game
                     }
                     farm *= 1f - grave;
                     graveHere = grave;
+                    // (session 27) a meteor's scar where the ledger says one struck: a scorched bowl, a rim of thrown-up earth, rays of ejecta and scorch round
+                    // it - no field or wood in the bowl while it is fresh; grown over in two centuries (the strike's own record, elaborated: D2-084's scars)
+                    float scarBowl = 0f, scarRim = 0f, scarThrow = 0f;
+                    for (int q = 0; q < _impactsNear.Count; q++)
+                    {
+                        Vector4 iv = _impactsNear[q];
+                        float dm = (float)(System.Math.Acos(System.Math.Min(1.0, iv.x * d.X + iv.y * d.Y + iv.z * d.Z)) * P.Radius);
+                        if (dm > ScarThrow) continue;
+                        float fresh = iv.w;
+                        scarBowl = Mathf.Max(scarBowl, (1f - Edge(ScarBowl - 4f, ScarBowl, dm)) * fresh);
+                        scarRim = Mathf.Max(scarRim, Edge(ScarBowl - 4f, ScarBowl, dm) * (1f - Edge(ScarBowl + 2f, ScarRim, dm)) * fresh);
+                        float ray = Mathf.Clamp01((float)Noise.Perlin(d.X * 900.0 + iv.x * 50.0, d.Y * 900.0 + iv.y * 50.0, d.Z * 900.0 + iv.z * 50.0) * 1.6f + 0.35f);
+                        scarThrow = Mathf.Max(scarThrow, Edge(ScarBowl, ScarRim, dm) * (1f - Edge(ScarRim, ScarThrow, dm)) * ray * fresh);
+                    }
+                    farm *= 1f - Mathf.Max(scarBowl, scarRim);
                     // farmland: the shader draws plots, furrows and hedges in the village's own grid
                     p.Plots[o] = Vector2.zero; p.Farm[o] = Vector2.zero;
                     if (owner != 0 && w.Settlements.Exists(owner))
@@ -1437,6 +1488,15 @@ namespace TC2.Game
                         Color ash = Color.Lerp(VolcanoAsh, VolcanoRock, Mathf.Clamp01(vrock * 1.3f - 0.2f + 0.25f * streak));
                         col = Color.Lerp(col, ash, Mathf.Clamp01(vrock * 1.15f));
                         if (summit > 0) col = Color.Lerp(col, VolcanoCrater, summit * 0.8f);
+                    }
+                    // (session 27) a meteor's scar over all: thrown earth and scorch, the pale rim, the dark bowl; no wood over the bowl and rim while fresh
+                    if (scarBowl + scarRim + scarThrow > 0f)
+                    {
+                        col = Color.Lerp(col, ScarScorch, scarThrow * 0.5f);
+                        col = Color.Lerp(col, ScarRimCol, scarRim * 0.7f);
+                        col = Color.Lerp(col, ScarBowlCol, scarBowl * 0.85f);
+                        clear = Mathf.Max(clear, Mathf.Max(scarBowl, scarRim));
+                        bare = Mathf.Max(bare, Mathf.Max(scarBowl, scarRim));
                     }
                     // snow: the cell's climate at this height (lapse), the season, and ice sheets
                     double t = P.TMean[c] - 0.0065 * (rel - (Ground.DrawnElev(P, c) - sea) * Ground.VScale + cone) / Ground.VScale + P.TAmp[c] * season * (P.SinLat[c] >= 0 ? 1 : -1);

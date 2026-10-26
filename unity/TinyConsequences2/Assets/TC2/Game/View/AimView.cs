@@ -30,8 +30,12 @@ namespace TC2.Game
         /// <summary>A mark is drawn while the HUD renewed it this frame or the last (the HUD draws after the views' LateUpdate).</summary>
         public static bool Aiming => Pinned || Time.frameCount - _aimFrame <= 1;
 
-        struct Burst { public Vec3d Dir; public double Reach; public Color Col; public float Born; }
+        struct Burst { public Vec3d Dir; public double Reach; public Color Col; public float Born, Shake; public bool Shaken; }
         static readonly List<Burst> Bursts = new List<Burst>();
+        // (session 27) a stone falling from the sky to where it was thrown (the meteor), its burst and the ground's shaking when it lands
+        struct Fall { public Vec3d Dir; public Color Col; public float Born; }
+        static readonly List<Fall> Falls = new List<Fall>();
+        const float FallTime = 0.75f;
 
         struct Mark { public Vec3d Dir; public double R; public Color Col; public int Frame; }
         static readonly Mark[] Marks = new Mark[2];
@@ -40,8 +44,14 @@ namespace TC2.Game
         /// footprint (radius m) in its household's colour. Gone the frame the HUD stops renewing it.</summary>
         public static void MarkAt(int slot, Vec3d dir, double radius, Color col) => Marks[slot] = new Mark { Dir = dir, R = radius, Col = col, Frame = Time.frameCount };
 
-        /// <summary>A power cast at a point: its burst on the ground.</summary>
-        public static void Cast(Vec3d dir, double reach, Color col) => Bursts.Add(new Burst { Dir = dir, Reach = reach, Col = col, Born = Time.unscaledTime });
+        /// <summary>A power cast at a point: its burst on the ground and the camera shaken by <paramref name="shake"/> (0 none); <paramref name="fall"/>:
+        /// a stone falls from the sky first, the burst and the shaking when it lands.</summary>
+        public static void Cast(Vec3d dir, double reach, Color col, float shake = 0f, bool fall = false)
+        {
+            float born = Time.unscaledTime;
+            if (fall) { Falls.Add(new Fall { Dir = dir, Col = col, Born = born }); born += FallTime; }
+            Bursts.Add(new Burst { Dir = dir, Reach = reach, Col = col, Born = born, Shake = shake });
+        }
 
         Mesh _mesh;
         Material _mat;
@@ -98,6 +108,8 @@ namespace TC2.Game
                 var b = Bursts[i];
                 float age = now - b.Born;
                 if (age > 1.8f) { Bursts.RemoveAt(i); continue; }
+                if (age < 0f) continue;   // (a falling stone's burst waits for it to land)
+                if (!b.Shaken) { b.Shaken = true; Bursts[i] = b; if (b.Shake > 0f) Rig.Shake(b.Shake, 0.6f + b.Shake * 1.4f); }
                 double r = System.Math.Max(minR, b.Reach);
                 float k = age / 1.8f;
                 double ring = r * (0.15 + 1.25 * Mathf.Sqrt(k));
@@ -107,12 +119,70 @@ namespace TC2.Game
                 Band(w, b.Dir, ring, ring * 1.04, c, clear, lift);
                 if (age < 0.5f) { Color flash = Color.Lerp(b.Col, Color.white, 0.6f); flash.a = 0.55f * (1f - age / 0.5f); Disc(w, b.Dir, r * 0.35, flash, lift); }
             }
+            // a falling stone: a burning head coming down a slanted path from high over the point, its trail behind it fading from fire to smoke
+            Vector3 cam = Rig.Cam.transform.position;
+            for (int i = Falls.Count - 1; i >= 0; i--)
+            {
+                var f = Falls[i];
+                float t = (now - f.Born) / FallTime;
+                if (t >= 1f) { Falls.RemoveAt(i); continue; }
+                Vector3 g = PlanetGeo.Surface(w.Planet, f.Dir, 0f), up = g.normalized;
+                Vector3 east = Vector3.Cross(Vector3.up, up); if (east.sqrMagnitude < 1e-6f) east = Vector3.right; east.Normalize();
+                Vector3 north = Vector3.Cross(up, east);
+                float L = Mathf.Clamp(alt * 1.3f, 300f, 6000f);
+                Vector3 from = g + (up * 0.82f + east * 0.45f + north * 0.36f).normalized * L;
+                float k = t * t;   // (it falls faster as it comes)
+                Vector3 head = Vector3.Lerp(from, g, k), tail = Vector3.Lerp(from, g, Mathf.Max(0f, k - 0.22f - 0.25f * t));
+                float wHead = Mathf.Max(5f, alt * 0.012f);
+                Color hot = Color.Lerp(f.Col, new Color(1f, 0.95f, 0.8f), 0.6f); hot.a = 1f;
+                Color smoke = new Color(0.55f, 0.48f, 0.42f, 0f);
+                Ribbon(tail, head, wHead * 0.15f, wHead, smoke, hot, cam);
+                Sprite(head, wHead * 1.6f, hot, cam);
+            }
             if (_v.Count == 0) return;
             _mesh.Clear();
             _mesh.SetVertices(_v); _mesh.SetColors(_c); _mesh.SetTriangles(_t, 0);
             _mesh.bounds = new Bounds(Vector3.zero, Vector3.one * 1e5f);
             var rp = new RenderParams(_mat) { shadowCastingMode = ShadowCastingMode.Off, receiveShadows = false, camera = Rig.Cam, worldBounds = new Bounds(Vector3.zero, Vector3.one * 2e5f) };
             Graphics.RenderMesh(rp, _mesh, 0, Matrix4x4.identity);
+        }
+
+        /// <summary>A ribbon from a to b facing the camera, its width and colour from one end to the other.</summary>
+        void Ribbon(Vector3 a, Vector3 b, float wa, float wb, Color ca, Color cb, Vector3 cam)
+        {
+            const int n = 10;
+            Vector3 along = b - a;
+            if (along.sqrMagnitude < 1e-4f) return;
+            int b0 = _v.Count;
+            for (int i = 0; i <= n; i++)
+            {
+                float s = i / (float)n;
+                Vector3 p = a + along * s;
+                Vector3 side = Vector3.Cross(along, p - cam).normalized * (Mathf.Lerp(wa, wb, s) * 0.5f);
+                Color c = Color.Lerp(ca, cb, s * s);
+                _v.Add(p - side); _c.Add(c);
+                _v.Add(p + side); _c.Add(c);
+            }
+            for (int i = 0; i < n; i++)
+            {
+                int k = b0 + i * 2;
+                _t.Add(k); _t.Add(k + 2); _t.Add(k + 1);
+                _t.Add(k + 1); _t.Add(k + 2); _t.Add(k + 3);
+            }
+        }
+
+        /// <summary>A glowing disc facing the camera: bright at its heart, clear at its edge.</summary>
+        void Sprite(Vector3 at, float r, Color col, Vector3 cam)
+        {
+            Vector3 view = (at - cam).normalized;
+            Vector3 sx = Vector3.Cross(view, Vector3.up); if (sx.sqrMagnitude < 1e-6f) sx = Vector3.right; sx.Normalize();
+            Vector3 sy = Vector3.Cross(sx, view);
+            int c0 = _v.Count;
+            _v.Add(at); _c.Add(col);
+            Color clear = col; clear.a = 0f;
+            const int n = 16;
+            for (int i = 0; i <= n; i++) { float a = i * Mathf.PI * 2f / n; _v.Add(at + (sx * Mathf.Cos(a) + sy * Mathf.Sin(a)) * r); _c.Add(clear); }
+            for (int i = 0; i < n; i++) { _t.Add(c0); _t.Add(c0 + 1 + i); _t.Add(c0 + 2 + i); }
         }
 
         /// <summary>A point at an angle and an arc's length (m) from a centre on the ground, lifted a little above it.</summary>
