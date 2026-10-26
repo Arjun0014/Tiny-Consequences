@@ -920,8 +920,10 @@ namespace TC2.Game
 
         /// <summary>The most a standard is enlarged with the camera's distance (life-size within 900 m, the village's own objects at most 1.6x) - real state
         /// exaggerated, never invented (D2-084; C10.6). Real shots (s23c-s23h): it reads up close and from the low view, not from the village view, where a
-        /// village spans a few hundred pixels and even five times its size is a speck; a polity at the village and region views wants a map layer (the UI).</summary>
-        const float StandardFar = 4f;
+        /// village spans a few hundred pixels and even five times its size is a speck; a polity at the village and region views wants a map layer (the UI).
+        /// (session 27: 2.2 - the map's names now fly each place's flag in its polity's colour; at 4x a lord's standard stood as a pole 50 m tall, a thin line
+        /// across the village view.)</summary>
+        const float StandardFar = 2.2f;
 
         /// <summary>The first household's standard (D2-152): by its house's door, toward the house's front; taller for a lord's village by the villages
         /// it holds.</summary>
