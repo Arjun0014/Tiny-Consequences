@@ -427,7 +427,7 @@ namespace TC2.Game
         }
 
         readonly System.Collections.Generic.List<double> _gateDist = new System.Collections.Generic.List<double>();
-        readonly System.Collections.Generic.List<bool> _ringDry = new System.Collections.Generic.List<bool>();   // (each stretch of a ring dry or not: DrawRing)
+        readonly System.Collections.Generic.List<bool> _ringDry = new System.Collections.Generic.List<bool>(), _ringShow = new System.Collections.Generic.List<bool>();   // (each stretch of a ring dry, then standing: DrawRing)
 
         void DrawRing(TC2.Core.Simulation.World w, PlanetState P, in Settlement s, int sid, float ex, double r, float condition, double share, double stone)
         {
@@ -486,20 +486,28 @@ namespace TC2.Game
             double stoneTo = stone >= 1.0 ? double.MaxValue : stone * far;
             int towerEvery = Mathf.Max(8, (int)(45.0 / 2.0));   // (a wall tower every ~45 m of curtain)
             // (no posts in the sea or a lake: C1.6) - each stretch by its own point and its neighbours': where the ring runs along a shore its points fall
-            // dry and wet in turn, and every other stretch had gone - a row of separate slabs down the beach (s27d4, s27e3); a lone wet stretch between
-            // dry ones stands, a lone dry one between wet ones does not
-            _ringDry.Clear();
+            // dry and wet in turn, and every other stretch had gone - a row of separate slabs down the beach (s27d4, s27e3): first a wet stretch between
+            // dry ones is filled, then a dry one left alone between wet ones goes (a ring only part built does not wrap its first stretch to its last)
+            _ringDry.Clear(); _ringShow.Clear();
             for (int k = 0; k < set; k++) _ringDry.Add(Structures.RingDry(w, in s, r, 2.0 * System.Math.PI * (k + 0.5) / stretches));
+            bool whole = set == stretches;
+            for (int k = 0; k < set; k++)
+            {
+                bool before = k > 0 ? _ringDry[k - 1] : whole && _ringDry[set - 1], after = k + 1 < set ? _ringDry[k + 1] : whole && _ringDry[0];
+                _ringShow.Add(_ringDry[k] || (before && after));
+            }
+            for (int k = 0; k < set; k++)
+            {
+                bool before = k > 0 ? _ringShow[k - 1] : whole && _ringShow[set - 1], after = k + 1 < set ? _ringShow[k + 1] : whole && _ringShow[0];
+                _ringDry[k] = _ringShow[k] && (before || after || set <= 2);   // (now: whether the stretch stands)
+            }
             for (int k = 0; k < set; k++)
             {
                 double a = 2.0 * System.Math.PI * (k + 0.5) / stretches;
                 bool gate = _gateDist[k] < gateHalf;
                 bool inStone = stone > 0.0 && _gateDist[k] <= stoneTo;
                 if (gate) continue;
-                bool whole = set == stretches;   // (a ring part built: its first and last are not neighbours)
-                bool before = k > 0 ? _ringDry[k - 1] : whole ? _ringDry[set - 1] : _ringDry[k];
-                bool after = k + 1 < set ? _ringDry[k + 1] : whole ? _ringDry[0] : _ringDry[k];
-                if (_ringDry[k] ? (!before && !after && set > 2) : !(before && after)) continue;
+                if (!_ringDry[k]) continue;
                 if (!inStone && cond <= 0f) continue;   // (the timber of an old ring all rotted away, its stone standing)
                 double x = s.SquareX + r * System.Math.Cos(a), y = s.SquareY + r * System.Math.Sin(a);
                 float yaw = Mathf.Atan2((float)(s.SquareX - x), (float)(s.SquareY - y)) * Mathf.Rad2Deg;
