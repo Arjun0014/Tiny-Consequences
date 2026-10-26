@@ -251,3 +251,10 @@ its homes - judged in shots `s27p1`-`p3`); **B** on main (household liveries, th
 `s27q1`; nearer shots queued); **C** the content on main (weighted lines, age stories, IX Discoveries and Works), the open-book reader on `wip/chronicle`;
 **D** forest kinds side by side queued (`s27f1`); **E** on `wip/feel` (flames, the aim marker naming the villages in reach, the cast's burst and shake,
 "Your hand" live, the HUD skin). SESSION_HANDOFF "Session 27".
+**Session 27, context 2**: all of A-E on main and judged in real shots and the Web build (`s27web2` 9/9): **A** cumulus of many sizes, lumpy and soft;
+**B** house marks and family rings on hover, map flags for a realm's villages, `Biography.Standing` on the tag and page, the first and the sworn up close
+(D2-192); **C** the open-book reader, the timeline's eras under the pointer, the ages' years, an age's great events capped by kind, the gloss (D2-193);
+**D** snow on the boughs, bare crowns over snow, shrubs turning with the trees, the rain forest's tones; **E** the aim sized for the eye, flames, the
+meteor's fall and scar, lightning bolts for every strike, power tooltips, "Your hand" (D2-194). **The frame** measured on the integrated GPU (`s27perf`:
+8-12 fps at the village/region views of a great world) and cut where it was spent - far villages plain and shadowless, the light shadows graded by height
+and the default, the air's march halved over the ground (D2-195 with `s27perf2`).
