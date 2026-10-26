@@ -210,6 +210,15 @@ namespace TC2.Game
                 LookAt(d, view.EndsWith(":low") ? 24 : 50);
                 return;
             }
+            if (view.StartsWith("chosen"))
+            {
+                // (session 27 tools: shots --choose head) the chosen person where they are now, "chosen" 22 m up, "chosen:low" 10 m - their dress up close
+                int pid = WorldObjectsView.Chosen != 0 ? WorldObjectsView.Chosen : WorldObjectsView.ShotChosen;
+                if (pid != 0 && w.People.Exists(pid) && TC2.Core.Agents.Presence.Of(w, in w.People.Get(pid), Host.RenderTime, out Vec3d pd, out _, out _, out _)) d = pd;
+                else Debug.Log("[TC2] the chosen person is not drawn now (indoors, asleep or away): the village framed");
+                LookAt(d, view.EndsWith(":low") ? 10 : 22);
+                return;
+            }
             if (view.StartsWith("why:"))
             {
                 // (C10.6 tools: "why:Tribute", "why:Trade:low") as "act:" for the reason a person is out - the busiest spot of the tribute's carriers on
