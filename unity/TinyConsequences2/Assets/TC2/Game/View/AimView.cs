@@ -36,6 +36,12 @@ namespace TC2.Game
         struct Fall { public Vec3d Dir; public Color Col; public float Born; }
         static readonly List<Fall> Falls = new List<Fall>();
         const float FallTime = 0.75f;
+        // (session 27) lightning seen: a bolt for each strike the ledger records near where the camera looks - the storms' and the god's alike
+        struct Bolt { public Vector3 At; public float Born; public ulong Seed; }
+        readonly List<Bolt> _bolts = new List<Bolt>();
+        long _boltSeen = -1;
+        TC2.Core.Simulation.World _boltWorld;
+        const float BoltTime = 0.38f;
 
         struct Mark { public Vec3d Dir; public double R; public Color Col; public int Frame; }
         static readonly Mark[] Marks = new Mark[2];
@@ -119,8 +125,36 @@ namespace TC2.Game
                 Band(w, b.Dir, ring, ring * 1.04, c, clear, lift);
                 if (age < 0.5f) { Color flash = Color.Lerp(b.Col, Color.white, 0.6f); flash.a = 0.55f * (1f - age / 0.5f); Disc(w, b.Dir, r * 0.35, flash, lift); }
             }
-            // a falling stone: a burning head coming down a slanted path from high over the point, its trail behind it fading from fire to smoke
             Vector3 cam = Rig.Cam.transform.position;
+            Strikes(w, now, alt);
+            for (int i = _bolts.Count - 1; i >= 0; i--)
+            {
+                var b = _bolts[i];
+                float age = now - b.Born;
+                if (age > BoltTime) { _bolts.RemoveAt(i); continue; }
+                // two strokes and their afterglow: lit at once, dark a moment, lit again, fading
+                float lit = age < 0.07f ? 1f : age < 0.13f ? 0.15f : age < 0.22f ? 0.9f : 0.9f * (1f - (age - 0.22f) / (BoltTime - 0.22f));
+                Vector3 up = b.At.normalized;
+                Vector3 east = Vector3.Cross(Vector3.up, up); if (east.sqrMagnitude < 1e-6f) east = Vector3.right; east.Normalize();
+                Vector3 north = Vector3.Cross(up, east);
+                float H = Mathf.Clamp(alt * 0.55f, 220f, 900f), wid = Mathf.Max(1.2f, alt * 0.0035f);
+                Color core = new Color(0.86f, 0.91f, 1f, lit), glow = new Color(0.55f, 0.65f, 1f, 0.35f * lit);
+                ulong h = b.Seed;
+                Vector3 prev = b.At + up * H;
+                const int n = 9;
+                for (int k = 1; k <= n; k++)
+                {
+                    h = KeyedRng.Mix(h + (ulong)k);
+                    float jx = (float)KeyedRng.Unit(h) - 0.5f, jy = (float)KeyedRng.Unit(KeyedRng.Mix(h ^ 0x9E37UL)) - 0.5f;
+                    float s = k / (float)n;
+                    Vector3 next = k == n ? b.At : b.At + up * (H * (1f - s)) + (east * jx + north * jy) * (H * 0.16f * (1f - s * 0.6f));
+                    Segment(prev, next, wid * 3.5f, glow, cam);
+                    Segment(prev, next, wid, core, cam);
+                    prev = next;
+                }
+                Sprite(b.At + up * (wid * 2f), H * 0.22f, new Color(0.8f, 0.86f, 1f, 0.55f * lit), cam);
+            }
+            // a falling stone: a burning head coming down a slanted path from high over the point, its trail behind it fading from fire to smoke
             for (int i = Falls.Count - 1; i >= 0; i--)
             {
                 var f = Falls[i];
@@ -169,6 +203,47 @@ namespace TC2.Game
                 _t.Add(k); _t.Add(k + 2); _t.Add(k + 1);
                 _t.Add(k + 1); _t.Add(k + 2); _t.Add(k + 3);
             }
+        }
+
+        /// <summary>(session 27) The strikes the ledger has recorded since the last frame near where the camera looks (a few a frame, a bolt each), placed
+        /// within their cell by the record's own number (the world knows the cell struck, not the spot).</summary>
+        void Strikes(TC2.Core.Simulation.World w, float now, float alt)
+        {
+            var H = w.History;
+            if (!ReferenceEquals(w, _boltWorld)) { _boltWorld = w; _boltSeen = H.LastId; _bolts.Clear(); return; }
+            if (H.LastId == _boltSeen) return;
+            var P = w.Planet;
+            Vector3 f = Rig.FocusPoint;
+            Vec3d dir = new Vec3d(f.x, f.y, f.z).Normalized;
+            double see = 2500.0 + 2.0 * alt;
+            int added = 0;
+            for (int i = H.FirstIndexAfter(_boltSeen); i < H.Count && added < 4; i++)
+            {
+                var e = H.At(i);
+                if (e.Kind != TC2.Core.History.HistoryKind.LightningStrike || e.Cell < 0 || e.Cell >= P.Cells) continue;
+                Vec3d c = P.Grid.Center[e.Cell];
+                if (Vec3d.ArcDistance(dir, c, P.Radius) > see) continue;
+                ulong h = KeyedRng.Mix((ulong)e.Id * 0x9E3779B97F4A7C15UL);
+                Vec3d east = Vec3d.Cross(new Vec3d(0, 1, 0), c); if (east.Length < 1e-9) east = new Vec3d(1, 0, 0); east = east.Normalized;
+                Vec3d north = Vec3d.Cross(c, east).Normalized;
+                double ox = (KeyedRng.Unit(h) - 0.5) * 90.0, oy = (KeyedRng.Unit(KeyedRng.Mix(h)) - 0.5) * 90.0;
+                Vec3d at = (c * P.Radius + east * ox + north * oy).Normalized;
+                _bolts.Add(new Bolt { At = PlanetGeo.Surface(P, at, 0f), Born = now, Seed = h });
+                added++;
+            }
+            _boltSeen = H.LastId;
+        }
+
+        /// <summary>A straight band from a to b facing the camera.</summary>
+        void Segment(Vector3 a, Vector3 b, float wdt, Color col, Vector3 cam)
+        {
+            Vector3 along = b - a;
+            if (along.sqrMagnitude < 1e-4f) return;
+            Vector3 side = Vector3.Cross(along, (a + b) * 0.5f - cam).normalized * (wdt * 0.5f);
+            int k = _v.Count;
+            _v.Add(a - side); _v.Add(a + side); _v.Add(b - side); _v.Add(b + side);
+            _c.Add(col); _c.Add(col); _c.Add(col); _c.Add(col);
+            _t.Add(k); _t.Add(k + 2); _t.Add(k + 1); _t.Add(k + 1); _t.Add(k + 2); _t.Add(k + 3);
         }
 
         /// <summary>A glowing disc facing the camera: bright at its heart, clear at its edge.</summary>
