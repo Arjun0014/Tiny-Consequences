@@ -1,6 +1,8 @@
 // TC2 puffs (D2-029): soft camera-facing sprites for steam, smoke, ash columns and glow. A billboard needs no rotation,
 // so the instance matrix carries the puff's data instead: translation = centre, m00 = size (m), m11 = opacity,
 // m22 = ash (0 white steam .. 1 dark ash), m01 = glow (orange emission), m02 = seed (shape variety), m10 = sun share.
+// (session 27) m21 = 1: a flame - a tongue of fire standing up from the ground (stretched along the planet's up as the camera sees it), its
+// heat m12 (0 a dying flame, red and low; 1 a roaring one, its heart white-yellow), flickering and licking upward with the time.
 // Instanced with Graphics.RenderMeshInstanced (culling bounds are set by the caller).
 Shader "TC2/Puff"
 {
@@ -42,6 +44,7 @@ Shader "TC2/Puff"
                 float3 positionWS : TEXCOORD0;
                 float2 uv : TEXCOORD1;
                 float4 data : TEXCOORD2;   // opacity, ash, glow, seed
+                float2 flame : TEXCOORD6;  // (session 27) 1 a flame, its heat
                 float3 side : TEXCOORD3;   // camera right (for the light's side)
                 float3 upv : TEXCOORD4;    // camera up
                 float sun : TEXCOORD5;
@@ -62,6 +65,16 @@ Shader "TC2/Puff"
                 float2 q = v.positionOS.xy;
                 float2 rq = float2(q.x * cos(a) - q.y * sin(a), q.x * sin(a) + q.y * cos(a));
                 float3 pw = centre + (right * rq.x + up * rq.y) * size;
+                o.flame = float2(m._m21, m._m12);
+                if (m._m21 > 0.5)
+                {
+                    // a flame stands on the ground: its quad upright along the planet's up, facing the camera about that axis; the centre is its foot
+                    float3 gu = normalize(centre);
+                    float3 toCam = normalize(_WorldSpaceCameraPos - centre);
+                    float3 side = cross(gu, toCam);
+                    side = dot(side, side) > 1e-6 ? normalize(side) : right;
+                    pw = centre + side * (q.x * size * 0.55) + gu * ((q.y + 0.5) * size);
+                }
                 o.positionWS = pw;
                 o.positionCS = TransformWorldToHClip(pw);
                 o.uv = v.positionOS.xy * 2.0;      // -1..1
@@ -79,8 +92,31 @@ Shader "TC2/Puff"
                 return lerp(lerp(hash21(i), hash21(i + float2(1, 0)), u.x), lerp(hash21(i + float2(0, 1)), hash21(i + float2(1, 1)), u.x), u.y);
             }
 
+            half4 Flame(Varyings i)
+            {
+                // the tongue: wide at its foot, tapering to a point that sways; noise licking upward with the time; its heart hotter
+                float2 p = i.uv;                       // -1..1 across, -1 foot .. 1 tip
+                float h = p.y * 0.5 + 0.5;
+                float seed = i.data.w;
+                float t = _Time.y * (2.6 + seed);
+                float sway = (vnoise(float2(seed * 7.0, t * 0.9)) - 0.5) * 0.55 * h * h;
+                float x = p.x - sway;
+                float lick = vnoise(float2(x * 2.2 + seed * 13.0, h * 3.0 - t * 2.4)) * 0.55 + vnoise(float2(x * 4.7 - seed * 5.0, h * 6.0 - t * 3.7)) * 0.45;
+                float width = (1.0 - h) * (0.65 + 0.35 * (1.0 - h)) + 0.04;
+                float body = width * (0.55 + 0.75 * lick) - abs(x);
+                float alpha = saturate(body * 6.0) * saturate((1.0 - h) * 5.0) * saturate(p.y * 3.0 + 3.2);
+                if (alpha < 0.01) discard;
+                float heat = i.flame.y;
+                float core = saturate(body * 3.0) * (1.0 - h * 0.8) * (0.35 + 0.65 * heat);
+                half3 c = lerp(half3(0.75h, 0.12h, 0.02h), half3(1.0h, 0.55h, 0.10h), (half)saturate(core * 1.6));
+                c = lerp(c, half3(1.0h, 0.92h, 0.62h), (half)saturate(core * 2.2 - 0.9));
+                c *= 2.2h + 1.4h * (half)heat;
+                return half4(c, (half)(alpha * i.data.x));
+            }
+
             half4 frag(Varyings i) : SV_Target
             {
+                if (i.flame.x > 0.5) return Flame(i);
                 float2 p = i.uv;
                 float r2 = dot(p, p);
                 if (r2 >= 1.0) discard;

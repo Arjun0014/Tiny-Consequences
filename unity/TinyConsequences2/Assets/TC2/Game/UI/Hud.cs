@@ -574,6 +574,7 @@ namespace TC2.Game
             else if (_building != 0 && w.Buildings.Exists(_building)) { showInsp = true; BuildingPage(insp, w); }
             _powersRect = Rect.zero;
             if (!_book) PowerBar(w, sw, sh);   // (the god's powers: F9.1)
+            else AimView.Aiming = false;
             _settingsRect = Rect.zero;
             if (_settings) SettingsPanel(sw);
             KeepSettings();

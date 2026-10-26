@@ -21,6 +21,16 @@ namespace TC2.Game
             m.m01 = glow; m.m02 = seed; m.m10 = sun;
             Frame.Add(m);
         }
+
+        /// <summary>(session 27) A tongue of fire standing at a point on the ground: its height (m), opacity, heat (0 dying .. 1 roaring) and seed.</summary>
+        public static void Flame(Vector3 foot, float height, float alpha, float heat, float seed)
+        {
+            var m = Matrix4x4.identity;
+            m.m03 = foot.x; m.m13 = foot.y; m.m23 = foot.z;
+            m.m00 = height; m.m11 = Mathf.Max(0.002f, alpha); m.m22 = 0.002f;
+            m.m01 = 0f; m.m02 = seed; m.m10 = 0f; m.m21 = 1f; m.m12 = Mathf.Clamp01(heat);
+            Frame.Add(m);
+        }
     }
 
     [DefaultExecutionOrder(900)]

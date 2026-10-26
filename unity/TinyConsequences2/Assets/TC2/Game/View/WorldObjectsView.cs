@@ -285,10 +285,9 @@ namespace TC2.Game
                 float ex = Exaggeration(at, 2.5f);
                 for (int k = 0; k < 3; k++)
                 {
-                    float flicker = 0.75f + 0.25f * Mathf.Sin(t * 8f + k * 2.1f + i);
-                    float h = 1.1f * flicker * ex;
-                    _flames.Add(k % 2, k % 2 == 0 ? new Color(1f, 0.45f, 0.08f) : new Color(1f, 0.75f, 0.2f),
-                                Matrix4x4.TRS(at + Quaternion.AngleAxis(k * 120f, up) * Vector3.Cross(up, Vector3.right).normalized * 0.25f * ex, PlanetGeo.Upright(at, k * 60f), new Vector3(h * 0.45f, h, h * 0.45f)), 2.5f);
+                    float flicker = 0.8f + 0.2f * Mathf.Sin(t * 8f + k * 2.1f + i);
+                    Vector3 foot = at + Quaternion.AngleAxis(k * 120f, up) * Vector3.Cross(up, Vector3.right).normalized * 0.2f * ex;
+                    Puffs.Flame(foot, 1.3f * flicker * ex, 0.95f, 0.55f, Mathf.Repeat(i * 0.31f + k * 0.29f, 1f));   // (session 27: tongues of fire, not cones)
                 }
                 Puffs.Add(at + up * (1.2f * ex), 7f * ex, 0.04f, 0f, 1.1f, Mathf.Repeat(i * 0.37f, 1f), 0f);
             }
@@ -1762,9 +1761,17 @@ namespace TC2.Game
                     Vec3d d = (ctr * P.Radius + east * ox + north * oy).Normalized;
                     if (!Shore.Dry(P, d)) continue;   // (a coastal cell's flames on its dry ground only: the meteor's fires stood in the sea - s25o_meteor)
                     Vector3 pos = PlanetGeo.Surface(P, d);
-                    float flicker = 0.75f + 0.25f * Mathf.Sin(t * 7f + k * 1.7f + c);
-                    float hgt = (8f + 22f * inten) * flicker * Exaggeration(pos, 6f);
-                    _flames.Add(k % 2, k % 2 == 0 ? new Color(1f, 0.45f, 0.08f) : new Color(1f, 0.75f, 0.2f), Matrix4x4.TRS(pos, PlanetGeo.Upright(pos, k * 60), new Vector3(hgt * 0.5f, hgt, hgt * 0.5f)), 2.5f);
+                    float flicker = 0.85f + 0.15f * Mathf.Sin(t * 7f + k * 1.7f + c);
+                    float ex = Exaggeration(pos, 6f);
+                    float hgt = (6f + 16f * inten) * flicker * ex;
+                    float seed = (float)KeyedRng.Unit(KeyedRng.Mix(h + 7));
+                    // (session 27) a front of tongues of fire - a tall one and two smaller beside it - and the smoke the burning sends up
+                    Vector3 up = pos.normalized, side = Vector3.Cross(up, Vector3.right).normalized;
+                    Puffs.Flame(pos, hgt, 0.95f, Mathf.Clamp01(0.35f + inten), seed);
+                    Puffs.Flame(pos + Quaternion.AngleAxis(k * 77f, up) * side * (0.35f * hgt), hgt * 0.6f, 0.9f, Mathf.Clamp01(0.2f + inten), Mathf.Repeat(seed + 0.37f, 1f));
+                    Puffs.Flame(pos - Quaternion.AngleAxis(k * 77f, up) * side * (0.3f * hgt), hgt * 0.45f, 0.85f, inten * 0.8f, Mathf.Repeat(seed + 0.71f, 1f));
+                    float rise = Mathf.Repeat(t * 0.12f + seed, 1f);
+                    Puffs.Add(pos + up * (hgt * (1.2f + 3.5f * rise)), hgt * (0.9f + 1.8f * rise), 0.30f * (1f - rise) * (0.4f + 0.6f * inten), 0.75f, 0.35f * (1f - rise), seed, 1f);
                 }
             }
         }
