@@ -5910,3 +5910,60 @@ Rings and marks go when the HUD is hidden or the pointer is far (none left where
 caps and shields - a retinue; `s27q2`: Raimstead, a town of 1,050 - its market crowd in many household dyes, its standard in the realm's magenta);
 Unity C# compiles. The marks and flags are HUD-driven (IMGUI): judged in the Web build `s27web2` (`bookshots --play`: the pointer over the greatest
 place's first household's home).
+
+## D2-193 — 2026-10-26 — The History Book as a chronicle: weighted lines, an age's story and notes, Discoveries and Works, an open-book reader, eras on the timeline (25 §8 C; an observer)
+
+**Context.** Arjun (26 Oct): "the History Book as an evolving chronicle - eras and sections (realms and rulers, great lords and headmen, wars, the rise
+and fall of realms, great settlements, plagues/famines/disasters, discoveries and works, the player's interventions, maps and timeline); major events
+with visual hierarchy, minor ones subordinate; everything from recorded history." Before (`s26book1`): a parchment panel of equal-weight lines in the UI
+font with grey buttons; an age's chapter listed its records one by one, a busy age hundreds of like lines.
+
+**Decision.** The book stays an observer - it writes nothing and every line stands on a record (`HistoryBookTests`). (1) **A record's weight**
+(`HistoryBook.Weigh`: 2 a great event - a new sickness, a craft first found, a place's end, the earth's and the sky's great violence, a founding of a
+town of today, walls of stone, your hand -, 1 notable, 0 lesser; else the ledger's importance), and **why** where its words alone do not say (`Gloss`:
+" - today a town of 612 people"). (2) **Each age tells its story** first (lords risen, realms at their height and ended, wars begun, its worst sickness,
+crafts first found, the first walls, your hand), then its great events (at most seven), then **its lesser records told together as notes**
+(`BookKind.Note`: bows by lord, foundings, works by kind, night strife, raids, the hungry and the sick), a few notable records, its tally as a footnote.
+(3) **Part IX Discoveries and Works**: crafts from their first finding to the villages that know them today; the first of each work, how many raised and
+stand; walls; boats, roads and mines. Your Actions is part X. (4) **The reader as an open book** (`Hud.Book.cs`): two leaves of warm paper bound in
+leather with the gutter's shadow, the contents on the left leaf, the chapter on the right in EB Garamond with titles in IM FELL English (OFL; CREDITS);
+a chapter opens with its part, title, years and a rule, its first paragraph under a raised red initial; great events in bold with their years in red
+in the margin, notable records in plain ink, lesser ones small and faded, notes in italic; a chosen line opens its causes back to their root; the
+leaves turned at their foot with a folio. (5) **The timeline's eras**: the age under the pointer lit and named with its years and that year's people
+and greatest realm; a click opens the age's chapter.
+
+**Evidence.** HistoryBookTests 7/7 (and in the integration runs `s27i`, `s27j`), Unity C# compiles; Web `s27web1` 9/9 with the content in the old
+reader (`s27book1`: the Age of Founders - story, seven great events, notes; IX Works Raised); the reader and the eras in `s27web2` (`s27book2`).
+**Web `s27web2` 9/9** (three runtimes bit-identical, no console errors): the open book at 1280x720 (the webtest: the Lean Years) and 1600x900
+(`s27book2`: the Age of Founders - its story, seven great events in bold with their years and seasons in red, "Drilmelford was founded - today a town of
+410 people"; the timeline with the age under the pointer named - "The Second Years of Plenty, years 128-206; Year 138: 864 people; click to read the
+age"); fixed after: the leaf's foot (previous, folio, next) clipped at 720 px, an age's great events at most three of one kind (the Lean Years had listed
+nine abandonments), the ages' years beside their names in the contents. Part I written in 93 ms in the browser on a year-1,000 world.
+
+## D2-194 — 2026-10-26 — The god's powers as play: the aim on the ground, the cast seen and felt, the meteor's fall and scar, flames, "Your hand", the HUD as a game's (25 §8 E; presentation)
+
+**Context.** Arjun (26 Oct): "game feel for the god's powers - strong targeting feedback, a visual and sound response, the immediate effect and the
+long-term consequences surfaced in Your Actions and the book." Before: a ring of dots while aiming, nothing on casting but the sound cue, fires as flat
+yellow cones (`s26` shots), the meteor unseen until its houses fell and no mark left; the HUD a stack of grey Unity boxes.
+
+**Decision.** Presentation only: every effect is the world's own (the command is logged and applied by the simulation; the view shows it). (1) **The
+aim on the ground** (`AimView`, `Overlay.shader`): a soft disc in the power's colour, a breathing band at its reach and a small mark at its heart, sized
+for the eye by the camera's height (a reach-scaled heart had laid an opaque ring over a village), renewed each frame the HUD draws it (never left frozen);
+the villages within reach named with their people beside the pointer (a sickness: the nearest). (2) **The cast seen and felt**: a burst where it falls
+and the camera shaken by the heaviest (meteor, quake, eruption); **the meteor seen falling** - a burning head down a slanted path to the cell's heart
+where the world strikes, its trail fading to smoke, the burst and the shaking when it lands; **its scar** from the ledger's `MeteorStruck` - a dark bowl,
+a pale rim, rays of ejecta and scorch, no field or wood in the bowl, grown over in two centuries (D2-084's persistent scars: the record elaborated, never
+invented). (3) **Fire as tongues of flame** (`Puff.shader` flame mode, `Puffs.Flame`): red edges, an orange body, a small white-yellow heart, smoke
+rising; the cones gone. (4) **"Your hand"** on the HUD: the last three casts and what has come of each so far, live from the ledger once a second
+(`HistoryBook.CameOf`, an observer - PowersTests); a click opens Your Actions at that cast. (5) **The power bar** with each power's colour and its
+recharge drawn along its foot, its help and recharge in the tooltip. (6) **The HUD as a game's**: panels of dark glass with a thin gold edge, buttons
+warming to gold, the date in IM FELL English; the top bar measured from its words (on a narrow screen the speeds under the date - at 1280 px they had run
+under the panel toggles).
+
+**Evidence.** PowersTests 13/13 (in `s27i`), Unity C# compiles; real shots on the integrated GPU (`s27e1`-`s27e5`: the meteor's fires by day and at
+night, the aim's band at 900 m and a lightning's 60 m ring; judged and fixed twice - the heart's ring, the cream flames); Web `s27web2` (`bookshots
+--play`: aim, cast, Your hand). In the browser (`s27book2 --play`, a year-1,000 world at 140 m over Rindstead): the house under the pointer ringed in its household's colour
+with its tag; a lightning aimed - its 60 m ring and its words; cast - the burst running out and the houses it kindled burning (tongues of flame); "Your
+hand: Struck lightning at Rindstead (today) - one fire". Fixed after: aimed inside a town it had said "no village within its reach" (now measured to the
+village's buildings), the panel's second line cut, the power buttons' tooltips never drawn (now above the bar), the date's old-style figures ("Year o").
+The meteor's fall and scar and the lightning's bolt come with the next Web build (`--meteor-play`).
