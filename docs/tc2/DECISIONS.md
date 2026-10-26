@@ -6019,3 +6019,57 @@ mine or pits against 16; seed 7: 82; seed 2: 18 and six scouted; seed 11: 5); co
 nothing within reach still lack (seed 2: 38 for copper, their nearest bodies 2-8 km out) - their metal comes by trade. Landing branch tests
 (`N_d`, `0_q1`): Prospect, Mining 6, Iron 8, OreSites 2, Forge 8, Determinism 7, SaveLoad 8, HistoryBook 7, Chronicle 4, Powers 13 - 0 failed, 0 skipped.
 Landed on main 4778bda; seed 2's saves remade on sim 108 (`tc2/out/civ/s2_ac5`, years 300, 600, 1,000) for the shots and the Web pages.
+
+## D2-196 — 2026-10-26 — The terrain's blocks only where they draw; what the shots of session 27's third context found, fixed (presentation and the book; 14 §7, 25 §8 A-E)
+
+**Context.** After D2-195 the terrain was the next cost of the frame on the integrated GPU (x0.59 of the region view's frame, x0.66 of the village
+view's, `s27perf2`). Its shader ran every block for every pixel - the woods' canopy (six canopy samples, nine cover samples, the stands' noise), the
+detail at three scales, the night's lights - because implicit-derivative samples must stay in uniform control flow on WebGPU. And the context's shots
+(`s27c`: P_a; Web `s27web4`, 9/9) showed faults: a river at the village view as a dark tube over the fields; the meteor's dust cloud glowing salmon over
+a quarter of the screen for 16 s, and the stone seen falling twice from two skies; regions of the ground edged in the cell grid's 150 m steps; the night
+side's clouds pale over a black sea; the sea's glint a smooth pale veil; a worn way's ribbon crossing a lake; the book's ages repeating ("The Second
+Years of Plenty", "The Third Warm Years"); the person and place pages dark glass in small grey type; Your Actions telling a meteor's dead one line each.
+
+**Decision.** Presentation and the book only (sim 108 unchanged by any of it).
+1. **Terrain.shader runs each block only where it draws**: the woods where the simulation has forest (`i.wood.x > 0.002`), within them the near crowns
+   only beyond 300 m and under 3 m a pixel, the far cover past 1.3 m a pixel, the turned cover and the tile's cover only where they show, the stands'
+   noise only where it steps; the finer detail within 3.5 km and 400 m; the night's lights by night and far. Every sample inside a branch takes its
+   gradients from outside (`SAMPLE_TEXTURE2D_GRAD`, `TriG`) and the crowns' bump is derived after the branch. Bridge `terrainbranch` (off: every block
+   everywhere, as before) and `terrainshadow` (the patches casting) to measure.
+2. **Rivers far off** their mean colour with the sky they give back (River.shader `farK`: a ribbon a few pixels wide had its deep middle shaded across).
+3. **The meteor**: its fall heard (AudioView: noise through a band sweeping 2.6 kHz to 180 Hz over a rumble, swelling to the landing; the impact's
+   thunder held until the stone lands); one fall (`AimView.Thrown`: VolcanoView starts the strike's flash and cloud when the thrown stone lands); the
+   dust grey-brown, smaller, the crater's fire lighting only its lowest puffs at first.
+4. **The ground's regions without the grid's staircase** (`TerrainLod.WarpCells`: each land vertex reads the cells' shares from a point moved up to
+   about half a cell along a 450 m noise; never across the shore; the farmland mask from the same point).
+5. **The night side's clouds** lit only by the moon where it is up, as the ground below; **the far glint** broken by the wind's fields; **no road over a
+   lake** (a worn way along a column of the cube grid's cells ran straight for kilometres and its ribbon crossed the lake - the route is the
+   simulation's; only the drawing changes).
+6. **W-FOREST**: pools in the floor of a wood on waterlogged ground (the simulation's soil and standing water; `Patch.Kind.z`) - only where the wood
+   itself stands and never under snow (the first version laid dark water over the snowy boreal woods and the edges of fields: `s27d2`).
+6b. **The night lights in the shape of the streets** (LightsView: 512 a face, ~18 m a texel - each home its own point; R8 via `SetPixelData`); **the
+   palisade a continuous run of stakes** (ProcMeshes.Palisade: seven stakes over 2.1 m in weathered timber - five posts in 1.86 m of dark wood had read
+   as separate dark slabs, `s27d4`); **rivers far off in the sea's shallows' tone**.
+6c. **The person page in words**, as the inspector's card (Biography: how they fare, skills by how far practice has taken them, crafts carried and being
+   learnt, how they fight now, the home - "Health 1.00, fed 1.00", "farming 1.00", "strikes at 0.96" had read as a tool's output).
+7. **The book**: ages that share a name named by the realm that led them ("The Warm Years under Raimstead": `Chronicle.Eras(under:)`, the greatest realm
+   for most of the age's years and at least two in five, `HistoryBook.Ctx.Leading`), the age's opening naming that realm and the one at its end; a
+   cast's dead told together in Your Actions ("The dead (18), the eldest first: ...; the families that lost most: ..."); the person and place pages as
+   leaves of the book (`Hud.PaperPage`: years in the margin, rubric labels, IM FELL).
+
+**Evidence.** ChronicleTests 4/4 (a new test of the naming), HistoryBookTests 7/7, PowersTests 13/13 (the meteor test checks the dead's note); the
+fall's sound checked as a spectrogram (the band falling 2.6 kHz -> 180 Hz, stable). Shots `s27d1`-`s27d4` (sim 108, `s2_ac5`): 0 shader errors in
+every run; no seam where a block starts; the night side dark with the moon's clouds only; the region's river a light line; the pools' first version
+wrong over snow (fixed). Web `s27web5` (836d6a9): the shaders compile for WebGPU; 8/9 - the one fail the webtest's reference probe from a stale sim-107
+headless binary (the browser's sim-108 probe equals a sim-108 headless binary's bit for bit: dmath 387e8102.., gen b4b4b946.., d3 21e97bdb..); the paper
+pages judged (then the pages' words: until/due, crafts, zeros). **The terrain's branches, paired in one page** (`s27perf3/terrainbranch.txt`, s2_ac5
+year 300, paused): **x1.022 at the region view, x1.063 at the village view** - its pixels are not most of its cost; **the patches' shadow pass**
+(`terrainshadow`) x1.03 / x0.954. Found by it: every terrain measure had been taken in a paused world while the ground's colouring cycle ran on (every
+cell's colour and a patch or two a frame recoloured and re-uploaded, every 2.5 s, for ever) - now only when the world has moved (6ae81de), and the warp
+read on a lattice over a fine patch; measured again in `s27perf4` (paused terrain; the colouring at 1 h/s) - **pending at the context handoff (16:45): fill in from `tc2/out/webtest/s27perf4/*.txt`**.
+**Later in the context (judged in `s27web5`/`s27book5`, `s27e1`-`s27e3`).** The pages' words (a doing's end "until 08:34" / "tomorrow at 06:00", a child
+"due in N days", crafts "masters among them", no zero clauses in the Land tab, the year margin wide enough for "early autumn", the raised initial only on a
+page's first letter-led paragraph); "Your hand" not drawn over an open page; a strike that kindled nothing told as "one lightning strike"; a quieter console
+(the walls' procedural meshes say so; the Overlay material an asset). **The palisade's slabs on the beach were the shore, not the mesh**: `Shore.Dry` along
+the waterline flips dry/wet stretch by stretch and every other stretch went - now two passes (fill a lone wet stretch, then drop a lone dry one; a part-built
+ring does not wrap): shots `s27f7` pending at the handoff. The night lights at 512 a face showed no visible change from orbit (`s27e2`).

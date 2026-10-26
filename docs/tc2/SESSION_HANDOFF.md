@@ -4,7 +4,8 @@
 
 ### Exact state (keep current)
 - **The machine**: never draw on the RX 5600M (gpusafe.mjs; every Unity log "AMD Radeon(TM) Graphics (ID=0x1636)"); silent runs.
-- **main** = `wip/s27-int` = f9df88f (sim **108**). `wip/s27-land` (worktree `tc-s27land`) is merged and done; keep working in `tc-s27int` and fast-forward
+- **main** = e748638 at the handoff (16:45), `wip/s27-int` = its tip (sim **108**); a background waiter (task `b2qjknhr7`) fast-forwards main to
+  `wip/s27-int` and reverts ProjectSettings.asset once q6's Web build exits - check `git log -1 main` equals `git log -1 wip/s27-int`, else do it by hand. `wip/s27-land` (worktree `tc-s27land`) is merged and done; keep working in `tc-s27int` and fast-forward
   main between Unity jobs (`git -C "C:/Game Dev/tiny-consequences" merge --ff-only wip/s27-int`; never while a Unity job holds main's checkout).
 - **Landed**: C5.3c prospecting (D2-190 written; 25 §8 updated). Landing checks `N_d` and `0_q1` (Prospect, Mining, Iron, OreSites, Forge, Determinism,
   SaveLoad, HistoryBook, Chronicle 4, Powers 13 - 0 failed, 0 skipped). Sim-107 saves (`s2_ac4`) no longer load in main's binaries: use `s2_ac5`.
@@ -52,11 +53,15 @@
   `recolour_running.txt` at 1 h/s; bookshots `s27book6`), then `0_q7_shots_s27f` (main must hold 5c62ace: ff main after q6's "web build exit"; `s27f7`
   low/close - the shore palisade). D2-196 draft: `tc2/out/tools/s27/d2196.md` (its Evidence's TODO: `s27perf4`).
 
-### Next, in order
-1. Judge `s27web5` (9/9), `s27perf3` (terrainbranch on/off = the branches' gain; terrainshadow; shadows; buildings), `s27book5` (`page_*` - the paper pages,
-   `play_meteor_*` - one fall, grey dust), `s27e*`. Fix what the pictures say; write D2-196 into DECISIONS from the draft; 25 §8.
-2. The frame: the slowest view is the village view (~16 fps on s27web3): cut by what `s27perf3` says costs most (shadows? buildings?).
-3. W-FOREST: rain and wet woods (pools now on waterlogged ground - judge in a wet wood's shot when one is near a village).
+### Next, in order (at the handoff, 16:45)
+1. Read q6 (`$Q/log/0_q6_web_s27web6.log`): webtest `s27web6` must be 9/9 (its reference now rebuilt); `tc2/out/webtest/s27perf4/terrain.txt` (the
+   terrain paused, after the colouring fix - compare x0.589/x0.660 of `s27perf2`) and `recolour_running.txt` (the colouring's cost at 1 h/s); `s27book6`
+   (`page_*`: words, margin, no Your hand over them; `play_meteor_*`). Fill D2-196's pending frame numbers in DECISIONS; 25 §8.
+2. Read q7 `s27f7` (low/close at seed 2 y300 village 4): the shore palisade whole; if gaps remain, runs of two wet points - widen the fill.
+3. The frame, by what `s27perf4` says: if the terrain is still a large share paused, its draw count/vertices (patches ~300 x 2,300 triangles, the
+   shadow and any depth pre-pass) or the soft-shadow taps; if the colouring costs a running world much, spread it thinner (fewer patches a frame) or
+   cache per patch what does not change with time (the warp, the villages near).
+4. Then by the shots: the night lights from orbit (512 a face showed no visible change), the sea's glint (still a little hazy at the region view).
 
 ## Session 27, context 2 (26 Oct 2026, from 12:12 IST; Control Room run #81 session 2) - the reader and E merged; marks, flags, standing, the meteor's fall and scar, snow on the boughs, the timeline's eras; Web s27web2
 

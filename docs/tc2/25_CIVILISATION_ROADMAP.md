@@ -258,3 +258,8 @@ its homes - judged in shots `s27p1`-`p3`); **B** on main (household liveries, th
 meteor's fall and scar, lightning bolts for every strike, power tooltips, "Your hand" (D2-194). **The frame** measured on the integrated GPU (`s27perf`:
 8-12 fps at the village/region views of a great world) and cut where it was spent - far villages plain and shadowless, the light shadows graded by height
 and the default, the air's march halved over the ground (D2-195 with `s27perf2`).
+
+**Session 27, context 3**: prospecting on main (D2-190, sim 108). **A** night clouds by the moon, the far glint broken, rivers far off, regions without the
+cell staircase; **B** the person and place pages as leaves of the book, in words; **C** ages that share a name named by their realm, a cast's dead told
+together; **D** pools in waterlogged woods; **E** the meteor's single fall, grey dust and its sound; the palisade's shore. The frame: the terrain's pixels are
+not most of its cost (branches x1.02/x1.06); the ground's colouring stopped on a still world - measured in `s27perf4` (D2-196).

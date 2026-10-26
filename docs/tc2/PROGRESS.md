@@ -9,8 +9,12 @@
   far off (a dark tube over the fields), the meteor's salmon dust cloud over a quarter of the screen and its two falls, the regions' 150 m staircase edges,
   the night side's grey clouds, the sea's smooth pale glint, the road across a lake ("the straight line through Raimstead"); built the terrain's branches
   (Terrain.shader runs each block only where it draws; bridge `terrainbranch`/`terrainshadow`), the meteor's fall heard, the ages that share a name named by
-  their realm (ChronicleTests +1), the person and place pages as leaves of the book. Seed 2's saves remade on sim 108 (`s2_ac5`); shots `s27d*`, Web
-  `s27web5` with the terrain measured in the queue. SESSION_HANDOFF "Session 27, context 3".
+  their realm (ChronicleTests +1), the person and place pages as leaves of the book. Seed 2's saves remade on sim 108 (`s2_ac5`). Then judged `s27d*`,
+  `s27e*` (0 shader errors) and Web `s27web5` (8/9 - the fail a stale headless reference; the browser = headless sim 108 bit for bit): the pools over snow,
+  the river's tone, the palisade (its shore stretches), the pages' words, Your hand over a page fixed; Your Actions folds a cast's dead; the person page in
+  words. **The frame**: the terrain's branches gain only x1.02/x1.06 (`s27perf3`); every terrain measure had been taken paused while the ground's colouring
+  ran on for ever - stopped on a still world (6ae81de); `s27perf4` (Web `s27web6`) measures it. D2-196 written (its frame numbers pending). SESSION_HANDOFF
+  "Session 27, context 3".
 - **Session 27, context 2 (26 Oct 2026, from 12:12 IST; Control Room run #81 session 2) - the reader and E merged; the player-facing slices pushed on
   by real shots.** main = the integration branch `wip/s27-int` (worktree `C:/Game Dev/tc-s27int`), fast-forwarded between Unity jobs; sim 107 unchanged
   (presentation and observers only). Merged the open-book reader (`wip/chronicle`) and E (`wip/feel`); Web `s27web1` 9/9 (main b2370ae). Judged in shots and

@@ -432,6 +432,14 @@ the boughs, bare crowns over snow, the rain forest's tones; lumpy soft cumulus. 
 inside the noise**: land it from `wip/s27-land` once the queued sim-107 shots and Web build `s27web4` are done (D2-190 then). The integration branch is
 `wip/s27-int` (worktree `C:/Game Dev/tc-s27int`). SESSION_HANDOFF "Session 27, context 2" has the queue and the steps.
 
+**Where we are (session 27, context 3, 26 Oct 2026, 14:52 - 16:45 IST)**: **prospecting landed** (C5.3c, D2-190, main sim 108; seed 2's saves remade as
+`tc2/out/civ/s2_ac5`, years 300/600/1,000 - sim-107 saves no longer load). Judged in real shots (`s27c`, `s27d*`, `s27e*`, 0 shader errors) and Web `s27web5`, and
+fixed: rivers far off, the meteor (one fall, grey dust, its fall heard), the regions' cell staircase (a warp), night clouds by the moon, the glint, no road over a
+lake, pools in waterlogged woods (never under snow), the palisade (stakes; its shore stretches), the night lights at 512; the book's repeated ages named by
+their realm, Your Actions folding a cast's dead, the person and place pages as leaves of the book and in words. **The frame**: Terrain.shader branched (gain
+only x1.02/x1.06); every terrain measure had been taken paused while the ground's colouring ran on for ever - stopped on a still world; `s27perf4` measures it.
+D2-196 written (frame numbers pending). Rebuild main's headless before a webtest after a sim version change. SESSION_HANDOFF "Session 27, context 3".
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.
