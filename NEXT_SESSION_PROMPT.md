@@ -49,8 +49,8 @@ listener at 0 in shots).
   `P_b_web_s27web4` (a Web build of main, webtest `s27web4`, bookshots `s27book4 --play --meteor-play`). Follow it with
   `tail -n 0 -F $Q/runq.log | grep --line-buffered -E "^end |runner stopped"`.
 - Tools: `tc2/out/tools/s27/gcommit.sh` (usage `bash tc2/out/tools/s27/gcommit.sh "[tc2] message"`, it commits in `tc-s27int`):
-  compiles the worktree's Game/Editor/Tests against main's references (`unity.mjs cc --src`) and commits only when clean - copy it if the scratchpad is
-  needed. **Python patch scripts through the Bash tool lose a backslash** (a doubled backslash before n arrives single, so Python writes a real newline into
+  compiles the worktree's Game/Editor/Tests against main's references (`unity.mjs cc --src`) and commits only when clean (drafts of
+  D2-193-D2-195 beside it). **Python patch scripts through the Bash tool lose a backslash** (a doubled backslash before n arrives single, so Python writes a real newline into
   the C# string) - write such scripts with the Write tool (it keeps escapes literal), or use Edit.
 
 ## Do next, in order
