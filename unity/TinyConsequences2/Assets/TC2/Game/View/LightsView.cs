@@ -13,10 +13,11 @@ namespace TC2.Game
     public sealed class LightsView : MonoBehaviour
     {
         public SimHost Host;
-        const int Size = 256;              // ~37 m a texel on the 6 km planet
+        const int Size = 512;              // ~18 m a texel on the 6 km planet - about a home's spacing, so each home is its own point and a place shines in the
+                                           // shape of its streets (session 27: at 256, ~37 m, a town's core summed past white into one even blob)
         Cubemap _lights;
         float[][] _acc;
-        Color[] _px;
+        byte[] _px;
         long _sig = long.MinValue;
         float _next;
         int _version = -1;
@@ -25,10 +26,10 @@ namespace TC2.Game
 
         void Start()
         {
-            _lights = new Cubemap(Size, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear, name = "tc2-lights" };
+            _lights = new Cubemap(Size, TextureFormat.R8, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear, name = "tc2-lights" };   // (one byte a texel: the refill stays cheap)
             _acc = new float[6][];
             for (int f = 0; f < 6; f++) _acc[f] = new float[Size * Size];
-            _px = new Color[Size * Size];
+            _px = new byte[Size * Size];
             Shader.SetGlobalTexture(LightsId, _lights);
         }
 
@@ -68,8 +69,8 @@ namespace TC2.Game
             for (int f = 0; f < 6; f++)
             {
                 var a = _acc[f];
-                for (int i = 0; i < a.Length; i++) { float v = Mathf.Clamp01(a[i]); _px[i] = new Color(v, v, v, 1f); }
-                _lights.SetPixels(_px, (CubemapFace)f);   // (rows as CloudView fills its faces: v down)
+                for (int i = 0; i < a.Length; i++) _px[i] = (byte)(Mathf.Clamp01(a[i]) * 255f + 0.5f);
+                _lights.SetPixelData(_px, 0, (CubemapFace)f);   // (rows as CloudView fills its faces: v down)
             }
             _lights.Apply(false);
         }
