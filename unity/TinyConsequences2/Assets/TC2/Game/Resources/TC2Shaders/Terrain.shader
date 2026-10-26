@@ -308,7 +308,9 @@ Shader "TC2/Terrain"
                     UNITY_BRANCH
                     if (i.kind.z > 0.01h || every)
                     {
-                        half wetK = (half)i.kind.z;
+                        // (only where the wood itself stands, and never under snow - frozen and buried: s27d2 had drawn dark water over the snowy boreal
+                        // woods and the edges of fields as a grey camouflage)
+                        half wetK = (half)i.kind.z * smoothstep(0.05h, 0.35h, dl) * (1.0h - smoothstep(0.02h, 0.25h, snowy));
                         half pn = TriG(i.positionWS, ub, 1.0 / 23.0, dpx, dpy);
                         half pool = smoothstep(0.50h, 0.60h, pn + 0.22h * wetK - 0.10h) * wetK;
                         pool = lerp(pool, 0.45h * wetK, smoothstep(2.0h, 6.0h, (half)pxw));
