@@ -9,33 +9,36 @@ evidence and keep going; context handoffs are a continuation mechanism, not a st
 **No subagents.** Simulation and presentation advance together: every slice answers "what changes in the world picture?" and is judged
 in real game shots.
 
-**Arjun's priorities (24 Oct 2026, session 25)**: forward progress, not over-testing (the essential validation only); continue the
-governance/civilisation slices; a strong "finished core simulation" within two weeks (plan: `docs/tc2/25_CIVILISATION_ROADMAP.md` §8);
-world readability and presentation alongside (the planet like Earth from space, places and people identifiable, a real History Book);
-then god powers and player-facing gameplay.
+**Arjun's direction (26 Oct 2026, session 27) - CURRENT**: about two weeks remain; **implementation and game quality, not endless validation** (no
+new replications, placebos or seed batteries without a real unexplained regression; no new 1,000-year run for a presentation change). The majority of the
+work is the visible, player-facing game, in order: **A** the planet from orbit (a beautiful small Earth: limb, oceans, land, clouds from the weather, storms,
+shadows - never faked climate); **B** people and places recognisable (lords, heads, sworn men, families, households, settlements, buildings; hover/click);
+**C** the History Book as an evolving chronicle with eras, sections and visual hierarchy; **D** W-FOREST; **E** game feel for the god's powers (targeting,
+response, consequences in Your Actions and the book). Each slice: implement -> compile -> focused tests -> real shots/playtest -> Web smoke when needed ->
+fix -> commit -> next.
+
+**THE MACHINE: never draw on the RX 5600M** - it restarts the PC under load (26 Oct, 10:45, during Unity shots). `tc2/scripts/gpusafe.mjs` (called by
+`unity.mjs` and every browser script) sets Unity and Playwright's Chromium to the power-saving GPU and refuses to start while the card is present; never set
+`TC2_ALLOW_DGPU=1`. Each Unity run prints `gpu ...` from its log - it must be "AMD Radeon(TM) Graphics (ID=0x1636)". Runs are silent (`--mute-audio`, the
+listener at 0 in shots).
 
 ## Read first (this order), then work autonomously
-1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the standing prompt (architecture, rules, every direction; "Where we are (session 26)").
-2. `docs/tc2/SESSION_HANDOFF.md` - top block **"Session 26 - HANDOFF"**: the exact state, the branches to land in order, the queue and what it runs, "Next, in order".
-3. `docs/tc2/DECISIONS.md` newest (D2-180 the rain, the harrying, the siege set aside; D2-181 a people's ways; D2-182 great worlds in the browser; before them
-   D2-176-D2-179); `docs/tc2/PROGRESS.md` CURRENT STATE (session 26); `docs/tc2/25_CIVILISATION_ROADMAP.md` §6 (the acceptance runs) and §8 (the plan to a
-   finished core); the drafts and measures in `tc2/out/tools/s26/` (`d2183.md` stone walls, `d2184_185.md` the memory pass and the ore, `memory.md`,
-   `c1011_household.md`, `c82_flight.md`, `make_ac4.sh`, `make_hall.sh`, `results/`).
+1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the standing prompt (architecture, rules, every direction; "Where we are (session 27)").
+2. `docs/tc2/SESSION_HANDOFF.md` - the top block **"Session 27"**: the exact state, the queue, "Next, in order".
+3. `docs/tc2/25_CIVILISATION_ROADMAP.md` §8 - **the status ledger** (what is built, measured-only, in evaluation; the next slices A-E) and §6 (the acceptance
+   runs); `docs/tc2/DECISIONS.md` newest (D2-183-D2-189 and after); `docs/tc2/PROGRESS.md` CURRENT STATE.
 4. `git status`, `git log --oneline -15`, `git worktree list`, and the queue: `cat $Q/runq.log` (`Q` below) - which jobs ended, with what; `ls $Q/todo`.
 
-## Session 26, second context (26 Oct 2026, 23:43 - IST; Control Room run #80 session 2) - everything built landed (main sim 107); the fourth acceptance RUNNING
-- **On main**: C7.2 stone walls (D2-183), the memory pass (D2-184), the god's ore and bounty (D2-185), the lord's household (D2-186), the cull, bringing,
-  warmth and cold (D2-187), ruins reused (D2-189), the player's settings (D2-188), the book's realm maps and its bonds' end at abandonment.
-- **Running**: the fourth 1,000-year acceptance run in the job queue (runner `tc2/out/tools/s23/runq.sh`, `Q` =
-  `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`; jobs `M_a`-`M_e`: main's full
-  suite, seeds 2/4/7 `_ac4` for 1,000 years with books and measures into `tc2/out/tools/s26/accept/`, real shots `s26a_*`, the Web build `s26web1` with the
-  book's pages `s26book1`). If the runner has stopped and `$Q/todo` still holds jobs, restart it in the background.
+## Session 27 (26 Oct 2026, from 10:40 IST)
+- **main** sim 107 (everything of session 26 landed: stone walls, the memory pass, ore and bounty, the lord's household, cull/bring/warmth/cold, ruins reused,
+  settings, the book's realm maps). **C5.3c prospecting** waits on `wip/prospect` (sim 108) for its control and ten seeds (`N_*` jobs), then D2-190.
+- **The queue** (runner `tc2/out/tools/s23/runq.sh`, `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-
+  0a263e6d1792/scratchpad/q`): `M_d2` (stone/realms/meteor/ore shots), `M_e` (Web `s26web1`: test, heap at year 1,000, the book's pages `s26book1`), `N_*`
+  (prospecting). If the runner has stopped and `$Q/todo` still holds jobs, restart it in the background.
 
 ## Do next, in order
-1. Read each acceptance job's result (`$Q/log/M_*.log`, `tc2/out/tools/s26/accept/`, `tc2/out/shots/s26a_*`, `tc2/out/webtest/s26web1*`, `s26book1`):
-   the full suite must be 0 failed; judge the worlds in the shots (every age), the books and the measures (ways, stone walls, ruins, the lords' households
-   by century); the Web heap at year 1,000 against 955 MB; the frame pass's pairs. Write 25 §6 "Fourth run" and whether the core is finished (25 §8).
-2. Then the next slice by that evidence (the C-phases' "done when", 25 §1), the frame pass's defaults, W-FOREST pass 3, F11 packaging.
+1. Read the queue's results; finish 25 §6 "Fourth run" (shots, the Web heap, the book's pages); land prospecting if its seeds hold (D2-190).
+2. Then the player-facing slices A-E (25 §8 "Next"), judged in real shots and the Web build.
 
 ## Rules that bite
 - **Never retag job files with a broad `sed`** (session 26: `s/_sw1"/_stw1"/` also renamed a build job's binary dir, so its tests ran a missing binary and the

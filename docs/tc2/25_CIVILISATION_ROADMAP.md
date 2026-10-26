@@ -190,25 +190,49 @@ F9 (the god's powers beyond those that exist), F10 (art and presentation: animat
 ## 8. Toward a finished core simulation (session 25, 24 Oct 2026 - Arjun: "push toward a strong finished core simulation within the next 2 weeks")
 **What "finished core" means here**: every C-phase's "done when" (§1) met by systems that exist and were judged by the standing method (measured first;
 ten seeds against a control; a matched placebo for any lean; real shots), and the 1,000-year acceptance (§6) passed on several seeds - judged in real
-shots at the ages and in the History Book (D2-171), which now tells a world's realms, rulers, wars, disasters and threads of cause. Then F9 (the god's
-powers as play) and the player-facing game. The order, each a slice that answers "what changes in the world picture?":
-1. ~~**C10.8 the asking**~~ - landed (D2-168, 25 Oct 2026) after its matched placebo judged its one lean real and explained by its war. Its 900-year books (`book --load` on `_l9dm1`) show realms
-   that rise and fall in turn - seed 2: Taildvehope's realm held 24 villages in five tiers by year 338 and was gone by 829, Elddal's 19 for eleven
-   years, Vaildwick's, Skaenstead's and Mestskouford's 22 each - a cycle of hegemonies, not one realm that grows for ever.
-2. ~~**C10.9**~~ landed as **the lord's death** (D2-173) - the measured counterweight; rising together not needed by the evidence. Then **C10.10 the lord's peace** (D2-174), chosen over C8.1 by measuring first. Was: **C10.9 rising together** - the tributaries of one lord that together outweigh it stop paying together (the record: Kent's rising under Eadberht
-   Praen at Offa's death; the tributary kings' coalitions against overkings): the mechanism by which an overgrown realm breaks, beside the lord's weakness.
-   Measured first (`lordships --margins` per realm: how often a realm's tributaries together outweigh their lord while each alone does not).
-3. ~~**C8.0 the burning-in**~~ - landed (D2-177, 25 Oct 2026): a band that holds the field fires the homes of the raided village's people who killed its own;
-   the vengeance answers the killing (measured first: small villages live better - no desertion rule; killings, not wounds, bound what is burnt).
-   Then **C8.1 the campaign and the siege** - a lord's band with its tributaries' men (the call exists, C10.1) against a walled place: a blockade until its
-   stores fail or the besiegers' do (C8's "wars change the map": a taken town becomes a tributary or is burnt).
-4. **C7.2 stone walls** - a wealthy walled town that knows stone (C1.3) rebuilds its palisade's stretches in stone; towers at its gates: fortifications
-   that differ by region and history.
-5. **C11.1 a people's ways** - ~~C11.1a a people's tongue~~ (D2-175: names in their founders' speech, a sound changed at a time; the book's Peoples); next C11.1b households carrying their ways (marriage, migration; villages that blend). Was: - the household traditions that exist (D2-114's building forms, names) spread by founding, marriage and migration and drift:
-   regions that look different with no factions (C11's done-when), drawn in the view.
-6. **C13 the 1,000-year acceptance** on three seeds: shots at years 0, 50, 150, 300, 500, 800 and 1,000 (orbit, region, village) and each world's book.
-Alongside: the orbit look (D2-170: done), places named on the map (D2-172: done), the book (D2-171: done; next its portraits of realms on a map and a
-timeline page), great worlds in the browser (`14` §7: ~1 GB and ~8 fps at the region view - a memory and frame pass), W-FOREST pass 3.
-**Then F9 - the god's powers as play**: the powers that exist (eruption, quake, storm, lightning) and new ones that act through the world's own systems
-(a blessed or blighted harvest, a drought, a flood, a plague, a strange stone of ore), each a logged command whose consequences the book's "Your
-Actions" thread follows (`11` §7) - the player-facing game.
+shots at the ages and in the History Book (D2-171). Then the player-facing game.
+
+**Status (reconciled 26 Oct 2026, session 27; main sim 107)** - what is BUILT and on main:
+- **Governance (C10)**: the asking (D2-168: realms of 8-16 villages by 300, a cycle of hegemonies over 900 years), the lord's death (D2-173: bonds lapse
+  with the first at the lord's seat, heirs win them back - raids x0.64), the lord's peace (D2-174: no bands inside a realm; war moves to the realms'
+  edges), the lord's household (D2-186: a first household's surplus keeps the landless; a lord's realm's come to its seat). By year 1,000 three lords take
+  tribute from 76 of 82 villages (seed 4, fourth run): kingdoms in tiers that rise and fall.
+- **War (C8)**: the burning-in (D2-177: a band that holds the field fires the homes of those who killed its people), the harrying (D2-180). **Measured and set
+  aside**: C8.1b the siege (no band the walls held off could stand a sally - the world raises no host; `tc2/out/tools/s25/siege/design.md`) and C8.2 flight
+  from war (at the ceiling no village within reach has land to spare; `tc2/out/tools/s26/c82_flight.md`).
+- **Fortification (C7)**: palisades by stretches (C7.1) and **stone walls** (D2-183: a walled village with rock at hand that loses much lays dry-stone
+  curtains; towers drawn; 38 of 54 walled villages in stone by year 1,000 in seed 2, old rings of stone inside grown towns).
+- **Culture (C11)**: a people's tongue (D2-175: names in the founders' speech, a sound changed at a time) and **a people's ways** (D2-181: each household
+  builds as it was raised to; couples mostly as their village, brides bring a way, tributaries copy their lords) - regions that look different with no
+  factions; the book's Peoples count the roofs.
+- **Settlement change (C13, C3.6g)**: the land between villages (D2-176: daughter villages on their village's margins), **ruins reused** (D2-189: a living
+  village clears its fallen homes' ruins and builds on the old plots; ruins inside the lived ring -22 %).
+- **The memory pass** (D2-184): the ordinary past its 200-year window is kept only for what it led to - it changes no history (annals byte for byte).
+- **The god's powers (F9.1-F9.9, complete)** - fifteen, each a logged command whose every consequence roots in YOU: lightning, storm, rain, drought, warmth,
+  cold, quake, eruption, meteor, plague, blight, bounty (tired fields renewed), cull (the hunters), bring (game), ore (a vein of copper laid bare); recharged
+  in game time (D2-178, D2-179, D2-180, D2-185, D2-187). **Your Actions** lists each cast and what followed (D2-178).
+- **The player's game (F10/F11)**: the world's sound (D2-179), the opening/title (D2-178), **the player's settings** kept between visits (D2-188: sound,
+  volume, clouds, light shadows, detail), silent in the background (session 27).
+- **The view**: the planet from space (D2-170), places and people named (D2-172), the realms map layer with the wars' spearheads (D2-167), **the History Book
+  as a book** (D2-171: eight parts written after the fact - Ages, Realms and Rulers, Wars and Feuds, Famine/Plague/Disaster, Places, Lives, Threads of
+  Cause, A Chronology - a Timeline page and **each realm's chapter opening on its map**), great worlds in the browser (D2-182: unseen people unposed,
+  saves streamed).
+- **In evaluation, not on main**: C5.3c prospecting (`wip/prospect`, sim 108: a village whose smiths lack ore looks for it twice a year - within reach, then
+  farther as a scout); its control and ten seeds run in the queue; D2-190 if clean.
+- **The 1,000-year acceptance (§6)**: four runs; the fourth (sim 107, seeds 2/4/7) judged in its books and measures - a wild planet to kingdoms in tiers,
+  plagues, stone-walled towns, ruins rebuilt, maps that keep changing in two of three seeds. Its last shots and the Web build over year 1,000 are in the
+  queue (session 27; see §6 "Fourth run").
+
+**Next - Arjun, 26 Oct 2026 (session 27): the majority of the work moves to the visible, player-facing game** ("prioritise implementation and game quality,
+not endless validation"; no new replications, placebos or seed batteries without a real unexplained regression; no new 1,000-year run for a presentation
+change), each slice implement -> compile -> focused tests -> real shots/playtest -> Web smoke when needed -> fix -> commit:
+1. **A - the planet from orbit**: a small Earth - the atmosphere's limb, richer oceans and land, clouds of convincing form and coverage, more where the weather
+   supports them, large-scale structure, shadows, storms and readable weather (never faked climate).
+2. **B - people and places recognisable**: important people (heads, lords, sworn men, families), households and settlements, buildings' identity, hover and
+   click readable - not generic RTS icons.
+3. **C - the History Book as a chronicle**: eras and sections (realms and rulers, great lords and headmen, wars, the rise and fall of realms, great
+   settlements, plagues/famines/disasters, discoveries and works, the player's interventions, maps and timeline); major events with visual hierarchy, minor
+   ones subordinate; everything from recorded history.
+4. **D - W-FOREST**: the remaining biome and forest sameness.
+5. **E - game feel**: the powers as gameplay - strong targeting feedback, a visual and sound response, the immediate effect and the long-term consequences
+   surfaced in Your Actions and the book.

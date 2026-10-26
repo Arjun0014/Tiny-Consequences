@@ -408,6 +408,25 @@ living villages kept centuries of ruins in their hearts), F11.2 the player's set
 realm maps. **The fourth 1,000-year acceptance run** was generated at 03:06 and runs in the job queue (~4 hours): judge it in its shots, books and measures
 and write 25 §6 "Fourth run" with the verdict on the finished core (25 §8). SESSION_HANDOFF "Session 26, second context".
 
+**Direction from Arjun (26 Oct 2026, session 27) - THE CURRENT PRIORITY**: about two weeks remain. **Implementation and game quality, not endless
+validation**: no more replications, placebos or seed batteries unless a real unexplained regression appears; no new 1,000-year acceptance run because a
+presentation feature changed. The majority of the work is now visible and player-facing, in this order (25 §8 "Next"): **A** the planet from orbit as a
+beautiful small Earth (limb, oceans, land, clouds of real form and coverage from the weather, shadows, storms, readable weather - never faked climate);
+**B** people and places recognisable (heads, lords, sworn men, families, households, settlements, buildings; hover and click; not RTS icons); **C** the
+History Book as an evolving chronicle (eras and sections, rulers, wars, the rise and fall of realms, great places, disasters, works, the player's
+interventions, maps and timeline; major events above minor ones; all from recorded history); **D** W-FOREST's remaining sameness; **E** game feel for
+the god's powers (targeting feedback, visual and sound response, immediate and long-term consequences in Your Actions and the book). Each slice: implement
+-> compile -> focused tests -> real shots/playtest -> Web smoke when needed -> fix -> commit -> next. **The machine: never draw on the RX 5600M** - it
+restarts the PC under load (it did at 10:45 on 26 Oct during Unity shots). `tc2/scripts/gpusafe.mjs` sets Unity and Playwright's Chromium to Windows'
+power-saving GPU and refuses every drawing job while the card is present (`TC2_ALLOW_DGPU=1` overrides - do not use it); `unity.mjs` prints the GPU each
+run drew on (it must read "AMD Radeon(TM) Graphics (ID=0x1636)", the integrated GPU). Shots and the Web build are slower on it: fps numbers are not
+comparable with earlier sessions. All runs are silent (`--mute-audio`; the listener at 0 in shots; the game pauses its sound when not in front).
+
+**Where we are (session 27, 26 Oct 2026, from 10:40 IST)**: the fourth acceptance's queue had stopped at 05:17 (M_a, M_b x3, M_b0, M_b2, M_c done); it was
+restarted for the rest - M_d (the stone-walled villages, realms, meteor and ore shots), M_e (the Web build `s26web1`: the test, the heap at year 1,000, the
+book's pages with the realm maps; the frame pass's perf pairs dropped) and N_* (prospecting's control and ten seeds) - and the docs reconciled (25 §8 is
+the status ledger of what is built). Then the player-facing slices A-E. SESSION_HANDOFF "Session 27" has the exact state.
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.

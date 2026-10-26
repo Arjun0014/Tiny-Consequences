@@ -4,6 +4,11 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 27 (26 Oct 2026, from 10:40 IST; Control Room) - the fourth acceptance's last jobs restarted; silent background runs; the integrated GPU only;
+  the docs reconciled.** Arjun's direction (26 Oct): implementation and game quality over validation; the player-facing slices A-E (25 §8 "Next"). The
+  queue's runner had stopped at 05:17 (M_a full suite 507/0/0, the three 1,000-year worlds and their books, the ore measure, prospecting's build, village #4's
+  shots: done); restarted 10:41 - **the PC restarted at 10:45 while Unity shots drew on the RX 5600M**: now every drawing job runs on the integrated Radeon
+  (`tc2/scripts/gpusafe.mjs`; verified in the Unity log) and all runs are silent (the person's word). 25 §8 rewritten as the status ledger.
 - **Session 26, second context (26 Oct 2026, from 23:43 IST 25 Oct; Control Room run #80 session 2) - everything built LANDED (main sim 107); the fourth
   1,000-year acceptance RUNNING.** (1) **C7.2 stone walls** (f95b233, D2-183): ten seeds inside the noise but for the rings completed, which count the stone
   rings themselves; 2-17 rings of stone standing a world at 300. (2) **The memory pass** (8086ced, D2-184): annals byte for byte - it changes no history.
