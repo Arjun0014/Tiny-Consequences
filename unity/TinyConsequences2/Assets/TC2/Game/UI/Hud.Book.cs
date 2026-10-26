@@ -152,8 +152,9 @@ namespace TC2.Game
                 {
                     // (session 27) the ages with their years, faded beside the name: the eras at a glance (and "the Second Years of Plenty" placed)
                     string toc = chs[k].Title;
-                    if (i == 0 && !string.IsNullOrEmpty(chs[k].Sub) && chs[k].Sub.StartsWith("years ", System.StringComparison.Ordinal))
-                        toc += "  <size=12><color=#8a7458>" + chs[k].Sub.Substring(6).Replace(" to ", "–") + "</color></size>";
+                    string sub = chs[k].Sub;
+                    if (i == 0 && !string.IsNullOrEmpty(sub) && sub.StartsWith("year", System.StringComparison.Ordinal))   // ("years 206 to 298", the present age's "year 939 to this day")
+                        toc += "  <size=12><color=#8a7458>" + sub.Substring(sub.IndexOf(' ') + 1).Replace(" to this day", "–").Replace(" to ", "–") + "</color></size>";
                     if (GUILayout.Button(toc, k == _bookChapter ? _bkTocSel : _bkToc) && k != _bookChapter) { _bookChapter = k; _bookScroll = Vector2.zero; _line = 0; }
                 }
             }
