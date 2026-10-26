@@ -33,6 +33,30 @@ namespace TC2.Core.History
             return Name(w, pid) + ", " + who + (p.Alive ? " of " + Age(w, in p) : " who died at " + Age(w, in p));
         }
 
+        /// <summary>
+        /// (session 27: people recognisable) A person's standing in a few words, for the pointer's tag and the page: the first among a village's people
+        /// (a lord when other villages pay it, with how many; whom it pays), a man sworn to a first, one of a first's household; "" for everyone else.
+        /// Reads only.
+        /// </summary>
+        public static string Standing(World w, int pid)
+        {
+            if (Leaders.Off || !w.People.Exists(pid)) return "";
+            ref var p = ref w.People.Get(pid);
+            if (!p.Alive || !w.Settlements.Exists(p.Home)) return "";
+            ref var s = ref w.Settlements.Get(p.Home);
+            string place = Place(w, p.Home);
+            if (s.Head == pid)
+            {
+                int held = 0;
+                for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o)) { ref var os = ref w.Settlements.Get(o); if (os.Lord == p.Home && os.Inhabited) held++; }
+                return "first of " + place + (held > 0 ? ", lord of " + held + (held == 1 ? " village" : " villages") : "") +
+                       (s.Lord != 0 && w.Settlements.Exists(s.Lord) ? ", paying " + Place(w, s.Lord) : "");
+            }
+            if (p.Sworn != 0 && p.Sworn == s.Head && w.People.Exists(p.Sworn)) return "sworn to " + Name(w, p.Sworn) + ", first of " + place;
+            if (p.Household != 0 && p.Household == s.HeadHh && s.Head != 0 && w.People.Exists(s.Head)) return "of the household of " + Name(w, s.Head) + ", first of " + place;
+            return "";
+        }
+
         /// <summary>Born when, where and to whom; where they live, in whose home.</summary>
         public static string Identity(World w, int pid)
         {

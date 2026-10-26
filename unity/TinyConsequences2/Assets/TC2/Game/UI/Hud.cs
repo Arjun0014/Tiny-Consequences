@@ -71,6 +71,7 @@ namespace TC2.Game
         readonly System.Collections.Generic.List<Rect> _placed = new System.Collections.Generic.List<Rect>();
         readonly System.Collections.Generic.List<int> _byPeople = new System.Collections.Generic.List<int>();
         readonly System.Collections.Generic.Dictionary<int, string> _placeLine = new System.Collections.Generic.Dictionary<int, string>();
+        string _pageStanding = "";   // (session 27: the person page's standing line)
         float _dateW, _speedsW, _togglesW;   // (the top bars' widths, measured once from their words)
         readonly System.Collections.Generic.HashSet<int> _seats = new System.Collections.Generic.HashSet<int>();   // (places others pay and that pay nobody: realms' seats)
         float _byPeopleAt = -99f;
@@ -461,7 +462,8 @@ namespace TC2.Game
                 string doing = HistoryText.Doing(w, in p);
                 int cut = doing.IndexOf(':'); if (cut > 0) doing = doing.Substring(0, cut);
                 if (doing.Length > 70) doing = doing.Substring(0, 67) + "...";
-                text = "<b>" + Biography.Title(w, _hoverPid) + "</b>\n" + doing;
+                string standing = Biography.Standing(w, _hoverPid);   // (session 27: the first, a lord, the sworn, the first's household)
+                text = "<b>" + Biography.Title(w, _hoverPid) + "</b>" + (standing.Length > 0 ? "\n<color=#f2c35f>" + standing + "</color>" : "") + "\n" + doing;
             }
             else if (_hoverBid != 0 && w.Buildings.Exists(_hoverBid))
             {
@@ -469,7 +471,8 @@ namespace TC2.Game
                 string place = w.History.NameOf(EntityRef.Settlement(b.Settlement));
                 if (Structures.IsHome(b.Kind))
                     text = "<b>" + (b.Kind == Structures.House ? (Architecture.Has(b.Form) ? "A " + Architecture.PlanName(Architecture.PlanOf(b.Form)) : "A house") : "A hut") + "</b> of " + place +
-                           (b.Household != 0 && w.Households.Exists(b.Household) ? "\nhome of the " + HistoryText.Plural(w.History.NameOf(EntityRef.Household(b.Household))) + " (" + w.Members(b.Household).Count + ")" : "\nstanding empty");
+                           (b.Household != 0 && w.Households.Exists(b.Household) ? "\nhome of the " + HistoryText.Plural(w.History.NameOf(EntityRef.Household(b.Household))) + " (" + w.Members(b.Household).Count + ")" +
+                            (w.Settlements.Exists(b.Settlement) && w.Settlements.Get(b.Settlement).HeadHh == b.Household ? "\n<color=#f2c35f>the first household of " + place + "</color>" : "") : "\nstanding empty");
                 else text = "<b>The " + Structures.Of(b.Kind).Name + "</b> of " + place;
             }
             if (text == null) return;
@@ -774,6 +777,7 @@ namespace TC2.Game
             {
                 _pagePid = _selected; _pageTabBuilt = _pageTab; _pageAt = Time.unscaledTime;
                 _pageTitle = Biography.Title(w, _selected);
+                _pageStanding = Biography.Standing(w, _selected);   // (session 27)
                 string body;
                 switch (_pageTab)
                 {
@@ -788,6 +792,7 @@ namespace TC2.Game
             }
             GUILayout.BeginArea(r, _page);
             GUILayout.Label(_pageTitle, _title);
+            if (_pageStanding.Length > 0) GUILayout.Label("<color=#f2c35f>" + Cap(_pageStanding) + "</color>", _label);
             GUILayout.BeginHorizontal();
             for (int i = 0; i < PageTabs.Length; i++) if (GUILayout.Toggle(_pageTab == i, PageTabs[i], _btn) && _pageTab != i) _pageTab = i;
             GUILayout.FlexibleSpace();

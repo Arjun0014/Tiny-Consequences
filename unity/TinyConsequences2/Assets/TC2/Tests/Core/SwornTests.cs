@@ -132,6 +132,13 @@ namespace TC2.Tests.Core
             string life = Biography.Work(w, sworn[0]);
             Console.WriteLine(life);
             StringAssert.Contains("sworn to " + w.History.NameOf(EntityRef.Person(w.Settlements.Get(sid).Head)), life, "his own page");
+            // (session 27) their standing in a few words, for the pointer's tag: the first, his sworn men, his household; nobody else has one
+            int head = w.Settlements.Get(sid).Head;
+            string place = w.History.NameOf(EntityRef.Settlement(sid)), headName = w.History.NameOf(EntityRef.Person(head));
+            StringAssert.StartsWith("first of " + place, Biography.Standing(w, head));
+            Assert.AreEqual("sworn to " + headName + ", first of " + place, Biography.Standing(w, sworn[0]));
+            foreach (int pid in w.Members(first)) if (pid != head && !sworn.Contains(pid)) { Assert.AreEqual("of the household of " + headName + ", first of " + place, Biography.Standing(w, pid)); break; }
+            foreach (int pid in Candidates(w, sid)) if (!sworn.Contains(pid) && w.People.Get(pid).Household != first) { Assert.AreEqual("", Biography.Standing(w, pid), "the others: none"); break; }
             // --oldsworn: nobody is sworn
             var w2 = Village(out int sid2, out int first2, 3);
             Retinue.Off = true;
