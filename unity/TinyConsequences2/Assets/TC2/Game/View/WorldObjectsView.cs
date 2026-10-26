@@ -48,6 +48,12 @@ namespace TC2.Game
         /// <summary>The village works by structure kind (C1.1; the civilisation kit, D2-089); null where a kind has no model yet.</summary>
         readonly Instancer[] _works = new Instancer[25];   // (by structure kind: the kiln is 24, C3.2)
         Instancer[] _homes, _frames;   // homes by plan and roof form; the timber framing of framed ones (D2-114)
+        Instancer[] _homesFar;         // (session 27) the homes of villages far from the camera: the same forms, casting no shadow
+        /// <summary>(session 27, the frame: s27perf - buildings were half the region view's frame on the integrated GPU, drawn and cast into four
+        /// shadow cascades) m from the camera beyond which a village is drawn without its homes' small details (framing, footings, chimneys, lean-tos,
+        /// pens, gardens, carts, muck, woodpiles: all under a pixel there) and its homes cast no shadow.</summary>
+        public static float DetailFar = 2200f;
+        bool _far;   // (the village being built is beyond DetailFar)
         Instancer _chimneys, _plinths, _outshuts, _pens, _stalls, _cross, _gardens, _gardensBare, _hurdles;   // overlays, pens, the market, kitchen gardens (D2-114; out of leaf: C3.7a; their wattle: D2-145)
         Instancer _tenters;   // cloth stretched to dry by a weaver's shed while its village has wares (C3.1)
         Instancer _clayPits, _jars, _ware;   // the clay pit by a kiln, sealed jars by a granary, ware set out for sale (C3.2)
@@ -177,6 +183,9 @@ namespace TC2.Game
             _homes = new Instancer[PlanNames.Length * RoofNames.Length];
             for (int p = 0; p < PlanNames.Length; p++)
                 for (int r = 0; r < RoofNames.Length; r++) _homes[p * RoofNames.Length + r] = new Instancer(Models.Get("home_" + PlanNames[p] + "_" + RoofNames[r], ProcMeshes.House), _mat, true);
+            _homesFar = new Instancer[_homes.Length];
+            for (int p = 0; p < PlanNames.Length; p++)
+                for (int r = 0; r < RoofNames.Length; r++) _homesFar[p * RoofNames.Length + r] = new Instancer(Models.Get("home_" + PlanNames[p] + "_" + RoofNames[r], ProcMeshes.House), _mat, false);
             _frames = new Instancer[PlanNames.Length];
             for (int p = 0; p < PlanNames.Length; p++) _frames[p] = new Instancer(Models.Get("frame_" + PlanNames[p], ProcMeshes.House), _mat, true);
             _chimneys = new Instancer(Models.Get("chimney", ProcMeshes.Granary), _mat, true);
@@ -364,7 +373,7 @@ namespace TC2.Game
             var cam = Rig != null ? Rig.Cam : Camera.main;
             if ((Off & 4) == 0)
             {
-                for (int i = 0; i < _homes.Length; i++) _homes[i].Draw(cam);
+                for (int i = 0; i < _homes.Length; i++) { _homes[i].Draw(cam); _homesFar[i].Draw(cam); }
                 for (int i = 0; i < _frames.Length; i++) _frames[i].Draw(cam);
                 _chimneys.Draw(cam); _plinths.Draw(cam); _outshuts.Draw(cam); _pens.Draw(cam); _stalls.Draw(cam); _gardens.Draw(cam); _gardensBare.Draw(cam); _hurdles.Draw(cam); _tenters.Draw(cam); _clayPits.Draw(cam); _jars.Draw(cam); _ware.Draw(cam); _handcarts.Draw(cam); _oxcarts.Draw(cam); _cartLoads.Draw(cam); _oxen.Draw(cam); _parked.Draw(cam); _parkedOx.Draw(cam);
                 _stonePiles.Draw(cam); _ore.Draw(cam);
@@ -646,7 +655,7 @@ namespace TC2.Game
         void RebuildPlaces(TC2.Core.Simulation.World w)
         {
             var P = w.Planet;
-            for (int i = 0; i < _homes.Length; i++) _homes[i].Clear();
+            for (int i = 0; i < _homes.Length; i++) { _homes[i].Clear(); _homesFar[i].Clear(); }
             for (int i = 0; i < _frames.Length; i++) _frames[i].Clear();
             _chimneys.Clear(); _plinths.Clear(); _outshuts.Clear(); _pens.Clear(); _stalls.Clear(); _gardens.Clear(); _gardensBare.Clear(); _hurdles.Clear(); _tenters.Clear(); _clayPits.Clear(); _jars.Clear(); _ware.Clear(); _parked.Clear(); _parkedOx.Clear();
             _stonePiles.Clear(); _ore.Clear();
@@ -681,6 +690,7 @@ namespace TC2.Game
                 double gone = s.Inhabited ? 0.0 : (w.Now - s.Abandoned) / (double)SimTime.Year;
                 if (!s.Inhabited && (gone > 600 || (Rig != null && Rig.Cam != null && (center - Rig.Cam.transform.position).sqrMagnitude > 6000f * 6000f))) continue;
                 float ex = Exaggeration(center, 1.6f);
+                _far = Rig != null && Rig.Cam != null && (center - Rig.Cam.transform.position).sqrMagnitude > DetailFar * DetailFar;
                 // after dark, a house whose people are home and awake shows its windows
                 Vector3 toSun = Rig != null && Rig.Sun != null ? -Rig.Sun.transform.forward : Vector3.up;
                 bool dark = Vector3.Dot(PlanetGeo.ToVector(s.Anchor), toSun) < 0.06f;
@@ -1379,10 +1389,10 @@ namespace TC2.Game
                 Color walls = WallTint(form);
                 if (!lived) { float c0 = (float)Homes.Condition(in b, w.Now); roof = Color.Lerp(new Color(0.55f, 0.58f, 0.48f, 1f), roof, 0.45f + 0.55f * c0); walls = Color.Lerp(new Color(0.62f, 0.64f, 0.56f, 1f), walls, 0.45f + 0.55f * c0); }
                 roof.a = tint.a;
-                _homes[plan * RoofNames.Length + Architecture.RoofOf(form)].Add(key, roof, walls, m, lit ? -1f : 0f);
-                if (Architecture.WallsOf(form) == Architecture.Framed) _frames[plan].Add(0, tint, m);
+                (_far ? _homesFar : _homes)[plan * RoofNames.Length + Architecture.RoofOf(form)].Add(key, roof, walls, m, lit ? -1f : 0f);
+                if (!_far && Architecture.WallsOf(form) == Architecture.Framed) _frames[plan].Add(0, tint, m);
                 float L = PlanL[plan], W = PlanW[plan];
-                if (b.Mat >= 1)
+                if (!_far && b.Mat >= 1)
                 {
                     // on stone footings (C1.3): a course of stone round its walls (and its wing's)
                     _plinths.Add(0, Color.white, m * Matrix4x4.Scale(new Vector3(L + 0.3f, 1f, W + 0.3f)));
@@ -1391,11 +1401,11 @@ namespace TC2.Game
                 var ch = ChimneyAt[plan];
                 if (Architecture.Chimney(form))
                 {
-                    _chimneys.Add(0, Color.white, m * Matrix4x4.TRS(new Vector3(ch.x, 0f, -ch.y), Quaternion.identity, new Vector3(1f, ch.z, 1f)));
+                    if (!_far) _chimneys.Add(0, Color.white, m * Matrix4x4.TRS(new Vector3(ch.x, 0f, -ch.y), Quaternion.identity, new Vector3(1f, ch.z, 1f)));
                     smokeAt = m.MultiplyPoint3x4(new Vector3(ch.x, ch.z + 0.15f, -ch.y));
                 }
                 else smokeAt = m.MultiplyPoint3x4(new Vector3(plan == Architecture.Long ? -L * 0.25f : 0f, PlanRidge[plan] + 0.1f, 0f));   // (a smoke-hole in the roof)
-                if (lived)
+                if (lived && !_far)
                 {
                     int n = w.Members(b.Household).Count;
                     if (n > PlanRoom[plan]) _outshuts.Add(0, roof, walls, m * Matrix4x4.TRS(new Vector3(0f, 0f, -W / 2f), Quaternion.identity, new Vector3(L * 0.55f, 1f, 1f)));
@@ -1408,8 +1418,9 @@ namespace TC2.Game
                     GardenBeds(w, in s, b.Household, Footprints.PlanOf(in b), plot, m, pen, -W / 2f - 3.2f - 2.1f, (plan == Architecture.Hall ? 4 : 3) * 1.05f);
                 }
             }
-            if (hut && lived) GardenBeds(w, in s, b.Household, Footprints.PlanOf(in b), plot, m, false, 0f, 0f);   // (a hut's croft is dug as a house's: C3.7a)
+            if (hut && lived && !_far) GardenBeds(w, in s, b.Household, Footprints.PlanOf(in b), plot, m, false, 0f, 0f);   // (a hut's croft is dug as a house's: C3.7a)
             if (!lived) return false;
+            if (_far) { if (awake) HearthSmoke(w, b.Household, hut, m, smokeAt, cooking, tOut); return lit; }   // (far off: its windows and its smoke, none of its yard)
             // its cart in the yard (C4.2: the household's own, while nobody is out with it) - by the other end wall from the woodpile
             if (plot != null && w.Households.Exists(b.Household))
             {
@@ -1477,16 +1488,21 @@ namespace TC2.Game
                 _woodpiles.Add(0, Color.white, PlaceFaced(P, s, wx, wy, face + (plot.WoodEnd ? 0.0 : DMath.HalfPi), ex * pile));
             }
             if (!awake) return lit;
-            // a fire in the hearth: while someone cooks, and all day while it burns against the cold (what today's fire adds to the
-            // home's warmth, D2-056) - from the chimney, or a hut's thatch at its peak (D2-081)
-            ref var h = ref w.Households.Get(b.Household);
+            HearthSmoke(w, b.Household, hut, m, smokeAt, cooking, tOut);
+            return lit;
+        }
+
+        /// <summary>A fire in the hearth: while someone cooks, and all day while it burns against the cold (what today's fire adds to the home's
+        /// warmth, D2-056) - from the chimney, or a hut's thatch at its peak (D2-081).</summary>
+        void HearthSmoke(TC2.Core.Simulation.World w, int household, bool hut, Matrix4x4 m, Vector3 smokeAt, bool cooking, double tOut)
+        {
+            ref var h = ref w.Households.Get(household);
             double heat = h.Indoor - Hearth.Indoors(tOut, h.Shelter, 0.0);
             if (cooking || heat > 0.5)
             {
                 Vector3 top = hut ? m.MultiplyPoint3x4(new Vector3(0f, 4.5f, 0f)) : smokeAt;
                 _smoke.Add(new Vector4(top.x, top.y, top.z, cooking ? 1f : (float)(0.35 + 0.4 * System.Math.Min(1.0, heat / 8.0))));
             }
-            return lit;
         }
 
         /// <summary>
