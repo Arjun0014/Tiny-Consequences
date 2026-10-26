@@ -68,7 +68,9 @@ Shader "TC2/Atmosphere"
                 float3 L = sun.direction;
                 float3 bR = _TC2AtmoBeta.rgb;
                 float bM = _TC2AtmoBeta.w;
-                const int N = 16;
+                // (session 27, s27perf: the air x0.90-0.92 of the frame on the integrated GPU) over the ground the way through the air is short and
+                // smooth: half the steps there; the limb's long grazing ways keep all sixteen
+                int N = ground ? 8 : 16;
                 float ds = (t1 - t0) / N;
                 float odR = 0.0, odM = 0.0;
                 float3 sR = 0.0, sM = 0.0;
