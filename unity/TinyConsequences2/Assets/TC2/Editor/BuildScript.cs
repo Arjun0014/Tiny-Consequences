@@ -7,7 +7,7 @@ using UnityEngine;
 namespace TC2.EditorTools
 {
     /// <summary>
-    /// Command-line builds: -executeMethod TC2.EditorTools.BuildScript.BuildWeb [-tc2Out PATH] [-tc2Dev] [-tc2Threads] [-tc2WebGL2Only]
+    /// Command-line builds: -executeMethod TC2.EditorTools.BuildScript.BuildWeb [-tc2Out PATH] [-tc2Dev] [-tc2Threads] [-tc2WebGL2Only] [-tc2Symbols]
     /// </summary>
     public static class BuildScript
     {
@@ -42,9 +42,13 @@ namespace TC2.EditorTools
             // (a build stopped before its restore leaves its --jobs behind: any such is dropped first)
             string il2cppArgs = System.Text.RegularExpressions.Regex.Replace(PlayerSettings.GetAdditionalIl2CppArgs() ?? "", @"\s*--jobs=\d+", "").Trim();
             if (jobs != null) PlayerSettings.SetAdditionalIl2CppArgs((il2cppArgs + " --jobs=" + jobs).Trim());
+            // -tc2Symbols: the functions' names in a file beside the build (Build/web.symbols.json; the wasm itself unchanged) - what
+            // realmsperf --profile names a CPU profile's wasm frames by; the project's own setting is restored afterwards
+            var symbols = PlayerSettings.WebGL.debugSymbolMode;
+            if (Flag("-tc2Symbols")) PlayerSettings.WebGL.debugSymbolMode = WebGLDebugSymbolMode.External;
             BuildReport report;
             try { report = BuildPipeline.BuildPlayer(opts); }
-            finally { if (jobs != null) PlayerSettings.SetAdditionalIl2CppArgs(il2cppArgs); }
+            finally { if (jobs != null) PlayerSettings.SetAdditionalIl2CppArgs(il2cppArgs); PlayerSettings.WebGL.debugSymbolMode = symbols; }
             var s = report.summary;
             Debug.Log("[TC2] web build " + s.result + " in " + s.totalTime + " size " + s.totalSize + " -> " + outDir);
             if (s.result != BuildResult.Succeeded) EditorApplication.Exit(1);
