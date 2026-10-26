@@ -5887,3 +5887,26 @@ broad sheen dimmer. (6) The air's veil over the ground 0.75 (the region view's c
 cumulus over land and sea, heaped convective decks, cloud shadows readable on the land, dusk-reddened clouds by the terminator, a dark night side lit by its
 places; Unity C# compiles; no shader errors in the batch logs. The cloud noise takes ~1.1 s to make in the editor (once, at start). Web build: `s27web1`.
 **Not done**: oceans' colour by depth from orbit and land texture at orbit are as before; the lights read as warm blobs a place, not streets.
+
+## D2-192 — 2026-10-26 — People and places recognisable: households in their own dye, the first in the realm's colour, a retinue in livery, rings, marks and flags (25 §8 B; presentation)
+
+**Context.** Arjun (26 Oct): "make important people, households, settlements and buildings recognisable - heads, lords, sworn men, families; hover and
+click readable; not generic RTS icons." Before, every person wore one of a few work colours at random; the first among a village's people, a lord and
+the men sworn to them looked like anyone; a chosen person was found only by the page; buildings had a tag but no mark; the map named places without
+showing whose realm they belonged to.
+
+**Decision.** All read from state, nothing new in the simulation. (1) **A household's people dress alike** in its own dye (`WorldObjectsView.Livery`:
+the household's number keys one of the dyes, each person a little faded or fresh; children a lighter shade) - a family reads as one at a glance.
+(2) **The first among a village's people** wears its polity's colour with a mantle and a gold circlet (kit `person_lord`) and stands a little taller; a
+lord's first, whom other villages pay, taller still; **the men sworn to that first** (C10.7b) wear the same colour with an iron cap and a shield on the
+back (kit `person_sworn`): their livery; the first's own household wears the colour without them. (3) **Rings on the ground**: a bright one under the
+person whose page is open and the one under the pointer, fainter ones under their households' people (`WorldObjectsView.Chosen/Pointed`). (4) **A
+building under the pointer or chosen is marked round its footprint** (`AimView.MarkAt`, `Footprints.Reach`/`WorkR`): a home in its household's colour
+(`WorldObjectsView.HouseholdColour`) with its people ringed, a work in gold. (5) **On the map each place's name flies a small flag in its polity's
+colour** (the colour of its standard and its first's mantle), a realm's seat with a gold head - a realm's villages read as one colour across the map.
+Rings and marks go when the HUD is hidden or the pointer is far (none left where it last was).
+
+**Evidence.** Shots on the integrated GPU, seed 2's year-300 world (`s27q1`: a lord village's sworn men at their training ground in crimson livery with
+caps and shields - a retinue; `s27q2`: Raimstead, a town of 1,050 - its market crowd in many household dyes, its standard in the realm's magenta);
+Unity C# compiles. The marks and flags are HUD-driven (IMGUI): judged in the Web build `s27web2` (`bookshots --play`: the pointer over the greatest
+place's first household's home).
