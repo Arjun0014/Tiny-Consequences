@@ -427,6 +427,7 @@ namespace TC2.Game
         }
 
         readonly System.Collections.Generic.List<double> _gateDist = new System.Collections.Generic.List<double>();
+        readonly System.Collections.Generic.List<bool> _ringDry = new System.Collections.Generic.List<bool>();   // (each stretch of a ring dry or not: DrawRing)
 
         void DrawRing(TC2.Core.Simulation.World w, PlanetState P, in Settlement s, int sid, float ex, double r, float condition, double share, double stone)
         {
@@ -484,13 +485,19 @@ namespace TC2.Game
             }
             double stoneTo = stone >= 1.0 ? double.MaxValue : stone * far;
             int towerEvery = Mathf.Max(8, (int)(45.0 / 2.0));   // (a wall tower every ~45 m of curtain)
+            // (no posts in the sea or a lake: C1.6) - each stretch by its own point and its neighbours': where the ring runs along a shore its points fall
+            // dry and wet in turn, and every other stretch had gone - a row of separate slabs down the beach (s27d4, s27e3); a lone wet stretch between
+            // dry ones stands, a lone dry one between wet ones does not
+            _ringDry.Clear();
+            for (int k = 0; k < set; k++) _ringDry.Add(Structures.RingDry(w, in s, r, 2.0 * System.Math.PI * (k + 0.5) / stretches));
             for (int k = 0; k < set; k++)
             {
                 double a = 2.0 * System.Math.PI * (k + 0.5) / stretches;
                 bool gate = _gateDist[k] < gateHalf;
                 bool inStone = stone > 0.0 && _gateDist[k] <= stoneTo;
                 if (gate) continue;
-                if (!Structures.RingDry(w, in s, r, a)) continue;   // (no posts in the sea or a lake: C1.6)
+                bool before = _ringDry[(k + set - 1) % set], after = _ringDry[(k + 1) % set];
+                if (_ringDry[k] ? (!before && !after && set > 2) : !(before && after)) continue;
                 if (!inStone && cond <= 0f) continue;   // (the timber of an old ring all rotted away, its stone standing)
                 double x = s.SquareX + r * System.Math.Cos(a), y = s.SquareY + r * System.Math.Sin(a);
                 float yaw = Mathf.Atan2((float)(s.SquareX - x), (float)(s.SquareY - y)) * Mathf.Rad2Deg;
