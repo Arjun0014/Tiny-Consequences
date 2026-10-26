@@ -255,13 +255,13 @@ namespace TC2.Core.History
             // 1 a grown body in health, unarmed and untrained)
             int fk = Level(p.SkFight);
             sb.Append("In a fight: ").Append(fk == 0 ? "a master" : fk == 1 ? "skilled" : fk == 2 ? "a fair hand" : fk == 3 ? "a beginner" : "untrained")
-              .Append(p.Fights > 0 ? ", " + p.Fights + (p.Fights == 1 ? " fight" : " fights") + " lived through" : ", never in a fight");
+              .Append(p.Fights > 0 ? ", " + p.Fights + (p.Fights == 1 ? " fight" : " fights") + " lived through" : ", never yet fought");
             if (p.AgeYears(w.Now) < 16) sb.Append("; too young to come out to a fight.\n");
             else if (!Conflict.Fit(in p, w.Now)) sb.Append("; not fit to come out to a fight now.\n");
             else
             {
                 double st = w.Conflict.Strength(in p);
-                sb.Append(st >= 1.8 ? "; formidable now - armed and practised" : st >= 1.3 ? "; strikes harder than most" : st >= 0.95 ? "; strikes as hard as most" : st >= 0.6 ? "; no great strength in a fight" : "; weak in a fight").Append(".\n");
+                sb.Append(st >= 1.8 ? "; formidable now - armed and practised" : st >= 1.3 ? "; strikes harder than most" : st >= 0.95 ? "; strikes as hard as most" : st >= 0.6 ? "; no great strength" : "; weak").Append(".\n");
             }
             if (p.Band != 0 && w.Bands.Exists(p.Band)) { var b = w.Bands.Get(p.Band); sb.Append("With a band of ").Append(b.Size).Append(" from ").Append(Place(w, b.Origin)).Append(" against ").Append(Place(w, b.Target)).Append(".\n"); }
             int n = 0;
