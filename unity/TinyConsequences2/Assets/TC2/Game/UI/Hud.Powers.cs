@@ -127,6 +127,46 @@ namespace TC2.Game
             return false;
         }
 
+        // (session 27: the powers as play) your hand: the last casts and what has come of each so far, read from the ledger once a second
+        readonly System.Collections.Generic.List<(long id, string what, long time, string came, int n)> _hand = new System.Collections.Generic.List<(long, string, long, string, int)>();
+        float _handAt;
+        GUIStyle _handLine;
+
+        void YourHand(World w, float sw, float sh)
+        {
+            if (Time.unscaledTime - _handAt > 1f)
+            {
+                _handAt = Time.unscaledTime;
+                _hand.Clear();
+                var h = w.History;
+                for (int i = h.Count - 1, seen = 0; i >= 0 && seen < 40000 && _hand.Count < 3; i--, seen++)
+                {
+                    var e = h.At(i);
+                    if (w.Now - e.Time > 10 * SimTime.Year) break;
+                    if (e.Kind != TC2.Core.History.HistoryKind.GodCommand) continue;
+                    string what = TC2.Core.History.HistoryText.Describe(w, in e).TrimEnd('.');
+                    if (what.StartsWith("You ", StringComparison.Ordinal)) what = char.ToUpperInvariant(what[4]) + what.Substring(5);
+                    string came = TC2.Core.History.HistoryBook.CameOf(w, e.Id, out int n);
+                    _hand.Add((e.Id, what, e.Time, came, n));
+                }
+            }
+            if (_hand.Count == 0) return;
+            if (_handLine == null) { _handLine = new GUIStyle(_small) { fontSize = 12, wordWrap = true, richText = true, padding = new RectOffset(4, 4, 2, 3) }; _handLine.hover.textColor = new Color(1f, 0.86f, 0.45f); }
+            float hw = 420f, lineH = 34f;
+            var r = new Rect(_powersRect.x, _powersRect.y - 10f - (lineH * _hand.Count + 22f), hw, lineH * _hand.Count + 22f);
+            GUILayout.BeginArea(r, _box);
+            GUILayout.Label("<b>Your hand</b>  <size=11>what has come of it so far - the book's last part tells all</size>", _small);
+            for (int k = 0; k < _hand.Count; k++)
+            {
+                var x = _hand[k];
+                long ago = w.Now - x.time;
+                string when = ago < SimTime.Day ? "today" : ago < SimTime.Year ? (ago / SimTime.Day) + " days ago" : (ago / (double)SimTime.Year).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + " years ago";
+                string line = "<b>" + x.what + "</b> <size=11>(" + when + ")</size>\n" + (x.came.Length > 0 ? x.came : "<i>nothing yet that the world remembers</i>");
+                if (GUILayout.Button(line, _handLine)) OpenBookAt(TC2.Core.History.HistoryBook.YourActionsPart, k);
+            }
+            GUILayout.EndArea();
+        }
+
         /// <summary>(session 27) The places a power aimed here would reach, by the world's own measure: the villages within its reach (the nearest
         /// within it for a sickness), with their people - what the player is about to touch.</summary>
         static string InReach(World w, Vec3d dir, in Power pw)

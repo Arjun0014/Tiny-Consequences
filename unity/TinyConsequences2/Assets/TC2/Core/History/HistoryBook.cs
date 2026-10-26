@@ -1864,6 +1864,33 @@ namespace TC2.Core.History
             return part;
         }
 
+        /// <summary>
+        /// (session 27: the powers as play) What has come so far of one of your casts, in a few words - the records since it whose causes run back to it,
+        /// counted by what they were as Your Actions counts them ("2 fires, 1 home burned"); "" while nothing has. For the HUD's "your hand", read
+        /// once a second: the ledger from the cast on (it is kept in time order), never written.
+        /// </summary>
+        public static string CameOf(World w, long castId, out int count)
+        {
+            count = 0;
+            var h = w.History;
+            if (!h.TryGet(castId, out var cast)) return "";
+            int lo = 0, hi = h.Count;
+            while (lo < hi) { int mid = (lo + hi) >> 1; if (h.At(mid).Time < cast.Time) lo = mid + 1; else hi = mid; }
+            var counts = new Dictionary<HistoryKind, int>();
+            var order = new List<HistoryKind>();
+            for (int i = lo; i < h.Count; i++)
+            {
+                var e = h.At(i);
+                if (e.RootKind != RootKind.You || e.Root != castId || e.Id == castId) continue;
+                count++;
+                if (!counts.TryGetValue(e.Kind, out int m)) order.Add(e.Kind);
+                counts[e.Kind] = m + 1;
+            }
+            var parts = new List<string>();
+            foreach (var kind in order) { string s = Followed(kind, counts[kind]); if (s != null) parts.Add(s); }
+            return parts.Count > 0 ? Join(parts) : count > 0 ? Plural(count, "record", "records") : "";
+        }
+
         /// <summary>What a kind of record is, counted, in "What came of it" (null: not told by count).</summary>
         static string Followed(HistoryKind k, int n)
         {
