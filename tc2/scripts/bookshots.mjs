@@ -3,7 +3,7 @@
 // version) is put into the game's IndexedDB store as saved a moment ago with the offline mode paused, as realmsperf.mjs does, then the game loads
 // it; each part the book opens is written then (its time is in the console: "[TC2] book: part ...").
 // Usage: node tc2/scripts/bookshots.mjs --save F.tc2 --lat DEG --lon DEG [--views region:6000,orbit:22000,village:1400]
-//        [--book "-1,0:0,1:0,2:0,3:0,4:0,5:0,6:0,7:0"] [--tag NAME] [--webgl2] [--play]
+//        [--book "-1,0:0,1:0,2:0,3:0,4:0,5:0,6:0,7:0"] [--tag NAME] [--webgl2] [--play] [--pages "person:0,place:0"]
 // --play (session 27): the pointer over a home, a lightning aimed, cast and its "Your hand", a storm aimed from afar (play_*.png);
 // with --meteor-play also a meteor thrown near that home: its fall, its landing and what it left (play_meteor_*.png).
 import fs from 'node:fs';
@@ -131,6 +131,18 @@ try {
       await cmd('speed 0');
     }
   }
+  // (session 27) the person and place pages as leaves of the book: --pages "person:0,person:5,place:0,place:2" - the oldest living person's page and
+  // the greatest place's at those sections (page_person_0.png ...)
+  for (const pp of opt('--pages', '').split(',').filter((v) => v)) {
+    const [kind, sec] = pp.split(':');
+    await cmd(`${kind} ${kind === 'person' ? 'oldest' : 'big'} ${Number(sec || 0)}`);
+    await page.waitForTimeout(2500);
+    const f = path.join(outDir, `page_${kind}_${Number(sec || 0)}.png`);
+    await page.screenshot({ path: f });
+    report.shots.push(f);
+    console.log('shot ' + path.basename(f));
+  }
+  await cmd('closepages');
   await cmd(`look ${lat} ${lon} 6000`);
   for (const pg of pages) {
     await cmd(`bookat ${pg.part} ${pg.chapter}`);
