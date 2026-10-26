@@ -148,6 +148,8 @@ namespace TC2.Game
             if (what == "names") { Hud.Names = on; return; }        // (places, works and people named: D2-172)
             if (what == "cover") { TerrainLod.CoverOff = !on; return; }   // (the ground cover near the camera: D2-081)
             if (what == "covershadow") { TerrainLod.CoverShadows = on; return; }   // (shrubs' and boulders' shadows)
+            if (what == "terrainshadow") { TerrainLod.PatchShadows = on; return; }   // (session 27: the ground's patches casting shadows)
+            if (what == "terrainbranch") { Shader.SetGlobalFloat("_TC2Unbranched", on ? 0f : 1f); return; }   // (session 27: off runs every block of Terrain.shader everywhere, as before its branches)
             if (what == "peoplecull") { WorldObjectsView.PeopleCull = on; return; }   // (people beyond the limb and outside the view left unposed: 14 §7)
             if (what == "placescull") { WorldObjectsView.PlacesCull = on; return; }   // (villages beyond the limb left unbuilt: 14 §7)
             if (what == "shadowlite") { Sky.ShadowLite = on; return; }   // (above 3 km two cascades over twice the height: 14 §7, measured before chosen)

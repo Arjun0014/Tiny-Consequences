@@ -35,7 +35,7 @@ namespace TC2.Game
         // (session 27) a stone falling from the sky to where it was thrown (the meteor), its burst and the ground's shaking when it lands
         struct Fall { public Vec3d Dir; public Color Col; public float Born; }
         static readonly List<Fall> Falls = new List<Fall>();
-        const float FallTime = 0.75f;
+        public const float FallTime = 0.75f;
         // (session 27) lightning seen: a bolt for each strike the ledger records near where the camera looks - the storms' and the god's alike
         struct Bolt { public Vector3 At; public float Born; public ulong Seed; }
         readonly List<Bolt> _bolts = new List<Bolt>();

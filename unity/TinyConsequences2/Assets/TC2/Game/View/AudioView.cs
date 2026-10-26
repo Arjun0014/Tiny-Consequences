@@ -31,6 +31,15 @@ namespace TC2.Game
         int _nextShot;
         long _seenId = -1;
         float _lastStory;
+        // (session 27) the meteor heard falling: a roar that drops in pitch and swells as the stone comes down (made here, from filtered noise),
+        // and its landing - the thunder and the crash of its MeteorStruck record - held until the stone is seen to land (AimView's fall)
+        static float _fallAt = -1f, _landAt = -1f;
+        AudioClip _fall;
+        struct Later { public string Name; public float Volume, At; public int Pick; }
+        readonly List<Later> _later = new List<Later>();
+
+        /// <summary>A stone thrown from the sky (the meteor's cast): heard falling for <paramref name="seconds"/>, its landing heard then.</summary>
+        public static void MeteorFall(float seconds) { _fallAt = Time.unscaledTime; _landAt = Time.unscaledTime + seconds; }
 
         void Start()
         {
@@ -46,6 +55,35 @@ namespace TC2.Game
             for (int i = 0; i < _shot.Length; i++) { _shot[i] = gameObject.AddComponent<AudioSource>(); _shot[i].playOnAwake = false; _shot[i].spatialBlend = 0f; }
             foreach (var n in new[] { "thunder", "quake", "house_fall", "wolf_howl", "dog_bark", "shout" }) Load(n, 3);
             foreach (var n in new[] { "ui_power", "ui_story", "ui_you", "ui_click" }) Load(n, 1);
+            _fall = MakeFall(AimView.FallTime);
+        }
+
+        /// <summary>The stone's roar as it falls (<paramref name="seconds"/> to the ground, then a short tail): white noise through a band that sweeps
+        /// down from ~2.6 kHz to ~180 Hz as it nears - the air torn - over a deep rumble, both swelling to the landing.</summary>
+        static AudioClip MakeFall(float seconds, int rate = 44100)
+        {
+            int n = (int)((seconds + 0.12f) * rate);
+            var d = new float[n];
+            uint s = 0x9E3779B9u;
+            float low = 0f, band = 0f, rum = 0f, peak = 1e-6f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)rate, u = Mathf.Clamp01(t / seconds);
+                s ^= s << 13; s ^= s >> 17; s ^= s << 5;
+                float x = (s & 0xFFFFFF) / 8388608f - 1f;
+                float f = 2f * Mathf.Sin(Mathf.PI * Mathf.Lerp(2600f, 180f, u * u) / rate);   // (a state-variable filter's band)
+                float high = x - low - 0.22f * band; band += f * high; low += f * band;   // (narrow: a falling whistle over the hiss)
+                rum += (x - rum) * 0.004f;
+                float swell = u * u * (0.25f + 0.75f * u);
+                float end = t <= seconds ? 1f : Mathf.Exp(-(t - seconds) * 40f);
+                float y = (band * (0.3f + 0.7f * swell) + rum * 18f * swell) * end * Mathf.Clamp01(t * 30f);
+                d[i] = y;
+                peak = Mathf.Max(peak, Mathf.Abs(y));
+            }
+            for (int i = 0; i < n; i++) d[i] *= 0.85f / peak;
+            var c = AudioClip.Create("meteor_fall", n, 1, rate, false);
+            c.SetData(d, 0);
+            return c;
         }
 
         void Load(string name, int takes)
@@ -88,8 +126,23 @@ namespace TC2.Game
                 if (src.volume > 0.005f && !src.isPlaying) { src.time = Random.Range(0f, Mathf.Max(0.01f, src.clip.length - 0.1f)); src.Play(); }
                 else if (src.volume <= 0.005f && src.isPlaying && _want[i] == 0f) src.Pause();
             }
-            if (quiet) { if (w != null) _seenId = w.History.LastId; return; }
+            if (quiet) { if (w != null) _seenId = w.History.LastId; _fallAt = -1f; _later.Clear(); return; }
+            if (_fallAt >= 0f && _fall != null)
+            {
+                var src = _shot[_nextShot]; _nextShot = (_nextShot + 1) % _shot.Length;
+                src.clip = _fall; src.volume = 0.8f * Volume; src.Play();
+                _fallAt = -1f;
+            }
+            for (int i = _later.Count - 1; i >= 0; i--)
+                if (_later[i].At <= Time.unscaledTime) { Play(_later[i].Name, _later[i].Volume, _later[i].Pick); _later.RemoveAt(i); }
             Happenings(w);
+        }
+
+        /// <summary>A single sound now, or - a meteor's landing while its stone is still seen falling - when it lands.</summary>
+        void Landing(string name, float volume, int pick)
+        {
+            if (_landAt > Time.unscaledTime) _later.Add(new Later { Name = name, Volume = volume, At = _landAt, Pick = pick });
+            else Play(name, volume, pick);
         }
 
         /// <summary>What the camera hears: the beds' mix from where it looks and how high it is.</summary>
@@ -179,7 +232,7 @@ namespace TC2.Game
                 {
                     case HistoryKind.LightningStrike: if (v > 0f) { Play("thunder", 0.3f + 0.7f * v, (int)e.Id); told++; } break;
                     case HistoryKind.Quake: if (v > 0f || e.Magnitude > 6.5f) { Play("quake", 0.4f + 0.6f * Mathf.Max(v, 0.3f), (int)e.Id); told++; } break;
-                    case HistoryKind.MeteorStruck: { Play("thunder", 1f, (int)e.Id); Play("house_fall", 0.6f + 0.4f * v, (int)e.Id + 1); told++; break; }
+                    case HistoryKind.MeteorStruck: { Landing("thunder", 1f, (int)e.Id); Landing("house_fall", 0.6f + 0.4f * v, (int)e.Id + 1); told++; break; }
                     case HistoryKind.BuildingBurned: case HistoryKind.HomesDrowned: if (v > 0.2f) { Play("house_fall", 0.4f + 0.6f * v, (int)e.Id); told++; } break;
                     case HistoryKind.Raid: if (v > 0.3f) { Play("shout", 0.3f + 0.5f * v, (int)e.Id); told++; } break;
                 }

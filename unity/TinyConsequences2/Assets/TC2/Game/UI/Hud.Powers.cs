@@ -110,7 +110,7 @@ namespace TC2.Game
             // shaking when it lands)
             float shake = pw.Kind == CommandKind.GodMeteor ? 1f : pw.Kind == CommandKind.GodQuake ? 0.85f : pw.Kind == CommandKind.GodEruption ? 0.7f : pw.Kind == CommandKind.GodStorm ? 0.3f : pw.Kind == CommandKind.GodLightning ? 0.25f : 0.1f;
             bool meteor = pw.Kind == CommandKind.GodMeteor;
-            if (meteor) AimView.Cast(w.Planet.Grid.Center[cell], pw.Reach, pw.Col, shake, true);
+            if (meteor) { AimView.Cast(w.Planet.Grid.Center[cell], pw.Reach, pw.Col, shake, true); AudioView.MeteorFall(AimView.FallTime); }
             else if (GroundUnder(Input.mousePosition, out var at, out _)) AimView.Cast(at, pw.Reach, pw.Col, shake);
             _aim = -1;
         }

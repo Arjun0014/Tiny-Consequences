@@ -133,7 +133,7 @@ namespace TC2.Core.History
             t.People = new int[n];
             var a = w.Annals;
             for (int i = 0; i < a.Count; i++) { int k = a[i].Year - t.From; if (k >= 0 && k < n) { t.People[k] = a[i].People; t.MaxPeople = System.Math.Max(t.MaxPeople, a[i].People); } }
-            t.Ages.AddRange(Chronicle.Eras(w));
+            t.Ages.AddRange(Chronicle.Eras(w, under: c.Leading));
             for (int r = 0; r < c.RealmOrder.Count && t.Realms.Count < realms; r++)
             {
                 var rr = c.Realms[c.RealmOrder[r]];
@@ -337,6 +337,38 @@ namespace TC2.Core.History
                 return lo;
             }
 
+            int[] _lead;   // (each year's greatest realm, by its seat: Leading)
+
+            /// <summary>(session 27) The realm that led the years [from, to) - the greatest that year, by villages, for most of them and for at
+            /// least two in five -, by its seat's name, or null (an age that shares its name is named by it: Chronicle.Eras).</summary>
+            public string Leading(int from, int to)
+            {
+                if (_lead == null)
+                {
+                    _lead = new int[System.Math.Max(0, Now - First + 1)];
+                    var size = new int[_lead.Length];
+                    foreach (int seat in RealmOrder)
+                        foreach (var kv in Realms[seat].Sizes)
+                        {
+                            int k = kv.Key - First;
+                            if (k < 0 || k >= size.Length || kv.Value <= 0) continue;
+                            if (kv.Value > size[k] || (kv.Value == size[k] && seat < _lead[k])) { size[k] = kv.Value; _lead[k] = seat; }
+                        }
+                }
+                var years = new Dictionary<int, int>();
+                int best = 0, most = 0;
+                for (int y = from; y < to; y++)
+                {
+                    int k = y - First;
+                    if (k < 0 || k >= _lead.Length || _lead[k] == 0) continue;
+                    int s = _lead[k];
+                    years.TryGetValue(s, out int c);
+                    years[s] = ++c;
+                    if (c > most || (c == most && s < best)) { most = c; best = s; }
+                }
+                return best != 0 && most * 5 >= (to - from) * 2 ? Name(W, best) : null;
+            }
+
             /// <summary>A place's events: those at it, and those naming it elsewhere (its raids on others, its bonds), oldest first.</summary>
             public List<HistoryEvent> Of(int sid)
             {
@@ -455,7 +487,7 @@ namespace TC2.Core.History
             var a = w.Annals;
             var wars = AllWars(c);
             var found = FirstFindings(c);
-            foreach (var era in Chronicle.Eras(w))
+            foreach (var era in Chronicle.Eras(w, under: c.Leading))
             {
                 var ch = new BookChapter { Title = era.Name, Sub = Span(era.From, era.To - 1, era.Present) };
                 int i0 = -1, i1 = -1;
@@ -482,7 +514,16 @@ namespace TC2.Core.History
                     sb.Append(Plural(a[i1].Places, "place was", "places were")).Append(" lived in at its end.");
                     int bestSeat = 0, bestN = 0;
                     foreach (int seat in c.RealmOrder) { int n = c.Realms[seat].SizeAt(a[i1].Year); if (n > bestN) { bestN = n; bestSeat = seat; } }
-                    if (bestSeat != 0) sb.Append(' ').Append(era.Present ? "Now" : "At its end").Append(" the greatest realm was ").Append(Name(w, bestSeat)).Append("'s, of ").Append(Plural(bestN + 1, "village", "villages")).Append('.');
+                    // (session 27) the realm that led most of its years too (an age that shares its name is named by it: Chronicle.Eras)
+                    string led = c.Leading(era.From, era.To);
+                    if (bestSeat != 0)
+                    {
+                        string end = Name(w, bestSeat), size = Plural(bestN + 1, "village", "villages");
+                        if (led == null) sb.Append(' ').Append(era.Present ? "Now the greatest realm is " : "At its end the greatest realm was ").Append(end).Append("'s, of ").Append(size).Append('.');
+                        else if (led == end) sb.Append(' ').Append(end).Append(era.Present ? "'s has been the greatest realm for most of these years and is now, of " : "'s was the greatest realm for most of these years and at their end, of ").Append(size).Append('.');
+                        else sb.Append(' ').Append(led).Append("'s was the greatest realm for most of these years; ").Append(era.Present ? "now " + end + "'s is" : "at their end " + end + "'s was").Append(", of ").Append(size).Append('.');
+                    }
+                    else if (led != null) sb.Append(' ').Append(led).Append("'s was the greatest realm for most of these years.");
                     ch.Para(sb.ToString());
                     tally = "Born " + F(born) + ", died " + F(died) + " - of hunger " + F(hunger) + ", of sickness " + F(sick) + ", of wounds " + F(wounds) + ", in disasters " + F(disaster) +
                             ". Founded " + F(founded) + ", abandoned " + F(abandoned) + ". Raids " + F(raids) + ", palisades begun " + F(walls) + ", tributes agreed " + F(tributes) + ".";
