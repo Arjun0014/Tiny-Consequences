@@ -496,7 +496,9 @@ namespace TC2.Game
                 bool gate = _gateDist[k] < gateHalf;
                 bool inStone = stone > 0.0 && _gateDist[k] <= stoneTo;
                 if (gate) continue;
-                bool before = _ringDry[(k + set - 1) % set], after = _ringDry[(k + 1) % set];
+                bool whole = set == stretches;   // (a ring part built: its first and last are not neighbours)
+                bool before = k > 0 ? _ringDry[k - 1] : whole ? _ringDry[set - 1] : _ringDry[k];
+                bool after = k + 1 < set ? _ringDry[k + 1] : whole ? _ringDry[0] : _ringDry[k];
                 if (_ringDry[k] ? (!before && !after && set > 2) : !(before && after)) continue;
                 if (!inStone && cond <= 0f) continue;   // (the timber of an old ring all rotted away, its stone standing)
                 double x = s.SquareX + r * System.Math.Cos(a), y = s.SquareY + r * System.Math.Sin(a);
