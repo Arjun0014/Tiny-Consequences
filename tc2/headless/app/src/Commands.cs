@@ -265,7 +265,9 @@ namespace TC2.Headless
             if (a.Has("oldharry")) TC2.Core.Society.Conflict.HarryOff = true;   // (C8.1a off: no band harries the fields outside the walls)
             if (a.Has("harrytally")) TC2.Core.Society.Conflict.HarryTally = new double[7];   // (C8.1a: bands broken on walls and the crops outside them)
             if (a.Has("oldstonewalls")) TC2.Core.Society.Conflict.StoneWallsOff = true;
-            if (a.Has("oldruins")) TC2.Core.Places.Homes.OldRuins = true;   // (C13.4 off: fallen homes' ruins keep their lots until gone into the land)
+            if (a.Has("oldruins")) TC2.Core.Places.Homes.OldRuins = true;
+            if (a.Has("oldprospect")) TC2.Core.Places.Mining.ProspectOff = true;   // (C5.3c off: ore seen only where the day's work takes people)
+            if (a.Has("prospecttally")) TC2.Core.Places.Mining.ProspectTally = new double[3];   // (C5.3c: seasons gone looking, bodies found within reach, looks beyond it)   // (C13.4 off: fallen homes' ruins keep their lots until gone into the land)
             if (a.Has("ruinstally")) TC2.Core.Places.Homes.RuinTally = new double[3];   // (C13.4: ruins cleared for new homes, on stone footings, stone carried back)   // (C7.2 off: no village walls its ring in stone)
             if (a.Has("oldcompact")) TC2.Core.History.HistoryLedger.CompactOff = true;
             if (a.Has("oldhall")) TC2.Core.Society.Hall.Off = true;   // (C10.11 off: no first household keeps dependants)
@@ -1133,6 +1135,20 @@ namespace TC2.Headless
                         int keptNow = 0, keptSeat = 0; for (int hi = w.Households.First(); hi != 0; hi = w.Households.Next(hi)) { ref var hh = ref w.Households.Get(hi); if (hh.Keeper == 0 || hh.Dissolved != 0) continue; keptNow++; if (w.Settlements.Exists(hh.Settlement) && w.Conflict.PolitySize(hh.Settlement) > 0) keptSeat++; }
                         Console.WriteLine("hall: taken in at home " + hlt[0] + ", from the realm " + hlt[1] + " (could not go " + hlt[9] + "); let go - the grain short " + hlt[2] + ", no first " + hlt[3] + ", land of their own " + hlt[4] + "; taken over by a new first " + hlt[10] +
                                           "; FU given " + F(hlt[5], "0") + " (" + hlt[6] + " household-years); the most kept by one " + hlt[7] + "; village-harvests weighed " + hlt[8] + "; kept now " + keptNow + " (at lords' seats " + keptSeat + ")");
+                    }
+                    var pst = TC2.Core.Places.Mining.ProspectTally;
+                    if (pst != null)   // (C5.3c: prospecting)
+                    {
+                        int lackCu = 0, lackFe = 0, mines = 0;
+                        for (int si = w.Settlements.First(); si != 0; si = w.Settlements.Next(si))
+                        {
+                            ref var ss = ref w.Settlements.Get(si);
+                            if (!ss.Inhabited) continue;
+                            if (TC2.Core.Places.Mining.Lacks(in ss, TC2.Core.Places.Mining.Copper)) lackCu++;
+                            if (TC2.Core.Places.Mining.Lacks(in ss, TC2.Core.Places.Mining.Iron)) lackFe++;
+                            if (TC2.Core.Places.Mining.Mine(w, si, TC2.Core.Places.Mining.Copper) != 0 || TC2.Core.Places.Mining.Mine(w, si, TC2.Core.Places.Mining.Iron) != 0) mines++;
+                        }
+                        Console.WriteLine("prospect: seasons gone looking " + pst[0] + ", bodies found within reach " + pst[1] + ", looks beyond it " + pst[2] + "; now: villages lacking copper " + lackCu + ", iron " + lackFe + ", villages with a mine or pits " + mines + "; scouted for ore " + w.Metrics.ScoutedForOre + ", founded knowing ore " + w.Metrics.FoundedByOre);
                     }
                     var rnt = TC2.Core.Places.Homes.RuinTally;
                     if (rnt != null)   // (C13.4: ruins reused)
