@@ -80,6 +80,7 @@ half TC2CloudDensity(float3 dir, half4 cover, float lod, float t, out half thick
 // spans on the ground there (for the forms' level of detail).
 half TC2CloudShadow(float3 positionWS, float3 sunDir, float footprint, float t)
 {
+    if (_TC2CloudScale.w <= 0.0) return 0.0h;   // (no cloud shadows: nothing sampled - the frame's cost measured with them off)
     float r = length(positionWS);
     float up = max(0.05, dot(positionWS / r, sunDir));
     float3 toCloud = normalize(positionWS + sunDir * (max(0.0, _TC2CloudShell - r) / up));
