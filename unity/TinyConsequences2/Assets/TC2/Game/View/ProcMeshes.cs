@@ -699,22 +699,25 @@ namespace TC2.Game
         }
 
         /// <summary>
-        /// A stretch of palisade 2 m long (D2-074): five sharpened posts set close along X, a rail binding them at waist height.
-        /// Drawn in a ring round a walled village, the instance colour greying the timber as it rots.
+        /// A stretch of palisade 2 m long (D2-074): seven sharpened stakes set close along X over 2.1 m (the stretches, set every 2 m round the ring,
+        /// overlap on its curve), two rails binding them on the inner face. Drawn in a ring round a walled village, the instance colour greying the timber
+        /// as it rots. (Session 27: five posts in 1.86 m of darker wood had read from the village view as a row of separate dark slabs - s27d4.)
         /// </summary>
         public static Mesh Palisade()
         {
             var b = new Builder();
-            Color wood = Lin(0.58f, 0.44f, 0.30f), tip = Lin(0.50f, 0.38f, 0.26f);
-            for (int k = 0; k < 5; k++)
+            Color wood = Lin(0.66f, 0.54f, 0.40f), tip = Lin(0.58f, 0.47f, 0.34f), rail = Lin(0.52f, 0.42f, 0.30f);
+            for (int k = 0; k < 7; k++)
             {
-                float x = -0.8f + 0.4f * k, h = 2.25f + 0.12f * ((k * 7) % 3);   // (posts of a little different height)
-                b.Box(new Vector3(x - 0.13f, 0f, -0.13f), new Vector3(x + 0.13f, h, 0.13f), wood);
-                Vector3 apex = new Vector3(x, h + 0.35f, 0f);
-                Vector3 p0 = new Vector3(x - 0.13f, h, -0.13f), p1 = new Vector3(x + 0.13f, h, -0.13f), p2 = new Vector3(x + 0.13f, h, 0.13f), p3 = new Vector3(x - 0.13f, h, 0.13f);
+                float x = -0.9f + 0.3f * k, h = 2.15f + 0.11f * ((k * 7) % 4), r = 0.14f;   // (stakes of a little different height, nearly touching)
+                b.Box(new Vector3(x - r, 0f, -r), new Vector3(x + r, h, r), wood * (0.94f + 0.03f * ((k * 5) % 3)));
+                Vector3 apex = new Vector3(x, h + 0.38f, 0f);
+                Vector3 p0 = new Vector3(x - r, h, -r), p1 = new Vector3(x + r, h, -r), p2 = new Vector3(x + r, h, r), p3 = new Vector3(x - r, h, r);
                 b.Tri(p0, apex, p1, tip); b.Tri(p1, apex, p2, tip * 0.85f); b.Tri(p2, apex, p3, tip); b.Tri(p3, apex, p0, tip * 0.85f);
             }
-            b.Box(new Vector3(-1.0f, 1.05f, -0.2f), new Vector3(1.0f, 1.2f, -0.13f), Lin(0.45f, 0.34f, 0.22f));
+            // two rails on the inner face (+z faces the village's square)
+            b.Box(new Vector3(-1.05f, 0.55f, 0.14f), new Vector3(1.05f, 0.70f, 0.24f), rail);
+            b.Box(new Vector3(-1.05f, 1.55f, 0.14f), new Vector3(1.05f, 1.70f, 0.24f), rail);
             return b.Build("tc2-palisade");
         }
 
