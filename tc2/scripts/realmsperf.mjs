@@ -90,7 +90,8 @@ try {
   if (!put.startsWith('ok')) throw new Error('the save could not be put into the store: ' + put);
   console.log(`the save put into the store (${put.slice(3)} bytes; sim ${simVersion})`);
   fs.rmSync(servedSave, { force: true });
-  await page.goto(`${origin}/index.html?speed=0${flag('--webgl2') ? '&gfx=webgl2' : ''}`);
+  // (session 27) --speed N: the world running (the HUD's speed index: 5 = 1 h/s) - what a layer costs a living world's frame; default 0, paused
+  await page.goto(`${origin}/index.html?speed=${Number(opt('--speed', '0'))}${flag('--webgl2') ? '&gfx=webgl2' : ''}`);
   await page.waitForFunction(() => (window.__TC2 && window.__TC2.ready === true && window.__TC2.people > 0) || window.__TC2_FATAL, null, { timeout: 300000, polling: 200 });
   const s0 = await page.evaluate(() => window.__TC2);
   console.log(`loaded: seed ${s0.seed} (save ${seed}), year ${s0.year}, ${s0.people} people in ${s0.places} places, gfx ${s0.gfx}; catching up ${s0.catchingUp}`);
