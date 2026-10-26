@@ -37,9 +37,20 @@
   the shallows' tone); the palisade as separate dark slabs (6d94a8c: seven stakes over 2.1 m, weathered); the night lights as blobs (4d8b572: 512 a face,
   R8); the console's twelve warnings (de61f38). Also on main: Your Actions folds a cast's dead (654b79e, PowersTests 13/13), the person page in words
   (fe38185, d48eb74; BiographyTests 4/4).
-- **Queue now**: `0_q4_web_s27web5` (built 836d6a9 at 16:12; webtest, `s27perf3` terrainbranch/terrainshadow/shadows/buildings, bookshots `s27book5` with
-  `--pages`), then `0_q5_shots_s27e` (main de61f38: `s27e1` snowy woods and the village's river, `s27e2` orbit@21 and region@21 - the lights, `s27e3`
-  low/close - the palisade). D2-196 draft: `tc2/out/tools/s27/d2196.md` (fill its Evidence from `s27perf3`, `s27web5`, `s27e*`).
+- **Measured (s27perf3, Web of 836d6a9, s2_ac5 y300, paused, paired)**: terrainbranch x1.022 region / x1.063 village (the pixels are not most of the
+  terrain's cost); terrainshadow x1.03 / x0.954; shadows (all) x0.928 / x0.930; buildings x0.838 / x0.877. **Found**: every terrain measure had been taken
+  paused while the ground's colouring cycle ran on (every cell's colour + a patch or two a frame recoloured and re-uploaded, every 2.5 s, for ever) -
+  6ae81de: a new cycle only when the world moved (time or a new record); the warp on a 9x9 lattice over fine patches; bridge `recolour`; realmsperf
+  `--speed N` (5ae... 5460fb4). **s27web5's one FAIL** was the webtest's reference probe from a stale sim-107 headless binary in main's checkout: the
+  browser's sim-108 probe = a sim-108 headless binary bit for bit. **Rule**: rebuild main's headless (`tc2/headless/app`) before a webtest after a sim
+  version change (q6 does).
+- **Judged since**: `s27book5`/`s27web5` paper pages (fixed after: until/due in words, crafts by hands, zero clauses, the year margin 88 px, the raised
+  initial only on a page's first letter-led paragraph, Your hand hidden under a page, 'one lightning strike'); `s27e1` (pools fixed: clean snow; the
+  village's river light blue), `s27e2` (night lights: no visible change from orbit), `s27e3` (palisade still slabs on the beach - **the cause was the
+  shore**: `Shore.Dry` along the waterline flips dry/wet stretch by stretch; 5c62ace two passes: fill a lone wet stretch, drop a lone dry one).
+- **Queue now**: `0_q6_web_s27web6` (headless rebuilt; Web build of main e748638 from 16:34; webtest `s27web6`; `s27perf4/terrain.txt` paused and
+  `recolour_running.txt` at 1 h/s; bookshots `s27book6`), then `0_q7_shots_s27f` (main must hold 5c62ace: ff main after q6's "web build exit"; `s27f7`
+  low/close - the shore palisade). D2-196 draft: `tc2/out/tools/s27/d2196.md` (its Evidence's TODO: `s27perf4`).
 
 ### Next, in order
 1. Judge `s27web5` (9/9), `s27perf3` (terrainbranch on/off = the branches' gain; terrainshadow; shadows; buildings), `s27book5` (`page_*` - the paper pages,
