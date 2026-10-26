@@ -21,16 +21,18 @@ namespace TC2.Game
         // fair-weather cumulus, both drawn out along the latitude bands' winds (D2-027's cover, its form elaborated)
         public static float CloudDeck = 1.0f;    // x the decks' density where it rains
         public static float CloudCu = 1.3f;      // x the cumulus fields' cover where the air is moist
-        public static float CloudStretch = 2.4f; // the forms drawn out east-west, along the bands' winds (1 = round)
+        public static float CloudStretch = 1.8f; // the forms drawn out east-west, along the bands' winds (1 = round)
         public static float CloudShade = 1.0f;   // their relief from the sun's side (0 = flat)
+        public static float CloudTile = 3600f;   // (session 27) the forms' noise tile (m): its large shapes ~ a quarter of it, the cumulus' puffs ~ a thirtieth
+        public static float CloudShadow = 0.6f;  // (session 27) the share of the sun a thick cloud takes from the ground, the sea and what stands there
 
-        static readonly float[] Defaults = { AtmoH, AtmoTop, AtmoTau, AtmoMie, AtmoSun, AtmoGround, CloudDeck, CloudCu, CloudStretch, CloudShade };
+        static readonly float[] Defaults = { AtmoH, AtmoTop, AtmoTau, AtmoMie, AtmoSun, AtmoGround, CloudDeck, CloudCu, CloudStretch, CloudShade, CloudTile, CloudShadow };
 
         /// <summary>Every tunable back to its default (a shot's next view).</summary>
         public static void Reset()
         {
             AtmoH = Defaults[0]; AtmoTop = Defaults[1]; AtmoTau = Defaults[2]; AtmoMie = Defaults[3]; AtmoSun = Defaults[4]; AtmoGround = Defaults[5];
-            CloudDeck = Defaults[6]; CloudCu = Defaults[7]; CloudStretch = Defaults[8]; CloudShade = Defaults[9];
+            CloudDeck = Defaults[6]; CloudCu = Defaults[7]; CloudStretch = Defaults[8]; CloudShade = Defaults[9]; CloudTile = Defaults[10]; CloudShadow = Defaults[11];
             Sky.ShadowLite = false;
         }
 
@@ -50,6 +52,8 @@ namespace TC2.Game
                 case "CloudCu": CloudCu = v; return true;
                 case "CloudStretch": CloudStretch = v; return true;
                 case "CloudShade": CloudShade = v; return true;
+                case "CloudTile": CloudTile = v; return true;
+                case "CloudShadow": CloudShadow = v; return true;
                 case "ShadowLite": Sky.ShadowLite = v > 0f; return true;   // (the frame pass's shadow cascades, 14 §7: judged in real shots before chosen)
             }
             return false;
