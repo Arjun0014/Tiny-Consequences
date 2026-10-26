@@ -200,9 +200,9 @@ namespace TC2.Game
             _stonePiles = new Instancer(Models.Get("stone_pile", ProcMeshes.Granary), _mat, true);
             _ore = new Instancer(Models.Get("boulder", ProcMeshes.Person), _mat, true);
             _granaries = new Instancer(Models.Get("granary", ProcMeshes.Granary), _mat, true);
-            _walls = new Instancer(Models.Get("palisade", ProcMeshes.Palisade), _mat, true);   // walled villages (D2-074)
-            _stoneWalls = new Instancer(Models.Get("stone_curtain", ProcMeshes.StoneCurtain), _mat, true);   // rings laid in stone (C7.2)
-            _towers = new Instancer(Models.Get("wall_tower", ProcMeshes.WallTower), _mat, true);
+            _walls = new Instancer(Models.Get("palisade", ProcMeshes.Palisade, true), _mat, true);   // walled villages (D2-074)
+            _stoneWalls = new Instancer(Models.Get("stone_curtain", ProcMeshes.StoneCurtain, true), _mat, true);   // rings laid in stone (C7.2)
+            _towers = new Instancer(Models.Get("wall_tower", ProcMeshes.WallTower, true), _mat, true);
             _huts = new Instancer(Models.Get("hut_round", ProcMeshes.House), _mat, true);
             _tents = new Instancer(Models.Get("tent", ProcMeshes.House), _mat, true);   // camps: hides over poles
             _ruins = new Instancer(Models.Get("ruin", ProcMeshes.House), _mat, true);   // the houses of abandoned villages (D2-052)

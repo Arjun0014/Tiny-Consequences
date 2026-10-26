@@ -11,7 +11,9 @@ namespace TC2.Game
     {
         static readonly Dictionary<string, Mesh> Cache = new Dictionary<string, Mesh>();
 
-        public static Mesh Get(string name, System.Func<Mesh> fallback)
+        /// <summary>A kit model by name, else its procedural stand-in; <paramref name="procedural"/>: the stand-in is the model by design (the walls,
+        /// laid stretch by stretch) - no warning (session 27: twelve a session in the Web console had hidden the ones that matter).</summary>
+        public static Mesh Get(string name, System.Func<Mesh> fallback, bool procedural = false)
         {
             if (Cache.TryGetValue(name, out var m)) return m;
             var go = Resources.Load<GameObject>("TC2Models/" + name);
@@ -19,7 +21,7 @@ namespace TC2.Game
             m = mf != null ? mf.sharedMesh : null;
             if (m == null)
             {
-                Debug.LogWarning("[TC2] model " + name + " missing: using a stand-in");
+                if (!procedural) Debug.LogWarning("[TC2] model " + name + " missing: using a stand-in");
                 m = fallback();
             }
             Cache[name] = m;
