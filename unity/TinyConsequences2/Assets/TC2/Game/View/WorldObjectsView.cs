@@ -21,7 +21,7 @@ namespace TC2.Game
         public CameraRig Rig;
 
         Instancer _graves, _gravesOld;   // (the burial grounds: D2-151)
-        Instancer _standards;            // (the first household's standard in its polity's colour: D2-152)
+        Instancer _standards, _standardsBig;   // (the first household's standard in its polity's colour: D2-152; enlarged with distance, without a shadow)
         Instancer _muck;                 // (the yards' muck heaps: C3.7c)
         /// <summary>Tools (the shot log and the "muck" views): heaps drawn at the last rebuild, the largest's muck (kg) and where it stands.</summary>
         public static int MuckHeaps;
@@ -230,6 +230,7 @@ namespace TC2.Game
             _floors = new Instancer(ProcMeshes.ThreshingFloor(), _mat, false);
             _graves = new Instancer(Models.Get("grave", ProcMeshes.Granary), _mat, false);
             _standards = new Instancer(Models.Get("standard", ProcMeshes.Granary), _mat, true);
+            _standardsBig = new Instancer(Models.Get("standard", ProcMeshes.Granary), _mat, false);   // (session 27: an enlarged standard's shadow lay across the fields as a band 100 m long)
             _muck = new Instancer(Models.Get("muck_heap", ProcMeshes.Granary), _mat, false);
             _gravesOld = new Instancer(Models.Get("grave_old", ProcMeshes.Granary), _mat, false);
             _woodpiles = new Instancer(ProcMeshes.Woodpile(), _mat, true);   // the village's woodstore, by the homes (D2-081)
@@ -368,7 +369,7 @@ namespace TC2.Game
                 _chimneys.Draw(cam); _plinths.Draw(cam); _outshuts.Draw(cam); _pens.Draw(cam); _stalls.Draw(cam); _gardens.Draw(cam); _gardensBare.Draw(cam); _hurdles.Draw(cam); _tenters.Draw(cam); _clayPits.Draw(cam); _jars.Draw(cam); _ware.Draw(cam); _handcarts.Draw(cam); _oxcarts.Draw(cam); _cartLoads.Draw(cam); _oxen.Draw(cam); _parked.Draw(cam); _parkedOx.Draw(cam);
                 _stonePiles.Draw(cam); _ore.Draw(cam);
                 for (int i = 0; i < _works.Length; i++) _works[i]?.Draw(cam);
-                _ricks.Draw(cam); _graves.Draw(cam); _gravesOld.Draw(cam); _standards.Draw(cam); _muck.Draw(cam); _huts.Draw(cam); _tents.Draw(cam); _ruins.Draw(cam); _walls.Draw(cam); _stoneWalls.Draw(cam); _towers.Draw(cam); _woodpiles.Draw(cam);
+                _ricks.Draw(cam); _graves.Draw(cam); _gravesOld.Draw(cam); _standards.Draw(cam); _standardsBig.Draw(cam); _muck.Draw(cam); _huts.Draw(cam); _tents.Draw(cam); _ruins.Draw(cam); _walls.Draw(cam); _stoneWalls.Draw(cam); _towers.Draw(cam); _woodpiles.Draw(cam);
             }
             if ((Off & 1) == 0) for (int i = 0; i < _trees.Length; i++) _trees[i].Draw(cam);
             _flames.Draw(cam);
@@ -651,7 +652,7 @@ namespace TC2.Game
             _stonePiles.Clear(); _ore.Clear();
             for (int i = 0; i < _works.Length; i++) _works[i]?.Clear();
             DrawOre(w, P);
-            _ricks.Clear(); _graves.Clear(); _gravesOld.Clear(); _standards.Clear(); _muck.Clear(); _huts.Clear(); _tents.Clear(); _ruins.Clear(); _beached.Clear(); _beachedP.Clear(); _walls.Clear(); _stoneWalls.Clear(); _towers.Clear(); _woodpiles.Clear();
+            _ricks.Clear(); _graves.Clear(); _gravesOld.Clear(); _standards.Clear(); _standardsBig.Clear(); _muck.Clear(); _huts.Clear(); _tents.Clear(); _ruins.Clear(); _beached.Clear(); _beachedP.Clear(); _walls.Clear(); _stoneWalls.Clear(); _towers.Clear(); _woodpiles.Clear();
             _smoke.Clear(); _lights.Clear(); _watch.Clear();
             MuckHeaps = 0; MuckLargestKg = 0;   // (tools: the heaps drawn, and where the largest stands - the "muck" shot views)
             // (the frame pass, 14 §7) a village wholly beyond the planet's limb is not built: none of its buildings, lights or smoke can be seen - its
@@ -938,7 +939,8 @@ namespace TC2.Game
             }
             int held = s.Lord == 0 ? w.Conflict.PolitySize(sid) : 0;
             float tall = 1f + 0.18f * Mathf.Min(6, held);
-            _standards.Add(0, PolityColour(w, sid), PlaceFaced(P, s, x, y, face, Mathf.Min(ex, StandardFar) * tall));
+            float k = Mathf.Min(ex, StandardFar) * tall;
+            (k > 1.25f ? _standardsBig : _standards).Add(0, PolityColour(w, sid), PlaceFaced(P, s, x, y, face, k));   // (life-size, or a little taller for a lord: its shadow)
         }
 
         // the burial grounds' slots a later building covers, by village (counted again when its buildings change)
