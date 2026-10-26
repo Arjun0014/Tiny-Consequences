@@ -153,6 +153,7 @@ namespace TC2.Game
             if (what == "shadowlite") { Sky.ShadowLite = on; return; }   // (above 3 km two cascades over twice the height: 14 §7, measured before chosen)
             if (what == "sortplaces") { WorldObjectsView.SortPlaces = on; return; }   // (villages built neighbours together, so batches cull: 14 §7, measured before chosen)
             if (what == "cloudshadow") { Look.CloudShadow = on ? 0.6f : 0f; return; }   // (session 27: the clouds' shadows on the ground, the sea and what stands there)
+            if (what == "fardetail") { WorldObjectsView.DetailFar = on ? 2200f : 1e9f; return; }   // (session 27: far villages' homes plain and shadowless; off: every village in full)
             int part = what == "trees" ? 1 : what == "people" ? 2 : what == "buildings" ? 4 : 0;
             if (part != 0) { WorldObjectsView.Off = on ? WorldObjectsView.Off & ~part : WorldObjectsView.Off | part; return; }
             string prefix = what == "terrain" ? "Patch" : what == "planet" ? "Face" : what == "sea" ? "Sea" : what == "air" ? "Atmosphere" : what == "clouds" ? "Clouds" : what == "rivers" ? "Rivers" : null;
