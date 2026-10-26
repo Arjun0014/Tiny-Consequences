@@ -57,7 +57,12 @@
 1. When `0_u` ends: `tc2/out/webtest/s27web2.log` 9/9; look at `s27book2` (the new reader, the timeline, `play_*`: the house mark, the aim, the cast, Your hand);
    `git checkout -- unity/TinyConsequences2/ProjectSettings/ProjectSettings.asset`; fix what the pictures say; D2-193, D2-194.
 2. Fast-forward main to `wip/s27-int` (during `0_v`), move `0_w` to `todo`; judge its shots; then a Web build `s27web3` with `--play --meteor-play`.
-3. `s27perf`: the costliest layer at the region and village views -> optimise it (the integrated GPU: 22-30 fps at the region/village views in `s27web1`).
+3. **The terrain is the next cost** (x0.59 region, x0.66 village: `s27perf2/terrain.txt`). Plan: in `Terrain.shader` the woods block (from "the woods
+   (D2-079)") runs for every pixel - 6 `Crowns` + 9 `CoverAt` samples, the stand rank - because implicit-derivative samples must stay in uniform control
+   flow on WebGPU. Compute `ddx/ddy(i.positionWS)` and `pxs`/`pxw` before it, pass each projection's uv gradients (the `lt` offsets keep them; the turned
+   `mul(turnB, uv) * 0.413` scales them) into `Crowns`/`CoverAt` as `SAMPLE_TEXTURE2D_GRAD`, then wrap the block in `if (i.wood.x > 0.002)` - with no wood
+   it leaves the albedo as it was (dl = 0: litter = albedo, mask 0, fc 0; the stand step keeps dens 0). Then the same for the plots/furrows block where
+   `i.farm` is 0. Verify: Unity shots (no shader errors), a Web build (WebGPU compiles it), `realmsperf --layer terrain`.
 4. Prospecting's compare -> D2-190, land (merge `wip/prospect`, sim 108; every queued shots/Web job then needs saves of sim 108 or the old binary).
 5. Then on by the shots: the book (portraits? age names that repeat), A (night clouds faintly grey; the sea's broad sheen), D (warm temperate woods never
    found in seeds 2/4 - check whether any world has them), E (sound for the meteor's fall?).
