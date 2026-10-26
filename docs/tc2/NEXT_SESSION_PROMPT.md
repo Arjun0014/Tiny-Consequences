@@ -422,10 +422,7 @@ power-saving GPU and refuses every drawing job while the card is present (`TC2_A
 run drew on (it must read "AMD Radeon(TM) Graphics (ID=0x1636)", the integrated GPU). Shots and the Web build are slower on it: fps numbers are not
 comparable with earlier sessions. All runs are silent (`--mute-audio`; the listener at 0 in shots; the game pauses its sound when not in front).
 
-**Where we are (session 27, 26 Oct 2026, from 10:40 IST)**: the fourth acceptance's queue had stopped at 05:17 (M_a, M_b x3, M_b0, M_b2, M_c done); it was
-restarted for the rest - M_d (the stone-walled villages, realms, meteor and ore shots), M_e (the Web build `s26web1`: the test, the heap at year 1,000, the
-book's pages with the realm maps; the frame pass's perf pairs dropped) and N_* (prospecting's control and ten seeds) - and the docs reconciled (25 §8 is
-the status ledger of what is built). Then the player-facing slices A-E. SESSION_HANDOFF "Session 27" has the exact state.
+**Where we are (session 27, 26 Oct 2026, 10:40 - ~12:10 IST; context handoff with the job queue running)**: the fourth acceptance is finished (25 §6: Web `s26web1` 9/9, the year-1,000 heap 870 MB, the verdict on the finished core) and 25 §8 is the ledger of what is built. On main (sim 107, no simulation rule changed): **A the planet from orbit** (D2-191: clouds read four ways from the weather - the day's air `PlanetSystems.DayAir`, an observer - with a 3-D noise's forms and shadows, the night side dark but for its homes' lights), **B people recognisable** (household liveries; the first's mantle and circlet; sworn men's caps and shields; family rings) and **C the book's content** (weighted lines, age stories and notes, IX Discoveries and Works, X Your Actions). On branches, to merge after the running Web build: the book's open-book reader (`wip/chronicle` abf6eb7) and **E the powers as play** (`wip/feel` 3e8ae68: flames, the aim marker, the cast's burst and shake, Your hand, the HUD skin). Prospecting (C5.3c) is in its seeds. SESSION_HANDOFF "Session 27" has the exact state, the queue and the next steps.
 
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at

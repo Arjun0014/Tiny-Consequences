@@ -1,5 +1,60 @@
 # TC2 Session handoff
 
+## Session 27 (26 Oct 2026, 10:40 - ~12:10 IST; Control Room run #81 session 1) - HANDOFF: the fourth acceptance finished; the player-facing slices A (planet), B (people), C (book) on main, E (powers' feel) on a branch; the queue RUNNING
+
+### Exact state (verified at the handoff, ~12:09 IST)
+- **The machine: never draw on the RX 5600M** (it restarted the PC at 10:45 during Unity shots). `tc2/scripts/gpusafe.mjs` (called by `unity.mjs` and every
+  browser script) sets Unity and Playwright's Chromium to the power-saving GPU and refuses to start while the card is present; after the restart the card
+  stands "phantom". Every Unity log since: "AMD Radeon(TM) Graphics (ID=0x1636)". All runs silent (`--mute-audio`, the listener at 0 in shots, the game pauses
+  its sound when not in front).
+- **main** (e0c8066, sim 107 - no simulation rule changed this session): the fourth acceptance's verdict (25 §6), the docs ledger (25 §8), and merged:
+  **A the planet from orbit** (slices 1-1c, D2-191: clouds read four ways from the weather - `PlanetSystems.DayAir` an observer, `DayAirTests` 2/2 -, a 3-D
+  noise's forms `CloudNoise`/`TC2CloudForm.hlsl` with their shadows on ground/sea/objects, the night side dark from orbit `Look.NightFar`, the homes' lights
+  `LightsView`, no speckled glint, `Look.AtmoGround` 0.75; shots `s27p1`-`s27p3` judged); **B people recognisable** (household liveries, `person_lord` mantle +
+  circlet, `person_sworn` cap + shield from `tc2/art/kit.py --only person_lord,person_sworn`, family rings `WorldObjectsView.Chosen/Pointed/ChosenHome`, shots
+  `--choose head`; `s27q1`: sworn men read as a retinue in livery); **C the book's content** (`BookBlock.Weight`/`HistoryBook.Weigh`, age stories and notes
+  `BookKind.Note`, part IX Discoveries and Works, Your Actions now part X `HistoryBook.YourActionsPart`; the book's fonts EB Garamond + IM FELL English
+  under `Game/Resources/Fonts`, OFL texts in `tc2/art/fonts`, CREDITS). HistoryBookTests 7/7, PowersTests 13/13, Unity C# compiles (`unity.mjs cc`).
+- **NOT on main yet (merge after the running Web build)**:
+  - `wip/chronicle` **abf6eb7** (worktree `C:/Game Dev/tc-chronicle`): **the book's reader as an open book** (`Game/UI/Hud.Book.cs` + `Hud.cs` wiring: paper
+    leaves, gutter, IM FELL titles, raised initial, years in the margin, weights, notes, folio; the timeline's legend/people line/axis fixed). It was left
+    uncommitted when `wip/chronicle` was first merged (b2370ae), so main has the book's content but the OLD reader.
+  - `wip/feel` **3e8ae68** (worktree `C:/Game Dev/tc-feel`): **E the powers as play** - fire as tongues of flame (Puff.shader flame mode, `Puffs.Flame`;
+    the cones gone), the aim marker on the ground (`AimView` + `Overlay.shader`: a disc in the power's colour, a breathing band) naming the villages in reach,
+    a burst + camera shake on casting, **Your hand** (the last three casts and what came of each, live: `HistoryBook.CameOf`, tested in PowersTests), the
+    power bar with colours and recharge bars, **the HUD skin** (dark glass panels with a gold edge, gold-warming buttons, the date in IM FELL); shots
+    `--aim R`. PowersTests 13/13, Unity C# compiles. Never shot or seen in the Web build yet.
+- **Running: the job queue** (runner `bash tc2/out/tools/s23/runq.sh` started 11:11, `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-
+  consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`; the session's background task `bbgjl1nqj`, a Monitor `baxiwgpkg` on `$Q/runq.log`).
+  Now: `0_r1_web_s27web1` (the Web build of main b2370ae from 12:00, then `webtest --tag s27web1`, then `bookshots --tag s27book1` with parts
+  `-1,0:3,0:9,1:0,4:0,8:0,8:1,9:0,-2`; old reader). Next in `$Q/todo`: `0_q2_shots_people` (`s27q2`: low/standard/street/standard@18 at seed 2's lord
+  village, `--choose head`), `0_s1_shots_forest` (`s27f1`: forest:rain/dry/warm/broadleaf/mixed/boreal/wet on seed 4 year 300), then prospecting's seeds
+  `N_b_pro1_05..10` and `N_c_cmp_pro1`. Unity jobs use main's checkout: do not edit main's Game code while one runs (work in a worktree).
+- **Prospecting (C5.3c, `wip/prospect` 85acede, sim 108)**: control `N_a` - annals `s4_proc.csv` = `s4_rui1.csv` byte for byte, Y300 identical; the state hash
+  differs only because the new `Settlement.ProspectAt` is always hashed (0 under `--oldprospect`); marked OK in `$N/pros_ctl_ok` with that note. Seeds done:
+  s4 (7,464 seasons gone looking, 115 bodies found within reach), s5, s1, s6 (no metal: nothing to look for). Read `results/cmp_rui1_pro1.txt` when `N_c` ends;
+  land it (merge `wip/prospect`, D2-190) if inside the noise.
+- **Working tree**: `ProjectSettings.asset` (`additionalIl2CppArgs: --jobs=2`) and `Assets/Resources/` (Performance Testing files) are the Web build's
+  writes - revert the first (`git checkout -- unity/TinyConsequences2/ProjectSettings/ProjectSettings.asset`) when the build ends and never commit
+  either; `.claude/launch.json`, `Assets/Resources.meta` are not ours.
+
+### Judged this session (real shots)
+- The fourth run's last shots: Reford's ring of stone with towers (seed 4, 1,000), Vaestdal's two rings (seed 7), seed 2's great rose realm and its war
+  spears; the meteor's fires were flat yellow cones (fixed on `wip/feel`). Web `s26web1` 9/9, heap 870 MB at year 1,000.
+- The planet (`s27p3`): Earth-like from orbit - shaded cumulus, heaped decks, shadows, dusk-red clouds at the terminator, a dark night side lit by places.
+  Left: lights read as one warm blob a place; the region view's sea shows the sun's broad sheen as a pale patch; night clouds faintly grey.
+- The book's old reader (`s26book1`): a parchment panel with equal-weight lines and grey buttons (the new reader is abf6eb7).
+
+### Next, in order
+1. When `0_r1` ends: read `tc2/out/webtest/s27web1.log` (must be 9/9) and `s27book1`; revert ProjectSettings.asset. Then merge `wip/chronicle` (abf6eb7) and
+   `wip/feel` (3e8ae68) into main (`git merge --no-ff`), `unity.mjs cc`, and queue: feel shots (`--load s2_ac4/world_y300.tc2 --village 4 --meteor 90 --aim 900
+   --views close,village` for flames and the aim marker; a lightning `--views close` at night for the flames) and a Web build `s27web2` with bookshots of the
+   new reader (`--book "-1,0:3,0:9,1:0,8:0,9:0,-2"`). Judge, fix, commit; D2-192 (people), D2-193 (the book), D2-194 (the powers' feel and the HUD).
+2. Read `s27q2` (families, the head's mantle up close) and `s27f1` (W-FOREST: which kinds still read alike) - then W-FOREST's next pass where the shots say.
+3. Prospecting's compare -> D2-190 and land.
+4. Then: the book's remaining polish (portraits of great lives? the timeline's eras), the map names with a flag in the realm's colour (Hud.MapNames: a
+   small square of `WorldObjectsView.PolityColour` beside the dot), hovering a house rings it and its family (`WorldObjectsView.Pointed` for buildings).
+
 ## Session 26, second context (26 Oct 2026, from 23:43 IST 25 Oct; Control Room run #80 session 2) - stone walls, the memory pass, the ore, the household, the cull and warmth, ruins reused, the settings and the realm maps LANDED (sim 107); the fourth acceptance RUNNING
 
 ### Exact state (keep current; ~02:25 IST 26 Oct)

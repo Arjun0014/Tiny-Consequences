@@ -26,19 +26,32 @@ listener at 0 in shots).
 1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the standing prompt (architecture, rules, every direction; "Where we are (session 27)").
 2. `docs/tc2/SESSION_HANDOFF.md` - the top block **"Session 27"**: the exact state, the queue, "Next, in order".
 3. `docs/tc2/25_CIVILISATION_ROADMAP.md` §8 - **the status ledger** (what is built, measured-only, in evaluation; the next slices A-E) and §6 (the acceptance
-   runs); `docs/tc2/DECISIONS.md` newest (D2-183-D2-189 and after); `docs/tc2/PROGRESS.md` CURRENT STATE.
+   runs); `docs/tc2/DECISIONS.md` newest (D2-183-D2-189, D2-191 the planet from orbit); `docs/tc2/PROGRESS.md` CURRENT STATE.
 4. `git status`, `git log --oneline -15`, `git worktree list`, and the queue: `cat $Q/runq.log` (`Q` below) - which jobs ended, with what; `ls $Q/todo`.
 
-## Session 27 (26 Oct 2026, from 10:40 IST)
-- **main** sim 107 (everything of session 26 landed: stone walls, the memory pass, ore and bounty, the lord's household, cull/bring/warmth/cold, ruins reused,
-  settings, the book's realm maps). **C5.3c prospecting** waits on `wip/prospect` (sim 108) for its control and ten seeds (`N_*` jobs), then D2-190.
-- **The queue** (runner `tc2/out/tools/s23/runq.sh`, `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-
-  0a263e6d1792/scratchpad/q`): `M_d2` (stone/realms/meteor/ore shots), `M_e` (Web `s26web1`: test, heap at year 1,000, the book's pages `s26book1`), `N_*`
-  (prospecting). If the runner has stopped and `$Q/todo` still holds jobs, restart it in the background.
+## Session 27 (26 Oct 2026, 10:40 - ~12:10 IST) - handoff with the job queue RUNNING
+- **main** e0c8066, sim 107 (no simulation rule changed): the fourth acceptance finished (25 §6 verdict); merged **A the planet from orbit** (D2-191),
+  **B people recognisable** (liveries, the first's mantle and circlet, sworn men's caps and shields, family rings), **C the book's content** (weights, age
+  stories and notes, IX Discoveries and Works, X Your Actions = `HistoryBook.YourActionsPart`).
+- **To merge after the running Web build** (both compile, tests pass, never yet seen in shots or the Web): `wip/chronicle` **abf6eb7** (the book's
+  open-book reader, `Game/UI/Hud.Book.cs` - left uncommitted at the first merge, so main still draws the old reader) and `wip/feel` **3e8ae68** (E: flames,
+  the aim marker `AimView`, the cast's burst and shake, "Your hand" live, the HUD skin).
+- **The queue** (runner `tc2/out/tools/s23/runq.sh`, background task `bbgjl1nqj`; `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-
+  consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`): running `0_r1_web_s27web1` (Web build of b2370ae from 12:00, webtest `s27web1`, bookshots
+  `s27book1`); then `0_q2` (people shots `s27q2`), `0_s1` (forest kinds `s27f1`), prospecting seeds `N_b_pro1_05..10`, `N_c_cmp_pro1`. If the runner has
+  stopped and `$Q/todo` still holds jobs, restart it in the background (`rm -f $Q/stop; bash tc2/out/tools/s23/runq.sh`).
+- **Prospecting** (`wip/prospect` 85acede, sim 108): its control's annals = the baseline byte for byte (the state hash differs only by the new hashed field
+  `ProspectAt`); land it (D2-190) if `results/cmp_rui1_pro1.txt` is inside the noise.
 
 ## Do next, in order
-1. Read the queue's results; finish 25 §6 "Fourth run" (shots, the Web heap, the book's pages); land prospecting if its seeds hold (D2-190).
-2. Then the player-facing slices A-E (25 §8 "Next"), judged in real shots and the Web build.
+1. When `0_r1` ends: `tc2/out/webtest/s27web1.log` must be 9/9; look at `s27book1`; `git checkout -- unity/TinyConsequences2/ProjectSettings/ProjectSettings.asset`
+   (the build's `--jobs=2`); never commit `Assets/Resources/`. Then merge `wip/chronicle` and `wip/feel` into main, `node tc2/scripts/unity.mjs cc`, queue the
+   feel shots (meteor + `--aim`) and a Web build `s27web2` with bookshots of the new reader; judge, fix, commit; write D2-192 (people), D2-193 (the book),
+   D2-194 (the powers' feel, the HUD).
+2. Read `s27q2` (families and the head up close) and `s27f1` (which kinds of wood still read alike) - then W-FOREST's next pass (D).
+3. Prospecting's compare -> D2-190, land.
+4. Then the player-facing polish by the shots: the book (eras and portraits), map names with a flag in the realm's colour, hovering a house rings its family,
+   the lights as streets, the powers' remaining feel. SESSION_HANDOFF "Session 27" -> "Next, in order" has the detail.
 
 ## Rules that bite
 - **Never retag job files with a broad `sed`** (session 26: `s/_sw1"/_stw1"/` also renamed a build job's binary dir, so its tests ran a missing binary and the

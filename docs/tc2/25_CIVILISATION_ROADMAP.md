@@ -245,3 +245,9 @@ change), each slice implement -> compile -> focused tests -> real shots/playtest
 4. **D - W-FOREST**: the remaining biome and forest sameness.
 5. **E - game feel**: the powers as gameplay - strong targeting feedback, a visual and sound response, the immediate effect and the long-term consequences
    surfaced in Your Actions and the book.
+
+**Progress on A-E (session 27, 26 Oct 2026)**: **A** on main (D2-191: clouds from the weather four ways with forms and shadows, the night side dark but for
+its homes - judged in shots `s27p1`-`p3`); **B** on main (household liveries, the first's mantle and circlet, sworn men's caps and shields, family rings -
+`s27q1`; nearer shots queued); **C** the content on main (weighted lines, age stories, IX Discoveries and Works), the open-book reader on `wip/chronicle`;
+**D** forest kinds side by side queued (`s27f1`); **E** on `wip/feel` (flames, the aim marker naming the villages in reach, the cast's burst and shake,
+"Your hand" live, the HUD skin). SESSION_HANDOFF "Session 27".

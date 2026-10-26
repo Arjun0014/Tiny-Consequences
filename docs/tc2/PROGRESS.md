@@ -9,6 +9,13 @@
   queue's runner had stopped at 05:17 (M_a full suite 507/0/0, the three 1,000-year worlds and their books, the ore measure, prospecting's build, village #4's
   shots: done); restarted 10:41 - **the PC restarted at 10:45 while Unity shots drew on the RX 5600M**: now every drawing job runs on the integrated Radeon
   (`tc2/scripts/gpusafe.mjs`; verified in the Unity log) and all runs are silent (the person's word). 25 §8 rewritten as the status ledger.
+  **The fourth run finished** (25 §6: the stone-walled villages, realms, meteor, ore shots; Web `s26web1` 9/9; the year-1,000 heap 870 MB; the verdict on the
+  finished core). **On main (no sim change)**: **A the planet from orbit** (D2-191; shots `s27p1`-`p3`: clouds from the weather four ways - the day's air
+  `PlanetSystems.DayAir`, an observer -, 3-D noise forms with shadows, a dark night side lit by its homes, no speckled glint), **B people recognisable**
+  (household liveries, the first's mantle and circlet, sworn men's caps and shields, family rings; `s27q1`), **C the book's content** (weights, age stories and
+  notes, IX Discoveries and Works, X Your Actions). **On branches, to merge**: the book's open-book reader (`wip/chronicle` abf6eb7) and **E the powers as play**
+  (`wip/feel` 3e8ae68: flames, the aim marker naming the villages in reach, the cast's burst and shake, Your hand live, the HUD skin). C5.3c prospecting: control
+  annals byte for byte (the hash differs by its new field), seeds in the queue. SESSION_HANDOFF "Session 27" has the exact state and the queue.
 - **Session 26, second context (26 Oct 2026, from 23:43 IST 25 Oct; Control Room run #80 session 2) - everything built LANDED (main sim 107); the fourth
   1,000-year acceptance RUNNING.** (1) **C7.2 stone walls** (f95b233, D2-183): ten seeds inside the noise but for the rings completed, which count the stone
   rings themselves; 2-17 rings of stone standing a world at 300. (2) **The memory pass** (8086ced, D2-184): annals byte for byte - it changes no history.

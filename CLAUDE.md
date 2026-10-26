@@ -5,6 +5,8 @@
 Active development is **TC2** (`unity/TinyConsequences2`, `tc2/`, `docs/tc2/`). The Defold sections below
 describe the **legacy TC1** game: research material only, never modified or staged in `[tc2]` commits.
 TC2's durable memory is `docs/tc2/` - start with `docs/tc2/NEXT_SESSION_PROMPT.md`.
+**Machine rule (Arjun, 26 Oct 2026): never draw on the RX 5600M** - it restarts the PC. Drawing jobs go through `tc2/scripts/gpusafe.mjs` (Unity
+and the test browsers on the integrated GPU; they refuse while the card is present); never set `TC2_ALLOW_DGPU=1`. Runs stay silent (`--mute-audio`).
 Standing direction since 7 Oct 2026 (D2-089): TC2 is an autonomous medieval civilisation inside a living miniature planet
 (`docs/tc2/20_CIVILISATION_DEPTH.md`, roadmap `docs/tc2/25_CIVILISATION_ROADMAP.md`).
 
