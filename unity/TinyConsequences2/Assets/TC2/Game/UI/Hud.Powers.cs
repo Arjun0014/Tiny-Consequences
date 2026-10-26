@@ -134,6 +134,7 @@ namespace TC2.Game
         readonly System.Collections.Generic.List<(long id, string what, long time, string came, int n)> _hand = new System.Collections.Generic.List<(long, string, long, string, int)>();
         float _handAt;
         GUIStyle _handLine, _tipStyle;
+        string[] _handText = new string[3];
         GUIContent _tip;
         Rect _tipRect;
 
@@ -160,18 +161,24 @@ namespace TC2.Game
             }
             if (_hand.Count == 0) return;
             if (_handLine == null) { _handLine = new GUIStyle(_small) { fontSize = 12, wordWrap = true, richText = true, padding = new RectOffset(4, 4, 2, 3) }; _handLine.hover.textColor = new Color(1f, 0.86f, 0.45f); }
-            float hw = 420f, lineH = 34f;
-            var r = new Rect(_powersRect.x, _powersRect.y - 10f - (lineH * _hand.Count + 22f), hw, lineH * _hand.Count + 22f);
-            GUILayout.BeginArea(r, _box);
-            GUILayout.Label("<b>Your hand</b>  <size=11>what has come of it so far - the book's last part tells all</size>", _small);
+            // (the panel sized to its lines: a fixed line height had cut each cast's second line, what came of it - s27book2)
+            float hw = 420f, inner = hw - _box.padding.horizontal;
+            const string head = "<b>Your hand</b>  <size=11>what has come of it so far - the book's last part tells all</size>";
+            float hh = _small.CalcHeight(new GUIContent(head), inner) + _box.padding.vertical + 4f;
+            if (_handText.Length < _hand.Count) _handText = new string[3];
             for (int k = 0; k < _hand.Count; k++)
             {
                 var x = _hand[k];
                 long ago = w.Now - x.time;
                 string when = ago < SimTime.Day ? "today" : ago < SimTime.Year ? (ago / SimTime.Day) + " days ago" : (ago / (double)SimTime.Year).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + " years ago";
-                string line = "<b>" + x.what + "</b> <size=11>(" + when + ")</size>\n" + (x.came.Length > 0 ? x.came : "<i>nothing yet that the world remembers</i>");
-                if (GUILayout.Button(line, _handLine)) OpenBookAt(TC2.Core.History.HistoryBook.YourActionsPart, k);
+                _handText[k] = "<b>" + x.what + "</b> <size=11>(" + when + ")</size>\n" + (x.came.Length > 0 ? x.came : "<i>nothing yet that the world remembers</i>");
+                hh += _handLine.CalcHeight(new GUIContent(_handText[k]), inner) + _handLine.margin.vertical;
             }
+            var r = new Rect(_powersRect.x, _powersRect.y - 10f - hh, hw, hh);
+            GUILayout.BeginArea(r, _box);
+            GUILayout.Label(head, _small);
+            for (int k = 0; k < _hand.Count; k++)
+                if (GUILayout.Button(_handText[k], _handLine)) OpenBookAt(TC2.Core.History.HistoryBook.YourActionsPart, k);
             GUILayout.EndArea();
         }
 
