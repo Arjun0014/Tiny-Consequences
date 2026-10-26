@@ -43,7 +43,7 @@ namespace TC2.Tests.Core
             for (int i = w.History.FirstIndexAfter(cast); i < w.History.Count; i++) { var e = w.History.At(i); if (e.Root == cast) { followed++; Assert.AreEqual(RootKind.You, e.RootKind); } }
             Assert.Greater(followed, 0, "the storm it raised is in the world's records, rooted in the cast");
             var bw = new HistoryBook.Writer(w);
-            var part = bw.Part(8);
+            var part = bw.Part(HistoryBook.YourActionsPart);
             Assert.AreEqual("Your Actions", part.Title);
             Assert.Greater(part.Chapters.Count, 0);
             var ch = part.Chapters[0];
@@ -222,7 +222,7 @@ namespace TC2.Tests.Core
             long found = 0;
             for (int i = 0; i < w.History.Count; i++) { var e = w.History.At(i); if (e.Kind == HistoryKind.OreFound && e.Settlement == sid && e.ArgA == Mining.Copper && e.Cell == cell) { found = e.Id; Assert.AreEqual(laid, e.Cause1, "found because it was laid bare"); Assert.AreEqual(RootKind.You, e.RootKind, "its root the cast"); } }
             Assert.AreNotEqual(0L, found, "the finding is told");
-            var part = new HistoryBook.Writer(w).Part(8);
+            var part = new HistoryBook.Writer(w).Part(HistoryBook.YourActionsPart);
             Assert.IsTrue(part.Chapters.Count > 0 && part.Chapters[0].Title.Contains("copper"), "Your Actions tells it");
             // and a save keeps it
             var copy = SaveFile.Load(SaveFile.Save(w, 0, OfflineMode.Paused, 0, 0, ""), out _);
@@ -293,7 +293,7 @@ namespace TC2.Tests.Core
             }
             Assert.Greater(told, 0, "each kind's cull told");
             Assert.AreEqual(h0 - h1, took, (h0 - h1) * 0.01 + 1.0, "as many as were taken");
-            Assert.Greater(new HistoryBook.Writer(w).Part(8).Chapters.Count, 0, "in Your Actions");
+            Assert.Greater(new HistoryBook.Writer(w).Part(HistoryBook.YourActionsPart).Chapters.Count, 0, "in Your Actions");
             // and the hunters beyond the reach wander in, as the world's own laws move them
             w.AdvanceTo(w.Now + SimTime.Years(2));
             Assert.Greater(Within(w, cell, hunters), h1 * 1.5, "more wandered in");
@@ -426,7 +426,7 @@ namespace TC2.Tests.Core
             var w = TestWorlds.Make(612);
             Coarse(w);
             w.AdvanceTo(w.Now + SimTime.Days(3));
-            var part = new HistoryBook.Writer(w).Part(8);
+            var part = new HistoryBook.Writer(w).Part(HistoryBook.YourActionsPart);
             Assert.AreEqual(1, part.Chapters.Count);
             Assert.AreEqual("Nothing yet", part.Chapters[0].Title);
         }

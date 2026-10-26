@@ -6,17 +6,21 @@ using TC2.Core.Simulation;
 
 namespace TC2.Core.History
 {
-    /// <summary>What a block of the book is: prose, a line standing on one record, the numbers of a span, a heading within a chapter.</summary>
-    public enum BookKind : byte { Para = 0, Line = 1, Fact = 2, Heading = 3 }
+    /// <summary>What a block of the book is: prose, a line standing on one record, the numbers of a span, a heading within a chapter, a note
+    /// (session 27: the lesser records of a span told together, in the margin of the story).</summary>
+    public enum BookKind : byte { Para = 0, Line = 1, Fact = 2, Heading = 3, Note = 4 }
 
     /// <summary>A block of a chapter. A line stands on its record (`Event`, whose causes the reader can walk); prose, numbers and headings
-    /// are the historian's words over the records and the annals; `Settlement` is the place a reader may go to (0 none).</summary>
+    /// are the historian's words over the records and the annals; `Settlement` is the place a reader may go to (0 none). `Weight` (session 27):
+    /// a line's weight in the story - 2 a great event (a new sickness, a discovery, a realm's great bow, a place's end, the earth's or your
+    /// violence), 1 a notable one, 0 a lesser record - so the reader sets the great above the small.</summary>
     public struct BookBlock
     {
         public BookKind Kind;
         public string Text;
         public long Event;
         public int Settlement;
+        public byte Weight;
     }
 
     public sealed class BookChapter
@@ -27,8 +31,9 @@ namespace TC2.Core.History
         public readonly List<BookBlock> Blocks = new List<BookBlock>();
         internal void Para(string t, int sid = 0) { if (!string.IsNullOrEmpty(t)) Blocks.Add(new BookBlock { Kind = BookKind.Para, Text = t, Settlement = sid }); }
         internal void Fact(string t) { if (!string.IsNullOrEmpty(t)) Blocks.Add(new BookBlock { Kind = BookKind.Fact, Text = t }); }
+        internal void Note(string t, int sid = 0) { if (!string.IsNullOrEmpty(t)) Blocks.Add(new BookBlock { Kind = BookKind.Note, Text = t, Settlement = sid }); }
         internal void Heading(string t, int sid = 0) { Blocks.Add(new BookBlock { Kind = BookKind.Heading, Text = t, Settlement = sid }); }
-        internal void Line(World w, in HistoryEvent e) => Blocks.Add(new BookBlock { Kind = BookKind.Line, Text = HistoryText.Dated(w, e), Event = e.Id, Settlement = e.Settlement });
+        internal void Line(World w, in HistoryEvent e) => Blocks.Add(new BookBlock { Kind = BookKind.Line, Text = HistoryText.Dated(w, e), Event = e.Id, Settlement = e.Settlement, Weight = HistoryBook.Weigh(w, in e) });
     }
 
     public sealed class BookPart
@@ -98,8 +103,11 @@ namespace TC2.Core.History
         static string Years(int a, int b) => a == b ? "year " + a : "years " + a + "-" + b;
         static string House(World w, EntityRef household) => HistoryText.Plural(w.History.NameOf(household));
 
+        /// <summary>Your Actions' part (F9.2; the last since session 27's Discoveries and Works).</summary>
+        public const int YourActionsPart = 9;
+
         /// <summary>The parts' titles, in order (a reader's contents before any part is written).</summary>
-        public static readonly string[] PartTitles = { "The Ages of the World", "Realms and Rulers", "Wars and Feuds", "Famine, Plague and Disaster", "Places", "Lives", "Threads of Cause", "A Chronology", "Your Actions" };
+        public static readonly string[] PartTitles = { "The Ages of the World", "Realms and Rulers", "Wars and Feuds", "Famine, Plague and Disaster", "Places", "Lives", "Threads of Cause", "A Chronology", "Discoveries and Works", "Your Actions" };
 
         /// <summary>Writes the whole book of the world as it stands.</summary>
         public static WorldBook Write(World w)
@@ -194,7 +202,8 @@ namespace TC2.Core.History
                     case 4: p = Places(_c); break;
                     case 5: p = Lives(_c); break;
                     case 6: p = Threads(_c); break;
-                    case 8: p = YourActions(_c); break;   // (F9.2)
+                    case 8: p = Works(_c); break;         // (session 27)
+                    case YourActionsPart: p = YourActions(_c); break;   // (F9.2)
                     default: p = Chronology(_c); break;
                 }
                 LastMs = t.Elapsed.TotalMilliseconds;
@@ -427,16 +436,25 @@ namespace TC2.Core.History
         }
 
         // ================================================================== I. the ages
+        /// <summary>
+        /// The ages (session 27: a chronicle, not a list): each age opens with what marked it in numbers, then its story - the realms that rose,
+        /// reached their height or ended in it, the wars begun, its worst sickness, the crafts first found, the first great works, your hand - then
+        /// its great events set above the rest, the lesser records of the age told together as notes (the bows to lords by lord, the foundings, the
+        /// works by kind, the raids, the hungry and the sick), a few notable records more, and its tally. Every name and number stands on the ledger.
+        /// </summary>
         static BookPart Ages(Ctx c)
         {
             var w = c.W;
             var part = new BookPart { Title = "The Ages of the World", Intro = "The years fall into ages, found after the fact where what marked them changed - hunger, sickness, feuds and raids, growth, foundings, walls, lords, ruin, warmth." };
             var a = w.Annals;
+            var wars = AllWars(c);
+            var found = FirstFindings(c);
             foreach (var era in Chronicle.Eras(w))
             {
                 var ch = new BookChapter { Title = era.Name, Sub = Span(era.From, era.To - 1, era.Present) };
                 int i0 = -1, i1 = -1;
                 for (int i = 0; i < a.Count; i++) { if (a[i].Year >= era.From && i0 < 0) i0 = i; if (a[i].Year < era.To) i1 = i; }
+                string tally = null;
                 if (i0 >= 0 && i1 >= i0)
                 {
                     long hunger = 0, sick = 0, wounds = 0, raids = 0, walls = 0, tributes = 0, founded = 0, abandoned = 0, disaster = 0, born = 0, died = 0;
@@ -460,29 +478,406 @@ namespace TC2.Core.History
                     foreach (int seat in c.RealmOrder) { int n = c.Realms[seat].SizeAt(a[i1].Year); if (n > bestN) { bestN = n; bestSeat = seat; } }
                     if (bestSeat != 0) sb.Append(' ').Append(era.Present ? "Now" : "At its end").Append(" the greatest realm was ").Append(Name(w, bestSeat)).Append("'s, of ").Append(Plural(bestN + 1, "village", "villages")).Append('.');
                     ch.Para(sb.ToString());
-                    ch.Fact("Born " + F(born) + ", died " + F(died) + " - of hunger " + F(hunger) + ", of sickness " + F(sick) + ", of wounds " + F(wounds) + ", in disasters " + F(disaster) +
-                            ". Founded " + F(founded) + ", abandoned " + F(abandoned) + ". Raids " + F(raids) + ", palisades begun " + F(walls) + ", tributes agreed " + F(tributes) + ".");
+                    tally = "Born " + F(born) + ", died " + F(died) + " - of hunger " + F(hunger) + ", of sickness " + F(sick) + ", of wounds " + F(wounds) + ", in disasters " + F(disaster) +
+                            ". Founded " + F(founded) + ", abandoned " + F(abandoned) + ". Raids " + F(raids) + ", palisades begun " + F(walls) + ", tributes agreed " + F(tributes) + ".";
                 }
+                long t0 = era.From * SimTime.Year, t1 = era.To * SimTime.Year;
+                int j0 = c.IndexAt(t0), j1 = c.IndexAt(t1);
+                string story = AgeStory(c, era, j0, j1, wars, found);
+                if (story.Length > 0) ch.Para(story);
+                // the great events, the weightiest first chosen and told in order; the lesser records of the age told together; a few notable records more
+                var great = new List<HistoryEvent>();
+                var notable = new List<HistoryEvent>();
+                var folded = new List<HistoryEvent>();
+                for (int j = j0; j < j1; j++)
                 {
-                    long t0 = era.From * SimTime.Year, t1 = era.To * SimTime.Year;
-                    int j0 = c.IndexAt(t0), j1 = c.IndexAt(t1);
-                    var marked = new List<HistoryEvent>();
-                    var any = new List<HistoryEvent>();
-                    for (int j = j0; j < j1; j++)
-                    {
-                        var e = w.History.At(j);
-                        if (Ordinary(e.Kind)) continue;
-                        (Chronicle.Marks(era.Sign, e.Kind) ? marked : any).Add(e);
-                    }
-                    Best(marked, 7);
-                    Best(any, 14 - marked.Count);
-                    marked.AddRange(any);
-                    marked.Sort((p, q) => p.Id.CompareTo(q.Id));
-                    foreach (var e in marked) ch.Line(w, e);
+                    var e = w.History.At(j);
+                    if (Ordinary(e.Kind)) continue;
+                    byte wt = Weigh(w, in e);
+                    if (wt >= 2) great.Add(e);
+                    else if (Folded(e.Kind)) folded.Add(e);
+                    else if (wt == 1) notable.Add(e);
                 }
+                Best(great, 7);
+                if (great.Count > 0)
+                {
+                    ch.Heading("The great events");
+                    foreach (var e in great) ch.Line(w, e);
+                }
+                var notes = AgeNotes(c, folded);
+                Best(notable, notes.Count > 0 ? 5 : 8);
+                if (notes.Count > 0 || notable.Count > 0)
+                {
+                    ch.Heading("Also in these years");
+                    foreach (var n in notes) ch.Note(n);
+                    foreach (var e in notable) ch.Line(w, e);
+                }
+                if (tally != null) ch.Fact(tally);
                 part.Chapters.Add(ch);
             }
             return part;
+        }
+
+        /// <summary>The records told together in an age's notes rather than one by one: the many like records of a busy age.</summary>
+        static bool Folded(HistoryKind k)
+        {
+            switch (k)
+            {
+                case HistoryKind.TributeAgreed: case HistoryKind.TributeEnded: case HistoryKind.TributeDemanded: case HistoryKind.SettlementFounded: case HistoryKind.PartySetOut:
+                case HistoryKind.WorkBuilt: case HistoryKind.WorkBegun: case HistoryKind.Raid: case HistoryKind.BandRaised: case HistoryKind.Famine: case HistoryKind.Hunger:
+                case HistoryKind.Rationing: case HistoryKind.EpidemicArrived: case HistoryKind.EpidemicEnded: case HistoryKind.HeadmanRose: case HistoryKind.WallBuilt:
+                case HistoryKind.WallPlanned: case HistoryKind.VillageSplit: case HistoryKind.BoatBuilt: case HistoryKind.BoatToCross: case HistoryKind.WayWorn:
+                case HistoryKind.ReliefSent: case HistoryKind.HouseholdMoved: case HistoryKind.Sworn: case HistoryKind.OreFound: case HistoryKind.StoneFound:
+                case HistoryKind.CallAnswered: case HistoryKind.TechniqueKnown: case HistoryKind.Taken: case HistoryKind.TakingSeen: case HistoryKind.Struck:
+                case HistoryKind.ClaimRefused: case HistoryKind.AmendsMade: case HistoryKind.Wildfire: case HistoryKind.FireStarted: case HistoryKind.HarvestFailed:
+                case HistoryKind.WildFood: case HistoryKind.BuildingBurned: case HistoryKind.FieldsBurned:
+                    return true;
+                default: return false;
+            }
+        }
+
+        /// <summary>The first finding of each craft in the world (its TechniqueFound record), by craft; the crafts found before the first record are not.</summary>
+        static Dictionary<int, HistoryEvent> FirstFindings(Ctx c)
+        {
+            var w = c.W;
+            var first = new Dictionary<int, HistoryEvent>();
+            for (int i = 0; i < w.History.Count; i++)
+            {
+                var e = w.History.At(i);
+                if (e.Kind == HistoryKind.TechniqueFound && !first.ContainsKey(e.ArgA)) first[e.ArgA] = e;
+            }
+            return first;
+        }
+
+        /// <summary>An age's story in a few sentences, every name from the ledger: the realms that rose, reached their height or ended in it, the wars
+        /// begun, its worst sickness, the crafts first found, the first walls of stone, your hand. "" when the age holds none of these.</summary>
+        static string AgeStory(Ctx c, in Era era, int j0, int j1, List<War> wars, Dictionary<int, HistoryEvent> found)
+        {
+            var w = c.W;
+            int y0 = era.From, y1 = era.To - 1;
+            var sentences = new List<string>();
+            // the realms
+            {
+                var rose = new List<KeyValuePair<int, string>>(); var height = new List<string>(); var ended = new List<string>();
+                int k = 0;
+                foreach (int seat in c.RealmOrder)
+                {
+                    var r = c.Realms[seat];
+                    if (r.Peak < 3) continue;
+                    string n = Name(w, seat);
+                    if (r.From >= y0 && r.From <= y1 && rose.Count < 3) rose.Add(new KeyValuePair<int, string>(r.From, n + " (year " + r.From + ")"));
+                    if (k < 6 && r.PeakYear >= y0 && r.PeakYear <= y1 && height.Count < 2)
+                        height.Add(height.Count == 0 ? n + "'s realm reached its height in year " + r.PeakYear + ", " + Plural(r.Peak + 1, "village", "villages") : n + "'s in year " + r.PeakYear + ", " + Plural(r.Peak + 1, "village", "villages"));
+                    if (r.To >= y0 && r.To <= y1 && r.To < c.Now && ended.Count < 3) ended.Add(n + "'s, once " + Plural(r.Peak + 1, "village", "villages") + " (year " + r.To + ")");
+                    k++;
+                }
+                rose.Sort((p, q) => p.Key != q.Key ? p.Key.CompareTo(q.Key) : string.CompareOrdinal(p.Value, q.Value));
+                var roseN = new List<string>(); foreach (var kv in rose) roseN.Add(kv.Value);
+                if (roseN.Count > 0) sentences.Add("Lords rose at " + Join(roseN) + ".");
+                if (height.Count > 0) sentences.Add(Cap(string.Join("; ", height.ToArray())) + ".");
+                if (ended.Count > 0) sentences.Add((ended.Count == 1 ? "A realm came to an end: " : "Realms came to an end: ") + Join(ended) + ".");
+            }
+            // the wars begun in it, the greatest first
+            {
+                var begun = new List<War>();
+                foreach (var x in wars) if (x.From >= y0 && x.From <= y1 && x.RaidsA + x.RaidsB >= 4) begun.Add(x);
+                if (begun.Count > 0)
+                {
+                    var names = new List<string>();
+                    for (int i = 0; i < begun.Count && i < 2; i++) names.Add(Lower(begun[i].Title) + " (" + Plural(begun[i].RaidsA + begun[i].RaidsB, "raid", "raids") + ", " + Years(begun[i].From, begun[i].To) + ")");
+                    sentences.Add(Cap(Join(names)) + (names.Count == 1 ? " began." : " began.") + (begun.Count > 2 ? " " + Cap(Plural(begun.Count - 2, "lesser war", "lesser wars")) + " began besides." : ""));
+                }
+            }
+            // its worst sickness, by the dead its outbreaks' ends tell
+            {
+                var toll = new Dictionary<long, double>();
+                var names = new Dictionary<long, string>();
+                var places = new Dictionary<long, HashSet<int>>();
+                for (int j = j0; j < j1; j++)
+                {
+                    var e = w.History.At(j);
+                    if (e.Kind != HistoryKind.EpidemicEnded) continue;
+                    var pr = e.Object;
+                    long key = pr.Packed;
+                    if (pr.Kind == EntityKind.Pathogen && w.Pathogens.Exists(pr.Id)) key = new EntityRef(EntityKind.Pathogen, w.Pathogens.Get(pr.Id).Family).Packed;
+                    toll.TryGetValue(key, out double t); toll[key] = t + e.Magnitude;
+                    if (!names.ContainsKey(key)) { names[key] = w.History.NameOf(EntityRef.FromPacked(key)); places[key] = new HashSet<int>(); }
+                    if (e.Settlement > 0) places[key].Add(e.Settlement);
+                }
+                long best = 0; double bt = 0;
+                foreach (var kv in toll) if (kv.Value > bt || kv.Value == bt && kv.Key < best) { bt = kv.Value; best = kv.Key; }
+                if (bt >= 20)
+                {
+                    string sick = names[best];
+                    sentences.Add(Cap(sick.StartsWith("the ") ? sick : "the " + sick) + " killed " + F(bt) + " in " + Plural(places[best].Count, "village", "villages") + ".");
+                }
+            }
+            // the crafts first found in it
+            {
+                var crafts = new List<string>();
+                var firsts = new List<HistoryEvent>(found.Values);
+                firsts.Sort((p, q) => p.Id.CompareTo(q.Id));
+                foreach (var fe in firsts)
+                {
+                    int y = YearOf(fe.Time);
+                    if (y < y0 || y > y1 || fe.ArgA < 0 || fe.ArgA >= Knowledge.Tech.Count) continue;
+                    crafts.Add(Knowledge.Tech.Laws[fe.ArgA].Name + " (" + (fe.Settlement > 0 ? Name(w, fe.Settlement) + ", " : "") + "year " + y + ")");
+                }
+                if (crafts.Count > 0) sentences.Add("People first learned to " + Join(crafts) + ".");
+            }
+            // the first walls of stone, the world's first palisade
+            {
+                string stone = null, timber = null;
+                for (int j = 0; j < j1 && (stone == null || timber == null); j++)
+                {
+                    var e = w.History.At(j);
+                    if (e.Kind != HistoryKind.WallBuilt) continue;
+                    bool inAge = j >= j0;
+                    if (e.ArgB == 2) { if (stone == null) stone = inAge ? Name(w, e.Settlement) + " (year " + YearOf(e.Time) + ")" : ""; }
+                    else if (timber == null) timber = inAge ? Name(w, e.Settlement) + " (year " + YearOf(e.Time) + ")" : "";
+                }
+                if (!string.IsNullOrEmpty(timber)) sentences.Add("The first palisade in the world was finished at " + timber + ".");
+                if (!string.IsNullOrEmpty(stone)) sentences.Add("The first walls of stone in the world rose at " + stone + ".");
+            }
+            // your hand
+            {
+                int casts = 0;
+                var kinds = new List<string>();
+                for (int j = j0; j < j1; j++)
+                {
+                    var e = w.History.At(j);
+                    if (e.Kind != HistoryKind.GodCommand) continue;
+                    casts++;
+                    string d = HistoryText.Describe(w, in e);
+                    if (d.StartsWith("You ", System.StringComparison.Ordinal)) d = d.Substring(4);
+                    d = d.TrimEnd('.');
+                    if (kinds.Count < 3 && !kinds.Contains(d)) kinds.Add(d);
+                }
+                if (casts > 0) sentences.Add("You reached into the world " + (casts == 1 ? "once" : Num(casts) + " times") + ": you " + Join(kinds) + (casts > kinds.Count ? ", and more" : "") + ".");
+            }
+            return string.Join(" ", sentences.ToArray());
+        }
+
+        /// <summary>An age's lesser records told together: the bows to lords by lord, the bonds ended, the foundings and the parties that set out, the
+        /// works raised by kind, the walls, the raids and bands, the hungry and the sick, new firsts and splits, boats and roads. Each note counts and
+        /// names only records of the age.</summary>
+        static List<string> AgeNotes(Ctx c, List<HistoryEvent> evs)
+        {
+            var w = c.W;
+            var notes = new List<string>();
+            // bows to lords, by lord
+            {
+                var byLord = new Dictionary<int, List<string>>(); var lords = new List<int>(); int bows = 0, ended = 0, refused = 0;
+                foreach (var e in evs)
+                {
+                    if (e.Kind == HistoryKind.TributeEnded) { ended++; continue; }
+                    if (e.Kind == HistoryKind.TributeDemanded) { if (e.ArgA == 0) refused++; continue; }
+                    if (e.Kind != HistoryKind.TributeAgreed) continue;
+                    bows++;
+                    int lord = e.Object.Id;
+                    if (!byLord.TryGetValue(lord, out var l)) { byLord[lord] = l = new List<string>(); lords.Add(lord); }
+                    string n = w.History.NameOf(e.Subject);
+                    if (!l.Contains(n)) l.Add(n);
+                }
+                if (bows > 0)
+                {
+                    lords.Sort((p, q) => byLord[q].Count != byLord[p].Count ? byLord[q].Count.CompareTo(byLord[p].Count) : p.CompareTo(q));
+                    var parts = new List<string>();
+                    for (int i = 0; i < lords.Count && i < 4; i++)
+                    {
+                        var l = byLord[lords[i]];
+                        parts.Add("to " + Name(w, lords[i]) + ", " + (l.Count <= 4 ? Join(l) : string.Join(", ", l.GetRange(0, 3).ToArray()) + " and " + Num(l.Count - 3) + " more"));
+                    }
+                    notes.Add(Cap(Plural(bows, "bow", "bows")) + " to lords: " + string.Join("; ", parts.ToArray()) + (lords.Count > 4 ? "; and to " + Plural(lords.Count - 4, "lord", "lords") + " more" : "") + "." +
+                              (ended > 0 ? " " + Cap(Plural(ended, "bond", "bonds")) + " of tribute ended." : "") + (refused > 0 ? " " + Cap(Plural(refused, "asking was", "askings were")) + " refused." : ""));
+                }
+                else if (ended > 0) notes.Add(Cap(Plural(ended, "bond", "bonds")) + " of tribute ended.");
+            }
+            // foundings and parties
+            {
+                var places = new List<string>(); int parties = 0; long people = 0;
+                foreach (var e in evs)
+                {
+                    if (e.Kind == HistoryKind.SettlementFounded && e.Subject.Kind == EntityKind.Settlement) places.Add(w.History.NameOf(e.Subject) + " (" + YearOf(e.Time) + ")");
+                    else if (e.Kind == HistoryKind.PartySetOut) { parties++; people += e.ArgB; }
+                }
+                if (places.Count > 0) notes.Add(Cap(Plural(places.Count, "village was", "villages were")) + " founded: " + (places.Count <= 8 ? Join(places) : string.Join(", ", places.GetRange(0, 7).ToArray()) + " and " + Num(places.Count - 7) + " more") + "." +
+                                                (parties > 0 ? " " + Cap(Plural(parties, "party", "parties")) + " set out to make new homes (" + Plural(people, "person", "people") + ")." : ""));
+                else if (parties > 0) notes.Add(Cap(Plural(parties, "party", "parties")) + " set out to make new homes (" + Plural(people, "person", "people") + ").");
+            }
+            // works raised, by kind
+            {
+                var byKind = new Dictionary<int, List<string>>(); var kinds = new List<int>();
+                foreach (var e in evs)
+                {
+                    if (e.Kind != HistoryKind.WorkBuilt) continue;
+                    if (!byKind.TryGetValue(e.ArgA, out var l)) { byKind[e.ArgA] = l = new List<string>(); kinds.Add(e.ArgA); }
+                    string n = w.History.NameOf(e.Subject);
+                    if (!l.Contains(n)) l.Add(n);
+                }
+                if (kinds.Count > 0)
+                {
+                    kinds.Sort((p, q) => byKind[q].Count != byKind[p].Count ? byKind[q].Count.CompareTo(byKind[p].Count) : p.CompareTo(q));
+                    var parts = new List<string>();
+                    foreach (int k in kinds)
+                    {
+                        var l = byKind[k];
+                        string name = TC2.Core.Places.Structures.Name((byte)k);
+                        parts.Add((l.Count == 1 ? Article(name) + " at " + l[0] : Num(l.Count) + " " + PluralOf(name) + " (" + (l.Count <= 3 ? Join(l) : string.Join(", ", l.GetRange(0, 2).ToArray()) + " and " + Num(l.Count - 2) + " more") + ")"));
+                        if (parts.Count >= 6) break;
+                    }
+                    notes.Add("Works raised: " + string.Join("; ", parts.ToArray()) + (kinds.Count > 6 ? "; and more" : "") + ".");
+                }
+            }
+            // walls
+            {
+                var palisades = new List<string>(); var begun = 0;
+                foreach (var e in evs)
+                {
+                    if (e.Kind == HistoryKind.WallBuilt && e.ArgB != 2) { string n = Name(w, e.Settlement); if (!palisades.Contains(n)) palisades.Add(n); }
+                    else if (e.Kind == HistoryKind.WallPlanned) begun++;
+                }
+                if (palisades.Count > 0) notes.Add("Palisades were finished at " + (palisades.Count <= 5 ? Join(palisades) : string.Join(", ", palisades.GetRange(0, 4).ToArray()) + " and " + Num(palisades.Count - 4) + " more") + ".");
+            }
+            // raids and bands
+            {
+                int raids = 0, bands = 0, called = 0;
+                var pairs = new Dictionary<long, int>();
+                foreach (var e in evs)
+                {
+                    if (e.Kind == HistoryKind.BandRaised) bands++;
+                    else if (e.Kind == HistoryKind.CallAnswered) called++;
+                    else if (e.Kind == HistoryKind.Raid)
+                    {
+                        raids++;
+                        int x = e.Subject.Id, y = e.Object.Id;
+                        long key = x < y ? ((long)x << 32) | (uint)y : ((long)y << 32) | (uint)x;
+                        pairs.TryGetValue(key, out int n); pairs[key] = n + 1;
+                    }
+                }
+                int takings = 0, blows = 0, refused = 0, amends = 0;
+                foreach (var e in evs)
+                {
+                    if (e.Kind == HistoryKind.Taken || e.Kind == HistoryKind.TakingSeen) takings++;
+                    else if (e.Kind == HistoryKind.Struck) blows++;
+                    else if (e.Kind == HistoryKind.ClaimRefused) refused++;
+                    else if (e.Kind == HistoryKind.AmendsMade) amends++;
+                }
+                if (takings + blows + refused + amends > 0)
+                {
+                    var q = new List<string>();
+                    if (takings > 0) q.Add(Plural(takings, "taking", "takings") + " from other villages' stores in the night");
+                    if (blows > 0) q.Add(Plural(blows, "blow", "blows") + " struck");
+                    if (amends > 0) q.Add(Plural(amends, "wrong", "wrongs") + " amended");
+                    if (refused > 0) q.Add(Plural(refused, "claim for amends", "claims for amends") + " refused");
+                    notes.Add("Between neighbours: " + Join(q) + ".");
+                }
+                if (raids > 0 || bands > 0)
+                {
+                    long top = 0; int tn = 0;
+                    foreach (var kv in pairs) if (kv.Value > tn || kv.Value == tn && kv.Key < top) { tn = kv.Value; top = kv.Key; }
+                    notes.Add(Cap(Plural(bands, "band was", "bands were")) + " raised and " + Plural(raids, "raid", "raids") + " made" +
+                              (tn >= 2 ? ", the most between " + Name(w, (int)(top >> 32)) + " and " + Name(w, (int)(top & 0xFFFFFFFFL)) + " (" + Num(tn) + ")" : "") +
+                              (called > 0 ? "; " + Plural(called, "village answered its lord's call", "villages answered their lords' calls") : "") + ".");
+                }
+            }
+            // the hungry and the sick
+            {
+                var famine = new HashSet<int>(); var rations = new HashSet<int>(); var sick = new HashSet<int>(); var failed = new HashSet<int>(); int relief = 0, fires = 0, burnt = 0;
+                foreach (var e in evs)
+                {
+                    if (e.Kind == HistoryKind.Famine || e.Kind == HistoryKind.Hunger) famine.Add(e.Settlement);
+                    else if (e.Kind == HistoryKind.Rationing) rations.Add(e.Settlement);
+                    else if (e.Kind == HistoryKind.EpidemicArrived) sick.Add(e.Settlement);
+                    else if (e.Kind == HistoryKind.ReliefSent) relief++;
+                    else if (e.Kind == HistoryKind.HarvestFailed) failed.Add(e.Settlement);
+                    else if (e.Kind == HistoryKind.Wildfire) fires++;
+                    else if (e.Kind == HistoryKind.BuildingBurned) burnt++;
+                }
+                var parts = new List<string>();
+                if (failed.Count > 0) parts.Add("the harvest failed in " + Plural(failed.Count, "village", "villages"));
+                if (famine.Count > 0) parts.Add("famine came to " + Plural(famine.Count, "village", "villages"));
+                if (rations.Count > 0) parts.Add(Plural(rations.Count, "village rationed its grain", "villages rationed their grain"));
+                if (sick.Count > 0) parts.Add("sickness reached " + Plural(sick.Count, "village", "villages"));
+                if (relief > 0) parts.Add(Plural(relief, "gift", "gifts") + " of grain went to the hungry");
+                if (fires > 0) parts.Add(Plural(fires, "wildfire", "wildfires") + " burned in the wild");
+                if (burnt > 0) parts.Add(Plural(burnt, "home was", "homes were") + " burned");
+                if (parts.Count > 0) notes.Add(Cap(Join(parts)) + ".");
+            }
+            // who led, who left, boats and roads
+            {
+                int heads = 0, splits = 0, moved = 0, boats = 0, roads = 0, sworn = 0, ore = 0, stone = 0, known = 0;
+                foreach (var e in evs)
+                    switch (e.Kind)
+                    {
+                        case HistoryKind.HeadmanRose: heads++; break;
+                        case HistoryKind.VillageSplit: splits++; break;
+                        case HistoryKind.HouseholdMoved: moved++; break;
+                        case HistoryKind.BoatBuilt: case HistoryKind.BoatToCross: boats++; break;
+                        case HistoryKind.WayWorn: if (e.ArgA >= 3) roads++; break;
+                        case HistoryKind.Sworn: sworn++; break;
+                        case HistoryKind.OreFound: ore++; break;
+                        case HistoryKind.StoneFound: stone++; break;
+                        case HistoryKind.TechniqueKnown: known++; break;
+                    }
+                var parts = new List<string>();
+                if (splits > 0) parts.Add(Plural(splits, "village split", "villages split") + " over who should lead");
+                if (known > 0) parts.Add(Plural(known, "village learned a craft", "villages learned crafts") + " from their neighbours");
+                if (boats > 0) parts.Add(Plural(boats, "boat was", "boats were") + " built");
+                if (roads > 0) parts.Add(Plural(roads, "way was", "ways were") + " beaten into roads");
+                if (sworn > 0) parts.Add(Plural(sworn, "man swore", "men swore") + " to the first of their villages");
+                if (ore > 0 || stone > 0) parts.Add((ore > 0 ? Plural(ore, "body of ore", "bodies of ore") : "") + (ore > 0 && stone > 0 ? " and " : "") + (stone > 0 ? Plural(stone, "outcrop of stone", "outcrops of stone") : "") + " found");
+                if (moved > 0) parts.Add(Plural(moved, "household moved", "households moved") + " to another village");
+                if (parts.Count > 0) notes.Add(Cap(Join(parts)) + ".");
+            }
+            return notes;
+        }
+
+        static string Article(string noun) => (noun.Length > 0 && "aeiou".IndexOf(noun[0]) >= 0 ? "an " : "a ") + noun;
+        static string PluralOf(string noun)
+        {
+            int sp = noun.LastIndexOf(' ');
+            string head = sp >= 0 ? noun.Substring(0, sp + 1) : "", last = sp >= 0 ? noun.Substring(sp + 1) : noun;
+            if (last.EndsWith("s")) return noun;
+            if (last.EndsWith("y") && last.Length > 1 && "aeiou".IndexOf(last[last.Length - 2]) < 0) return head + last.Substring(0, last.Length - 1) + "ies";
+            if (last.EndsWith("sh") || last.EndsWith("ch") || last.EndsWith("x")) return head + last + "es";
+            return head + last + "s";
+        }
+
+        /// <summary>
+        /// (session 27) A record's weight in the story: 2 a great event - a new sickness, a craft first found, the end of a place, a bow that made a
+        /// realm of ten or more, walls of stone finished, the earth's and the sky's great violence, your hand -, 1 a notable record, 0 a lesser one;
+        /// otherwise by the ledger's importance (its kind's base and size, raised by what it led to). Reads only.
+        /// </summary>
+        public static byte Weigh(World w, in HistoryEvent e)
+        {
+            switch (e.Kind)
+            {
+                case HistoryKind.GodCommand: case HistoryKind.PathogenAppeared: case HistoryKind.TechniqueFound: case HistoryKind.MeteorStruck: case HistoryKind.Tsunami:
+                case HistoryKind.IceAge: case HistoryKind.IceAgeEnded: case HistoryKind.Extinction: case HistoryKind.Speciation: case HistoryKind.IslandRose:
+                case HistoryKind.SettlementAbandoned: case HistoryKind.WorldCreated:
+                    return 2;
+                case HistoryKind.PeopleArrived: return 1;   // (its place's founding, a moment later, carries the weight)
+                case HistoryKind.Eruption: return (byte)(e.Magnitude >= 3f ? 2 : 1);
+                case HistoryKind.Quake: return (byte)(e.Magnitude >= 6.5f ? 2 : e.Magnitude >= 5.5f ? 1 : 0);
+                case HistoryKind.StormLandfall: case HistoryKind.StormSurge: return (byte)(e.Importance >= 20f ? 2 : 1);
+                case HistoryKind.WallBuilt: return (byte)(e.ArgB == 2 ? 2 : 1);
+                case HistoryKind.TributeAgreed: return (byte)(e.ArgA >= 10 ? 1 : 0);   // (a realm's rise and height are told in its age's story)
+                case HistoryKind.SettlementFounded:
+                    {
+                        int sid = e.Subject.Kind == EntityKind.Settlement ? e.Subject.Id : 0;
+                        return (byte)(sid != 0 && w.Settlements.Exists(sid) && w.Settlements.Get(sid).Inhabited && w.Settlements.Get(sid).Population >= 380 ? 2 : 1);   // (the founding of a great town of today)
+                    }
+                case HistoryKind.EpidemicEnded: return (byte)(e.Magnitude >= 100f ? 2 : 1);
+                case HistoryKind.Famine: case HistoryKind.EpidemicArrived: case HistoryKind.VillageSplit: case HistoryKind.TributeEnded: case HistoryKind.Wildfire: case HistoryKind.HarvestFailed:
+                case HistoryKind.HomesDrowned: case HistoryKind.CoastChanged: case HistoryKind.OreFound: case HistoryKind.OreRevealed: case HistoryKind.ArmsMade:
+                    return 1;
+                case HistoryKind.Raid: case HistoryKind.BandRaised: case HistoryKind.HeadmanRose: case HistoryKind.WorkBuilt: case HistoryKind.PartySetOut: case HistoryKind.WayWorn:
+                case HistoryKind.Taken: case HistoryKind.TakingSeen: case HistoryKind.Struck: case HistoryKind.ClaimRefused: case HistoryKind.AmendsMade: case HistoryKind.FireStarted:
+                case HistoryKind.PersonDied: case HistoryKind.PersonBorn: case HistoryKind.Marriage: case HistoryKind.HouseholdFormed:   // (lives are told in Lives)
+                    return 0;
+                default: return (byte)(e.Importance >= 40f ? 1 : 0);
+            }
         }
 
         /// <summary>The ordinary, never a line of the book by itself (as Chronicle's).</summary>
@@ -1513,6 +1908,170 @@ namespace TC2.Core.History
             }
         }
 
+        // ================================================================== IX. discoveries and works (session 27)
+        /// <summary>
+        /// (session 27) Discoveries and Works: each craft from its first finding - who found it, where, when - to how often it was found again,
+        /// how many villages learned it from others and how many know it today; then the world's works - the first of each kind raised, how many
+        /// were raised and how many stand - its walls of timber and stone, its boats and its roads. Counts and names from the ledger and the world.
+        /// </summary>
+        static BookPart Works(Ctx c)
+        {
+            var w = c.W;
+            var part = new BookPart { Title = "Discoveries and Works", Intro = "What people learned to do and what they raised: each craft from its first finding to the villages that know it now, and the world's works - its stores and smithies, kilns and markets, mines, walls, boats and roads." };
+            int n = w.History.Count;
+            // the crafts
+            {
+                var ch = new BookChapter { Title = "Crafts Found", Sub = "each craft from its first finding" };
+                int crafts = Knowledge.Tech.Count;
+                var firstFound = new HistoryEvent[crafts]; var hasFirst = new bool[crafts];
+                var foundN = new int[crafts]; var learnedN = new int[crafts]; var lostN = new int[crafts];
+                for (int i = 0; i < n; i++)
+                {
+                    var e = w.History.At(i);
+                    int t = e.ArgA;
+                    if (t < 0 || t >= crafts) continue;
+                    if (e.Kind == HistoryKind.TechniqueFound) { foundN[t]++; if (!hasFirst[t]) { hasFirst[t] = true; firstFound[t] = e; } }
+                    else if (e.Kind == HistoryKind.TechniqueKnown && !e.Object.IsNone) learnedN[t]++;
+                    else if (e.Kind == HistoryKind.TechniqueLost) lostN[t]++;
+                }
+                var knowNow = new int[crafts]; int living = 0;
+                for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+                {
+                    ref var s = ref w.Settlements.Get(sid);
+                    if (!s.Inhabited) continue;
+                    living++;
+                    for (int t = 0; t < crafts; t++) if ((s.TechKnown & (1 << t)) != 0) knowNow[t]++;
+                }
+                var order = new List<int>();
+                for (int t = 0; t < crafts; t++) if (hasFirst[t] || knowNow[t] > 0) order.Add(t);
+                order.Sort((p, q) => hasFirst[p] != hasFirst[q] ? (hasFirst[p] ? 1 : -1) : hasFirst[p] ? firstFound[p].Id.CompareTo(firstFound[q].Id) : p.CompareTo(q));
+                ch.Para(order.Count == 0 ? "No craft has yet been found that the ledger keeps." :
+                        "A craft is found by practice - a fisher who learns to knot a net, a smith who learns to smelt - and spreads as neighbours teach each other. These are the world's crafts: those the first settlers brought, then those found since, in the order they were found; " +
+                        Plural(living, "village is", "villages are") + " lived in today.");
+                foreach (int t in order)
+                {
+                    var law = Knowledge.Tech.Laws[t];
+                    ch.Heading(Cap(law.Name));
+                    var sb = new StringBuilder();
+                    if (hasFirst[t])
+                    {
+                        var fe = firstFound[t];
+                        sb.Append("First found in year ").Append(YearOf(fe.Time)).Append(fe.Settlement > 0 ? " at " + Name(w, fe.Settlement) : "").Append(fe.Subject.Kind == EntityKind.Person ? ", by " + w.History.NameOf(fe.Subject) : "").Append('.');
+                        if (foundN[t] > 1) sb.Append(" Found again ").Append(foundN[t] - 1 == 1 ? "once" : Num(foundN[t] - 1) + " times").Append(" elsewhere.");
+                    }
+                    else sb.Append("Brought by the first settlers.");
+                    if (learnedN[t] > 0) sb.Append(' ').Append(Cap(Plural(learnedN[t], "village", "villages"))).Append(" learned it from neighbours.");
+                    if (lostN[t] > 0) sb.Append(' ').Append(Cap(Plural(lostN[t], "village", "villages"))).Append(" lost it again.");
+                    sb.Append(" Today the people of ").Append(knowNow[t] == living && living > 1 ? "every village " : Plural(knowNow[t], "village", "villages") + " of " + F(living) + " ").Append(law.Now).Append('.');
+                    ch.Para(sb.ToString(), hasFirst[t] ? firstFound[t].Settlement : 0);
+                    if (hasFirst[t]) ch.Line(w, in firstFound[t]);
+                }
+                part.Chapters.Add(ch);
+            }
+            // the works: the first of each kind, how many raised, how many stand
+            {
+                var ch = new BookChapter { Title = "Works Raised", Sub = "the first of each kind, and how many stand" };
+                var first = new Dictionary<int, HistoryEvent>(); var raised = new Dictionary<int, int>(); var kinds = new List<int>();
+                for (int i = 0; i < n; i++)
+                {
+                    var e = w.History.At(i);
+                    if (e.Kind != HistoryKind.WorkBuilt) continue;
+                    if (!first.ContainsKey(e.ArgA)) { first[e.ArgA] = e; kinds.Add(e.ArgA); }
+                    raised.TryGetValue(e.ArgA, out int r); raised[e.ArgA] = r + 1;
+                }
+                var standing = new Dictionary<int, int>();
+                for (int b = w.Buildings.First(); b != 0; b = w.Buildings.Next(b))
+                {
+                    ref var bb = ref w.Buildings.Get(b);
+                    if (bb.Done == 0 || TC2.Core.Places.Structures.IsHome(bb.Kind) || !w.Settlements.Exists(bb.Settlement) || !w.Settlements.Get(bb.Settlement).Inhabited) continue;
+                    standing.TryGetValue(bb.Kind, out int s); standing[bb.Kind] = s + 1;
+                }
+                kinds.Sort((p, q) => first[p].Id.CompareTo(first[q].Id));
+                ch.Para(kinds.Count == 0 ? "No work has yet been raised that the ledger keeps." :
+                        "A village raises a work when its need is plain - a granary when its grain will not keep, a smithy when its smiths want one, a market where traders come often. The first of each kind, in the order they were raised:");
+                foreach (int k in kinds)
+                {
+                    string name = TC2.Core.Places.Structures.Name((byte)k);
+                    standing.TryGetValue(k, out int st);
+                    var fe = first[k];
+                    ch.Note(Cap(PluralOf(name)) + ": the first at " + Name(w, fe.Settlement) + " in year " + YearOf(fe.Time) + "; " + Plural(raised[k], "raised", "raised") + " in all, " + F(st) + " standing in lived-in places today.", fe.Settlement);
+                    ch.Line(w, in fe);
+                }
+                part.Chapters.Add(ch);
+            }
+            // the walls of timber and stone
+            {
+                var ch = new BookChapter { Title = "Walls", Sub = "palisades and walls of stone" };
+                HistoryEvent firstP = default, firstS = default, greatest = default; bool hasP = false, hasS = false, hasG = false;
+                int palisades = 0, stones = 0, fallen = 0;
+                for (int i = 0; i < n; i++)
+                {
+                    var e = w.History.At(i);
+                    if (e.Kind == HistoryKind.WallFallen) { fallen++; continue; }
+                    if (e.Kind != HistoryKind.WallBuilt) continue;
+                    if (e.ArgB == 2) { stones++; if (!hasS) { hasS = true; firstS = e; } if (!hasG || e.ArgA > greatest.ArgA) { hasG = true; greatest = e; } }
+                    else { palisades++; if (!hasP) { hasP = true; firstP = e; } }
+                }
+                int walledNow = 0;
+                for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+                {
+                    ref var s = ref w.Settlements.Get(sid);
+                    if (!s.Inhabited || s.Wall == 0) continue;
+                    walledNow++;
+                }
+                if (!hasP && !hasS) ch.Para("No village has walled itself in.");
+                else
+                {
+                    var sb = new StringBuilder();
+                    if (hasP) sb.Append(Cap(Plural(palisades, "palisade was", "palisades were"))).Append(" finished in the world's years, the first at ").Append(Name(w, firstP.Settlement)).Append(" in year ").Append(YearOf(firstP.Time)).Append(". ");
+                    if (fallen > 0) sb.Append(Cap(Plural(fallen, "palisade", "palisades"))).Append(" rotted and fell. ");
+                    if (hasS) sb.Append(Cap(Plural(stones, "ring was", "rings were"))).Append(" walled in stone, the first at ").Append(Name(w, firstS.Settlement)).Append(" in year ").Append(YearOf(firstS.Time)).Append("; the greatest ").Append(F(greatest.ArgA)).Append(" m round, at ").Append(Name(w, greatest.Settlement)).Append(". ");
+                    sb.Append(Cap(Plural(walledNow, "village stands", "villages stand"))).Append(" walled today.");
+                    ch.Para(sb.ToString());
+                    if (hasP) ch.Line(w, in firstP);
+                    if (hasS) ch.Line(w, in firstS);
+                    if (hasG && (!hasS || greatest.Id != firstS.Id)) ch.Line(w, in greatest);
+                }
+                part.Chapters.Add(ch);
+            }
+            // boats, roads and mines
+            {
+                var ch = new BookChapter { Title = "Boats, Roads and Mines", Sub = "the ways over land and sea, and the ore" };
+                HistoryEvent dug = default, plank = default, road = default, copper = default, iron = default; bool hd = false, hp = false, hr = false, hc = false, hi = false;
+                int boats = 0, roads = 0, paths = 0, gaveOut = 0;
+                for (int i = 0; i < n; i++)
+                {
+                    var e = w.History.At(i);
+                    switch (e.Kind)
+                    {
+                        case HistoryKind.BoatBuilt:
+                            boats++;
+                            if (e.ArgA == TC2.Core.Places.Structures.PlankBoat) { if (!hp) { hp = true; plank = e; } }
+                            else if (!hd) { hd = true; dug = e; }
+                            break;
+                        case HistoryKind.WayWorn: if (e.ArgA >= 3) { roads++; if (!hr) { hr = true; road = e; } } else paths++; break;
+                        case HistoryKind.OreFound:
+                            if (e.ArgA == TC2.Core.Places.Mining.Iron) { if (!hi) { hi = true; iron = e; } }
+                            else if (!hc) { hc = true; copper = e; }
+                            break;
+                        case HistoryKind.OreGaveOut: gaveOut++; break;
+                    }
+                }
+                var sb = new StringBuilder();
+                if (boats > 0) sb.Append(Cap(Plural(boats, "boat was", "boats were"))).Append(" built").Append(hd ? ", the first dugout at " + Name(w, dug.Settlement) + " in year " + YearOf(dug.Time) : "").Append(hp ? ", the first boat of planks at " + Name(w, plank.Settlement) + " in year " + YearOf(plank.Time) : "").Append(". ");
+                if (paths + roads > 0) sb.Append(Cap(Plural(paths, "path was", "paths were"))).Append(" worn between villages and ").Append(Plural(roads, "way was", "ways were")).Append(" beaten into roads").Append(hr ? ", the first between " + w.History.NameOf(road.Subject) + " and " + w.History.NameOf(road.Object) + " in year " + YearOf(road.Time) : "").Append(". ");
+                if (hc || hi) sb.Append("Ore was first seen ").Append(hc ? "- copper - by the people of " + w.History.NameOf(copper.Subject) + " in year " + YearOf(copper.Time) : "").Append(hc && hi ? "; " : "").Append(hi ? "bog iron by the people of " + w.History.NameOf(iron.Subject) + " in year " + YearOf(iron.Time) : "").Append(gaveOut > 0 ? "; " + Plural(gaveOut, "body was", "bodies were") + " dug out" : "").Append('.');
+                ch.Para(sb.Length > 0 ? sb.ToString().TrimEnd() : "No boat, road or mine yet.");
+                if (hd) ch.Line(w, in dug);
+                if (hp) ch.Line(w, in plank);
+                if (hr) ch.Line(w, in road);
+                if (hc) ch.Line(w, in copper);
+                if (hi) ch.Line(w, in iron);
+                part.Chapters.Add(ch);
+            }
+            return part;
+        }
+
         // ================================================================== VIII. chronology
         static BookPart Chronology(Ctx c)
         {
@@ -1570,7 +2129,8 @@ namespace TC2.Core.History
                         {
                             case BookKind.Heading: sb.Append("#### ").Append(b.Text).Append("\n\n"); break;
                             case BookKind.Fact: sb.Append("> ").Append(b.Text).Append("\n\n"); break;
-                            case BookKind.Line: sb.Append("- ").Append(b.Text).Append(ids ? " `[" + b.Event + "]`" : "").Append('\n'); inList = true; break;
+                            case BookKind.Note: sb.Append('*').Append(b.Text).Append("*\n\n"); break;
+                            case BookKind.Line: sb.Append("- ").Append(b.Weight >= 2 ? "**" + b.Text + "**" : b.Text).Append(b.Weight == 0 ? " _(minor)_" : "").Append(ids ? " `[" + b.Event + "]`" : "").Append('\n'); inList = true; break;
                             default: sb.Append(b.Text).Append("\n\n"); break;
                         }
                     }
