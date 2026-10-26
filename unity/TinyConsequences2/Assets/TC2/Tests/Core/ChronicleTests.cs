@@ -52,6 +52,37 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void AnAgeThatSharesItsNameIsNamedByTheRealmThatLedIt()
+        {
+            // premise: 200 years in the annals - quiet, hungry, quiet, hungry again
+            var w = TestWorlds.Make(605);
+            for (int y = 0; y < 200; y++)
+            {
+                bool hungry = (y / 50) % 2 == 1;
+                w.Annals.Push(new AnnalYear { Year = y, People = 1000, Places = 6, Births = 30, Deaths = 28, Hunger = hungry ? 25 : 0, Famines = hungry ? 2 : 0, Temp = 14f });
+            }
+            var plain = Chronicle.Eras(w);
+            foreach (var e in plain) Console.WriteLine(e.Name + " (" + e.From + "-" + e.To + ")");
+            Assert.AreEqual(4, plain.Count, "four ages");
+            Assert.AreEqual("The Hungry Years", plain[1].Name);
+            Assert.AreEqual("The Second Hungry Years", plain[3].Name, "with no realm to name it by, the later is the second");
+            // the realm that led each (the book reads it from the bonds of tribute)
+            var led = Chronicle.Eras(w, under: (from, to) => from >= 140 ? "Bstead" : "Astead");
+            Assert.AreEqual("The Hungry Years under Astead", led[1].Name);
+            Assert.AreEqual("The Hungry Years under Bstead", led[3].Name);
+            Assert.AreEqual(plain[0].Name, led[0].Name, "a name no other age shares stays as it is");
+            Assert.AreEqual(plain[2].Name, led[2].Name);
+            // one realm leading both: the later is the second under it
+            var same = Chronicle.Eras(w, under: (from, to) => "Astead");
+            Assert.AreEqual("The Hungry Years under Astead", same[1].Name);
+            Assert.AreEqual("The Second Hungry Years under Astead", same[3].Name);
+            // none leading the later: its plain name (the earlier is told apart by its realm)
+            var none = Chronicle.Eras(w, under: (from, to) => from >= 140 ? null : "Astead");
+            Assert.AreEqual("The Hungry Years under Astead", none[1].Name);
+            Assert.AreEqual("The Hungry Years", none[3].Name);
+        }
+
+        [Test]
         public void EveryLineOfTheBookStandsOnItsRecord()
         {
             var w = TestWorlds.Make(607);

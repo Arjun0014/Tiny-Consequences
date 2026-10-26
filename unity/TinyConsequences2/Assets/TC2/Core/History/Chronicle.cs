@@ -38,8 +38,10 @@ namespace TC2.Core.History
         public const int MaxAge = 120;
 
         // ------------------------------------------------------------------ eras
-        /// <summary>The ages of the world so far, found in its annals (the last one the present age).</summary>
-        public static List<Era> Eras(World w, int minYears = 30)
+        /// <summary>The ages of the world so far, found in its annals (the last one the present age). An age whose name another age shares
+        /// is named by the realm that led it when one did - `under(fromYear, toYear)`: the greatest realm for most of its years, or null
+        /// (the book reads it from the bonds of tribute: "The Years of Plenty under Raimstead") -, else by its order ("The Second Hungry Years").</summary>
+        public static List<Era> Eras(World w, int minYears = 30, System.Func<int, int, string> under = null)
         {
             var a = w.Annals;
             int n = a.Count;
@@ -52,18 +54,34 @@ namespace TC2.Core.History
             double meanTemp = 0;
             for (int i = 0; i < n; i++) meanTemp += a[i].Temp;
             meanTemp /= n;
-            var used = new Dictionary<string, int>();
+            var names = new List<string>();
+            var shared = new Dictionary<string, int>();
             for (int k = 0; k + 1 < cuts.Count; k++)
             {
                 int from = cuts[k], to = cuts[k + 1];
                 byte sign = Signature(x, from, to, out double strength);
-                bool present = to == n;
                 string name = Name(w, sign, from, to, meanTemp);
                 if (k == 0 && (sign == SignQuiet || sign == SignWarm || sign == SignCold || strength < 1.0)) name = "The First Years";
+                names.Add(name);
+                shared.TryGetValue(name, out int c);
+                shared[name] = c + 1;
+                eras.Add(new Era { From = a[from].Year, To = a[to - 1].Year + 1, Sign = sign, Present = to == n });
+            }
+            var used = new Dictionary<string, int>();
+            for (int k = 0; k < eras.Count; k++)
+            {
+                var e = eras[k];
+                string name = names[k];
+                if (shared[name] > 1 && under != null && name != "The First Years")
+                {
+                    string r = under(e.From, e.To);
+                    if (!string.IsNullOrEmpty(r)) name += " under " + r;
+                }
                 used.TryGetValue(name, out int times);
                 used[name] = times + 1;
                 if (times > 0) name = Ordinal(times + 1) + " " + name.Substring(4);   // ("The Hungry Years" -> "The Second Hungry Years")
-                eras.Add(new Era { From = a[from].Year, To = a[to - 1].Year + 1, Name = present && to - from < minYears ? "The Present Age" : name, Sign = sign, Present = present });
+                e.Name = e.Present && cuts[k + 1] - cuts[k] < minYears ? "The Present Age" : name;
+                eras[k] = e;
             }
             return eras;
         }

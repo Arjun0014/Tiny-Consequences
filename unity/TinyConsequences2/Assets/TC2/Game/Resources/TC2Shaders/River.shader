@@ -76,13 +76,17 @@ Shader "TC2/River"
                 Light l = GetMainLight(TransformWorldToShadowCoord(i.positionWS));
                 half day = saturate(dot(up, l.direction) * 3.0h + 0.2h);
                 half across = (half)saturate(abs(i.river.x));
-                half depth = 1.0h - across * across;                                   // (deeper in the middle)
+                // (session 27) far off - a ribbon a few pixels wide - a river is its mean colour with the sky it gives back, as it reads from
+                // the air: its deep middle shaded across so narrow a ribbon had read as a dark tube laid over the fields (s27e8)
+                half farK = smoothstep(500.0h, 1600.0h, (half)dist);
+                half depth = (1.0h - across * across) * (1.0h - farK);                // (deeper in the middle)
                 half lit = saturate(dot(n, l.direction) * 0.6h + 0.4h) * lerp(0.45h, 1.0h, l.shadowAttenuation);
+                half3 sky = lerp(_Sky.rgb, _TC2FogColor.rgb, 0.5h);
                 half3 body = lerp(_Shallow.rgb, _Deep.rgb, depth * 0.85h) * (0.35h + 0.65h * lit);
+                body = lerp(body, half3(0.05h, 0.16h, 0.22h) * (0.55h + 0.45h * lit) + sky * 0.10h, farK);
                 half fres = pow(1.0h - saturate(dot(n, v)), 4.0h);
                 float3 h = normalize(l.direction + v);
                 half spec = pow(saturate(dot(n, h)), lerp(40.0h, 200.0h, near)) * lerp(0.8h, 2.2h, near) * l.shadowAttenuation;
-                half3 sky = lerp(_Sky.rgb, _TC2FogColor.rgb, 0.5h);
                 half3 c = (body + sky * fres * 0.55h) * (0.12h + 0.88h * day) + l.color * spec * day;
                 // wet earth along the banks, near the camera
                 c = lerp(c, half3(0.17h, 0.15h, 0.10h) * (0.3h + 0.7h * day), smoothstep(0.80h, 0.97h, across) * near * 0.55h);
