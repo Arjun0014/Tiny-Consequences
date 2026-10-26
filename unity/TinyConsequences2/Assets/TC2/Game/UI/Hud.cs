@@ -72,6 +72,7 @@ namespace TC2.Game
         readonly System.Collections.Generic.List<int> _byPeople = new System.Collections.Generic.List<int>();
         readonly System.Collections.Generic.Dictionary<int, string> _placeLine = new System.Collections.Generic.Dictionary<int, string>();
         string _pageStanding = "";   // (session 27: the person page's standing line)
+        readonly System.Collections.Generic.Dictionary<int, int> _sickAt = new System.Collections.Generic.Dictionary<int, int>();   // (people abed sick, by home: the map line)
         float _dateW, _speedsW, _togglesW;   // (the top bars' widths, measured once from their words)
         readonly System.Collections.Generic.HashSet<int> _seats = new System.Collections.Generic.HashSet<int>();   // (places others pay and that pay nobody: realms' seats)
         float _byPeopleAt = -99f;
@@ -260,6 +261,13 @@ namespace TC2.Game
                 for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid)) if (w.Settlements.Get(sid).Inhabited) _byPeople.Add(sid);
                 _byPeople.Sort((a, b) => { int c = w.Settlements.Get(b).Population.CompareTo(w.Settlements.Get(a).Population); return c != 0 ? c : a.CompareTo(b); });
                 _placeLine.Clear(); _seats.Clear();
+                // (session 27) a place's present troubles, from state: how many of its people lie sick (abed, so unseen), and a famine of the last weeks
+                _sickAt.Clear();
+                for (int id = w.People.First(); id != 0; id = w.People.Next(id))
+                {
+                    ref var pp = ref w.People.Get(id);
+                    if (pp.Alive && pp.SickPhase == TC2.Core.Health.Disease.Infectious) { _sickAt.TryGetValue(pp.Home, out int k); _sickAt[pp.Home] = k + 1; }
+                }
                 foreach (int sid in _byPeople)
                 {
                     ref var s = ref w.Settlements.Get(sid);
@@ -268,6 +276,9 @@ namespace TC2.Game
                     if (paying > 0 && s.Lord == 0) _seats.Add(sid);
                     _placeLine[sid] = Gazetteer.Word(in s).Substring(2) + " of " + s.Population.ToString("N0", CultureInfo.InvariantCulture) +
                                       (s.Lord != 0 && w.Settlements.Exists(s.Lord) ? ", pays " + w.History.NameOf(EntityRef.Settlement(s.Lord)) : paying > 0 ? ", lord of " + paying + (paying == 1 ? " village" : " villages") : "");
+                    _sickAt.TryGetValue(sid, out int sick);
+                    if (sick >= 3) _placeLine[sid] += " · " + sick + " sick";
+                    if (s.FamineAt != 0 && w.Now - s.FamineAt < 24 * SimTime.Day) _placeLine[sid] += " · famine";
                 }
             }
             _placed.Clear();
