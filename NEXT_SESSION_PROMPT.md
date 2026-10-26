@@ -43,8 +43,8 @@ listener at 0 in shots).
 - **The queue** (`Q` as below, runner task `bbgjl1nqj`): `0_t3` (tests of the pages' text: Biography, Gazetteer, Sworn, HistoryBook, Chronicle,
   Determinism), `0_y_perf2_s27`, prospecting `N_b_pro1_07..10`, `N_c_cmp_pro1`. Then land prospecting (D2-190; `wip/prospect` 85acede merges cleanly).
 - Tools: the context-2 scratchpad's `gcommit.sh` (a gated commit: compile the worktree's Game/Editor/Tests, commit only when clean). **Python patch
-  scripts through the Bash tool lose a backslash** (`\n` arrives as `
-`, a real newline in C#) - write such scripts with the Write tool, or use Edit.
+  scripts through the Bash tool lose a backslash** (a doubled backslash before n arrives single, so Python writes a real newline into the C# string) -
+  write such scripts with the Write tool (it keeps escapes literal), or use Edit.
 
 ## Do next, in order
 1. `0_t3` must pass; `0_y` -> D2-195 (fardetail, shadowlite, cloudshadow, names, terrain ratios), and if the village view is still slow, the next cost.
