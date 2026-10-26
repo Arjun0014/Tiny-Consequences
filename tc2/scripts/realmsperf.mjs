@@ -37,6 +37,9 @@ const windowMs = Number(opt('--window', '2500'));
 const tag = opt('--tag', 'realmsperf');
 // (session 25) --layer NAME: the bridge's `on NAME` / `off NAME` measured instead of the realms layer (names, air, clouds...)
 const layer = opt('--layer', 'realms');
+// (session 27) --off-cmd "C1;C2" --on-cmd "C3": any two states of the bridge compared instead of a layer off and on (e.g. two shadow set-ups:
+// --off-cmd "shadow 4 3.2" --on-cmd "shadow 2 1.4"); --layer then only names the pictures
+const offCmd = opt('--off-cmd', ''), onCmd = opt('--on-cmd', '');
 const outDir = path.join(root, 'tc2', 'out', 'webtest', tag);
 fs.mkdirSync(outDir, { recursive: true });
 
@@ -94,6 +97,7 @@ try {
   if (String(s0.seed) !== seed.toString() || s0.catchingUp) throw new Error('the game did not load the save as saved');
   report.loaded = { year: s0.year, people: s0.people, places: s0.places, gfx: s0.gfx };
   const cmd = (c) => page.evaluate((x) => { (window.__TC2_CMDS = window.__TC2_CMDS || []).push(x); }, c);
+  const setLayer = async (o) => { const c = o === 'on' ? onCmd : offCmd; if (c) { for (const x of c.split(';')) if (x.trim()) await cmd(x.trim()); } else await cmd(`${o} ${layer}`); };
   // the wasm heap in MB (Unity's instance; it grows and never shrinks), and whether the page has failed
   const heapMb = () => page.evaluate(() => { try { const M = window.__TC2_INSTANCE && window.__TC2_INSTANCE.Module; const b = M && (M.HEAPU8 || M.HEAP8 || M.HEAPU32 || M.HEAP32 || M.HEAPF32); return b ? Math.round(b.buffer.byteLength / 1048576) : -1; } catch (e) { return -1; } });
   const failed = () => consoleLines.some((l) => l.startsWith('[pageerror]') || l.includes('abort("OOM")'));
@@ -103,7 +107,7 @@ try {
   if (hold > 0 && views.length > 0) {
     // the first view held with the layer in one state: does the heap grow with time alone?
     await cmd(`look ${lat} ${lon} ${views[0].dist}`);
-    await cmd(holdOn ? `on ${layer}` : `off ${layer}`);
+    await setLayer(holdOn ? 'on' : 'off');
     await page.waitForTimeout(settle * 2);
     await traceHeap(`${views[0].name}, the layer ${holdOn ? 'on' : 'off'}, held 0 s`);
     for (let s = 15; s <= hold; s += 15) {
@@ -111,7 +115,7 @@ try {
       await traceHeap(`${views[0].name}, the layer ${holdOn ? 'on' : 'off'}, held ${s} s`);
       if (failed()) throw new Error('the page failed while held (see console.txt)');
     }
-    await cmd(`off ${layer}`);
+    await setLayer('off');
   }
   if (toggles > 0 && views.length > 0) {
     // the layer turned on and off at the first view, as a player pressing R
@@ -119,8 +123,8 @@ try {
     await page.waitForTimeout(settle * 2);
     await traceHeap(`${views[0].name}, before turning`);
     for (let i = 1; i <= toggles; i++) {
-      await cmd(`on ${layer}`); await page.waitForTimeout(toggleGap);
-      await cmd(`off ${layer}`); await page.waitForTimeout(toggleGap);
+      await setLayer('on'); await page.waitForTimeout(toggleGap);
+      await setLayer('off'); await page.waitForTimeout(toggleGap);
       if (i % 5 === 0 || i === toggles) await traceHeap(`${views[0].name}, turned on and off ${i} times`);
       if (failed()) throw new Error('the page failed while turning (see console.txt)');
     }
@@ -133,7 +137,7 @@ try {
   }), windowMs);
   for (const v of views) {
     await cmd(`look ${lat} ${lon} ${v.dist}`);
-    await cmd(`off ${layer}`);
+    await setLayer('off');
     await page.waitForTimeout(settle * 2);   // (the view's patches and meshes come up)
     await traceHeap(`${v.name}, the layer off`);
     if (pairs <= 0) {
@@ -147,7 +151,7 @@ try {
       const order = i % 2 === 0 ? ['off', 'on'] : ['on', 'off'];
       const got = {};
       for (const o of order) {
-        await cmd(`${o} ${layer}`);
+        await setLayer(o);
         await page.waitForTimeout(settle);
         got[o] = await fps();
       }
@@ -156,9 +160,9 @@ try {
       await traceHeap(`${v.name}, pair ${i + 1}`);
       if (failed()) throw new Error('the page failed (see console.txt) - the frame counts after it are not the game\'s');
     }
-    await cmd(`on ${layer}`); await page.waitForTimeout(settle);
+    await setLayer('on'); await page.waitForTimeout(settle);
     await page.screenshot({ path: path.join(outDir, `${v.name}_${layer}.png`) });
-    await cmd(`off ${layer}`); await page.waitForTimeout(settle);
+    await setLayer('off'); await page.waitForTimeout(settle);
     await page.screenshot({ path: path.join(outDir, `${v.name}_plain.png`) });
     const r = { view: v.name, dist: v.dist, off, on, medianOff: median(off), medianOn: median(on), medianRatio: median(ratio),
       msOff: 1000 / median(off), msOn: 1000 / median(on) };
