@@ -149,7 +149,13 @@ namespace TC2.Game
                 if (_bookPart != i || _parts[i] == null) continue;
                 var chs = _parts[i].Chapters;
                 for (int k = 0; k < chs.Count; k++)
-                    if (GUILayout.Button(chs[k].Title, k == _bookChapter ? _bkTocSel : _bkToc) && k != _bookChapter) { _bookChapter = k; _bookScroll = Vector2.zero; _line = 0; }
+                {
+                    // (session 27) the ages with their years, faded beside the name: the eras at a glance (and "the Second Years of Plenty" placed)
+                    string toc = chs[k].Title;
+                    if (i == 0 && !string.IsNullOrEmpty(chs[k].Sub) && chs[k].Sub.StartsWith("years ", System.StringComparison.Ordinal))
+                        toc += "  <size=12><color=#8a7458>" + chs[k].Sub.Substring(6).Replace(" to ", "–") + "</color></size>";
+                    if (GUILayout.Button(toc, k == _bookChapter ? _bkTocSel : _bkToc) && k != _bookChapter) { _bookChapter = k; _bookScroll = Vector2.zero; _line = 0; }
+                }
             }
             GUILayout.EndScrollView();
             GUILayout.EndArea();
