@@ -143,7 +143,7 @@ namespace TC2.Game
                         float rain = Mathf.Clamp01(P.RainToday[cq] * 0.85f);
                         // the day's air: overcast where the weather's draw came near rain, clear where it lay far above the chance
                         float ch = _chance[cq];
-                        float damp = 1f - Smooth(ch, ch + 0.18f + 0.9f * ch, _draw[cq]);
+                        float damp = 1f - Smooth(ch, ch + 0.07f + 0.45f * ch, _draw[cq]);
                         float t = P.Temp[cq];
                         float tw = Smooth(4f, 24f, t);
                         float moist = Mathf.Clamp01((P.Moist[cq] - 0.25f) * 1.5f);

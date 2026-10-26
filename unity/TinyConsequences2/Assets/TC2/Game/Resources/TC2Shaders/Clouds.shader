@@ -42,7 +42,7 @@ Shader "TC2/Clouds"
                 // the forms' level of detail from the metres a pixel spans
                 float span = length(fwidth(i.positionWS));
                 float texel = _TC2CloudScale.x / 64.0;
-                float lod = log2(max(span / texel, 1.0));
+                float lod = log2(max(span / texel, 1e-3));   // (session 27: may be below 0 - near views take the finer looks sharp)
                 half thick;
                 half density = TC2CloudDensity(up, TC2Cover(up), lod, t, thick);
                 if (density < 0.004h) return half4(0, 0, 0, 0);
@@ -64,7 +64,7 @@ Shader "TC2/Clouds"
                 half3 lit = lerp(sky, sunTint, saturate(0.30h + 0.70h * saturate(mu * 1.4h)) * (0.58h + 0.42h * body));
                 lit *= (1.0h - 0.42h * relief) * (1.0h + 0.08h * lift);
                 lit *= lerp(0.80h, 1.0h, body);                                      // (thin cloud: lit through, greyer than a top)
-                half3 c = lit * (0.08h + 0.92h * day);
+                half3 c = lit * (0.08h + 0.92h * day) + half3(0.05h, 0.06h, 0.09h) * (1.0h - day);   // (by night a little moonlight: dark, never darker than the night below)
                 // the terminator: the tops still catch the sun a little past the ground's dusk
                 half rim = saturate(1.0h - abs(mu) * 5.0h) * smoothstep(-0.12h, 0.04h, mu) * 0.32h;
                 c += half3(1.0h, 0.52h, 0.30h) * rim * body;
@@ -72,7 +72,7 @@ Shader "TC2/Clouds"
                 float3 toCam = normalize(_WorldSpaceCameraPos - i.positionWS);
                 half graze = smoothstep(0.03h, 0.20h, (half)dot(up, toCam));
                 half alpha = saturate((1.0h - exp(-thick * 2.4h)) * 1.15h) * saturate(density * 1.2h);
-                alpha *= _TC2CloudFade * graze * (0.40h + 0.60h * day);
+                alpha *= _TC2CloudFade * graze * (0.30h + 0.70h * day);
                 return half4(c, alpha);
             }
             ENDHLSL

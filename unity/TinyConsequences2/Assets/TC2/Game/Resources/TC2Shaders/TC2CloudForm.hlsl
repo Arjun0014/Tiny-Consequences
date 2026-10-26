@@ -40,30 +40,37 @@ half TC2CloudDensity(float3 dir, half4 cover, float lod, float t, out half thick
     thick = 0.0h;
     if (deck + cu + layer < 0.01h) return 0.0h;
     float3 q = TC2CloudP(dir, t);
-    half4 a = TC2Noise(q, lod);
-    half4 b = TC2Noise(q * 3.71 + float3(0.37, 0.11, 0.73), lod + 1.89);
+    half4 a = TC2Noise(q, max(0.0, lod));
+    half4 b = TC2Noise(q * 3.71 + float3(0.37, 0.11, 0.73), max(0.0, lod + 1.89));
+    // a third look, 14 times finer than the tile, where a pixel is small enough to see it (the region view and nearer): ragged, crisp edges
+    half fineW = (half)saturate(-0.5 - (lod + 1.89) * 0.5);
+    half4 f = fineW > 0.0h ? TC2Noise(q * 14.3 + float3(0.71, 0.29, 0.13), max(0.0, lod + 3.84)) : half4(0.5h, 0.5h, 0.5h, 0.5h);
     // near the poles the circles shrink to nothing: the plain 3-D position there
     half polar = smoothstep(0.86h, 0.95h, (half)abs(dir.y));
     if (polar > 0.0h)
     {
         float3 qp = dir * (_TC2CloudScale.y / _TC2CloudScale.x) * 0.8;
-        a = lerp(a, TC2Noise(qp, lod), polar);
-        b = lerp(b, TC2Noise(qp * 3.71 + float3(0.37, 0.11, 0.73), lod + 1.89), polar);
+        a = lerp(a, TC2Noise(qp, max(0.0, lod)), polar);
+        b = lerp(b, TC2Noise(qp * 3.71 + float3(0.37, 0.11, 0.73), max(0.0, lod + 1.89)), polar);
     }
     // the large shapes, their edges frayed by the finer grain
-    half shape = a.r + (b.a - 0.5h) * 0.30h + (b.r - 0.5h) * 0.20h;
+    half shape = a.r + (b.a - 0.5h) * 0.30h + (b.r - 0.5h) * 0.20h + (f.r - 0.5h) * 0.16h * fineW;
+    // the edges' softness: a pixel's share of the forms' finest scale - soft from orbit, crisp near
+    half soft = (half)clamp(0.03 + 0.05 * (lod + 3.0), 0.03, 0.2);
     // decks: the rain's cover with ragged, billowing edges; where the air is warm the deck is heaped into clusters of towers
-    half dk = smoothstep(0.24h, 0.64h, deck + (shape - 0.5h) * 0.80h);
+    half dk = smoothstep(0.44h - soft * 2.0h, 0.44h + soft * 2.0h, deck + (shape - 0.5h) * 0.80h);
     dk *= lerp(1.0h, 0.45h + 0.75h * a.g, conv * 0.85h);
     // layers: thinner sheets round the rain - a damp day's grey - torn at their edges
-    half ly = smoothstep(0.32h, 0.82h, layer + (shape - 0.5h) * 0.95h) * (0.55h + 0.25h * b.g);
+    half ly = smoothstep(0.55h - soft * 2.2h, 0.55h + soft * 2.2h, layer + (shape - 0.5h) * 0.95h);
+    // a layer is broken into the cells of stratocumulus, rows of lumps with clear lanes between
+    ly *= smoothstep(0.30h, 0.62h, a.g * 0.6h + b.g * 0.4h + (f.g - 0.5h) * 0.2h * fineW);
     // cumulus: separate puffs on the finer lattice where the shapes let them form (fields with clear gaps), each ragged and of its own size
     half formed = smoothstep(1.0h - cu * 0.95h, 1.0h - cu * 0.95h + 0.22h, a.r * 0.75h + a.a * 0.25h + 0.06h);
     half rad = 0.32h + 0.22h * a.g;
-    half puff = 1.0h - smoothstep(rad * 0.45h, rad, b.b + (b.a - 0.5h) * 0.22h);
+    half puff = 1.0h - smoothstep(rad * (0.85h - soft * 2.0h), rad, b.b + (b.a - 0.5h) * 0.22h + (f.a - 0.5h) * 0.10h * fineW);
     half cud = puff * formed;
     half density = 1.0h - (1.0h - dk) * (1.0h - ly) * (1.0h - cud);
-    thick = dk * (1.3h + 0.9h * conv) * (0.75h + 0.5h * a.g) + ly * 0.45h + cud * (0.7h + 0.6h * (1.0h - b.b));
+    thick = dk * (1.3h + 0.9h * conv) * (0.75h + 0.5h * a.g) + ly * (0.55h + 0.35h * b.g) + cud * (0.7h + 0.6h * (1.0h - b.b));
     return density;
 }
 
@@ -76,7 +83,7 @@ half TC2CloudShadow(float3 positionWS, float3 sunDir, float footprint, float t)
     float3 toCloud = normalize(positionWS + sunDir * (max(0.0, _TC2CloudShell - r) / up));
     half4 cover = TC2Cover(toCloud);
     float texel = _TC2CloudScale.x / 64.0;
-    float lod = log2(max(footprint / texel, 1.0)) + 0.5;
+    float lod = log2(max(footprint / texel, 1e-3)) + 0.5;
     half thick;
     half d = TC2CloudDensity(toCloud, cover, lod, t, thick);
     return saturate((1.0h - exp(-thick * 2.2h)) * d * 1.15h) * (half)_TC2CloudScale.w;

@@ -25,14 +25,15 @@ namespace TC2.Game
         public static float CloudShade = 1.0f;   // their relief from the sun's side (0 = flat)
         public static float CloudTile = 3600f;   // (session 27) the forms' noise tile (m): its large shapes ~ a quarter of it, the cumulus' puffs ~ a thirtieth
         public static float CloudShadow = 0.6f;  // (session 27) the share of the sun a thick cloud takes from the ground, the sea and what stands there
+        public static float NightFar = 0.16f;    // (session 27) the night's sky and moon light on the ground seen from orbit (x the near view's)
 
-        static readonly float[] Defaults = { AtmoH, AtmoTop, AtmoTau, AtmoMie, AtmoSun, AtmoGround, CloudDeck, CloudCu, CloudStretch, CloudShade, CloudTile, CloudShadow };
+        static readonly float[] Defaults = { AtmoH, AtmoTop, AtmoTau, AtmoMie, AtmoSun, AtmoGround, CloudDeck, CloudCu, CloudStretch, CloudShade, CloudTile, CloudShadow, NightFar };
 
         /// <summary>Every tunable back to its default (a shot's next view).</summary>
         public static void Reset()
         {
             AtmoH = Defaults[0]; AtmoTop = Defaults[1]; AtmoTau = Defaults[2]; AtmoMie = Defaults[3]; AtmoSun = Defaults[4]; AtmoGround = Defaults[5];
-            CloudDeck = Defaults[6]; CloudCu = Defaults[7]; CloudStretch = Defaults[8]; CloudShade = Defaults[9]; CloudTile = Defaults[10]; CloudShadow = Defaults[11];
+            CloudDeck = Defaults[6]; CloudCu = Defaults[7]; CloudStretch = Defaults[8]; CloudShade = Defaults[9]; CloudTile = Defaults[10]; CloudShadow = Defaults[11]; NightFar = Defaults[12];
             Sky.ShadowLite = false;
         }
 
@@ -54,6 +55,7 @@ namespace TC2.Game
                 case "CloudShade": CloudShade = v; return true;
                 case "CloudTile": CloudTile = v; return true;
                 case "CloudShadow": CloudShadow = v; return true;
+                case "NightFar": NightFar = v; return true;
                 case "ShadowLite": Sky.ShadowLite = v > 0f; return true;   // (the frame pass's shadow cascades, 14 §7: judged in real shots before chosen)
             }
             return false;

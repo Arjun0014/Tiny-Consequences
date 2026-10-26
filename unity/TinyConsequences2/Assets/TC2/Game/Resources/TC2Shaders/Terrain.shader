@@ -38,6 +38,7 @@ Shader "TC2/Terrain"
             float4 _TC2CoverMean;
             float4 _TC2SunDir;
             float4 _TC2MoonDir;
+            float _TC2NightLift;   // (session 27) the night's sky and moon light on the ground: 1 near it, low from orbit (the night side dark)
             TEXTURECUBE(_TC2Lights); SAMPLER(sampler_TC2Lights);   // (session 27: the homes lived in, LightsView)
             float4 _TC2FogColor;
             float _TC2FogDensity;
@@ -352,11 +353,11 @@ Shader "TC2/Terrain"
                 half wrap = saturate((dot(nl, l.direction) + 0.18h) / 1.18h);
                 half hemi = dot(nl, up) * 0.5h + 0.5h;
                 half day = saturate(dot(up, l.direction) * 3.0h + 0.25h);
-                half3 amb = lerp(_AmbientGround.rgb, _AmbientSky.rgb, hemi) * lerp(half3(0.30h, 0.34h, 0.50h), half3(1.0h, 1.0h, 1.0h), day) * floorOcc;
+                half3 amb = lerp(_AmbientGround.rgb, _AmbientSky.rgb, hemi) * lerp(half3(0.30h, 0.34h, 0.50h) * (half)_TC2NightLift, half3(1.0h, 1.0h, 1.0h), day) * floorOcc;
                 // the shadow of the cloud between this point and the sun - the shell's own forms (session 27: TC2CloudForm.hlsl), so it falls where its cloud is
                 half cloud = TC2CloudShadow(i.positionWS, _TC2SunDir.xyz, length(fwidth(i.positionWS)), _TC2CloudScale.z);
                 half3 sun = l.color * wrap * lerp(0.25h, 1.0h, l.shadowAttenuation) * 1.2h * (1.0h - cloud) * saturate(dot(up, l.direction) * 4.0h + 0.35h);
-                half moon = saturate(dot(nl, _TC2MoonDir.xyz) * 0.7h + 0.3h) * (1.0h - day);
+                half moon = saturate(dot(nl, _TC2MoonDir.xyz) * 0.7h + 0.3h) * (1.0h - day) * (half)_TC2NightLift;
                 half3 c = albedo * (amb + sun + half3(0.13h, 0.17h, 0.29h) * moon);
                 // (session 27) the night side's lights: where people keep a fire (LightsView: every home lived in), a warm glow after dusk, from
                 // the region view outward - nearer, the houses' own windows are lit (Instanced.shader)
@@ -364,7 +365,9 @@ Shader "TC2/Terrain"
                     half lights = SAMPLE_TEXTURECUBE_LOD(_TC2Lights, sampler_TC2Lights, up, 0).r;
                     half night = saturate(-dot(up, l.direction) * 5.0h + 0.10h);
                     half farL = smoothstep(700.0h, 2600.0h, (half)dist);
-                    c += half3(1.0h, 0.60h, 0.26h) * saturate(lights * 1.6h) * night * farL * 1.5h;
+                    half grain = Tri(i.positionWS, bw, 1.0 / 19.0);
+                    half lit = saturate(lights * 1.4h) * (0.35h + 1.3h * grain * grain);
+                    c += half3(1.0h, 0.62h, 0.28h) * lit * lit * night * farL * 2.2h;
                 }
                 // under the sea, the water's own colour by the depth of water above (Beer-Lambert): the sand of the shallows
                 // shows clear and turquoise, the deep goes blue; the sea's surface on top adds only sky and sun (D2-040)

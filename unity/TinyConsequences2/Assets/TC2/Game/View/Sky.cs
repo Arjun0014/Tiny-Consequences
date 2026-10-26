@@ -43,6 +43,7 @@ namespace TC2.Game
         static readonly int AtmoSun = Shader.PropertyToID("_TC2AtmoSun");
         static readonly int AtmoFade = Shader.PropertyToID("_TC2AtmoFade");
         static readonly int AtmoOverGround = Shader.PropertyToID("_TC2AtmoOverGround");
+        static readonly int NightLift = Shader.PropertyToID("_TC2NightLift");
         Volume _volume;
         public Color Horizon;
 
@@ -126,6 +127,9 @@ namespace TC2.Game
             Shader.SetGlobalFloat(AtmoSun, Look.AtmoSun);
             Shader.SetGlobalFloat(AtmoFade, air);
             Shader.SetGlobalFloat(AtmoOverGround, Look.AtmoGround);
+            // (session 27) the night's sky and moon light on the ground: all of it near the ground (a village at night must read), little from orbit,
+            // where the night side is dark but for its lights
+            Shader.SetGlobalFloat(NightLift, Mathf.Lerp(1f, Look.NightFar, Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(1200f, 7000f, altitude))));
             // below the air the empty sky is the sky; from higher up the air's own light against space
             float sky = 1f - air;
             Color zenith = Color.Lerp(new Color(0.01f, 0.015f, 0.035f), new Color(0.30f, 0.50f, 0.82f), day);

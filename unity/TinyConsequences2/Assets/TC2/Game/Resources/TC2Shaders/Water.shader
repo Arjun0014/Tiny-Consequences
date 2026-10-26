@@ -36,6 +36,7 @@ Shader "TC2/Water"
             float4 _TC2FogColor;
             float _TC2FogDensity;
             float4 _TC2MoonDir;
+            float _TC2NightLift;
 
             struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; };
             struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; float3 normalWS : TEXCOORD1; float4 screenPos : TEXCOORD2; };
@@ -74,7 +75,7 @@ Shader "TC2/Water"
                 // (session 27) ripples only as far as a pixel resolves them - finer than a pixel they were a speckle of glints from afar; what a pixel
                 // cannot resolve roughens the sea instead (a broader, dimmer glint)
                 float fp = length(fwidth(i.positionWS));
-                half a1 = (half)saturate(1.0 - fp / 9.0), a2 = (half)saturate(1.0 - fp / 2.2), aw = (half)saturate(1.0 - fp / 160.0);
+                half a1 = (half)saturate(1.0 - fp / 1.5), a2 = (half)saturate(1.0 - fp / 0.45), aw = (half)saturate(1.0 - fp / 160.0);
                 half rough = 1.0h - 0.5h * (a1 + a2);
                 float3 n = normalize(up + (tangent * (r1 * 0.22 * a1 + r2 * 0.12 * a2) + bitangent * (r2 * 0.22 * a2 - r1 * 0.10 * a1)) * near
                                         + (tangent * w1 + bitangent * w2) * 0.16 * far * aw);
@@ -93,9 +94,9 @@ Shader "TC2/Water"
                 body *= 1.0h - 0.6h * cloud;
                 // the moon's path on the water at night
                 float3 hm = normalize(_TC2MoonDir.xyz + v);
-                half moon = pow(saturate(dot(n, hm)), 90.0h) * 0.55h * (1.0h - day);
+                half moon = pow(saturate(dot(n, hm)), 90.0h) * 0.55h * (1.0h - day) * (half)_TC2NightLift;
                 half3 sky = lerp(_Sky.rgb, _TC2FogColor.rgb, 0.6h) * half3(0.85h, 0.95h, 1.05h);
-                half3 c = (body * (1.0h + (w1 + w2) * 0.25h * far) + sky * fres * 0.42h) * (0.12h + 0.88h * day) + l.color * spec * day + half3(0.62h, 0.70h, 0.85h) * moon;
+                half3 c = (body * (1.0h + (w1 + w2) * 0.25h * far) + sky * fres * 0.42h) * (0.12h * (half)_TC2NightLift + (0.88h + 0.12h * (1.0h - (half)_TC2NightLift)) * day) + l.color * spec * day + half3(0.62h, 0.70h, 0.85h) * moon;
                 half alpha = saturate(_Alpha + fres * 0.3h);
                 half fog = 1.0h - exp(-dist * _TC2FogDensity);
                 c = lerp(c, _TC2FogColor.rgb * (0.25h + 0.75h * day), fog * 0.85h);
