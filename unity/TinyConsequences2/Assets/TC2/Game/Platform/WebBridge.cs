@@ -60,6 +60,19 @@ namespace TC2.Game
                         if (sid != 0) Rig.LookAt(w.Settlements.Get(sid).Anchor, a.Length > 2 ? double.Parse(a[2], inv) : 900);
                         break;
                     }
+                case "home":
+                    {
+                        // (session 27) tests: "home SID|big [ALT]" - the camera over a place's first household's home (pointed at, the house is marked and
+                        // its family ringed)
+                        var w = Host.World; int sid = 0;
+                        if (a.Length > 1 && a[1] != "big") sid = int.Parse(a[1], inv);
+                        else { int most = -1; for (int id = w.Settlements.First(); id != 0; id = w.Settlements.Next(id)) { ref var s = ref w.Settlements.Get(id); if (s.Inhabited && s.Population > most) { most = s.Population; sid = id; } } }
+                        if (sid == 0 || !w.Settlements.Exists(sid)) break;
+                        ref var st = ref w.Settlements.Get(sid);
+                        int hh = st.HeadHh, bid = hh != 0 && w.Households.Exists(hh) ? w.Households.Get(hh).Building : 0;
+                        if (bid != 0 && w.Buildings.Exists(bid)) { ref var b = ref w.Buildings.Get(bid); Rig.LookAt(st.LocalToSphere(b.X, b.Y, w.Planet.Radius), a.Length > 2 ? double.Parse(a[2], inv) : 120); }
+                        break;
+                    }
                 case "new": Host.NewWorld(ulong.Parse(a[1], inv)); break;
                 case "view": Rig.SetView(a[1]); break;   // the camera's named views (forest, forestlow, coast, volcano...: D2-079)
                 case "catchupalt": CameraRig.CatchUpAltitude = double.Parse(a[1], CultureInfo.InvariantCulture); break;   // tools: the camera's height while catching up
