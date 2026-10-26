@@ -103,8 +103,8 @@ namespace TC2.Core.History
             ref var p = ref w.People.Get(pid);
             if (!p.Alive) return "";
             var sb = new StringBuilder();
-            sb.Append(p.At == 0 ? "On the road" : (p.At == p.Home ? "At home in " + Place(w, p.At) : "Visiting " + Place(w, p.At))).Append(": ")
-              .Append(HistoryText.Doing(w, in p)).Append(p.T1 > w.Now ? ", until " + SimTime.FormatShort(p.T1) : "").Append(".\n");
+            sb.Append(p.At == 0 ? "On the road" : (p.At == p.Home ? "At home in " + Place(w, p.At) : "Visiting " + Place(w, p.At))).Append(", ")
+              .Append(HistoryText.Doing(w, in p)).Append(p.T1 > w.Now ? ", until " + Until(w.Now, p.T1) : "").Append(".\n");
             // (session 27: the page a leaf of the book) how they fare in words, as the inspector's card says it - "Health 1.00, fed 1.00, 42 days of reserve"
             // had read as a tool's output
             bool ill = p.Sick != 0 && p.SickPhase != Health.Disease.Latent;
@@ -114,10 +114,19 @@ namespace TC2.Core.History
               .Append(", with ").Append(p.Reserve >= 30f ? "flesh to spare for a month or more" : p.Reserve >= 14f ? "some weeks' flesh to spare" : p.Reserve >= 5f ? "a few days' flesh to spare" : "nothing to spare in the body");
             if (p.Hurt > 0.01f) sb.Append(p.Hurt >= 0.4f ? ", badly wounded and abed" : p.Hurt >= 0.15f ? ", wounded" : ", lightly hurt");
             if (p.Sick != 0 && !ill) sb.Append(", carrying ").Append(sickness).Append(" unknowing");
-            if (p.PregDue != 0) sb.Append(", with child (due ").Append(SimTime.FormatShort(p.PregDue)).Append(")");
+            if (p.PregDue != 0) sb.Append(", with child (due ").Append(p.PregDue > w.Now ? Until(w.Now, p.PregDue) : "now").Append(")");
             sb.Append(".\n");
             if (p.CargoQty > 0f) sb.Append("Carrying ").Append(F(p.CargoQty, "0.0")).Append(p.Cargo == Trade.Metal ? " kg of copper" : p.Cargo == Trade.Iron ? " kg of iron" : p.Cargo == Trade.Grain ? " days' grain" : p.Cargo == Trade.Fibre ? " kg of fibre" : p.Cargo == Trade.Wares ? " wares (a person's cloth and goods each)" : p.Cargo == Trade.Pots ? " kg of pots and jars" : " hides").Append(Trade.KgOf(p.Cargo) * p.CargoQty > Trade.LoadKg + 1e-6 && Carts.Usable(w, p.Household) != Carts.None ? " on the household's " + Carts.NameOf(Carts.Usable(w, p.Household)) : "").Append(".\n");
             return sb.ToString();
+        }
+
+        /// <summary>(session 27) When something ends, as people say it: "08:34" the same day, "tomorrow at 06:00", "in 3 days" (not "Y0 d1 08:34").</summary>
+        static string Until(long now, long t)
+        {
+            long dNow = SimTime.FloorDiv(now, SimTime.Day), dT = SimTime.FloorDiv(t, SimTime.Day);
+            int h = SimTime.HourOfDay(t), m = SimTime.MinuteOfHour(t);
+            string clock = (h < 10 ? "0" : "") + h.ToString(CultureInfo.InvariantCulture) + ":" + (m < 10 ? "0" : "") + m.ToString(CultureInfo.InvariantCulture);
+            return dT == dNow ? clock : dT == dNow + 1 ? "tomorrow at " + clock : "in " + (dT - dNow).ToString(CultureInfo.InvariantCulture) + " days";
         }
 
         /// <summary>Parents, partner, children (living and dead), brothers and sisters, grandchildren.</summary>

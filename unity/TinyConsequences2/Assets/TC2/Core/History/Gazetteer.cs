@@ -61,7 +61,7 @@ namespace TC2.Core.History
                 if (b.Kind == Structures.House) { houses++; if (b.Mat >= 1) footed++; } else huts++;
             }
             sb.Append(s.Population).Append(" people in ").Append(hl.Count).Append(" households: ").Append(houses).Append(houses == 1 ? " house" : " houses")
-              .Append(footed > 0 ? " (" + footed + " on stone footings)" : "").Append(", ").Append(huts).Append(huts == 1 ? " hut" : " huts").Append(camps > 0 ? ", " + camps + " in camps" : "").Append(".\n");
+              .Append(footed > 0 ? " (" + footed + " on stone footings)" : "").Append(huts > 0 ? ", " + huts + (huts == 1 ? " hut" : " huts") : "").Append(camps > 0 ? ", " + camps + " in camps" : "").Append(".\n");
             if (!Society.Leaders.Off && s.HeadHh != 0 && w.Households.Exists(s.HeadHh))
             {
                 // its first household and its headman (C10.2): who follows them and why
@@ -342,7 +342,9 @@ namespace TC2.Core.History
             {
                 double best = Learning.Best(in s, t);
                 if (best < 0.1) continue;
-                sb.Append(sb.Length > 0 ? "; " : "").Append(Tech.Laws[t].Now).Append(" (best ").Append(F(best, "0.00")).Append((s.TechKnown & (1 << t)) != 0 ? "" : ", not yet competent").Append(")");
+                // (session 27: the page a leaf of the book) by its best hand in words, not "(best 0.87)"
+                string hand = (s.TechKnown & (1 << t)) == 0 ? "none of them yet competent" : best >= 0.9 ? "masters among them" : best >= 0.6 ? "skilled hands among them" : "fair hands among them";
+                sb.Append(sb.Length > 0 ? "; " : "").Append(Tech.Laws[t].Now).Append(" (").Append(hand).Append(")");
             }
             return sb.Length > 0 ? "Its people " + sb + ".\n" : "No craft beyond the everyday.\n";
         }
