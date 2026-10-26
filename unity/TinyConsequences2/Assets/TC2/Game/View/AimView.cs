@@ -8,21 +8,37 @@ namespace TC2.Game
     /// <summary>
     /// (session 27: the powers as play) What the player's hand looks like on the world: while a power is aimed, its reach laid on the ground - a soft
     /// disc in the power's colour, a bright band at its edge breathing slowly, a small ring at its heart - following the planet's curve and the
-    /// ground's height; when it is cast, a burst - a flash at the point and a ring running out past the reach and fading. The HUD sets what is aimed
-    /// (<see cref="Aiming"/>) and reports each cast (<see cref="Cast"/>). Presentation only: the world applies the command and keeps its record.
+    /// ground's height; when it is cast, a burst - a flash at the point and a ring running out past the reach and fading. The HUD marks what is aimed
+    /// each frame it draws the aim (<see cref="Aim"/>: a mark the HUD stops renewing - hidden, the book open, the title - is gone the next frame) and
+    /// reports each cast (<see cref="Cast"/>). Presentation only: the world applies the command and keeps its record.
     /// </summary>
     public sealed class AimView : MonoBehaviour
     {
         public SimHost Host;
         public CameraRig Rig;
 
-        public static bool Aiming;
+        /// <summary>(shots: --aim) a reach laid on the ground with no HUD renewing it.</summary>
+        public static bool Pinned;
         public static Vec3d AimDir;
         public static double AimReach;
         public static Color AimColor = Color.white;
+        static int _aimFrame = -10;
+
+        /// <summary>The power aimed this frame: its point, reach (m) and colour.</summary>
+        public static void Aim(Vec3d dir, double reach, Color col) { AimDir = dir; AimReach = reach; AimColor = col; _aimFrame = Time.frameCount; }
+
+        /// <summary>A mark is drawn while the HUD renewed it this frame or the last (the HUD draws after the views' LateUpdate).</summary>
+        public static bool Aiming => Pinned || Time.frameCount - _aimFrame <= 1;
 
         struct Burst { public Vec3d Dir; public double Reach; public Color Col; public float Born; }
         static readonly List<Burst> Bursts = new List<Burst>();
+
+        struct Mark { public Vec3d Dir; public double R; public Color Col; public int Frame; }
+        static readonly Mark[] Marks = new Mark[2];
+
+        /// <summary>(session 27) A building marked on the ground this frame - slot 0 the one under the pointer, 1 the one chosen: a band round its
+        /// footprint (radius m) in its household's colour. Gone the frame the HUD stops renewing it.</summary>
+        public static void MarkAt(int slot, Vec3d dir, double radius, Color col) => Marks[slot] = new Mark { Dir = dir, R = radius, Col = col, Frame = Time.frameCount };
 
         /// <summary>A power cast at a point: its burst on the ground.</summary>
         public static void Cast(Vec3d dir, double reach, Color col) => Bursts.Add(new Burst { Dir = dir, Reach = reach, Col = col, Born = Time.unscaledTime });
@@ -61,6 +77,18 @@ namespace TC2.Game
                 Band(w, AimDir, r * 0.97, r * 1.03, edge, edge, lift);
                 Band(w, AimDir, r * 1.03, r * 1.12, edge, clear, lift);
                 Band(w, AimDir, System.Math.Max(minR * 0.25, r * 0.04), System.Math.Max(minR * 0.35, r * 0.06), edge, edge, lift);
+            }
+            for (int k = 0; k < Marks.Length; k++)
+            {
+                var mk = Marks[k];
+                if (mk.R <= 0 || Time.frameCount - mk.Frame > 1) continue;
+                double wid = System.Math.Max(0.3, alt * 0.0022);   // (a band the eye finds at the village view, fine up close)
+                Color c = Color.Lerp(mk.Col, Color.white, 0.25f); c.a = k == 1 ? 0.92f : 0.75f;
+                Color clear = c; clear.a = 0f;
+                float low = Mathf.Max(0.25f, alt * 0.0008f);
+                Band(w, mk.Dir, mk.R - wid * 1.5, mk.R, clear, c, low);
+                Band(w, mk.Dir, mk.R, mk.R + wid, c, c, low);
+                Band(w, mk.Dir, mk.R + wid, mk.R + wid * 2.5, c, clear, low);
             }
             for (int i = Bursts.Count - 1; i >= 0; i--)
             {

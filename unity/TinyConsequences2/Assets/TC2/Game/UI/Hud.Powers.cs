@@ -235,11 +235,10 @@ namespace TC2.Game
             }
             GUILayout.EndArea();
             // (over a page, the book or a bar a click is theirs, not the power's: the mark and its words only over open ground - last frame's PointerOverUi)
-            AimView.Aiming = false;
             if (_aim < 0 || PointerOverUi || !GroundUnder(Input.mousePosition, out var dir, out int cell)) return;
             // (session 27) its reach laid on the ground (AimView), and the villages it would reach named
             var P = w.Planet; var pwr = Powers[_aim];
-            AimView.Aiming = true; AimView.AimDir = dir; AimView.AimReach = pwr.Reach; AimView.AimColor = pwr.Col;
+            AimView.Aim(dir, pwr.Reach, pwr.Col);
             string reach = InReach(w, dir, pwr);
             Vector2 m = Event.current.mousePosition;
             string where = TC2.Core.History.HistoryText.At(w.PlaceName(cell));

@@ -71,6 +71,7 @@ namespace TC2.Game
         readonly System.Collections.Generic.List<Rect> _placed = new System.Collections.Generic.List<Rect>();
         readonly System.Collections.Generic.List<int> _byPeople = new System.Collections.Generic.List<int>();
         readonly System.Collections.Generic.Dictionary<int, string> _placeLine = new System.Collections.Generic.Dictionary<int, string>();
+        readonly System.Collections.Generic.HashSet<int> _seats = new System.Collections.Generic.HashSet<int>();   // (places others pay and that pay nobody: realms' seats)
         float _byPeopleAt = -99f;
         int _hoverPid, _hoverBid; float _hoverAt;
         string _news = ""; float _newsAge = 99f; int _newsCount;
@@ -256,12 +257,13 @@ namespace TC2.Game
                 _byPeople.Clear();
                 for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid)) if (w.Settlements.Get(sid).Inhabited) _byPeople.Add(sid);
                 _byPeople.Sort((a, b) => { int c = w.Settlements.Get(b).Population.CompareTo(w.Settlements.Get(a).Population); return c != 0 ? c : a.CompareTo(b); });
-                _placeLine.Clear();
+                _placeLine.Clear(); _seats.Clear();
                 foreach (int sid in _byPeople)
                 {
                     ref var s = ref w.Settlements.Get(sid);
                     int paying = 0;
                     for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o)) { ref var os = ref w.Settlements.Get(o); if (os.Lord == sid && os.Inhabited) paying++; }
+                    if (paying > 0 && s.Lord == 0) _seats.Add(sid);
                     _placeLine[sid] = Gazetteer.Word(in s).Substring(2) + " of " + s.Population.ToString("N0", CultureInfo.InvariantCulture) +
                                       (s.Lord != 0 && w.Settlements.Exists(s.Lord) ? ", pays " + w.History.NameOf(EntityRef.Settlement(s.Lord)) : paying > 0 ? ", lord of " + paying + (paying == 1 ? " village" : " villages") : "");
                 }
@@ -293,13 +295,24 @@ namespace TC2.Game
                 float wdt = Mathf.Max(ns.x, ss.x) + 6f, hgt = ns.y + ss.y;
                 var box = new Rect(x - wdt * 0.5f, y - hgt - 7f, wdt, hgt);
                 if (box.y < 48f || box.yMax > sh - 46f) continue;   // (clear of the bar at the top and the ticker at the foot)
+                // (session 27) a small flag in its polity's colour before its name - a realm's villages fly one colour, as their standards do
+                var flag = new Rect(x - ns.x * 0.5f - (town ? 17f : 15f), box.y + ns.y * 0.5f - (town ? 5f : 4.5f), town ? 13f : 11f, town ? 9f : 8f);
+                var room = new Rect(Mathf.Min(box.x, flag.x - 2f), box.y, box.xMax - Mathf.Min(box.x, flag.x - 2f), box.height);
                 bool clash = false;
-                foreach (var r in _placed) if (r.Overlaps(box)) { clash = true; break; }
+                foreach (var r in _placed) if (r.Overlaps(room)) { clash = true; break; }
                 if (clash) continue;
-                _placed.Add(box);
+                _placed.Add(room);
                 shown++;
                 GUI.color = new Color(0f, 0f, 0f, 0.8f); GUI.DrawTexture(new Rect(x - 3f, y - 3f, 6f, 6f), _dot); GUI.color = Color.white;
                 GUI.DrawTexture(new Rect(x - 2f, y - 2f, 4f, 4f), _dot);
+                if (Event.current.type == EventType.Repaint)
+                {
+                    GUI.color = new Color(0.04f, 0.05f, 0.06f, 0.85f); GUI.DrawTexture(new Rect(flag.x - 1f, flag.y - 1f, flag.width + 2f, flag.height + 2f), _dot);
+                    GUI.color = WorldObjectsView.PolityColour(w, sid); GUI.DrawTexture(flag, _dot);
+                    if (_seats.Contains(sid))   // (a realm's seat: a gold band at the flag's head)
+                    { GUI.color = new Color(1f, 0.84f, 0.35f); GUI.DrawTexture(new Rect(flag.x, flag.y, flag.width, 2f), _dot); }
+                    GUI.color = Color.white;
+                }
                 Edged(new Rect(box.x, box.y, wdt, ns.y), name, st);
                 if (withSub) Edged(new Rect(box.x, box.y + ns.y - 1f, wdt, ss.y), sub, _mapSub);
             }
@@ -403,7 +416,7 @@ namespace TC2.Game
             if (Rig == null || Rig.Cam == null || PointerOverUi) return;
             var cam = Rig.Cam;
             float alt = cam.transform.position.magnitude - (float)w.Planet.Radius;
-            if (alt > 1300f) return;
+            if (alt > 1300f) { _hoverPid = 0; _hoverBid = 0; return; }   // (nobody under the pointer from afar: no ring left where it last was)
             Vector2 mp = Input.mousePosition;
             if (Time.unscaledTime - _hoverAt > 0.12f)
             {
@@ -500,7 +513,7 @@ namespace TC2.Game
             if (Host.CatchingUp) { CatchUpScreen(sw, sh); PointerOverUi = true; return; }
             if (Title(sw, sh)) return;   // (the opening: F11.1)
 
-            if (_hidden) { PointerOverUi = false; return; }
+            if (_hidden) { PointerOverUi = false; WorldObjectsView.Chosen = WorldObjectsView.Pointed = WorldObjectsView.ChosenHome = WorldObjectsView.PointedHome = 0; return; }
             if (!_book) { MapNames(w, sw, sh); WorkNames(w, sw, sh); PeopleNames(w, sw, sh); }
             // top-left: a slim bar - the date and the speeds
             _left = new Rect(10, 10, Mathf.Min(sw - 450, 900), 40);
@@ -604,7 +617,6 @@ namespace TC2.Game
             _powersRect = Rect.zero;
             if (!_book) PowerBar(w, sw, sh);   // (the god's powers: F9.1)
             if (!_book) YourHand(w, sw, sh);   // (what came of your casts, live: session 27)
-            else AimView.Aiming = false;
             _settingsRect = Rect.zero;
             if (_settings) SettingsPanel(sw);
             KeepSettings();
@@ -615,6 +627,22 @@ namespace TC2.Game
             WorldObjectsView.Chosen = _personPage ? _selected : 0;
             WorldObjectsView.Pointed = !_book && !PointerOverUi ? _hoverPid : 0;
             WorldObjectsView.ChosenHome = _building;
+            // (session 27) the building under the pointer and the one chosen marked on the ground round their footprint, a home in its household's colour
+            // (its people ringed with it)
+            WorldObjectsView.PointedHome = !_book && !PointerOverUi && _hoverPid == 0 ? _hoverBid : 0;
+            if (Event.current.type == EventType.Repaint) { MarkBuilding(w, 0, WorldObjectsView.PointedHome); MarkBuilding(w, 1, _building); }
+        }
+
+        static void MarkBuilding(TC2.Core.Simulation.World w, int slot, int bid)
+        {
+            if (bid == 0 || !w.Buildings.Exists(bid)) return;
+            ref var b = ref w.Buildings.Get(bid);
+            if (!w.Settlements.Exists(b.Settlement)) return;
+            ref var s = ref w.Settlements.Get(b.Settlement);
+            bool home = Structures.IsHome(b.Kind);
+            double r = (home ? Footprints.Reach(Footprints.PlanOf(in b)) : Footprints.WorkR(b.Kind)) + 0.6;
+            Color c = home && b.Household != 0 ? WorldObjectsView.HouseholdColour(w, b.Settlement, b.Household) : new Color(1f, 0.86f, 0.5f);
+            AimView.MarkAt(slot, s.LocalToSphere(b.X, b.Y, w.Planet.Radius), r, c);
         }
 
         /// <summary>

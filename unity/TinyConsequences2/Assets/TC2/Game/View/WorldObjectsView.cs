@@ -29,9 +29,9 @@ namespace TC2.Game
         public static TC2.Core.Foundation.Vec3d MuckLargestAt;
         readonly Dictionary<int, float> _muckShare = new Dictionary<int, float>();   // (each household's share of its village's muck, by the grass its beasts eat)
         Instancer _lordsP, _swornP, _rings;
-        /// <summary>(session 27) The person chosen (their page open), under the pointer, and the home chosen - set by the HUD each frame: they and their
-        /// households are ringed on the ground in their colours.</summary>
-        public static int Chosen, Pointed, ChosenHome;
+        /// <summary>(session 27) The person chosen (their page open), under the pointer, and the home chosen or under the pointer - set by the HUD each
+        /// frame: they and their households are ringed on the ground in their colours.</summary>
+        public static int Chosen, Pointed, ChosenHome, PointedHome;
         /// <summary>(Shots: `--choose head`) a person ringed as if chosen when no page is open.</summary>
         public static int ShotChosen;
         readonly HashSet<int> _lordSeats = new HashSet<int>();
@@ -1805,11 +1805,19 @@ namespace TC2.Game
                     return age < 14f ? Color.Lerp(c, Dyes[0], 0.4f) : c;
                 }
             }
-            ulong who = p.Household != 0 ? (ulong)p.Household * 0x9E3779B97F4A7C15UL : (ulong)p.Id * 0x2545F4914F6CDD1DUL;
-            key = (int)(KeyedRng.Mix(who) % (ulong)Dyes.Length);
+            key = DyeOf(p.Household != 0 ? (ulong)p.Household * 0x9E3779B97F4A7C15UL : (ulong)p.Id * 0x2545F4914F6CDD1DUL);
             float wear = 0.88f + 0.22f * (float)KeyedRng.Unit(KeyedRng.Mix((ulong)p.Id * 0xD6E8FEB86659FD93UL));
             Color d = Dyes[key] * wear; d.a = 1f;
             return age < 14f ? Color.Lerp(d, Dyes[0], 0.35f) : d;
+        }
+
+        static int DyeOf(ulong who) => (int)(KeyedRng.Mix(who) % (ulong)Dyes.Length);
+
+        /// <summary>(session 27) A household's colour as its people wear it: its own dye, or its polity's when it is its village's first household.</summary>
+        public static Color HouseholdColour(TC2.Core.Simulation.World w, int sid, int hh)
+        {
+            if (w.Settlements.Exists(sid) && hh != 0 && w.Settlements.Get(sid).HeadHh == hh) return PolityColour(w, sid);
+            return hh != 0 ? Dyes[DyeOf((ulong)hh * 0x9E3779B97F4A7C15UL)] : Color.white;
         }
 
         /// <summary>A flat ring on the ground (a person's mark when chosen): 1.2 m across, a band 0.16 m wide.</summary>
@@ -1843,6 +1851,7 @@ namespace TC2.Game
             int chosenHh = chosen != 0 && w.People.Exists(chosen) ? w.People.Get(chosen).Household : 0;
             int pointedHh = Pointed != 0 && w.People.Exists(Pointed) ? w.People.Get(Pointed).Household : 0;
             int homeHh = ChosenHome != 0 && w.Buildings.Exists(ChosenHome) ? w.Buildings.Get(ChosenHome).Household : 0;
+            int pointedHomeHh = PointedHome != 0 && w.Buildings.Exists(PointedHome) ? w.Buildings.Get(PointedHome).Household : 0;
             _floors.Clear(); _floorsUsed.Clear();
             PeopleDrawn = 0; PeopleBusy = 0; BoatsAfloat = 0; PeopleCulled = 0;
             float waterR = (float)(P.Radius + Ground.WaterHeight(P, P.SeaLevel));
@@ -1932,7 +1941,7 @@ namespace TC2.Game
                 else _people.Add(dye + (moving ? 100 : 0), cloth, Matrix4x4.TRS(pos, rot, Vector3.one * sc * stature), 0f, pose);
                 // (session 27) the ring under the chosen and the pointed at, a fainter one under each of their households' people
                 int hh = p.Household;
-                bool me = id == chosen || id == Pointed, kin = hh != 0 && (hh == chosenHh || hh == pointedHh || hh == homeHh);
+                bool me = id == chosen || id == Pointed, kin = hh != 0 && (hh == chosenHh || hh == pointedHh || hh == homeHh || hh == pointedHomeHh);
                 if (me || kin)
                 {
                     Color ring = Color.Lerp(cloth, Color.white, 0.35f);
