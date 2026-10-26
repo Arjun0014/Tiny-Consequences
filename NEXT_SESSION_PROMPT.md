@@ -29,31 +29,30 @@ listener at 0 in shots).
    runs); `docs/tc2/DECISIONS.md` newest (D2-183-D2-189, D2-191 the planet from orbit); `docs/tc2/PROGRESS.md` CURRENT STATE.
 4. `git status`, `git log --oneline -15`, `git worktree list`, and the queue: `cat $Q/runq.log` (`Q` below) - which jobs ended, with what; `ls $Q/todo`.
 
-## Session 27 (26 Oct 2026, 10:40 - ~12:10 IST) - handoff with the job queue RUNNING
-- **main** e0c8066, sim 107 (no simulation rule changed): the fourth acceptance finished (25 §6 verdict); merged **A the planet from orbit** (D2-191),
-  **B people recognisable** (liveries, the first's mantle and circlet, sworn men's caps and shields, family rings), **C the book's content** (weights, age
-  stories and notes, IX Discoveries and Works, X Your Actions = `HistoryBook.YourActionsPart`).
-- **To merge after the running Web build** (both compile, tests pass, never yet seen in shots or the Web): `wip/chronicle` **abf6eb7** (the book's
-  open-book reader, `Game/UI/Hud.Book.cs` - left uncommitted at the first merge, so main still draws the old reader) and `wip/feel` **3e8ae68** (E: flames,
-  the aim marker `AimView`, the cast's burst and shake, "Your hand" live, the HUD skin).
-- **The queue** (runner `tc2/out/tools/s23/runq.sh`, background task `bbgjl1nqj`; `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-
-  consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`): running `0_r1_web_s27web1` (Web build of b2370ae from 12:00, webtest `s27web1`, bookshots
-  `s27book1`); then `0_q2` (people shots `s27q2`), `0_s1` (forest kinds `s27f1`), prospecting seeds `N_b_pro1_05..10`, `N_c_cmp_pro1`. If the runner has
-  stopped and `$Q/todo` still holds jobs, restart it in the background (`rm -f $Q/stop; bash tc2/out/tools/s23/runq.sh`).
-  At 12:12 the Web build `0_r1` was still compiling (no result yet); the Monitor on `$Q/runq.log` (`baxiwgpkg`) has expired - re-arm one
-  (`tail -n 0 -F $Q/runq.log | grep --line-buffered -E "^end |runner stopped"`) to follow the jobs.
-- **Prospecting** (`wip/prospect` 85acede, sim 108): its control's annals = the baseline byte for byte (the state hash differs only by the new hashed field
-  `ProspectAt`); land it (D2-190) if `results/cmp_rui1_pro1.txt` is inside the noise.
+## Session 27, context 2 (26 Oct 2026, 12:12 - ~14:20 IST) - all of A-E on main, the frame measured and cut
+- **main** = `wip/s27-int` (worktree `C:/Game Dev/tc-s27int`; main is fast-forwarded to it only while no Unity job holds main's checkout), sim 107
+  unchanged (presentation and observers only). Merged the open-book reader and E; then, judged in real shots and two Web builds (`s27web2`, `s27web3`
+  9/9): house marks and family rings on hover, flags for a realm's villages, `Biography.Standing` on the tag/page/inspector, the inspector as a card in
+  words, pages dated as the book, "N sick"/"famine" on the map, the timeline's eras under the pointer, the ages' years, an age's great events capped by
+  kind, the book's foot clear at 720 px, the meteor's fall and scar, lightning bolts for every recorded strike, flames (red-orange, small heart), power
+  tooltips, "Your hand" sized to its lines, the top bar measured from its words, the opening in the book's type, snow on the boughs and bare crowns over
+  snow, the rain forest's tones, lumpy soft cumulus of many sizes. D2-192 (people), D2-193 (book), D2-194 (powers) written.
+- **The frame** (integrated GPU, seed 2 year 300, `tc2/out/webtest/s27perf`): 12.4 fps region / 8.4 village before; buildings and shadows were the frame;
+  built: far villages (>2.2 km) plain and shadowless, the light shadows graded by height and the default, the air's march halved over the ground.
+  `0_y_perf2_s27` measures them -> finish D2-195 (draft in the context-2 scratchpad `d2195.md`; numbers in SESSION_HANDOFF).
+- **The queue** (`Q` as below, runner task `bbgjl1nqj`): `0_t3` (tests of the pages' text: Biography, Gazetteer, Sworn, HistoryBook, Chronicle,
+  Determinism), `0_y_perf2_s27`, prospecting `N_b_pro1_07..10`, `N_c_cmp_pro1`. Then land prospecting (D2-190; `wip/prospect` 85acede merges cleanly).
+- Tools: the context-2 scratchpad's `gcommit.sh` (a gated commit: compile the worktree's Game/Editor/Tests, commit only when clean). **Python patch
+  scripts through the Bash tool lose a backslash** (`\n` arrives as `
+`, a real newline in C#) - write such scripts with the Write tool, or use Edit.
 
 ## Do next, in order
-1. When `0_r1` ends: `tc2/out/webtest/s27web1.log` must be 9/9; look at `s27book1`; `git checkout -- unity/TinyConsequences2/ProjectSettings/ProjectSettings.asset`
-   (the build's `--jobs=2`); never commit `Assets/Resources/`. Then merge `wip/chronicle` and `wip/feel` into main, `node tc2/scripts/unity.mjs cc`, queue the
-   feel shots (meteor + `--aim`) and a Web build `s27web2` with bookshots of the new reader; judge, fix, commit; write D2-192 (people), D2-193 (the book),
-   D2-194 (the powers' feel, the HUD).
-2. Read `s27q2` (families and the head up close) and `s27f1` (which kinds of wood still read alike) - then W-FOREST's next pass (D).
-3. Prospecting's compare -> D2-190, land.
-4. Then the player-facing polish by the shots: the book (eras and portraits), map names with a flag in the realm's colour, hovering a house rings its family,
-   the lights as streets, the powers' remaining feel. SESSION_HANDOFF "Session 27" -> "Next, in order" has the detail.
+1. `0_t3` must pass; `0_y` -> D2-195 (fardetail, shadowlite, cloudshadow, names, terrain ratios), and if the village view is still slow, the next cost.
+2. Prospecting's compare -> D2-190, land (sim 108: queued shots/Web jobs then need sim-108 saves).
+3. A Web build with everything since `s27web3` (the inspector, troubles, title, air, smoke cap, bare crowns, soft cumulus) and a shots round of the
+   planet (seed 42 region) and a meteor; judge; fix.
+4. Then by the shots: night clouds faintly grey and the sea's broad sheen (A), age names that repeat (C), the faint straight line through Raimstead at
+   the village view (a worn way or a seam - check), a sound for the meteor's fall (E).
 
 ## Rules that bite
 - **Never retag job files with a broad `sed`** (session 26: `s/_sw1"/_stw1"/` also renamed a build job's binary dir, so its tests ran a missing binary and the
