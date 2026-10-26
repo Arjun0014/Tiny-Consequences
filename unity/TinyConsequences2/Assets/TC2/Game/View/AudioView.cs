@@ -66,6 +66,12 @@ namespace TC2.Game
             src.Play();
         }
 
+        // (session 27, the person's word) the world falls quiet while the game is in the background - another window or tab in front, or the
+        // app paused - and plays on when it is in front again; the M key and the settings' Sound stay the player's own (this is not kept)
+        bool _unfocused, _paused;
+        void OnApplicationFocus(bool focus) { _unfocused = !focus; AudioListener.pause = _unfocused || _paused; }
+        void OnApplicationPause(bool paused) { _paused = paused; AudioListener.pause = _unfocused || _paused; }
+
         void Update()
         {
             if (Input.GetKeyDown(KeyCode.M)) Muted = !Muted;

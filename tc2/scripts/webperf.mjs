@@ -24,7 +24,7 @@ const alt = { orbit: 22000, region: 6000, village: 1500, close: 450, low: 160 }[
 const outDir = path.join(root, 'tc2', 'out', 'webperf', tag);
 fs.mkdirSync(outDir, { recursive: true });
 
-const GPU = ['--use-angle=d3d11', '--ignore-gpu-blocklist', '--enable-gpu-rasterization', '--enable-webgl', '--enable-unsafe-webgpu', '--enable-features=Vulkan,WebGPU'];
+const GPU = ['--mute-audio', '--use-angle=d3d11', '--ignore-gpu-blocklist', '--enable-gpu-rasterization', '--enable-webgl', '--enable-unsafe-webgpu', '--enable-features=Vulkan,WebGPU'];
 const port = 8643;
 const server = await startServer({ port, quiet: true });
 const browser = await chromium.launch({ headless: true, channel: webgl2 ? undefined : 'chrome', args: GPU });

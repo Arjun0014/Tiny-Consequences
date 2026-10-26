@@ -8,7 +8,7 @@ import { startServer } from './serve.mjs';
 const a = process.argv.slice(2);
 const opt = (f, d) => { const i = a.indexOf(f); return i >= 0 ? a[i + 1] : d; };
 const burst = opt('--burst', '6'), secs = Number(opt('--secs', '3'));
-const GPU = ['--use-angle=d3d11', '--ignore-gpu-blocklist', '--enable-gpu-rasterization', '--enable-webgl', '--enable-unsafe-webgpu', '--enable-features=Vulkan,WebGPU'];
+const GPU = ['--mute-audio', '--use-angle=d3d11', '--ignore-gpu-blocklist', '--enable-gpu-rasterization', '--enable-webgl', '--enable-unsafe-webgpu', '--enable-features=Vulkan,WebGPU'];
 const port = 8644;
 const server = await startServer({ port, quiet: true });
 const browser = await chromium.launch({ headless: true, channel: 'chrome', args: GPU });

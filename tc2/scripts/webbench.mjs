@@ -17,7 +17,7 @@ const outDir = path.join(root, 'tc2', 'out', 'webbench');
 fs.mkdirSync(outDir, { recursive: true });
 
 const server = await startServer({ port: 8643, quiet: true });
-const browser = await chromium.launch({ headless: true, channel: a.includes('--chromium') ? undefined : 'chrome', args: ['--use-angle=d3d11', '--ignore-gpu-blocklist', '--enable-unsafe-webgpu'] });
+const browser = await chromium.launch({ headless: true, channel: a.includes('--chromium') ? undefined : 'chrome', args: ['--mute-audio', '--use-angle=d3d11', '--ignore-gpu-blocklist', '--enable-unsafe-webgpu'] });
 const page = await browser.newPage({ viewport: { width: 960, height: 540 } });
 const lines = [];
 page.on('console', (m) => lines.push(m.text()));

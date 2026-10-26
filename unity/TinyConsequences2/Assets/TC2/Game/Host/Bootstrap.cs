@@ -78,6 +78,8 @@ namespace TC2.Game
             bridge.Host = host; bridge.Rig = rig;
             // (F11.2) the player's settings kept from the last visit - never in shots or batch runs, whose pictures and numbers stay their own
             if (ShotRunner.Arg("-tc2shots") == null && !Application.isBatchMode) Settings.Load();
+            // (session 27, the person's word) shots and batch runs play in the background while the machine is in use: they are silent
+            if (ShotRunner.Arg("-tc2shots") != null || Application.isBatchMode) AudioListener.volume = 0f;
             if (ShotRunner.Arg("-tc2shots") != null)
             {
                 var shots = gameObject.AddComponent<ShotRunner>();

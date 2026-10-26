@@ -37,7 +37,7 @@ const webDir = path.join(root, 'tc2', 'web-build', 'web');
 const servedSave = path.join(webDir, '_bookshots_world.tc2');
 fs.writeFileSync(servedSave, save);
 
-const GPU = ['--use-angle=d3d11', '--ignore-gpu-blocklist', '--enable-gpu-rasterization', '--enable-webgl', '--enable-unsafe-webgpu', '--enable-features=Vulkan,WebGPU'];
+const GPU = ['--mute-audio', '--use-angle=d3d11', '--ignore-gpu-blocklist', '--enable-gpu-rasterization', '--enable-webgl', '--enable-unsafe-webgpu', '--enable-features=Vulkan,WebGPU'];
 const port = 8644;
 const server = await startServer({ port, quiet: true });
 const browser = await chromium.launch({ headless: true, channel: flag('--webgl2') ? undefined : 'chrome', args: GPU });
