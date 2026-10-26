@@ -424,6 +424,14 @@ comparable with earlier sessions. All runs are silent (`--mute-audio`; the liste
 
 **Where we are (session 27, 26 Oct 2026, 10:40 - ~12:10 IST; context handoff with the job queue running)**: the fourth acceptance is finished (25 §6: Web `s26web1` 9/9, the year-1,000 heap 870 MB, the verdict on the finished core) and 25 §8 is the ledger of what is built. On main (sim 107, no simulation rule changed): **A the planet from orbit** (D2-191: clouds read four ways from the weather - the day's air `PlanetSystems.DayAir`, an observer - with a 3-D noise's forms and shadows, the night side dark but for its homes' lights), **B people recognisable** (household liveries; the first's mantle and circlet; sworn men's caps and shields; family rings) and **C the book's content** (weighted lines, age stories and notes, IX Discoveries and Works, X Your Actions). On branches, to merge after the running Web build: the book's open-book reader (`wip/chronicle` abf6eb7) and **E the powers as play** (`wip/feel` 3e8ae68: flames, the aim marker, the cast's burst and shake, Your hand, the HUD skin). Prospecting (C5.3c) is in its seeds. SESSION_HANDOFF "Session 27" has the exact state, the queue and the next steps.
 
+**Where we are (session 27, context 2, 26 Oct 2026, 12:12 - 14:50 IST)**: all of A-E on main, judged in real shots and Web builds `s27web2`/`s27web3` (9/9)
+- the open-book reader, the timeline's eras and the ages' years (D2-193); house and family rings on hover, flags for a realm's villages, `Biography.Standing`, the
+inspector as a card in words, "N sick"/"famine" on the map (D2-192); the meteor's fall and scar, lightning bolts, flames, tooltips, "Your hand" (D2-194); snow on
+the boughs, bare crowns over snow, the rain forest's tones; lumpy soft cumulus. **The frame on the integrated GPU** (D2-195): a great world's region view 12.4 ->
+~30 fps and village view 8.4 -> ~16, from far villages plain and shadowless and graded light shadows; the terrain is the next cost. **Prospecting's ten seeds are
+inside the noise**: land it from `wip/s27-land` once the queued sim-107 shots and Web build `s27web4` are done (D2-190 then). The integration branch is
+`wip/s27-int` (worktree `C:/Game Dev/tc-s27int`). SESSION_HANDOFF "Session 27, context 2" has the queue and the steps.
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.

@@ -37,13 +37,14 @@
   and the light shadows graded by height and made the default (`Sky.ShadowLite`: 4 cascades below 300 m, 2 below 900 m, 1 above). Measured on s27web3
   (`s27perf2`): region ~30 fps (was 12.4), village ~16 (was 8.4); fardetail x1.89/x1.14, the graded shadows x1.06/x1.31, cloud shadows ~1, names ~1;
   **the terrain x0.59/x0.66 - the next cost** (Terrain.shader: canopy, plots, cover per pixel). D2-195 written.
-- **The queue** (runner `tc2/out/tools/s23/runq.sh`, `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`,
-  the background task `bbgjl1nqj`): `0_u_web_s27web2` (the Web build of main c06833f = the reader, E, marks, flags, the top bar; webtest `s27web2`, bookshots
-  `s27book2 --play`), then `0_v_perf_s27` (each layer's paired frame cost on seed 2's year 300: clouds, shadows, trees, cover, people, buildings, air -
-  `tc2/out/webtest/s27perf/*.txt`), then prospecting `N_b_pro1_06..10` and `N_c_cmp_pro1`. Staged (move to `$Q/todo` after fast-forwarding main to
-  `wip/s27-int` while no Unity job runs - `0_v` is a browser job, main's checkout is free then): `$Q/stage/0_w_shots_s27b.sh` (flames v3 + the meteor's scar
-  by day/night `s27e6`/`e7`, the training ground's standards `s27q3`, the head up close `s27q4` view `chosen`, seed 42's lumpy cumulus `s27p6`, bare crowns over
-  snow `s27f4`, the rain forest's tones `s27f5`). The next Web build must carry `--meteor-play` (the meteor's fall, landing and scar in the browser).
+- **The queue at the handoff (14:49 IST)** (runner `tc2/out/tools/s23/runq.sh`, background task `bbgjl1nqj` - reuse it, never start a second;
+  `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`; follow with
+  `tail -n 0 -F $Q/runq.log | grep --line-buffered -E "^end |runner stopped"`): running **`N_d_land_tests`** (the landing worktree `tc-s27land`: build,
+  floatcheck, cc, ProspectTests, Mining, Iron, OreSites, Forge, Determinism, SaveLoad, HistoryBook - passes when `$N/s27land_ok` exists and its log ends
+  "s27land ok"); then **`P_a_shots_s27c`** (Unity shots on main's checkout: `s27p7` seed 42 region/orbit - the soft lumpy cumulus; `s27f6` seed 2 mixed
+  woods - bare crowns over snow; `s27e8` a meteor's fires and the capped smoke at the village/low views), then **`P_b_web_s27web4`** (the Web build of
+  main as it stands when it starts: webtest `s27web4` must be 9/9, bookshots `s27book4 --play --meteor-play`). Never edit main's checkout while P_a or P_b's build runs
+  (work in `tc-s27int`); P_b's webtest/bookshots run from the built files, main is free again once its log says "web build exit 0".
 - **Prospecting's compare (14:47) is inside the noise - LAND IT**: ten seeds `_pro1` against `_rui1` (`tc2/out/tools/s26/results/cmp_rui1_pro1.txt`):
   people x1.02 (t 0.38), hunger a person-year x0.73 (t -1.29), famines x0.76 (t -1.48), raids x1.13 (t 1.38), walls x1.14 (t 1.81), loot x1.27 (t 1.74),
   births x1.00, deaths x1.00; seeds with metal looked 2,836-7,464 seasons and found 5-115 bodies within reach (s4, s2, s7, s11); the five without metal
@@ -54,23 +55,25 @@
   D2-190, and regenerate the shots' saves with the sim-108 binary (seed 2 to years 300 and 1,000 as `s2_ac4` was: `tc2/out/tools/s26/make_ac4.sh` shows
   how) before any later shots or bookshots job. Seeds done: s4 (7,464 seasons gone looking, 115 bodies found within reach), s5, s1, s6 (no metal), s11
   (2,836 / 5), s2 (7,174 / 18, 6 scouted).
-- **Drafts**: D2-193 (the book) and D2-194 (the powers' feel, the HUD) in this context's scratchpad `d2193_194.md` - finish with the Web evidence
-  (`WEB_EVIDENCE_19x`) and append to DECISIONS. D2-192 (people) is on the branch.
+- **Decisions written this context**: D2-192 (people), D2-193 (the book), D2-194 (the powers), D2-195 (the frame). Still to write: D2-190
+  (prospecting) - from the compare above, when it lands.
 
 ### Next, in order
-1. When `0_u` ends: `tc2/out/webtest/s27web2.log` 9/9; look at `s27book2` (the new reader, the timeline, `play_*`: the house mark, the aim, the cast, Your hand);
-   `git checkout -- unity/TinyConsequences2/ProjectSettings/ProjectSettings.asset`; fix what the pictures say; D2-193, D2-194.
-2. Fast-forward main to `wip/s27-int` (during `0_v`), move `0_w` to `todo`; judge its shots; then a Web build `s27web3` with `--play --meteor-play`.
-3. **The terrain is the next cost** (x0.59 region, x0.66 village: `s27perf2/terrain.txt`). Plan: in `Terrain.shader` the woods block (from "the woods
-   (D2-079)") runs for every pixel - 6 `Crowns` + 9 `CoverAt` samples, the stand rank - because implicit-derivative samples must stay in uniform control
-   flow on WebGPU. Compute `ddx/ddy(i.positionWS)` and `pxs`/`pxw` before it, pass each projection's uv gradients (the `lt` offsets keep them; the turned
-   `mul(turnB, uv) * 0.413` scales them) into `Crowns`/`CoverAt` as `SAMPLE_TEXTURE2D_GRAD`, then wrap the block in `if (i.wood.x > 0.002)` - with no wood
-   it leaves the albedo as it was (dl = 0: litter = albedo, mask 0, fc 0; the stand step keeps dens 0). Then the same for the plots/furrows block where
-   `i.farm` is 0. Verify: Unity shots (no shader errors), a Web build (WebGPU compiles it), `realmsperf --layer terrain`.
-4. Prospecting's compare -> D2-190, land (merge `wip/prospect`, sim 108; every queued shots/Web job then needs saves of sim 108 or the old binary).
-5. Then on by the shots: the book (portraits? age names that repeat), A (night clouds faintly grey; the sea's broad sheen), D (warm temperate woods never
-   found in seeds 2/4 - check whether any world has them), E (sound for the meteor's fall?).
-
+1. `N_d_land_tests` must pass (`$Q/log/N_d_land_tests.log`). Judge `P_a`'s shots (`tc2/out/shots/s27p7`, `s27f6`, `s27e8`) and `P_b` (`s27web4.log` 9/9,
+   `tc2/out/webtest/s27book4/play_*`: the inspector card in words, "N sick" on the map, the opening in IM FELL, the meteor's smoke no longer a pink sky);
+   `git checkout -- unity/TinyConsequences2/ProjectSettings/ProjectSettings.asset` after the build; fix what the pictures say (in `tc-s27int`).
+2. **Land prospecting**: when P_b's build has ended, merge `wip/s27-int` into `wip/s27-land` if it moved, `git merge --ff-only wip/s27-land` on main
+   (sim 108), write D2-190 (the compare's numbers are above), update 25 §8 (prospecting built). Then regenerate the shots' saves with the sim-108 binary
+   (seed 2 to years 300 and 1,000 like `tc2/out/civ/s2_ac4` - see `tc2/out/tools/s26/make_ac4.sh` for the run's flags; a new tag, e.g. `s2_ac5`) and point
+   later shots/bookshots/realmsperf jobs at them: sim-107 saves no longer load.
+3. **The terrain is the next cost** (x0.59 region, x0.66 village: `tc2/out/webtest/s27perf2/terrain.txt`). Plan: in `Terrain.shader` the woods block
+   (from "the woods (D2-079)") runs for every pixel - 6 `Crowns` + 9 `CoverAt` samples and the stand rank - because implicit-derivative samples must stay
+   in uniform control flow on WebGPU. Compute `ddx/ddy(i.positionWS)` and `pxs`/`pxw` before it, pass each projection's uv gradients into `Crowns`/`CoverAt`
+   as `SAMPLE_TEXTURE2D_GRAD` (the `lt` offsets keep the gradients; the turned `mul(turnB, uv) * 0.413` scales them), then wrap the block in
+   `if (i.wood.x > 0.002)` - with no wood it leaves the albedo as it was (dl 0: litter = albedo, mask 0, fc 0; the stand step keeps dens 0). The same
+   for the plots/furrows block where `i.farm` is 0. Verify: Unity shots (no "Shader error"), a Web build (WebGPU compiles it), `realmsperf --layer terrain`.
+4. Then by the shots: night clouds faintly grey and the sea's broad sheen (A), age names that repeat (C), the faint straight line through Raimstead at the
+   village view (`s27q1`/`s27q3`: a worn way or a seam - check), a sound for the meteor's fall (E), the person/place pages in the book's paper style.
 
 ## Session 27 (26 Oct 2026, 10:40 - ~12:10 IST; Control Room run #81 session 1) - HANDOFF: the fourth acceptance finished; the player-facing slices A (planet), B (people), C (book) on main, E (powers' feel) on a branch; the queue RUNNING
 
