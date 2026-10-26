@@ -137,7 +137,8 @@ namespace TC2.Tests.Core
             string place = w.History.NameOf(EntityRef.Settlement(sid)), headName = w.History.NameOf(EntityRef.Person(head));
             StringAssert.StartsWith("first of " + place, Biography.Standing(w, head));
             Assert.AreEqual("sworn to " + headName + ", first of " + place, Biography.Standing(w, sworn[0]));
-            foreach (int pid in w.Members(first)) if (pid != head && !sworn.Contains(pid)) { Assert.AreEqual("of the household of " + headName + ", first of " + place, Biography.Standing(w, pid)); break; }
+            var members = w.Members(first);
+            for (int i = 0; i < members.Count; i++) { int pid = members[i]; if (pid != head && !sworn.Contains(pid)) { Assert.AreEqual("of the household of " + headName + ", first of " + place, Biography.Standing(w, pid)); break; } }
             foreach (int pid in Candidates(w, sid)) if (!sworn.Contains(pid) && w.People.Get(pid).Household != first) { Assert.AreEqual("", Biography.Standing(w, pid), "the others: none"); break; }
             // --oldsworn: nobody is sworn
             var w2 = Village(out int sid2, out int first2, 3);
