@@ -33,7 +33,13 @@ namespace TC2.Core.History
         internal void Fact(string t) { if (!string.IsNullOrEmpty(t)) Blocks.Add(new BookBlock { Kind = BookKind.Fact, Text = t }); }
         internal void Note(string t, int sid = 0) { if (!string.IsNullOrEmpty(t)) Blocks.Add(new BookBlock { Kind = BookKind.Note, Text = t, Settlement = sid }); }
         internal void Heading(string t, int sid = 0) { Blocks.Add(new BookBlock { Kind = BookKind.Heading, Text = t, Settlement = sid }); }
-        internal void Line(World w, in HistoryEvent e) => Blocks.Add(new BookBlock { Kind = BookKind.Line, Text = HistoryText.Dated(w, e), Event = e.Id, Settlement = e.Settlement, Weight = HistoryBook.Weigh(w, in e) });
+        internal void Line(World w, in HistoryEvent e)
+        {
+            byte wt = HistoryBook.Weigh(w, in e);
+            string text = HistoryText.Dated(w, e), gloss = HistoryBook.Gloss(w, in e, wt);
+            if (gloss.Length > 0) text = text.TrimEnd('.') + gloss + ".";
+            Blocks.Add(new BookBlock { Kind = BookKind.Line, Text = text, Event = e.Id, Settlement = e.Settlement, Weight = wt });
+        }
     }
 
     public sealed class BookPart
@@ -878,6 +884,19 @@ namespace TC2.Core.History
                     return 0;
                 default: return (byte)(e.Importance >= 40f ? 1 : 0);
             }
+        }
+
+        /// <summary>
+        /// (session 27) Why a great event stands among the great where its words alone do not say: a founding weighed great is that of a town of today
+        /// (" - today a town of 612 people"). "" otherwise. Reads only.
+        /// </summary>
+        public static string Gloss(World w, in HistoryEvent e, byte weight)
+        {
+            if (weight < 2 || e.Kind != HistoryKind.SettlementFounded || e.Subject.Kind != EntityKind.Settlement) return "";
+            int sid = e.Subject.Id;
+            if (!w.Settlements.Exists(sid) || !w.Settlements.Get(sid).Inhabited) return "";
+            ref var s = ref w.Settlements.Get(sid);
+            return " - today " + Gazetteer.Word(in s) + " of " + F(s.Population) + " people";
         }
 
         /// <summary>The ordinary, never a line of the book by itself (as Chronicle's).</summary>

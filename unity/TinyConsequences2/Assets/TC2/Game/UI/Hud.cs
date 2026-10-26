@@ -71,6 +71,7 @@ namespace TC2.Game
         readonly System.Collections.Generic.List<Rect> _placed = new System.Collections.Generic.List<Rect>();
         readonly System.Collections.Generic.List<int> _byPeople = new System.Collections.Generic.List<int>();
         readonly System.Collections.Generic.Dictionary<int, string> _placeLine = new System.Collections.Generic.Dictionary<int, string>();
+        float _dateW, _speedsW, _togglesW;   // (the top bars' widths, measured once from their words)
         readonly System.Collections.Generic.HashSet<int> _seats = new System.Collections.Generic.HashSet<int>();   // (places others pay and that pay nobody: realms' seats)
         float _byPeopleAt = -99f;
         int _hoverPid, _hoverBid; float _hoverAt;
@@ -294,7 +295,7 @@ namespace TC2.Game
                 Vector2 ss = withSub ? _mapSub.CalcSize(new GUIContent(sub)) : Vector2.zero;
                 float wdt = Mathf.Max(ns.x, ss.x) + 6f, hgt = ns.y + ss.y;
                 var box = new Rect(x - wdt * 0.5f, y - hgt - 7f, wdt, hgt);
-                if (box.y < 48f || box.yMax > sh - 46f) continue;   // (clear of the bar at the top and the ticker at the foot)
+                if (box.y < _left.yMax + 6f || box.yMax > sh - 46f) continue;   // (clear of the bar at the top and the ticker at the foot)
                 // (session 27) a small flag in its polity's colour before its name - a realm's villages fly one colour, as their standards do
                 var flag = new Rect(x - ns.x * 0.5f - (town ? 17f : 15f), box.y + ns.y * 0.5f - (town ? 5f : 4.5f), town ? 13f : 11f, town ? 9f : 8f);
                 var room = new Rect(Mathf.Min(box.x, flag.x - 2f), box.y, box.xMax - Mathf.Min(box.x, flag.x - 2f), box.height);
@@ -515,11 +516,23 @@ namespace TC2.Game
 
             if (_hidden) { PointerOverUi = false; WorldObjectsView.Chosen = WorldObjectsView.Pointed = WorldObjectsView.ChosenHome = WorldObjectsView.PointedHome = 0; return; }
             if (!_book) { MapNames(w, sw, sh); WorkNames(w, sw, sh); PeopleNames(w, sw, sh); }
-            // top-left: a slim bar - the date and the speeds
-            _left = new Rect(10, 10, Mathf.Min(sw - 450, 900), 40);
+            // top-left: a slim bar - the date and the speeds, measured from their words (the date's widest form); on a narrow screen the speeds under the
+            // date, so the bar never runs under the panels' toggles at the right (it did at 1280 px: "10 days/s" under Info)
+            if (_dateW == 0f)
+            {
+                _dateW = _title.CalcSize(new GUIContent("Year 0000 · Early Autumn · Day 48 · 00:00")).x + 10f;
+                foreach (string s in SimHost.SpeedNames) _speedsW += _btn.CalcSize(new GUIContent(s)).x + _btn.margin.horizontal;
+                _speedsW += _btn.CalcSize(new GUIContent("Max")).x + _btn.margin.horizontal;
+                _togglesW = 24f;
+                foreach (string s in new[] { "Info", "History", "Book", "World", "Realms", "Sound", "Settings" }) _togglesW += _btn.CalcSize(new GUIContent(s)).x + _btn.margin.horizontal;
+            }
+            float pad = _box.padding.horizontal + 4f;
+            bool twoRows = 10f + _dateW + _speedsW + pad + 10f > sw - _togglesW - 10f;
+            _left = twoRows ? new Rect(10, 10, Mathf.Max(_dateW, _speedsW) + pad, 70) : new Rect(10, 10, _dateW + _speedsW + pad, 40);
             GUILayout.BeginArea(_left, _box);
-            GUILayout.BeginHorizontal();
-            GUILayout.Label(SimTime.Format(w.Now), _title, GUILayout.Width(318));
+            if (!twoRows) GUILayout.BeginHorizontal();
+            GUILayout.Label(SimTime.Format(w.Now), _title, GUILayout.Width(_dateW));
+            if (twoRows) GUILayout.BeginHorizontal();
             for (int i = 0; i < SimHost.Speeds.Length; i++)
             {
                 bool on = !Host.MaxSpeed && Host.SpeedIndex == i;
@@ -530,7 +543,7 @@ namespace TC2.Game
             GUILayout.EndArea();
 
             // top-right: toggles for the panels
-            _toggles = new Rect(sw - 530, 10, 520, 40);
+            _toggles = new Rect(sw - _togglesW - 10f, 10, _togglesW, 40);
             GUILayout.BeginArea(_toggles, _box);
             GUILayout.BeginHorizontal();
             _info = GUILayout.Toggle(_info, "Info", _btn);
@@ -604,15 +617,16 @@ namespace TC2.Game
 
             // the History Book
             _bookRect = Rect.zero;
-            if (_book) { float bw = Mathf.Min(1280f, sw - 60f); _bookRect = new Rect(sw * 0.5f - bw * 0.5f, 62, bw, sh - 112); Book(_bookRect, w); }
+            float topY = Mathf.Max(62f, _left.yMax + 8f);   // (below the top bar, two rows of it on a narrow screen)
+            if (_book) { float bw = Mathf.Min(1280f, sw - 60f); _bookRect = new Rect(sw * 0.5f - bw * 0.5f, topY, bw, sh - 50f - topY); Book(_bookRect, w); }
 
             // inspector
             Rect insp = new Rect(sw - 400, 190, 390, 300);
             bool showInsp = _selected != 0 && w.People.Exists(_selected);
             if (showInsp) Inspector(insp, w);
             _pageRect = Rect.zero;
-            if (_placeSid != 0 && w.Settlements.Exists(_placeSid)) { float pw = Mathf.Min(600, sw - 430); _pageRect = new Rect(Mathf.Max(10, sw - 410 - pw), 60, pw, sh - 130); PlacePage(_pageRect, w); }
-            else if (_personPage && _selected != 0 && w.People.Exists(_selected)) { float pw = Mathf.Min(600, sw - 430); _pageRect = new Rect(Mathf.Max(10, sw - 410 - pw), 60, pw, sh - 130); PersonPage(_pageRect, w); }
+            if (_placeSid != 0 && w.Settlements.Exists(_placeSid)) { float pw = Mathf.Min(600, sw - 430); _pageRect = new Rect(Mathf.Max(10, sw - 410 - pw), topY - 2f, pw, sh - 68f - topY); PlacePage(_pageRect, w); }
+            else if (_personPage && _selected != 0 && w.People.Exists(_selected)) { float pw = Mathf.Min(600, sw - 430); _pageRect = new Rect(Mathf.Max(10, sw - 410 - pw), topY - 2f, pw, sh - 68f - topY); PersonPage(_pageRect, w); }
             else if (_building != 0 && w.Buildings.Exists(_building)) { showInsp = true; BuildingPage(insp, w); }
             _powersRect = Rect.zero;
             if (!_book) PowerBar(w, sw, sh);   // (the god's powers: F9.1)
