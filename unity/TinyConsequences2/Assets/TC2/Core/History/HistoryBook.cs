@@ -2025,6 +2025,7 @@ namespace TC2.Core.History
                 case HistoryKind.CropsFlattened: return Plural(n, "village's crop flattened", "villages' crops flattened");
                 case HistoryKind.CropsBlighted: return Plural(n, "village's crop blighted", "villages' crops blighted");
                 case HistoryKind.MeteorStruck: return Plural(n, "stone from the sky", "stones from the sky");
+                case HistoryKind.LightningStrike: return Plural(n, "lightning strike", "lightning strikes");   // (session 27: a strike that kindled nothing had read "one record")
                 case HistoryKind.Drought: return Plural(n, "drought", "droughts");
                 case HistoryKind.RainBrought: return Plural(n, "rain brought", "rains brought");
                 case HistoryKind.OreRevealed: return Plural(n, "vein laid bare", "veins laid bare");

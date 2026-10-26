@@ -645,7 +645,7 @@ namespace TC2.Game
             else if (_building != 0 && w.Buildings.Exists(_building)) { showInsp = true; BuildingPage(insp, w); }
             _powersRect = Rect.zero;
             if (!_book) PowerBar(w, sw, sh);   // (the god's powers: F9.1)
-            if (!_book) YourHand(w, sw, sh);   // (what came of your casts, live: session 27)
+            if (!_book && _pageRect.width <= 0f) YourHand(w, sw, sh);   // (what came of your casts, live: session 27; not over a person's or a place's page - s27book5)
             if (!_book) DrawTip(); else _tip = null;
             _settingsRect = Rect.zero;
             if (_settings) SettingsPanel(sw);
