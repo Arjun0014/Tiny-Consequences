@@ -143,6 +143,26 @@ namespace TC2.Tests.Core
             int standing1 = 0; bl = w.BuildingsOf(sid); for (int i = 0; i < bl.Count; i++) if (!TC2.Core.Places.Homes.Fallen(in w.Buildings.Get(bl[i]), w.Now)) standing1++;
             Assert.Less(standing1, standing0, "fewer stand");
             Assert.IsNull(TestWorlds.Audit(w));
+            // (session 27) Your Actions tells the dead together when there are more than a few: no death line by line, one note - how many, the eldest by
+            // name (each a death the cast caused), the families that lost most
+            var ch = new HistoryBook.Writer(w).Part(HistoryBook.YourActionsPart).Chapters[0];
+            int deathLines = 0; string note = null;
+            foreach (var b in ch.Blocks)
+            {
+                if (b.Kind == BookKind.Line && w.History.TryGet(b.Event, out var be) && be.Kind == HistoryKind.PersonDied) deathLines++;
+                if (b.Kind == BookKind.Note && b.Text.StartsWith("The dead (", StringComparison.Ordinal)) note = b.Text;
+            }
+            int rooted = 0; long eldest = 0; float age = -1f;   // (every death whose causes run back to the cast)
+            for (int i = w.History.FirstIndexAfter(mark); i < w.History.Count; i++) { var e = w.History.At(i); if (e.Kind == HistoryKind.PersonDied && e.Root == cast) { rooted++; if (e.Magnitude > age) { age = e.Magnitude; eldest = e.Id; } } }
+            Console.WriteLine(rooted + " dead; " + (note ?? "(no note)"));
+            if (rooted > 3)
+            {
+                Assert.AreEqual(0, deathLines, "no death told line by line");
+                Assert.IsNotNull(note, "the dead told together");
+                StringAssert.StartsWith("The dead (" + rooted + "), the eldest first: ", note);
+                Assert.IsTrue(w.History.TryGet(eldest, out var ee) && note.Contains(w.History.NameOf(ee.Subject)), "the eldest of the cast's dead named");
+            }
+            else Assert.IsNull(note, "a few dead are told one by one");
         }
 
         [Test]

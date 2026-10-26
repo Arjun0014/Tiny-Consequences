@@ -1924,16 +1924,64 @@ namespace TC2.Core.History
                 foreach (var kind in order) { string s = Followed(kind, counts[kind]); if (s != null) parts.Add(s); }
                 int last = YearOf(w.History.At(fol[fol.Count - 1]).Time);
                 ch.Para("What came of it" + (last > YearOf(ce.Time) ? ", to year " + last : "") + ": " + (parts.Count > 0 ? Join(parts) : Plural(fol.Count, "record", "records")) + ".", ce.Settlement);
+                // (session 27) the dead told together when there are more than a few - a meteor's 36 had filled the chapter one line each, "... and 27
+                // records more" (s27book4): how many, who (the eldest first), the households that lost most - each name a PersonDied record of the cast
+                var dead = new List<int>();
+                for (int j = 0; j < fol.Count; j++) if (w.History.At(fol[j]).Kind == HistoryKind.PersonDied) dead.Add(fol[j]);
+                bool foldDead = dead.Count > 3;
                 // the weightiest of what followed, told in order
-                best.Clear(); best.AddRange(fol);
+                best.Clear();
+                foreach (int j in fol) if (!foldDead || w.History.At(j).Kind != HistoryKind.PersonDied) best.Add(j);
+                int told = best.Count;
                 best.Sort((p, q) => { int x = w.History.At(q).Importance.CompareTo(w.History.At(p).Importance); return x != 0 ? x : p.CompareTo(q); });
                 if (best.Count > 12) best.RemoveRange(12, best.Count - 12);
                 best.Sort();
                 for (int j = 0; j < best.Count; j++) ch.Line(w, w.History.At(best[j]));
-                if (fol.Count > best.Count) ch.Fact("... and " + Plural(fol.Count - best.Count, "record", "records") + " more.");
+                if (foldDead) ch.Note(TheDead(w, dead), ce.Settlement);
+                if (told > best.Count) ch.Fact("... and " + Plural(told - best.Count, "record", "records") + " more.");
                 part.Chapters.Add(ch);
             }
             return part;
+        }
+
+        /// <summary>(session 27) A cast's dead told together, from their PersonDied records (ledger indices): how many, the eldest first by name and age (a
+        /// dozen, then how many more), and the households that lost most - by the family name each was known by.</summary>
+        static string TheDead(World w, List<int> dead)
+        {
+            var order = new List<int>(dead);
+            order.Sort((p, q) => { int x = w.History.At(q).Magnitude.CompareTo(w.History.At(p).Magnitude); return x != 0 ? x : p.CompareTo(q); });
+            var sb = new StringBuilder();
+            sb.Append("The dead (").Append(F(dead.Count)).Append("), the eldest first: ");
+            int shown = System.Math.Min(12, order.Count);
+            for (int k = 0; k < shown; k++)
+            {
+                var e = w.History.At(order[k]);
+                if (k > 0) sb.Append("; ");
+                sb.Append(w.History.NameOf(e.Subject)).Append(", ").Append(F(e.Magnitude));
+            }
+            if (order.Count > shown) sb.Append("; and ").Append(F(order.Count - shown)).Append(" more");
+            sb.Append('.');
+            // the households that lost most: the family name each was known by (the last word of their name), two or more dead
+            var lost = new Dictionary<string, int>();
+            var fams = new List<string>();
+            foreach (int i in dead)
+            {
+                string name = w.History.NameOf(w.History.At(i).Subject);
+                int sp = name.LastIndexOf(' ');
+                if (sp <= 0 || sp >= name.Length - 1) continue;
+                string fam = name.Substring(sp + 1);
+                if (!lost.TryGetValue(fam, out int m)) fams.Add(fam);
+                lost[fam] = m + 1;
+            }
+            fams.RemoveAll(f => lost[f] < 2);
+            fams.Sort((p, q) => { int x = lost[q].CompareTo(lost[p]); return x != 0 ? x : string.CompareOrdinal(p, q); });
+            if (fams.Count > 0)
+            {
+                sb.Append(" The families that lost most: ");
+                for (int k = 0; k < fams.Count && k < 6; k++) { if (k > 0) sb.Append(", "); sb.Append("the ").Append(HistoryText.Plural(fams[k])).Append(" (").Append(F(lost[fams[k]])).Append(')'); }
+                sb.Append('.');
+            }
+            return sb.ToString();
         }
 
         /// <summary>
