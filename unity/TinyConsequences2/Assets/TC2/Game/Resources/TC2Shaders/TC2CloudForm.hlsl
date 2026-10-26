@@ -70,7 +70,9 @@ half TC2CloudDensity(float3 dir, half4 cover, float lod, float t, out half thick
     // (session 27) a puff's outline lumpy - bulging where the billows heap, bitten where they part, frayed by the grain - not a disc (s27p5: the
     // sea's cumulus read as round white blots)
     half outline = b.b + (b.a - 0.5h) * 0.34h + (0.5h - b.g) * 0.24h + (f.a - 0.5h) * 0.14h * fineW;
-    half puff = 1.0h - smoothstep(rad * (0.80h - soft * 2.0h), rad, outline);
+    // dense at its heart, thinning to its rim (s27p6: puffs of one density read as white flakes; a cumulus' edges are wisps)
+    half puff = 1.0h - smoothstep(rad * (0.40h - soft), rad, outline);
+    puff *= puff * (1.5h - 0.5h * puff);
     half cud = puff * formed;
     half density = 1.0h - (1.0h - dk) * (1.0h - ly) * (1.0h - cud);
     // the heaped tops' light and shade: the billows at three scales (the cauliflower of a convective deck, the lumps of a layer)
