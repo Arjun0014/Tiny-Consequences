@@ -75,6 +75,9 @@ namespace TC2.Game
         public static bool CoverOff;
         /// <summary>Tools (webperf): whether shrubs and boulders cast shadows.</summary>
         public static bool CoverShadows = true;
+        /// <summary>Tools (webperf): whether the ground's patches cast shadows (the hills' on the valleys).</summary>
+        public static bool PatchShadows = true;
+        bool _patchShadows = true;
         readonly Plane[] _planes = new Plane[6];
         const int Groups = 4096;   // (shade, the leaves' season, snow, dryness, the palette: W-FOREST)
         static readonly Color[] LeafTints = new Color[Groups], ConiferTints = new Color[Groups], BareTints = new Color[Groups];
@@ -316,6 +319,11 @@ namespace TC2.Game
 
         void Show()
         {
+            if (_patchShadows != PatchShadows)
+            {
+                _patchShadows = PatchShadows;
+                foreach (var c in _cache.Values) if (c.Renderer != null) c.Renderer.shadowCastingMode = PatchShadows ? ShadowCastingMode.On : ShadowCastingMode.Off;
+            }
             foreach (var p in _shownLast) p.Shown = false;
             for (int k = 0; k < _draw.Count; k++) _draw[k].Shown = true;
             foreach (var p in _shownLast) if (!p.Shown && p.Go != null) { p.Go.SetActive(false); _shownVersion++; }
@@ -443,7 +451,7 @@ namespace TC2.Game
                 p.Go.AddComponent<MeshFilter>().sharedMesh = p.Mesh;
                 p.Renderer = p.Go.AddComponent<MeshRenderer>();
                 p.Renderer.sharedMaterial = _mat;
-                p.Renderer.shadowCastingMode = ShadowCastingMode.On;
+                p.Renderer.shadowCastingMode = PatchShadows ? ShadowCastingMode.On : ShadowCastingMode.Off;
                 p.Renderer.receiveShadows = true;
                 p.Go.SetActive(false);
             }
