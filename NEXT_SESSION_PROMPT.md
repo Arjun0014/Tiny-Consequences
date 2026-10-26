@@ -29,42 +29,34 @@ listener at 0 in shots).
    runs); `docs/tc2/DECISIONS.md` newest (D2-183-D2-189, D2-191 the planet from orbit); `docs/tc2/PROGRESS.md` CURRENT STATE.
 4. `git status`, `git log --oneline -15`, `git worktree list`, and the queue: `cat $Q/runq.log` (`Q` below) - which jobs ended, with what; `ls $Q/todo`.
 
-## Session 27, context 2 (26 Oct 2026, 12:12 - 14:50 IST) - all of A-E on main, the frame doubled, prospecting ready to land
-- **main** = `wip/s27-int` (worktree `C:/Game Dev/tc-s27int`, the integration branch; main is fast-forwarded to it only while no Unity job holds main's
-  checkout), sim 107 unchanged (presentation and observers only). Merged the open-book reader and E; then, judged in real shots and Web builds
-  `s27web2`/`s27web3` (9/9 each): house rings and family rings on hover, flags for a realm's villages, `Biography.Standing` on the tag/page/inspector,
-  the inspector as a card in words, pages dated as the book, "N sick"/"famine" on the map, the timeline's eras under the pointer, the ages' years in the
-  contents, an age's great events capped by kind, the book's foot clear at 720 px, the meteor's fall and scar, lightning bolts for every recorded strike,
-  red-orange flames, power tooltips, "Your hand" sized to its lines, the top bar measured from its words, the opening in the book's type, snow on the
-  boughs and bare crowns over snow, the rain forest's tones, lumpy soft cumulus of many sizes, a fire's smoke capped. **D2-192-D2-195 written.**
-- **The frame** (integrated GPU, seed 2 year 300, 11,272 people; `tc2/out/webtest/s27perf`, `s27perf2`): region 12.4 -> ~30 fps, village 8.4 -> ~16,
-  from far villages plain and shadowless (`WorldObjectsView.DetailFar` 2.2 km), the light shadows graded by height and the default (`Sky.ShadowLite`),
-  the air's march halved over the ground. **The terrain is the next cost** (x0.59 / x0.66) - the plan is in SESSION_HANDOFF "Session 27, context 2".
-- **Prospecting (C5.3c, sim 108)**: ten seeds inside the noise (people x1.02 t 0.38, hunger x0.73 t -1.29, famines x0.76 t -1.48, raids x1.13 t 1.38,
-  walls x1.14 t 1.81) - **land it**. Merged onto main in the landing worktree `C:/Game Dev/tc-s27land` (`wip/s27-land`); its tests were running at the
-  handoff. Land only after the queued sim-107 jobs (`P_a`, `P_b`) finish, then regenerate the shots' saves with the sim-108 binary.
-- **Running at the handoff (14:50)**: the job queue (runner `tc2/out/tools/s23/runq.sh`, background task `bbgjl1nqj` - reuse it; `Q` =
-  `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`): `N_d_land_tests` (the
-  landing branch's tests), then `P_a_shots_s27c` (Unity shots on main: `s27p7` cumulus, `s27f6` bare crowns over snow, `s27e8` a meteor's smoke), then
-  `P_b_web_s27web4` (a Web build of main, webtest `s27web4`, bookshots `s27book4 --play --meteor-play`). Follow it with
-  `tail -n 0 -F $Q/runq.log | grep --line-buffered -E "^end |runner stopped"`.
-- Tools: `tc2/out/tools/s27/gcommit.sh` (usage `bash tc2/out/tools/s27/gcommit.sh "[tc2] message"`, it commits in `tc-s27int`):
-  compiles the worktree's Game/Editor/Tests against main's references (`unity.mjs cc --src`) and commits only when clean (drafts of
-  D2-193-D2-195 beside it). **Python patch scripts through the Bash tool lose a backslash** (a doubled backslash before n arrives single, so Python writes a real newline into
-  the C# string) - write such scripts with the Write tool (it keeps escapes literal), or use Edit.
+## Session 27, context 3 (26 Oct 2026, 14:52 - 16:45 IST) - prospecting landed (sim 108); the shots' findings fixed; the frame's real waste found
+- **main** = `wip/s27-int` (worktree `C:/Game Dev/tc-s27int`; work there, fast-forward main between Unity jobs). At the handoff main was e748638 and a
+  background waiter (task `b2qjknhr7`) fast-forwards it to `wip/s27-int` (c16b86c or later) once the running Web build exits - verify
+  `git log -1 main` = `git log -1 wip/s27-int`; if not, `git checkout -- unity/TinyConsequences2/ProjectSettings/ProjectSettings.asset` and
+  `git merge --ff-only wip/s27-int` in `C:/Game Dev/tiny-consequences` (never while a Unity job runs there).
+- **Landed**: C5.3c prospecting (D2-190; sim 108). Saves for shots/Web: `tc2/out/civ/s2_ac5/world_y300.tc2`, `world_y600`, `world_y1000` (sim 108).
+- **Fixed in real shots and Web builds** (D2-196): rivers far off; the meteor (one fall, grey dust, its fall heard); the regions' cell staircase
+  (`TerrainLod.WarpCells`, on a lattice); night clouds by the moon; the far glint; no road over a lake; pools in waterlogged woods (never under snow);
+  the palisade (stakes; along a shore two passes - pending shots `s27f7`); night lights at 512; the book's repeated ages named by their realm; Your
+  Actions folds a cast's dead; the person and place pages as leaves of the book and in words; Your hand never over a page.
+- **The frame**: Terrain.shader branched (gain only x1.02 region / x1.06 village, `s27perf3`); shadows x0.93, buildings x0.84/x0.88. Every terrain
+  measure had been taken paused while the ground's colouring cycle ran on for ever - now only when the world moved (6ae81de; bridge `recolour`,
+  realmsperf `--speed`). `s27perf4` (in q6) measures the terrain paused again and the colouring at 1 h/s.
+- **Running at the handoff (16:45)**: the queue (runner task `bbgjl1nqj`; `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/
+  60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`; follow `tail -n 0 -F $Q/runq.log | grep --line-buffered -E "^end |^start "`): `0_q6_web_s27web6`
+  (headless rebuilt, Web build of main e748638, webtest `s27web6`, `tc2/out/webtest/s27perf4/`, bookshots `s27book6`), then `0_q7_shots_s27f` (needs main
+  to hold 5c62ace; shots `s27f7` - the shore palisade).
 
 ## Do next, in order
-1. `N_d_land_tests` must pass (`$Q/log/N_d_land_tests.log` ends "s27land ok"). Judge `P_a`'s shots and `P_b` (`tc2/out/webtest/s27web4.log` 9/9,
-   `s27book4/play_*`); after the build `git checkout -- unity/TinyConsequences2/ProjectSettings/ProjectSettings.asset`; fix what the pictures say in
-   `tc-s27int`.
-2. Land prospecting: merge `wip/s27-int` into `wip/s27-land` if it moved, fast-forward main to `wip/s27-land` (sim 108), write D2-190, 25 §8; regenerate
-   seed 2's year-300 and year-1,000 saves with the sim-108 binary (as `tc2/out/civ/s2_ac4`; `tc2/out/tools/s26/make_ac4.sh` has the flags; a new tag)
-   and point later shots/bookshots/realmsperf jobs at them.
-3. The terrain's cost (SESSION_HANDOFF "Session 27, context 2" -> Next 3: the woods block branched on wood with `SAMPLE_TEXTURE2D_GRAD`).
-4. Then by the shots: night clouds, the sea's broad sheen, age names that repeat, the faint straight line through Raimstead at the village view, a sound
-   for the meteor's fall, the person/place pages in the book's paper style.
+1. Read q6: webtest `s27web6` 9/9; `s27perf4/terrain.txt` (compare `s27perf2`'s x0.589/x0.660) and `recolour_running.txt`; `s27book6` pages and meteor.
+   Fill D2-196's pending numbers (DECISIONS, the paragraph ending "pending at the context handoff"). Read q7 `s27f7`.
+2. The frame by those numbers (SESSION_HANDOFF "Session 27, context 3" -> Next 3): the terrain's draws/vertices or soft-shadow taps if it is still large
+   paused; the colouring spread thinner or cached per patch if it costs a running world much. Then buildings (x0.84-0.88).
+3. Then by the shots: night lights from orbit, the sea's glint at the region view; keep judging A-E in real shots and Web builds.
 
 ## Rules that bite
+- **After a sim version change, rebuild main's headless (`tc2/headless/app`) before a webtest**: its determinism check compares the browser with
+  `tc2/headless/app/bin/Release/net8.0/tc2.dll` (s27web5 failed against a stale sim-107 binary while the browser matched sim 108 bit for bit).
 - **Never retag job files with a broad `sed`** (session 26: `s/_sw1"/_stw1"/` also renamed a build job's binary dir, so its tests ran a missing binary and the
   whole chain behind it would have skipped). Pick fresh tags before generating jobs (`ls tc2/out/civ | grep _TAG`), and after any edit grep every queued job for
   its binary, flag and run names.
