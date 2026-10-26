@@ -179,8 +179,10 @@ namespace TC2.Game
                     default: c = Color.Lerp(Dry(summer[shade], dry * 0.8f, 1.6f, 0.015f, 0.90f, 0.60f), autumn[shade], turn); break;
                 }
                 LeafTints[g] = c;
-                ConiferTints[g] = Color.Lerp(Dry(needles[shade], dry * 0.5f, 1.35f, 0f, 0.95f, 0.75f), snow, sn / 3f * 0.55f);
-                BareTints[g] = Color.Lerp(new Color(0.42f + 0.03f * shade, 0.35f + 0.02f * shade, 0.29f), snow, sn / 3f * 0.35f);
+                // (session 27) the snow itself lies on the boughs' upper faces (the instanced shader, from _Anim < 0: SnowOn); the tree's own colour
+                // only a little greyed by it - evergreens stay dark under snow (a 55 % blend toward white had made the snowy woods pale sage)
+                ConiferTints[g] = Color.Lerp(Dry(needles[shade], dry * 0.5f, 1.35f, 0f, 0.95f, 0.75f), snow, sn / 3f * 0.10f);
+                BareTints[g] = Color.Lerp(new Color(0.42f + 0.03f * shade, 0.35f + 0.02f * shade, 0.29f), snow, sn / 3f * 0.15f);
             }
         }
 
@@ -519,7 +521,9 @@ namespace TC2.Game
                     // the season where this is (the leaves' year: 0 spring ... 0.5 late summer ... 0.875 winter)
                     float f = P.SinLat[cell] < 0 ? (yearNorth + 0.5f) % 1f : yearNorth;
                     bool bloom = f > 0.04f && f < 0.48f && tm > -2f, heatherBloom = f > 0.38f && f < 0.62f;
-                    int leafGroup = f < 0.5f || tm > 20f ? -1 : (f < 0.875f ? 3 : 5);   // (shrubs: summer, autumn, winter twigs)
+                    // (shrubs: summer, autumn, winter twigs - turning when the trees above them do, the woods' leaves past 0.15: they had gone russet at the
+                    // season's first day under trees still green)
+                    int leafGroup = f < 0.57f || tm > 20f ? -1 : (f < 0.875f ? 3 : 5);
                     // what the ground is: snow (its colour), packed earth and rock, beach sand (the land's own, from Colourise)
                     float g = col.g, r = col.r, bl = col.b;
                     bool snowy = bl > 0.55f && g > 0.55f;
@@ -926,9 +930,9 @@ namespace TC2.Game
                         int g = p.TreeGroup[t];
                         int form = p.TreeKind[t], kind = form / ProcMeshes.TreeVariants;
                         if (kind == ProcMeshes.TreeStump) { StumpsOnPatches++; if (close) { _forest[form].Add(0, Color.white, p.Trees[t]); StumpsDrawn++; } }   // (stumps near the camera only: W-FELL)
-                        else if (ProcMeshes.Needles(kind)) _forest[close ? form : FarForms + kind].Add(g, ConiferTints[g], p.Trees[t]);
-                        else if (kind == ProcMeshes.TreeSnag) _forest[close ? form : FarForms + kind].Add(g, BareTints[g], p.Trees[t]);   // (a dead tree keeps its own grey)
-                        else if (((g >> 2) & 7) >= 7) _forest[BareBroad].Add(g, BareTints[g], p.Trees[t]);
+                        else if (ProcMeshes.Needles(kind)) _forest[close ? form : FarForms + kind].Add(g, ConiferTints[g], p.Trees[t], 0f, SnowOn(g, 0.95f));
+                        else if (kind == ProcMeshes.TreeSnag) _forest[close ? form : FarForms + kind].Add(g, BareTints[g], p.Trees[t], 0f, SnowOn(g, 0.6f));   // (a dead tree keeps its own grey)
+                        else if (((g >> 2) & 7) >= 7) _forest[BareBroad].Add(g, BareTints[g], p.Trees[t], 0f, SnowOn(g, 0.6f));
                         else if (!close) _forest[FarForms + kind].Add(g, LeafTints[g], p.Trees[t]);
                         else _forest[form].Add(g, LeafTints[g], p.Trees[t]);
                     }
@@ -936,6 +940,10 @@ namespace TC2.Game
                 }
             }
         }
+
+        /// <summary>(session 27) The snow lying on a tree's boughs, for the instanced shader (its _Anim, negative: how much, 0..1): the group's snow
+        /// (0-3) scaled by how much a kind's boughs hold.</summary>
+        static float SnowOn(int g, float holds) => -((g >> 5) & 3) / 3f * holds;
 
         void DrawForest()
         {

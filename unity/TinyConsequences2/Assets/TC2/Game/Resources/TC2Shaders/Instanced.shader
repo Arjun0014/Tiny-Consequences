@@ -191,7 +191,7 @@ Shader "TC2/Instanced"
             float _TC2NightLift;
 
             struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; half4 color : COLOR; UNITY_VERTEX_INPUT_INSTANCE_ID };
-            struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; float3 normalWS : TEXCOORD1; half4 color : COLOR; half4 base : TEXCOORD2; half emission : TEXCOORD3; half4 wall : TEXCOORD4; };
+            struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; float3 normalWS : TEXCOORD1; half4 color : COLOR; half4 base : TEXCOORD2; half emission : TEXCOORD3; half4 wall : TEXCOORD4; half snow : TEXCOORD5; };
 
             Varyings vert(Attributes v)
             {
@@ -201,6 +201,7 @@ Shader "TC2/Instanced"
                 o.wall = (half4)UNITY_ACCESS_INSTANCED_PROP(PerInstance, _WallColor);
                 o.emission = (half)UNITY_ACCESS_INSTANCED_PROP(PerInstance, _Emission);
                 float anim = UNITY_ACCESS_INSTANCED_PROP(PerInstance, _Anim);
+                o.snow = (half)saturate(-anim);   // (session 27, W-FOREST: _Anim < 0 - a tree under snow, how much lies on its boughs)
                 float3 lp = v.positionOS.xyz;
                 float3 nos = v.normalOS;
                 if (anim > 0.5)
@@ -235,6 +236,9 @@ Shader "TC2/Instanced"
                 half wallM = step(0.15h, i.color.a) * step(i.color.a, 0.35h);
                 tint = lerp(tint, i.wall.rgb * baseC.a, wallM);
                 half3 albedo = i.color.rgb * tint;
+                // (session 27, W-FOREST) snow lies on what faces the sky - the tiers of a spruce white above, its needles dark beneath (before, the whole
+                // tree was paled toward white and the snowy woods read washed out)
+                albedo = lerp(albedo, half3(0.84h, 0.86h, 0.90h), i.snow * smoothstep(0.30h, 0.72h, dot(n, up)));
                 half wrap = saturate((dot(n, l.direction) + 0.2h) / 1.2h);
                 // _Emission > 0 lights the whole object (fire); < 0 lights only its windows (vertex alpha 0.5)
                 half window = step(0.4h, i.color.a) * step(i.color.a, 0.6h);
