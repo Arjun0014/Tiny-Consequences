@@ -3,7 +3,8 @@
 // version) is put into the game's IndexedDB store as saved a moment ago with the offline mode paused, as realmsperf.mjs does, then the game loads
 // it; each part the book opens is written then (its time is in the console: "[TC2] book: part ...").
 // Usage: node tc2/scripts/bookshots.mjs --save F.tc2 --lat DEG --lon DEG [--views region:6000,orbit:22000,village:1400]
-//        [--book "-1,0:0,1:0,2:0,3:0,4:0,5:0,6:0,7:0"] [--tag NAME] [--webgl2]
+//        [--book "-1,0:0,1:0,2:0,3:0,4:0,5:0,6:0,7:0"] [--tag NAME] [--webgl2] [--play]
+// --play (session 27): the pointer over a home, a lightning aimed, cast and its "Your hand", a storm aimed from afar (play_*.png).
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -82,6 +83,35 @@ try {
     await page.screenshot({ path: f });
     report.shots.push(f);
     console.log('shot ' + v.name);
+  }
+  if (flag('--play')) {
+    // (session 27) the hand on the world: the pointer over the greatest place's first household's home (its house marked, its family ringed, the
+    // tag), a lightning aimed there (its reach on the ground and the places it would touch), cast (the burst), then "Your hand" a few seconds on;
+    // a storm aimed from afar
+    const snap = async (name) => { const f = path.join(outDir, `${name}.png`); await page.screenshot({ path: f }); report.shots.push(f); console.log('shot ' + name); };
+    await cmd('home big 140');
+    await page.waitForTimeout(5000);
+    await page.mouse.move(800, 450);
+    await page.waitForTimeout(1500);
+    await snap('play_hover');
+    await cmd('aim 0');
+    await page.mouse.move(830, 470);
+    await page.waitForTimeout(1500);
+    await snap('play_aim');
+    await cmd('speed 4');   // (10 min/s: the cast applied and its first consequences lived)
+    await page.mouse.down(); await page.waitForTimeout(80); await page.mouse.up();   // (held a few frames to reach the game)
+    await page.waitForTimeout(250);
+    await snap('play_cast');
+    await page.waitForTimeout(4000);
+    await snap('play_hand');
+    await cmd('speed 0');
+    await cmd(`look ${lat} ${lon} 6000`);
+    await page.waitForTimeout(3000);
+    await cmd('aim 1');
+    await page.mouse.move(760, 430);
+    await page.waitForTimeout(1500);
+    await snap('play_aimfar');
+    await cmd('aim -1');
   }
   await cmd(`look ${lat} ${lon} 6000`);
   for (const pg of pages) {
