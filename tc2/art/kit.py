@@ -359,6 +359,19 @@ def person(name, seed=9):
     k.cyl((0, 0, 1.52), 0.06, 0.06, 0.1, skin, seg=6)                           # neck
     k.blob((0, 0, 1.72), 0.13, skin, subdiv=2, jitter=0.0, squash=1.1)
     k.blob((0, 0.02, 1.78), 0.135, hair, subdiv=1, jitter=0.0, squash=0.75)
+    # (session 27: people recognisable) who they are, in what they wear - everything here stays on the trunk (behind it or on the head) so the
+    # game's poses lean it with the body (Instanced.shader: arms |x| > 0.215 within 0.09 of the body's plane, legs below 0.88 m)
+    livery = srgb(1.0, 1.0, 1.0, 0.25)    # tinted with the village's polity colour by the game (the walls' channel, alpha 0.25)
+    if name == "person_lord":
+        # the first among a village's people: a mantle over the shoulders and down the back, a gold circlet
+        k.box((0, -0.15, 1.20), (0.50, 0.05, 0.62), livery, bevel=0.02)                # the mantle's back
+        k.box((0, -0.02, 1.47), (0.50, 0.30, 0.08), livery, bevel=0.02)                # over the shoulders
+        k.cyl((0, 0.01, 1.80), 0.145, 0.15, 0.06, srgb(0.85, 0.66, 0.22), seg=10)    # the circlet
+    elif name == "person_sworn":
+        # a man sworn to a village's first: an iron cap and a round shield slung on the back, in the village's colour
+        k.blob((0, 0.01, 1.80), 0.145, srgb(0.42, 0.44, 0.47), subdiv=1, jitter=0.0, squash=0.62)   # the cap
+        k.cyl((0, -0.17, 1.18), 0.25, 0.25, 0.05, livery, seg=12, rot=Matrix.Rotation(math.pi / 2, 4, "X"))   # the shield, face to the back
+        k.cyl((0, -0.20, 1.18), 0.06, 0.06, 0.03, srgb(0.55, 0.52, 0.46), seg=8, rot=Matrix.Rotation(math.pi / 2, 4, "X"))   # its boss
     return k.finish()
 
 
@@ -1555,6 +1568,8 @@ def build_all():
     objs.append(birch("tree_birch", 9.0, 25))
     objs.append(bush("bush", 26))
     objs.append(person("person"))
+    objs.append(person("person_lord"))    # (session 27: the first among a village's people)
+    objs.append(person("person_sworn"))   # (session 27: a man sworn to them)
     objs.append(fence("fence"))
     objs.append(haystack("haystack"))
     objs.append(rick("rick"))                  # the sheaves in the stackyard (C3.7b)

@@ -240,6 +240,7 @@ namespace TC2.Game
             // shore they haul out on now (a daylight shot)
             if (Arg("-tc2ground") != null) WorldObjectsView.ShowGround = true;   // (C13.3 tools: the simulation's ground under each home)
             if (Arg("-tc2realms") != null) RealmsView.On = true;   // (D2-167: the realms map layer on, as the player's R)
+            if (Arg("-tc2choose") == "head" && sid != 0) WorldObjectsView.ShotChosen = w.Settlements.Get(sid).Head;   // (session 27: the framed village's first ringed, and their household)
             string viewsArg = Arg("-tc2views") ?? "";
             if (viewsArg.Length > 0 && System.Array.TrueForAll(viewsArg.Split(','), v => v.StartsWith("seals")))
             {

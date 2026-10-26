@@ -28,6 +28,13 @@ namespace TC2.Game
         public static double MuckLargestKg;
         public static TC2.Core.Foundation.Vec3d MuckLargestAt;
         readonly Dictionary<int, float> _muckShare = new Dictionary<int, float>();   // (each household's share of its village's muck, by the grass its beasts eat)
+        Instancer _lordsP, _swornP, _rings;
+        /// <summary>(session 27) The person chosen (their page open), under the pointer, and the home chosen - set by the HUD each frame: they and their
+        /// households are ringed on the ground in their colours.</summary>
+        public static int Chosen, Pointed, ChosenHome;
+        /// <summary>(Shots: `--choose head`) a person ringed as if chosen when no page is open.</summary>
+        public static int ShotChosen;
+        readonly HashSet<int> _lordSeats = new HashSet<int>();
         Instancer _people, _granaries, _wells, _ricks, _flames, _huts, _tents, _ruins, _beached, _afloat, _walls, _woodpiles;
         Instancer _stoneWalls, _towers;   // (C7.2: rings laid in stone, their gate and wall towers)
         Instancer _ore;   // (C5.1, F9.6: the ore bodies people have seen or the god laid bare - green and blue stone, rust-red lumps)
@@ -164,6 +171,9 @@ namespace TC2.Game
             _mat = Materials.Load("Instanced");
             _mat.enableInstancing = true;
             _people = new Instancer(Models.Get("person", ProcMeshes.Person), _mat, true);
+            _lordsP = new Instancer(Models.Get("person_lord", ProcMeshes.Person), _mat, true);    // (session 27: the first among a village's people)
+            _swornP = new Instancer(Models.Get("person_sworn", ProcMeshes.Person), _mat, true);   // (and the men sworn to them)
+            _rings = new Instancer(Ring(), _mat, false);                                          // (the chosen, the pointed at, their families)
             _homes = new Instancer[PlanNames.Length * RoofNames.Length];
             for (int p = 0; p < PlanNames.Length; p++)
                 for (int r = 0; r < RoofNames.Length; r++) _homes[p * RoofNames.Length + r] = new Instancer(Models.Get("home_" + PlanNames[p] + "_" + RoofNames[r], ProcMeshes.House), _mat, true);
@@ -363,7 +373,7 @@ namespace TC2.Game
             }
             if ((Off & 1) == 0) for (int i = 0; i < _trees.Length; i++) _trees[i].Draw(cam);
             _flames.Draw(cam);
-            if ((Off & 2) == 0) { _people.Draw(cam); _afloat.Draw(cam); _afloatP.Draw(cam); _floors.Draw(cam); }
+            if ((Off & 2) == 0) { _people.Draw(cam); _lordsP.Draw(cam); _swornP.Draw(cam); _rings.Draw(cam); _afloat.Draw(cam); _afloatP.Draw(cam); _floors.Draw(cam); }
             if ((Off & 4) == 0) { _beached.Draw(cam); _beachedP.Draw(cam); }
             EmitSmoke(w);
             EmitLights();
@@ -1759,10 +1769,73 @@ namespace TC2.Game
             }
         }
 
+        const byte RankCommon = 0, RankFirst = 1, RankSworn = 2, RankFirstHousehold = 3;
+
+        /// <summary>
+        /// (session 27: people recognisable) What a person wears, read from who they are: their household's own dye, so a family reads as one at a
+        /// glance (each wearing it a little faded or fresh); the first among their village's people in its polity's colour with a mantle and a
+        /// circlet (`person_lord`), a little taller - a lord's first, whom other villages pay, taller still; the men sworn to that first in the same
+        /// colour with an iron cap and a shield (`person_sworn`: their livery); the first's own household in the colour without them; children in a
+        /// lighter shade of their household's. Reads state only.
+        /// </summary>
+        Color Livery(TC2.Core.Simulation.World w, in Person p, float age, out int key, out float stature, out byte rank)
+        {
+            stature = 1f; rank = RankCommon;
+            if (w.Settlements.Exists(p.Home))
+            {
+                ref var s = ref w.Settlements.Get(p.Home);
+                if (s.Head == p.Id)
+                {
+                    rank = RankFirst; key = 50;
+                    stature = _lordSeats.Contains(p.Home) ? 1.2f : 1.1f;
+                    return Color.Lerp(PolityColour(w, p.Home), Color.white, 0.08f);
+                }
+                if (p.Sworn != 0 && p.Sworn == s.Head) { rank = RankSworn; key = 51; return PolityColour(w, p.Home); }
+                if (p.Household != 0 && p.Household == s.HeadHh)
+                {
+                    rank = RankFirstHousehold; key = 52;
+                    Color c = PolityColour(w, p.Home);
+                    return age < 14f ? Color.Lerp(c, Dyes[0], 0.4f) : c;
+                }
+            }
+            ulong who = p.Household != 0 ? (ulong)p.Household * 0x9E3779B97F4A7C15UL : (ulong)p.Id * 0x2545F4914F6CDD1DUL;
+            key = (int)(KeyedRng.Mix(who) % (ulong)Dyes.Length);
+            float wear = 0.88f + 0.22f * (float)KeyedRng.Unit(KeyedRng.Mix((ulong)p.Id * 0xD6E8FEB86659FD93UL));
+            Color d = Dyes[key] * wear; d.a = 1f;
+            return age < 14f ? Color.Lerp(d, Dyes[0], 0.35f) : d;
+        }
+
+        /// <summary>A flat ring on the ground (a person's mark when chosen): 1.2 m across, a band 0.16 m wide.</summary>
+        static Mesh Ring()
+        {
+            const int seg = 28;
+            var v = new Vector3[seg * 2]; var n = new Vector3[seg * 2]; var col = new Color[seg * 2]; var t = new int[seg * 6];
+            for (int i = 0; i < seg; i++)
+            {
+                float a = i * Mathf.PI * 2f / seg, c = Mathf.Cos(a), s = Mathf.Sin(a);
+                v[i * 2] = new Vector3(c * 0.44f, 0.03f, s * 0.44f); v[i * 2 + 1] = new Vector3(c * 0.60f, 0.03f, s * 0.60f);
+                n[i * 2] = n[i * 2 + 1] = Vector3.up; col[i * 2] = col[i * 2 + 1] = new Color(1f, 1f, 1f, 1f);
+                int j = (i + 1) % seg;
+                t[i * 6] = i * 2; t[i * 6 + 1] = j * 2; t[i * 6 + 2] = i * 2 + 1;
+                t[i * 6 + 3] = i * 2 + 1; t[i * 6 + 4] = j * 2; t[i * 6 + 5] = j * 2 + 1;
+            }
+            var m = new Mesh { name = "tc2-ring", vertices = v, normals = n, colors = col, triangles = t };
+            m.RecalculateBounds();
+            return m;
+        }
+
         void RebuildPeople(TC2.Core.Simulation.World w)
         {
             var P = w.Planet;
-            _people.Clear(); _afloat.Clear(); _afloatP.Clear(); _hulls.Clear(); _handcarts.Clear(); _oxcarts.Clear(); _cartLoads.Clear(); _oxen.Clear();
+            _people.Clear(); _lordsP.Clear(); _swornP.Clear(); _rings.Clear(); _afloat.Clear(); _afloatP.Clear(); _hulls.Clear(); _handcarts.Clear(); _oxcarts.Clear(); _cartLoads.Clear(); _oxen.Clear();
+            // (session 27) the villages others pay - their firsts are lords - and the households ringed: the chosen person's, the one under the pointer's,
+            // the chosen home's
+            _lordSeats.Clear();
+            for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o)) { int lord = w.Settlements.Get(o).Lord; if (lord != 0) _lordSeats.Add(lord); }
+            int chosen = Chosen != 0 ? Chosen : ShotChosen;
+            int chosenHh = chosen != 0 && w.People.Exists(chosen) ? w.People.Get(chosen).Household : 0;
+            int pointedHh = Pointed != 0 && w.People.Exists(Pointed) ? w.People.Get(Pointed).Household : 0;
+            int homeHh = ChosenHome != 0 && w.Buildings.Exists(ChosenHome) ? w.Buildings.Get(ChosenHome).Household : 0;
             _floors.Clear(); _floorsUsed.Clear();
             PeopleDrawn = 0; PeopleBusy = 0; BoatsAfloat = 0; PeopleCulled = 0;
             float waterR = (float)(P.Radius + Ground.WaterHeight(P, P.SeaLevel));
@@ -1837,8 +1910,7 @@ namespace TC2.Game
                 if (!Presence.Of(w, in p, t, out d, out Vec3d face, out byte pose, out bool moving)) continue;
                 pos = PlanetGeo.Surface(P, d);
                 float sc = (age < 12 ? 0.55f + age * 0.038f : 1f) * PeopleScale(pos);   // a little larger than life, to be read
-                int dye = (int)(KeyedRng.Mix((ulong)id * 0x2545F4914F6CDD1DUL) % (ulong)Dyes.Length);
-                bool head = w.Settlements.Exists(p.Home) && w.Settlements.Get(p.Home).Head == p.Id;   // (the village's first: its polity's colour, D2-152)
+                Color cloth = Livery(w, in p, age, out int dye, out float stature, out byte rank);
                 float yaw = (id * 53) % 360;
                 {
                     Vector3 up = pos.normalized;
@@ -1847,7 +1919,18 @@ namespace TC2.Game
                     else flat = Vector3.ProjectOnPlane(PlanetGeo.ToVector(face), up);
                     if (flat.sqrMagnitude > 1e-6f) yaw = Vector3.SignedAngle(Vector3.ProjectOnPlane(PlanetGeo.Upright(pos, 0) * Vector3.forward, up), flat, up);
                 }
-                _people.Add(head ? 50 + (moving ? 100 : 0) : dye + (moving ? 100 : 0), head ? PolityColour(w, p.Home) : Dyes[dye], Matrix4x4.TRS(pos, PlanetGeo.Upright(pos, yaw), Vector3.one * sc), 0f, pose);
+                var rot = PlanetGeo.Upright(pos, yaw);
+                if (rank == RankFirst) _lordsP.Add(dye + (moving ? 100 : 0), cloth, Color.Lerp(PolityColour(w, p.Home), Color.black, 0.32f), Matrix4x4.TRS(pos, rot, Vector3.one * sc * stature), 0f, pose);
+                else if (rank == RankSworn) _swornP.Add(dye + (moving ? 100 : 0), cloth, Color.Lerp(PolityColour(w, p.Home), Color.white, 0.12f), Matrix4x4.TRS(pos, rot, Vector3.one * sc * stature), 0f, pose);
+                else _people.Add(dye + (moving ? 100 : 0), cloth, Matrix4x4.TRS(pos, rot, Vector3.one * sc * stature), 0f, pose);
+                // (session 27) the ring under the chosen and the pointed at, a fainter one under each of their households' people
+                int hh = p.Household;
+                bool me = id == chosen || id == Pointed, kin = hh != 0 && (hh == chosenHh || hh == pointedHh || hh == homeHh);
+                if (me || kin)
+                {
+                    Color ring = Color.Lerp(cloth, Color.white, 0.35f);
+                    _rings.Add(0, ring, Matrix4x4.TRS(pos + pos.normalized * 0.04f * sc, rot, Vector3.one * sc * (me ? 1.15f : 0.9f)), me ? 0.95f : 0.55f);
+                }
                 PeopleDrawn++;
                 if (Presence.Busy(pose) || moving) PeopleBusy++;
                 if (pose == Presence.Flail && p.At != 0 && w.Settlements.Exists(p.At) && _floorsUsed.Add(p.At))
