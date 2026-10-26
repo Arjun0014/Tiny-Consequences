@@ -51,7 +51,7 @@ namespace TC2.Tests.Core
             for (int i = 0; i < evs.Count; i++)
             {
                 Assert.IsTrue(w.History.TryGet(evs[i], out var e));
-                int k = life.IndexOf(HistoryText.Line(w, e), at, StringComparison.Ordinal);
+                int k = life.IndexOf(HistoryText.Dated(w, e), at, StringComparison.Ordinal);
                 Assert.GreaterOrEqual(k, at, "record " + i + " in its place");
                 at = k;
             }

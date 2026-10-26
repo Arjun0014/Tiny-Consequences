@@ -316,7 +316,8 @@ namespace TC2.Core.History
             if (evs == null || evs.Count == 0) return "Nothing of their life is kept in the history yet.\n";
             int from = System.Math.Max(0, evs.Count - max);
             if (from > 0) sb.Append("(... ").Append(from).Append(" earlier records)\n");
-            for (int i = from; i < evs.Count; i++) if (w.History.TryGet(evs[i], out var e)) sb.Append(HistoryText.Line(w, e)).Append('\n');
+            // (session 27) each record as the book dates it ("Year 12, late summer: ..."), not the feed's "Y12 d44 18:59 [Personal/People]"
+            for (int i = from; i < evs.Count; i++) if (w.History.TryGet(evs[i], out var e)) sb.Append(HistoryText.Dated(w, e)).Append('\n');
             return sb.ToString();
         }
 

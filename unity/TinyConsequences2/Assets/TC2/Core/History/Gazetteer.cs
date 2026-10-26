@@ -447,7 +447,7 @@ namespace TC2.Core.History
             var sb = new StringBuilder();
             int from = System.Math.Max(0, ids.Count - max);
             if (from > 0) sb.Append("(... ").Append(from).Append(" earlier records)\n");
-            for (int i = from; i < ids.Count; i++) if (w.History.TryGet(ids[i], out var e)) sb.Append(HistoryText.Line(w, e)).Append('\n');
+            for (int i = from; i < ids.Count; i++) if (w.History.TryGet(ids[i], out var e)) sb.Append(HistoryText.Dated(w, e)).Append('\n');   // (session 27: as the book dates them)
             return sb.ToString();
         }
 

@@ -724,53 +724,70 @@ namespace TC2.Game
 
         void Inspector(Rect r, TC2.Core.Simulation.World w)
         {
+            // (session 27) a card to read, not a dump of numbers: who they are and their standing, where they live and with whom, what they are doing,
+            // how they fare in words, what they know and are best at, the last of their life as the book dates it
             ref var p = ref w.People.Get(_selected);
             var sb = new StringBuilder();
-            string name = w.History.NameOf(EntityRef.Person(p.Id));
-            sb.Append("<b>").Append(name).Append("</b>, ").Append(p.AgeYears(w.Now).ToString("0", CultureInfo.InvariantCulture)).Append(p.Alive ? "" : " (died)").Append('\n');
-            sb.Append("home ").Append(w.History.NameOf(EntityRef.Settlement(p.Home))).Append(p.At == 0 ? ", on the road" : (p.At != p.Home ? ", visiting " + w.History.NameOf(EntityRef.Settlement(p.At)) : "")).Append('\n');
-            sb.Append("<b>").Append(HistoryText.Doing(w, in p)).Append("</b>\n");
-            sb.Append("until ").Append(SimTime.FormatShort(p.T1)).Append("   health ").Append(p.Health.ToString("0.00", CultureInfo.InvariantCulture)).Append("   fed ").Append(p.Nutrition.ToString("0.00", CultureInfo.InvariantCulture)).Append("   reserve ").Append(p.Reserve.ToString("0", CultureInfo.InvariantCulture)).Append(" days\n");
-            if (p.Partner != 0) sb.Append("partner ").Append(w.History.NameOf(EntityRef.Person(p.Partner))).Append('\n');
+            sb.Append("<b>").Append(Biography.Title(w, p.Id)).Append("</b>\n");
+            string standing = Biography.Standing(w, p.Id);
+            if (standing.Length > 0) sb.Append("<color=#f2c35f>").Append(Cap(standing)).Append("</color>\n");
+            sb.Append("of ").Append(w.History.NameOf(EntityRef.Settlement(p.Home)));
             if (w.Households.Exists(p.Household))
             {
                 var hh = w.Households.Get(p.Household);
-                sb.Append("household: ").Append(w.Members(p.Household).Count).Append(" people, ").Append(hh.Shelter == Construction.House ? "a house" : hh.Shelter == Construction.Hut ? "a hut" : "a camp");
-                int cattle = 0, goats = 0, pigs = 0; var beasts = w.BeastsOf(p.Household);
-                for (int i = 0; i < beasts.Count; i++) { byte k = w.Beasts.Get(beasts[i]).Kind; if (k == Livestock.Cattle) cattle++; else if (k == Livestock.Goat) goats++; else pigs++; }
-                if (cattle + goats + pigs > 0) sb.Append(", ").Append(cattle).Append(" cattle, ").Append(goats).Append(" goats, ").Append(pigs).Append(" pigs");
-                sb.Append(", larder ").Append(hh.Larder.ToString("0", CultureInfo.InvariantCulture))
-                  .Append(", cooked ").Append(hh.Ready.ToString("0.0", CultureInfo.InvariantCulture))
-                  .Append(", water ").Append(hh.Water.ToString("0", CultureInfo.InvariantCulture)).Append(" l")
-                  .Append(", ").Append(hh.Indoor.ToString("0", CultureInfo.InvariantCulture)).Append(" C indoors")
-                  .Append(", goods ").Append((hh.Gear / System.Math.Max(1, w.Members(p.Household).Count)).ToString("0.00", CultureInfo.InvariantCulture)).Append(" a head").Append('\n');
+                int n = w.Members(p.Household).Count;
+                sb.Append(", in the ").Append(hh.Shelter == Construction.House ? "house" : hh.Shelter == Construction.Hut ? "hut" : "camp").Append(" of the ")
+                  .Append(HistoryText.Plural(w.History.NameOf(EntityRef.Household(p.Household)))).Append(" (").Append(n).Append(n == 1 ? " soul)" : " souls)");
             }
-            if (p.Sick != 0)
-                sb.Append(p.SickPhase == TC2.Core.Health.Disease.Latent ? "carrying " : "sick with ").Append(w.History.NameOf(new EntityRef(EntityKind.Pathogen, p.Sick))).Append('\n');
-            if (p.KNets >= 0.1f || p.KLoom >= 0.1f || p.KQuern >= 0.1f || p.KPottery >= 0.1f || p.KArd >= 0.1f || p.KMetal >= 0.1f || p.KIron >= 0.1f || p.KBoat >= 0.1f)
+            sb.Append(p.At == 0 ? " - on the road" : p.At != p.Home ? " - visiting " + w.History.NameOf(EntityRef.Settlement(p.At)) : "").Append('\n');
+            sb.Append("<b>").Append(HistoryText.Doing(w, in p)).Append("</b>\n");
+            if (p.Alive)
             {
-                sb.Append("knows:");
-                if (p.KNets >= 0.1f) sb.Append(" nets ").Append(p.KNets.ToString("0.00", CultureInfo.InvariantCulture));
-                if (p.KLoom >= 0.1f) sb.Append(" loom ").Append(p.KLoom.ToString("0.00", CultureInfo.InvariantCulture));
-                if (p.KQuern >= 0.1f) sb.Append(" quern ").Append(p.KQuern.ToString("0.00", CultureInfo.InvariantCulture));
-                if (p.KPottery >= 0.1f) sb.Append(" pots ").Append(p.KPottery.ToString("0.00", CultureInfo.InvariantCulture));
-                if (p.KArd >= 0.1f) sb.Append(" ard ").Append(p.KArd.ToString("0.00", CultureInfo.InvariantCulture));
-                if (p.KMetal >= 0.1f) sb.Append(" copper ").Append(p.KMetal.ToString("0.00", CultureInfo.InvariantCulture));
-                if (p.KIron >= 0.1f) sb.Append(" iron ").Append(p.KIron.ToString("0.00", CultureInfo.InvariantCulture));
-                if (p.KBoat >= 0.1f) sb.Append(" boats ").Append(p.KBoat.ToString("0.00", CultureInfo.InvariantCulture));
+                string health = p.Sick != 0 ? (p.SickPhase == TC2.Core.Health.Disease.Latent ? "carrying " : "sick with ") + w.History.NameOf(new EntityRef(EntityKind.Pathogen, p.Sick))
+                              : p.Health >= 0.9 ? "in good health" : p.Health >= 0.6 ? "unwell" : p.Health >= 0.3 ? "ailing" : "near death";
+                string fed = p.Nutrition >= 0.8 ? "well fed" : p.Nutrition >= 0.5 ? "hungry" : "starving";
+                sb.Append(Cap(health)).Append(", ").Append(fed);
+                if (p.Partner != 0) sb.Append("; partner ").Append(w.History.NameOf(EntityRef.Person(p.Partner)));
                 sb.Append('\n');
             }
-            sb.Append("skills: farming ").Append(p.SkFarm.ToString("0.00", CultureInfo.InvariantCulture)).Append(", wood ").Append(p.SkWood.ToString("0.00", CultureInfo.InvariantCulture)).Append(", hunting ").Append(p.SkHunt.ToString("0.00", CultureInfo.InvariantCulture)).Append(", fishing ").Append(p.SkFish.ToString("0.00", CultureInfo.InvariantCulture))
-              .Append(p.SkFight > 0.005f ? ", fighting " + p.SkFight.ToString("0.00", CultureInfo.InvariantCulture) : "").Append(p.Fights > 0 ? " (" + p.Fights + (p.Fights == 1 ? " fight" : " fights") + " lived through)" : "")
-              .Append("   trips ").Append(p.Visits).Append('\n');
-            var evs = w.History.EventsOf(EntityRef.Person(p.Id));
-            if (evs != null)
+            if (w.Households.Exists(p.Household))
             {
-                sb.Append("<b>life</b>\n");
-                for (int i = System.Math.Max(0, evs.Count - 5); i < evs.Count; i++)
-                    if (w.History.TryGet(evs[i], out var e)) sb.Append(HistoryText.Line(w, e)).Append('\n');
+                var hh = w.Households.Get(p.Household);
+                int n = System.Math.Max(1, w.Members(p.Household).Count);
+                int cattle = 0, goats = 0, pigs = 0; var beasts = w.BeastsOf(p.Household);
+                for (int i = 0; i < beasts.Count; i++) { byte k = w.Beasts.Get(beasts[i]).Kind; if (k == Livestock.Cattle) cattle++; else if (k == Livestock.Goat) goats++; else pigs++; }
+                var have = new System.Collections.Generic.List<string>();
+                if (cattle > 0) have.Add(cattle + " cattle");
+                if (goats > 0) have.Add(goats + (goats == 1 ? " goat" : " goats"));
+                if (pigs > 0) have.Add(pigs + (pigs == 1 ? " pig" : " pigs"));
+                double days = hh.Larder / n;
+                sb.Append("Their household: ").Append(have.Count > 0 ? string.Join(", ", have.ToArray()) + "; " : "").Append(days >= 1.0 ? "food at home for " + days.ToString("0", CultureInfo.InvariantCulture) + " days" : "little food at home").Append('\n');
+            }
+            var knows = new System.Collections.Generic.List<string>();
+            if (p.KNets >= 0.5f) knows.Add("nets");
+            if (p.KLoom >= 0.5f) knows.Add("the loom");
+            if (p.KQuern >= 0.5f) knows.Add("the quern");
+            if (p.KPottery >= 0.5f) knows.Add("pottery");
+            if (p.KArd >= 0.5f) knows.Add("the plough");
+            if (p.KMetal >= 0.5f) knows.Add("copper");
+            if (p.KIron >= 0.5f) knows.Add("iron");
+            if (p.KBoat >= 0.5f) knows.Add("boats");
+            float best = p.SkFarm; string bestAt = "farming";
+            if (p.SkWood > best) { best = p.SkWood; bestAt = "woodwork"; }
+            if (p.SkHunt > best) { best = p.SkHunt; bestAt = "hunting"; }
+            if (p.SkFish > best) { best = p.SkFish; bestAt = "fishing"; }
+            if (p.SkFight > best) { best = p.SkFight; bestAt = "fighting"; }
+            if (knows.Count > 0 || best >= 0.3f)
+                sb.Append(knows.Count > 0 ? "Knows " + string.Join(", ", knows.ToArray()) + (best >= 0.3f ? "; " : "") : "").Append(best >= 0.3f ? "best at " + bestAt : "")
+                  .Append(p.Fights > 0 ? " (" + p.Fights + (p.Fights == 1 ? " fight" : " fights") + " lived through)" : "").Append('\n');
+            var evs = w.History.EventsOf(EntityRef.Person(p.Id));
+            if (evs != null && evs.Count > 0)
+            {
+                sb.Append("<b>Of late</b>\n");
+                for (int i = System.Math.Max(0, evs.Count - 3); i < evs.Count; i++)
+                    if (w.History.TryGet(evs[i], out var e)) sb.Append(HistoryText.Dated(w, e)).Append('\n');
                 for (int i = evs.Count - 1; i >= 0; i--)
-                    if (w.History.TryGet(evs[i], out var e) && e.Kind == HistoryKind.JourneyInterrupted) { sb.Append("<b>why?</b>\n").Append(HistoryText.Why(w, e.Id)); break; }
+                    if (w.History.TryGet(evs[i], out var e) && e.Kind == HistoryKind.JourneyInterrupted) { sb.Append("<b>Why?</b>\n").Append(HistoryText.Why(w, e.Id)); break; }
             }
             GUILayout.BeginArea(r, _box);
             GUILayout.Label(sb.ToString(), _small);
