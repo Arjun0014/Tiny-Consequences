@@ -16,9 +16,10 @@ namespace TC2.Game
         public static float GlShadowReach = 1.6f;  // and its shadow distance per metre of the camera's height
         public static int GpuCascades = 4;         // WebGPU's (and the desktop's) shadow cascades (tools: the bridge's `shadow`)
         public static float GpuShadowReach = 3.2f; // and their shadow distance per metre of the camera's height
-        /// <summary>Tools (the frame pass, 14 §7; the bridge's `shadowlite`): above 3 km, two cascades over twice the camera's height - every visible building of a great
-        /// world was drawn into four cascades out to 7 km at the region view (the shadow layer x0.53-0.69 of the frame); off: as above.</summary>
-        public static bool ShadowLite;
+        /// <summary>The light shadows (the player's setting "lighter shadows from high up", the bridge's `shadowlite`; session 27: the default): four
+        /// cascades only below 300 m, two below 900 m, one above, over reaches matched to the view - each cascade is a pass over every caster (s27perf:
+        /// one cascade x1.51 of the village view's frame on the integrated GPU); off: four cascades over 3.2x the camera's height at every view.</summary>
+        public static bool ShadowLite = true;
 
         public SimHost Host;
         public CameraRig Rig;
@@ -110,10 +111,14 @@ namespace TC2.Game
                 // the WebGL2 fallback draws its shadows nearer and in two cascades: there the shadow pass of the woods was the
                 // frame (37 fps in the village view, 60 without shadows; WebGPU keeps four cascades)
                 bool gl = SystemInfo.graphicsDeviceType == GraphicsDeviceType.OpenGLES3;
-                bool lite = ShadowLite && !gl && altitude > 3000f;
-                int cascades = gl ? GlCascades : lite ? Mathf.Min(2, GpuCascades) : GpuCascades;
+                // (session 27, s27perf on the integrated GPU: each cascade is a pass over every caster - one cascade x1.51 of the village view's frame,
+                // two x1.29, while halving the reach gave x1.02) the light shadows, the default: four cascades only close in, where a shadow's detail
+                // shows (below 300 m), two below 900 m, one above, each over a reach matched to the view
+                bool lite = ShadowLite && !gl;
+                int cascades = gl ? GlCascades : !lite ? GpuCascades : altitude < 300f ? GpuCascades : altitude < 900f ? 2 : 1;
+                float reach = !lite ? GpuShadowReach : altitude < 300f ? GpuShadowReach : altitude < 900f ? 2.0f : 1.25f;
                 if (urp.shadowCascadeCount != cascades) urp.shadowCascadeCount = cascades;
-                urp.shadowDistance = gl ? Mathf.Clamp(altitude * GlShadowReach, 200f, 3000f) : Mathf.Clamp(altitude * (lite ? 2.0f : GpuShadowReach), 250f, 7000f);
+                urp.shadowDistance = gl ? Mathf.Clamp(altitude * GlShadowReach, 200f, 3000f) : Mathf.Clamp(altitude * reach, 250f, 7000f);
             }
             // the air seen from afar (Atmosphere.shader): Rayleigh's blue scattered along each ray, in an atmosphere whose scale height goes
             // with the planet; it takes over from the views' haze and sky as the camera rises past the village view

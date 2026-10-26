@@ -34,7 +34,7 @@ namespace TC2.Game
         {
             AtmoH = Defaults[0]; AtmoTop = Defaults[1]; AtmoTau = Defaults[2]; AtmoMie = Defaults[3]; AtmoSun = Defaults[4]; AtmoGround = Defaults[5];
             CloudDeck = Defaults[6]; CloudCu = Defaults[7]; CloudStretch = Defaults[8]; CloudShade = Defaults[9]; CloudTile = Defaults[10]; CloudShadow = Defaults[11]; NightFar = Defaults[12];
-            Sky.ShadowLite = false;
+            Sky.ShadowLite = true;   // (session 27: the light shadows are the game's default - shots show what a player sees)
         }
 
         /// <summary>Sets a tunable by name (a shot's "~Name=value"); false when there is none of that name.</summary>
