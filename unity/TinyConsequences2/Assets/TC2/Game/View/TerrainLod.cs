@@ -1465,6 +1465,9 @@ namespace TC2.Game
                         float f = P.SinLat[c] < 0 ? (yearNorth + 0.5f) % 1f : yearNorth;
                         float leaves = f < 0.5f ? 0f : (f < 0.875f ? (f - 0.5f) / 0.375f * 0.8f : 1f);
                         leaves *= 1f - Edge(17f, 22f, tm);   // (no autumn in the tropics)
+                        // (session 27, W-FOREST) no green crowns over snow: where it still lies (an early spring's, a high place's) the broadleaves are bare
+                        // (s27f3: birches in full leaf on a snowfield, since the leaves' year counted spring as summer)
+                        leaves = Mathf.Max(leaves, Mathf.Clamp01((snow - 0.25f) * 2.5f));
                         // (W-FOREST pass 2b) the dry tropics' woodland is deciduous in the dry season: its leaves brown and fall as its soil dries
                         // (the simulation's own water: the rain belt follows the sun, PlanetSystems.Weather) - ForestTypes' thresholds, smoothed
                         // (their roots reach deeper than the grass's: the crowns brown after the grass, as the soil dries further)
