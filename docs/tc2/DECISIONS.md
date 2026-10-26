@@ -5908,8 +5908,9 @@ Rings and marks go when the HUD is hidden or the pointer is far (none left where
 
 **Evidence.** Shots on the integrated GPU, seed 2's year-300 world (`s27q1`: a lord village's sworn men at their training ground in crimson livery with
 caps and shields - a retinue; `s27q2`: Raimstead, a town of 1,050 - its market crowd in many household dyes, its standard in the realm's magenta);
-Unity C# compiles. The marks and flags are HUD-driven (IMGUI): judged in the Web build `s27web2` (`bookshots --play`: the pointer over the greatest
-place's first household's home).
+Unity C# compiles. The marks and flags are HUD-driven (IMGUI), judged in the Web build `s27web2` (9/9): the hovered home ringed in its household's
+colour with its tag (`s27book2 play_hover`); the flags at 1280x720 - where two unbound hamlets flew near pinks and read as one realm, so a village alone
+now flies none; the standing line (`Biography.Standing`, SwornTests) came after the build.
 
 ## D2-193 — 2026-10-26 — The History Book as a chronicle: weighted lines, an age's story and notes, Discoveries and Works, an open-book reader, eras on the timeline (25 §8 C; an observer)
 
