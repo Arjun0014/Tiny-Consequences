@@ -1794,7 +1794,10 @@ namespace TC2.Game
                     Puffs.Flame(pos + Quaternion.AngleAxis(k * 77f, up) * side * (0.35f * hgt), hgt * 0.6f, 0.9f, Mathf.Clamp01(0.2f + inten), Mathf.Repeat(seed + 0.37f, 1f));
                     Puffs.Flame(pos - Quaternion.AngleAxis(k * 77f, up) * side * (0.3f * hgt), hgt * 0.45f, 0.85f, inten * 0.8f, Mathf.Repeat(seed + 0.71f, 1f));
                     float rise = Mathf.Repeat(t * 0.12f + seed, 1f);
-                    Puffs.Add(pos + up * (hgt * (1.2f + 3.5f * rise)), hgt * (0.9f + 1.8f * rise), 0.30f * (1f - rise) * (0.4f + 0.6f * inten), 0.75f, 0.35f * (1f - rise), seed, 1f);
+                    // (its smoke enlarged at most twice with distance, the fire's light on it faint: s27book3 - a burning town's puffs, enlarged as its flames
+                    // up to six times, had filled half the sky in salmon pink)
+                    float sh = hgt / Mathf.Max(1f, ex) * Mathf.Min(ex, 2f);
+                    Puffs.Add(pos + up * (sh * (1.2f + 3.5f * rise)), sh * (0.9f + 1.8f * rise), 0.26f * (1f - rise) * (0.4f + 0.6f * inten), 0.75f, 0.15f * (1f - rise), seed, 1f);
                 }
             }
         }
