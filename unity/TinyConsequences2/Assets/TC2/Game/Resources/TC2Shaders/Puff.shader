@@ -107,12 +107,13 @@ Shader "TC2/Puff"
                 float alpha = saturate(body * 6.0) * saturate((1.0 - h) * 5.0) * saturate(p.y * 3.0 + 3.2);
                 if (alpha < 0.01) discard;
                 float heat = i.flame.y;
-                float core = saturate(body * 3.0) * (1.0 - h * 0.8) * (0.35 + 0.65 * heat);
-                // red-orange tongues round a white-yellow heart; only the heart bright beyond white (by day the whole tongue had been so bright that the
-                // tone curve drew it a pale cream cone)
-                half3 c = lerp(half3(0.80h, 0.14h, 0.02h), half3(1.0h, 0.46h, 0.06h), (half)saturate(core * 1.5));
-                c = lerp(c, half3(1.0h, 0.90h, 0.58h), (half)saturate(core * 2.4 - 1.2));
-                c *= 1.25h + (half)(core * (1.6 + 1.4 * heat));
+                // red at the tongue's edges, orange through its body, a small yellow-white heart low in its thickest part; only the heart bright beyond
+                // white (by day a tongue bright all through had been drawn by the tone curve as a pale cream cone - twice: the heart had covered it)
+                float mid = saturate(body * 5.0);
+                float heart = saturate((body - 0.20) * 4.0) * saturate(1.0 - h * 1.3) * (0.4 + 0.6 * heat);
+                half3 c = lerp(half3(0.85h, 0.20h, 0.03h), half3(1.0h, 0.48h, 0.07h), (half)mid);
+                c = lerp(c, half3(1.0h, 0.86h, 0.52h), (half)heart);
+                c *= (half)(1.1 + 0.5 * mid + 1.6 * heart);
                 return half4(c, (half)(alpha * i.data.x));
             }
 
