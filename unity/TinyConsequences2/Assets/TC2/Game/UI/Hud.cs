@@ -1165,6 +1165,44 @@ namespace TC2.Game
                     GUI.Label(new Rect(x - 30f, axis.y, 60f, axis.height + 6f), y.ToString(CultureInfo.InvariantCulture), _inkFactCentre);
                 }
             }
+            // (session 27) the ages under the pointer: its band lit, the year marked, the age named with its years and that year's people and greatest
+            // realm; a click opens the age's chapter
+            Rect span = new Rect(chart.x, ages.y, cw, ages.height + ch);
+            Vector2 mp = Event.current.mousePosition;
+            if (n > 1 && span.Contains(mp))
+            {
+                int k = Mathf.Clamp(Mathf.RoundToInt((mp.x - chart.x) / cw * (n - 1)), 0, n - 1), year = tl.From + k;
+                int ai = -1;
+                for (int i = 0; i < tl.Ages.Count; i++) if (year >= tl.Ages[i].From && (year < tl.Ages[i].To || i == tl.Ages.Count - 1)) { ai = i; break; }
+                if (Event.current.type == EventType.Repaint)
+                {
+                    if (ai >= 0)
+                    {
+                        var e = tl.Ages[ai];
+                        float x0 = chart.x + cw * (e.From - tl.From) / (float)(n - 1), x1 = chart.x + cw * Mathf.Min(n - 1, e.To - tl.From) / (float)(n - 1);
+                        GUI.color = new Color(0.55f, 0.15f, 0.08f, 0.13f); GUI.DrawTexture(new Rect(x0, span.y, Mathf.Max(1f, x1 - x0), span.height), _dot);
+                    }
+                    GUI.color = new Color(0.55f, 0.15f, 0.08f, 0.8f); GUI.DrawTexture(new Rect(mp.x, span.y, 1f, span.height), _dot); GUI.color = Color.white;
+                    int bigV = 0; string big = null;
+                    for (int ri = 0; ri < tl.Realms.Count; ri++) if (tl.Realms[ri].Villages[k] > bigV) { bigV = tl.Realms[ri].Villages[k]; big = tl.Realms[ri].Name; }
+                    string tip = (ai >= 0 ? "<b>" + tl.Ages[ai].Name + "</b>  <size=11>years " + tl.Ages[ai].From + "-" + tl.Ages[ai].To + "</size>\n" : "") +
+                                 "Year " + year + ": " + tl.People[k].ToString("N0", CultureInfo.InvariantCulture) + " people" +
+                                 (big != null ? "; the greatest realm " + big + "'s, " + bigV + " villages" : "") + (ai >= 0 ? "\n<size=11><i>click to read the age</i></size>" : "");
+                    var content = new GUIContent(tip);
+                    Vector2 size = _mapTag.CalcSize(content);
+                    float tx = Mathf.Min(mp.x + 12f, span.xMax - size.x), ty = span.y + 22f;
+                    GUI.Box(new Rect(Mathf.Max(span.x, tx), ty, size.x, size.y), content, _mapTag);
+                }
+                else if (Event.current.type == EventType.MouseDown && Event.current.button == 0 && ai >= 0)
+                {
+                    Part(0);
+                    var chs = _parts[0].Chapters;
+                    int at = Mathf.Min(ai, chs.Count - 1);
+                    for (int c = 0; c < chs.Count; c++) if (chs[c].Title == tl.Ages[ai].Name) { at = c; break; }
+                    _bookPart = 0; _bookChapter = at; _bookScroll = Vector2.zero; _line = 0;
+                    Event.current.Use();
+                }
+            }
             // the realms' inks, the people's line
             GUILayout.Space(6);
             GUILayout.Label("Each band is a realm: the villages of its lord and of every tier under it, year by year; the whole height is the world's places. The dark line is the world's people (at most " +
