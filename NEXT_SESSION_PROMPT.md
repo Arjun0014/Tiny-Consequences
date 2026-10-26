@@ -24,35 +24,45 @@ listener at 0 in shots).
 
 ## Read first (this order), then work autonomously
 1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the standing prompt (architecture, rules, every direction; "Where we are (session 27)").
-2. `docs/tc2/SESSION_HANDOFF.md` - the top block **"Session 27"**: the exact state, the queue, "Next, in order".
+2. `docs/tc2/SESSION_HANDOFF.md` - the top block **"Session 27, context 2"** (and "Session 27" under it): the exact state, the queue, "Next, in order".
 3. `docs/tc2/25_CIVILISATION_ROADMAP.md` §8 - **the status ledger** (what is built, measured-only, in evaluation; the next slices A-E) and §6 (the acceptance
    runs); `docs/tc2/DECISIONS.md` newest (D2-183-D2-189, D2-191 the planet from orbit); `docs/tc2/PROGRESS.md` CURRENT STATE.
 4. `git status`, `git log --oneline -15`, `git worktree list`, and the queue: `cat $Q/runq.log` (`Q` below) - which jobs ended, with what; `ls $Q/todo`.
 
-## Session 27, context 2 (26 Oct 2026, 12:12 - ~14:20 IST) - all of A-E on main, the frame measured and cut
-- **main** = `wip/s27-int` (worktree `C:/Game Dev/tc-s27int`; main is fast-forwarded to it only while no Unity job holds main's checkout), sim 107
-  unchanged (presentation and observers only). Merged the open-book reader and E; then, judged in real shots and two Web builds (`s27web2`, `s27web3`
-  9/9): house marks and family rings on hover, flags for a realm's villages, `Biography.Standing` on the tag/page/inspector, the inspector as a card in
-  words, pages dated as the book, "N sick"/"famine" on the map, the timeline's eras under the pointer, the ages' years, an age's great events capped by
-  kind, the book's foot clear at 720 px, the meteor's fall and scar, lightning bolts for every recorded strike, flames (red-orange, small heart), power
-  tooltips, "Your hand" sized to its lines, the top bar measured from its words, the opening in the book's type, snow on the boughs and bare crowns over
-  snow, the rain forest's tones, lumpy soft cumulus of many sizes. D2-192 (people), D2-193 (book), D2-194 (powers) written.
-- **The frame** (integrated GPU, seed 2 year 300, `tc2/out/webtest/s27perf`): 12.4 fps region / 8.4 village before; buildings and shadows were the frame;
-  built: far villages (>2.2 km) plain and shadowless, the light shadows graded by height and the default, the air's march halved over the ground.
-  `0_y_perf2_s27` measures them -> finish D2-195 (draft in the context-2 scratchpad `d2195.md`; numbers in SESSION_HANDOFF).
-- **The queue** (`Q` as below, runner task `bbgjl1nqj`): `0_t3` (tests of the pages' text: Biography, Gazetteer, Sworn, HistoryBook, Chronicle,
-  Determinism), `0_y_perf2_s27`, prospecting `N_b_pro1_07..10`, `N_c_cmp_pro1`. Then land prospecting (D2-190; `wip/prospect` 85acede merges cleanly).
-- Tools: the context-2 scratchpad's `gcommit.sh` (a gated commit: compile the worktree's Game/Editor/Tests, commit only when clean). **Python patch
-  scripts through the Bash tool lose a backslash** (a doubled backslash before n arrives single, so Python writes a real newline into the C# string) -
-  write such scripts with the Write tool (it keeps escapes literal), or use Edit.
+## Session 27, context 2 (26 Oct 2026, 12:12 - 14:50 IST) - all of A-E on main, the frame doubled, prospecting ready to land
+- **main** = `wip/s27-int` (worktree `C:/Game Dev/tc-s27int`, the integration branch; main is fast-forwarded to it only while no Unity job holds main's
+  checkout), sim 107 unchanged (presentation and observers only). Merged the open-book reader and E; then, judged in real shots and Web builds
+  `s27web2`/`s27web3` (9/9 each): house rings and family rings on hover, flags for a realm's villages, `Biography.Standing` on the tag/page/inspector,
+  the inspector as a card in words, pages dated as the book, "N sick"/"famine" on the map, the timeline's eras under the pointer, the ages' years in the
+  contents, an age's great events capped by kind, the book's foot clear at 720 px, the meteor's fall and scar, lightning bolts for every recorded strike,
+  red-orange flames, power tooltips, "Your hand" sized to its lines, the top bar measured from its words, the opening in the book's type, snow on the
+  boughs and bare crowns over snow, the rain forest's tones, lumpy soft cumulus of many sizes, a fire's smoke capped. **D2-192-D2-195 written.**
+- **The frame** (integrated GPU, seed 2 year 300, 11,272 people; `tc2/out/webtest/s27perf`, `s27perf2`): region 12.4 -> ~30 fps, village 8.4 -> ~16,
+  from far villages plain and shadowless (`WorldObjectsView.DetailFar` 2.2 km), the light shadows graded by height and the default (`Sky.ShadowLite`),
+  the air's march halved over the ground. **The terrain is the next cost** (x0.59 / x0.66) - the plan is in SESSION_HANDOFF "Session 27, context 2".
+- **Prospecting (C5.3c, sim 108)**: ten seeds inside the noise (people x1.02 t 0.38, hunger x0.73 t -1.29, famines x0.76 t -1.48, raids x1.13 t 1.38,
+  walls x1.14 t 1.81) - **land it**. Merged onto main in the landing worktree `C:/Game Dev/tc-s27land` (`wip/s27-land`); its tests were running at the
+  handoff. Land only after the queued sim-107 jobs (`P_a`, `P_b`) finish, then regenerate the shots' saves with the sim-108 binary.
+- **Running at the handoff (14:50)**: the job queue (runner `tc2/out/tools/s23/runq.sh`, background task `bbgjl1nqj` - reuse it; `Q` =
+  `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`): `N_d_land_tests` (the
+  landing branch's tests), then `P_a_shots_s27c` (Unity shots on main: `s27p7` cumulus, `s27f6` bare crowns over snow, `s27e8` a meteor's smoke), then
+  `P_b_web_s27web4` (a Web build of main, webtest `s27web4`, bookshots `s27book4 --play --meteor-play`). Follow it with
+  `tail -n 0 -F $Q/runq.log | grep --line-buffered -E "^end |runner stopped"`.
+- Tools: `gcommit.sh` in the context-2 scratchpad (`C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/5e178fba-891f-4eea-9925-5eedb5b9c075/scratchpad/gcommit.sh`):
+  compiles the worktree's Game/Editor/Tests against main's references (`unity.mjs cc --src`) and commits only when clean - copy it if the scratchpad is
+  gone. **Python patch scripts through the Bash tool lose a backslash** (a doubled backslash before n arrives single, so Python writes a real newline into
+  the C# string) - write such scripts with the Write tool (it keeps escapes literal), or use Edit.
 
 ## Do next, in order
-1. `0_t3` must pass; `0_y` -> D2-195 (fardetail, shadowlite, cloudshadow, names, terrain ratios), and if the village view is still slow, the next cost.
-2. Prospecting's compare -> D2-190, land (sim 108: queued shots/Web jobs then need sim-108 saves).
-3. A Web build with everything since `s27web3` (the inspector, troubles, title, air, smoke cap, bare crowns, soft cumulus) and a shots round of the
-   planet (seed 42 region) and a meteor; judge; fix.
-4. Then by the shots: night clouds faintly grey and the sea's broad sheen (A), age names that repeat (C), the faint straight line through Raimstead at
-   the village view (a worn way or a seam - check), a sound for the meteor's fall (E).
+1. `N_d_land_tests` must pass (`$Q/log/N_d_land_tests.log` ends "s27land ok"). Judge `P_a`'s shots and `P_b` (`tc2/out/webtest/s27web4.log` 9/9,
+   `s27book4/play_*`); after the build `git checkout -- unity/TinyConsequences2/ProjectSettings/ProjectSettings.asset`; fix what the pictures say in
+   `tc-s27int`.
+2. Land prospecting: merge `wip/s27-int` into `wip/s27-land` if it moved, fast-forward main to `wip/s27-land` (sim 108), write D2-190, 25 §8; regenerate
+   seed 2's year-300 and year-1,000 saves with the sim-108 binary (as `tc2/out/civ/s2_ac4`; `tc2/out/tools/s26/make_ac4.sh` has the flags; a new tag)
+   and point later shots/bookshots/realmsperf jobs at them.
+3. The terrain's cost (SESSION_HANDOFF "Session 27, context 2" -> Next 3: the woods block branched on wood with `SAMPLE_TEXTURE2D_GRAD`).
+4. Then by the shots: night clouds, the sea's broad sheen, age names that repeat, the faint straight line through Raimstead at the village view, a sound
+   for the meteor's fall, the person/place pages in the book's paper style.
 
 ## Rules that bite
 - **Never retag job files with a broad `sed`** (session 26: `s/_sw1"/_stw1"/` also renamed a build job's binary dir, so its tests ran a missing binary and the

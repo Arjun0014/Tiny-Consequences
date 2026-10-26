@@ -12,8 +12,13 @@
   discs (`s27web1`, `s27p5`), the top bar running under the toggles at 1280 px. Built: house marks and family rings on hover, map flags in the polity's
   colour, `Biography.Standing` on the tag and page (SwornTests), the book's gloss, the timeline's eras under the pointer, the ages' years in the contents,
   the meteor's fall and its scar (from `MeteorStruck`), lightning bolts for every recorded strike, power tooltips, snow on the boughs, the rain forest's
-  tones, cloud shadows off at strength 0, shots view `chosen`. Integration tests `s27i`, `s27j` passed. In the queue: Web `s27web2` (+ `--play`), the
-  layers' frame cost (`s27perf`), then prospecting's seeds 6-10 and its compare. SESSION_HANDOFF "Session 27, context 2".
+  tones, cloud shadows off at strength 0, shots view `chosen`. Integration tests `s27i`, `s27j`, `s27k` passed (0 skipped); Web `s27web2` and `s27web3`
+  9/9 (the reader, the play passes with a lightning and a meteor). After them: the inspector as a card in words, pages dated as the book, "N sick" /
+  "famine" on the map, the opening in the book's type, power tooltips, the book's foot and an age's great events capped by kind. **The frame** (D2-195,
+  `s27perf`/`s27perf2`): a great world's region view 12.4 -> ~30 fps, village view 8.4 -> ~16 on the integrated GPU (far villages plain and shadowless, the
+  light shadows graded by height and the default, the air's march halved over the ground); the terrain is the next cost. D2-192-D2-195 written.
+  **Prospecting's compare inside the noise** (people x1.02, hunger x0.73 t -1.29): merged in `wip/s27-land` (sim 108), its tests running at the handoff;
+  lands after the queued sim-107 shots `P_a` and Web build `P_b` (`s27web4`). SESSION_HANDOFF "Session 27, context 2".
 - **Session 27 (26 Oct 2026, from 10:40 IST; Control Room) - the fourth acceptance's last jobs restarted; silent background runs; the integrated GPU only;
   the docs reconciled.** Arjun's direction (26 Oct): implementation and game quality over validation; the player-facing slices A-E (25 §8 "Next"). The
   queue's runner had stopped at 05:17 (M_a full suite 507/0/0, the three 1,000-year worlds and their books, the ore measure, prospecting's build, village #4's
