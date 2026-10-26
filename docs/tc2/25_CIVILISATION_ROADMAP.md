@@ -178,9 +178,18 @@ year 999, three lords take tribute from 76 of 82 villages. **Seed 7** (6 min): a
 23 plagues, the places as towns of 300-700 people. **Shots** (seed 2, village #4 at 300, 600, 1,000: `tc2/out/shots/s26a_ac4_s2_v4_y*`): at 300 the village in its ring on a green lobe by the sea, a river,
 the plain's fields; at 600 the shore has moved in on it - the village on the sand at the water's edge, denser, its ring cut by the coast; at 1,000 a sand
 spit to the north, the river's mouth moved south and fishers' boats off the beach - the three ages read as different landscapes;
-at the region view **two shadow cascades above 3 km (ShadowLite) cannot be told from four**. Still to judge (the queue stopped at 05:17 by the person's leave pending): the villages
-most walled in stone, realms, the meteor, the god's ore, the Web build (the heap at 1,000 after the memory pass; the frame pass's pairs; the book's pages
-with the realm maps). **Seen to look at next**: hunger is every world's great killer (46,072 hunger deaths in seed 4's millennium against 16,495 of
+at the region view **two shadow cascades above 3 km (ShadowLite) cannot be told from four**. **Finished in session 27** (the
+queue restarted; every drawing job on the integrated GPU since the RX 5600M restarted the PC): the villages most walled in stone at 600 and 1,000 (`s26a_ac4_s*_stone_y*`)
+- seed 4's Reford (395 people at 1,000) a ring of stone with towers round a town of timber-framed houses under red tile, the ruins of fallen homes low in its
+green; seed 7's Vaestdal two rings, old and new, on a coastal flat; the realms at seed 2's year 1,000 (`s26a_ac4_s2_y1000r`: one great rose realm over most of
+the map, the war's spears at its eastern edge); the meteor (`s26a_meteor`: homes thrown down to ruins, smoke - its flames drawn as flat yellow cones, a fault
+for the powers' game feel); the god's ore cast (no body drawn where it was laid). **The Web build `s26web1`: 9/9 checks** (browser = headless bit for bit, a
+power cast, the reload, the settings kept, a day away of ~96 years, the title holding the world, no console errors); **the heap of the year-1,000 world 870 MB
+loaded, 970 MB after the village view** (s25web5: 955 MB loaded - the memory pass); the book's pages (`s26book1`): each realm's chapter opens on its map, the
+timeline draws the realms year by year (its legend rows clip, its people line breaks into dashes, its axis labels are cut - the book's reader pass, 25 §8 C).
+The frame pass's on/off pairs were dropped (the integrated GPU; less validation). **Verdict on the finished core (25 §8)**: the world goes from a wild planet to
+kingdoms in tiers over 1,000 years with plagues, wars at the realms' edges, walled towns rebuilt in stone and ruins reused, its maps changing in two seeds of
+three, and its book tells it - the core simulation is finished enough to carry the player-facing game; what remains is presentation and play (25 §8 "Next"). **Seen to look at next**: hunger is every world's great killer (46,072 hunger deaths in seed 4's millennium against 16,495 of
 sickness); by 1,000 realms hold nearly every village (the "kingdoms" of §6); in metal worlds smelting reaches every village while few know ore (C5.3c
 prospecting, built).
 
