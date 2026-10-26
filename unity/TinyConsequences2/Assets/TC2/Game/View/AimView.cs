@@ -36,6 +36,17 @@ namespace TC2.Game
         struct Fall { public Vec3d Dir; public Color Col; public float Born; }
         static readonly List<Fall> Falls = new List<Fall>();
         public const float FallTime = 0.75f;
+        struct Throw { public Vec3d Dir; public float LandAt; }
+        static readonly List<Throw> Throws = new List<Throw>();   // the stones thrown in the last seconds and when each lands (VolcanoView: one fall)
+
+        /// <summary>Whether a stone was thrown at this point in the last few seconds (the meteor's cast), and when it lands (Time.unscaledTime).</summary>
+        public static bool Thrown(Vec3d dir, out float landAt)
+        {
+            landAt = 0f;
+            for (int i = Throws.Count - 1; i >= 0; i--)
+                if (Time.unscaledTime - Throws[i].LandAt < 6f && Vec3d.Dot(Throws[i].Dir, dir) > 0.9999999) { landAt = Throws[i].LandAt; return true; }
+            return false;
+        }
         // (session 27) lightning seen: a bolt for each strike the ledger records near where the camera looks - the storms' and the god's alike
         struct Bolt { public Vector3 At; public float Born; public ulong Seed; }
         readonly List<Bolt> _bolts = new List<Bolt>();
@@ -55,7 +66,12 @@ namespace TC2.Game
         public static void Cast(Vec3d dir, double reach, Color col, float shake = 0f, bool fall = false)
         {
             float born = Time.unscaledTime;
-            if (fall) { Falls.Add(new Fall { Dir = dir, Col = col, Born = born }); born += FallTime; }
+            if (fall)
+            {
+                Falls.Add(new Fall { Dir = dir, Col = col, Born = born }); born += FallTime;
+                Throws.RemoveAll(x => Time.unscaledTime - x.LandAt > 6f);
+                Throws.Add(new Throw { Dir = dir, LandAt = born });
+            }
             Bursts.Add(new Burst { Dir = dir, Reach = reach, Col = col, Born = born, Shake = shake });
         }
 

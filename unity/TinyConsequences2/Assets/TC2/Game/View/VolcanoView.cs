@@ -27,7 +27,8 @@ namespace TC2.Game
         struct Show { public int Eruptions; public float Real; public int Vei; public long At; }
 
         // happenings read from the world's Fx ring: each shown for a few real seconds
-        struct Live { public TC2.Core.Simulation.Fx Fx; public float Real; }
+        const float StoneFall = 1.5f;   // (the stone from the sky's fall, real seconds, when no cast was seen to throw it)
+        struct Live { public TC2.Core.Simulation.Fx Fx; public float Real; public bool Thrown; }   // (Thrown: a stone the player was seen to throw - AimView draws its fall)
         readonly List<Live> _live = new List<Live>();
         long _fxSeen = -1;
 
@@ -99,7 +100,11 @@ namespace TC2.Game
                     if (mmi > 3.5) Rig.Shake(Mathf.Clamp01((float)(mmi - 3.5) / 5.5f), 1.5f + f.Size - 5f);
                     continue;
                 }
-                if (_live.Count < 600) _live.Add(new Live { Fx = f, Real = now });
+                if (_live.Count >= 600) continue;
+                // (session 27) a stone the player threw is seen falling by AimView (from the cast): its strike here starts when that stone lands - one
+                // fall, one flash (two had come down from two skies, landing 0.75 s apart)
+                if (f.Kind == TC2.Core.Simulation.FxKind.Stone && AimView.Thrown(P.Grid.Center[f.Cell], out float landAt)) _live.Add(new Live { Fx = f, Real = landAt - StoneFall, Thrown = true });
+                else _live.Add(new Live { Fx = f, Real = now });
             }
             _fxSeen = ring.Version;
             for (int i = _live.Count - 1; i >= 0; i--)
@@ -152,10 +157,11 @@ namespace TC2.Game
                         {
                             // (F9.4) the stone from the sky: falling at a slant with its trail (the first second and a half), the flash where it
                             // strikes, then a cloud of dust and smoke rising and spreading as it settles
-                            const float fall = 1.5f;
+                            const float fall = StoneFall;
                             Vector3 side = Vector3.Cross(up, Vector3.up); if (side.sqrMagnitude < 1e-6f) side = Vector3.right; side.Normalize();
                             if (age < fall)
                             {
+                                if (l.Thrown) break;   // (AimView draws the thrown stone's fall)
                                 float t = age / fall;
                                 Vector3 sky = at + up * 2600f + side * 1400f;
                                 Vector3 p = Vector3.Lerp(sky, at, t * t);
@@ -166,11 +172,15 @@ namespace TC2.Game
                             {
                                 float g = age - fall, ph = Mathf.Clamp01(g / (life - fall));
                                 if (g < 0.8f) Add(at + up * 20f, 260f * (0.6f + g), 0.9f * (1f - g / 0.8f), 0f, 3f * (1f - g / 0.8f), seed, 0f);   // the flash
+                                // (session 27: s27book4 - the cloud, every puff lit orange by the fire, had glowed salmon over a quarter of the screen in the
+                                // dawn's dark for 16 s, hiding the burning town under it) grey-brown dust and smoke, thinner and smaller, the crater's fire
+                                // lighting only its lowest puffs and only at first
                                 for (int k = 0; k < 12; k++)
                                 {
-                                    float rise = 40f + 420f * Mathf.Sqrt(ph) * (0.6f + 0.4f * Mathf.Repeat(seed * 7f + k * 0.31f, 1f));
-                                    Vector3 p = at + up * rise + Jitter(seed + k * 0.53f, 40f + 160f * ph);
-                                    Add(p, 90f + 220f * ph, 0.7f * s * (1f - 0.5f * ph), 0.75f, 0.6f * (1f - ph) * s, Mathf.Repeat(seed * 3f + k * 0.37f, 1f), 0.8f);
+                                    float rise = 30f + 300f * Mathf.Sqrt(ph) * (0.6f + 0.4f * Mathf.Repeat(seed * 7f + k * 0.31f, 1f));
+                                    Vector3 p = at + up * rise + Jitter(seed + k * 0.53f, 30f + 110f * ph);
+                                    float lowGlow = k < 4 ? 0.35f * (1f - ph) * (1f - ph) * s : 0f;
+                                    Add(p, 60f + 150f * ph, 0.55f * s * (1f - 0.6f * ph), 0.8f, lowGlow, Mathf.Repeat(seed * 3f + k * 0.37f, 1f), 0.8f);
                                 }
                             }
                             break;
