@@ -1360,6 +1360,7 @@ namespace TC2.Game
                                   // stands, they would have stood in the water)
                 float graveHere = 0f;   // (the burial ground's share here: no plots drawn - D2-154)
                 p.RealmSid[o] = 0; p.RealmW[o] = 0f;   // (the realms layer: no village's land in the sea)
+                Vec3d dw = d; int cw = c;   // (where the cells' shares are read: WarpCells)
                 if (rel < 0)
                 {
                     // the sea floor as seen through the water: sand in the shallows, dark below
@@ -1368,7 +1369,8 @@ namespace TC2.Game
                 }
                 else
                 {
-                    int n = Ground.ColourWeights(P, d, c, _wc, _ww);
+                    WarpCells(P, d, c, ref dw, ref cw);
+                    int n = Ground.ColourWeights(P, dw, cw, _wc, _ww);
                     col = new Color(0, 0, 0, 1);
                     float farm = 0; int owner = 0; float ow = 0;
                     float forest = 0, clear = 0, felled = 0;   // (the woods' share here, how much of it is cleared ground, its felled share: W-FELL)
@@ -1556,7 +1558,7 @@ namespace TC2.Game
                     p.Land[o] = new Vector4(Mathf.Clamp01((0.45f - moist) / 0.30f), riverNear, Mathf.Max(bare, rock), P.Ice[c] < 1f ? beachWidth : 0f);
                 }
                 var lin = col.linear;
-                lin.a = rel < 0 || p.Farm[o].x <= 0 ? 0f : Mathf.Clamp01(FarmWeight(P, d, c) * CoreMask(p.Plots[o]) * (1f - graveHere));
+                lin.a = rel < 0 || p.Farm[o].x <= 0 ? 0f : Mathf.Clamp01(FarmWeight(P, dw, cw) * CoreMask(p.Plots[o]) * (1f - graveHere));
                 cols[o] = lin;
             }
             FillRealm(p);
@@ -1623,6 +1625,21 @@ namespace TC2.Game
         static float BeachAt(float rel, float width) => width <= 0f ? 0f : 1f - Edge(0.6f, 0.6f + 4.2f * width, rel);
 
         static float CoreMask(Vector2 local) => Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(85f, 135f, local.magnitude));
+
+        /// <summary>
+        /// (session 27) Where a point of land reads the cells' shares (woods, farmland, soil, cover): moved up to about half a cell along a smooth noise of
+        /// ~450 m, so the edges of what the cells hold wander as such edges do instead of following the grid's 150 m staircase (s27book4: a region of
+        /// ploughland edged in steps). The share is still the cells' own, read a little off the point; never across the shore.
+        /// </summary>
+        static void WarpCells(PlanetState P, Vec3d d, int c, ref Vec3d dw, ref int cw)
+        {
+            double f = P.Radius / 450.0, a = 0.55 * P.CellSize / P.Radius;
+            double x = d.X * f, y = d.Y * f, z = d.Z * f;
+            var w = new Vec3d(d.X + a * Noise.Fbm(x + 3.1, y - 1.7, z, 2), d.Y + a * Noise.Fbm(x - 5.3, y + 7.7, z + 2.2, 2), d.Z + a * Noise.Fbm(x + 0.9, y - 4.4, z + 12.9, 2)).Normalized;
+            int k = P.Grid.CellOf(w);
+            if (k < 0 || P.IsLand(k) != P.IsLand(c)) return;
+            dw = w; cw = k;
+        }
 
         /// <summary>How much of a point is the village's farmland (soft at the edge of the claimed cells).</summary>
         float FarmWeight(PlanetState P, Vec3d d, int c)
