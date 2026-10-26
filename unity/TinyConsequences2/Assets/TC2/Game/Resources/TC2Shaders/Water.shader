@@ -90,10 +90,12 @@ Shader "TC2/Water"
                 half spec = pow(saturate(dot(n, h)), lerp(220.0h, 70.0h, rough)) * lerp(2.6h, 0.45h, rough) * lerp(0.35h, 1.0h, l.shadowAttenuation);
                 // (session 27) from afar the glint is broken by the wind's fields - brighter where the sea is roughened, dark lanes of calm between -
                 // so it reads as sun on a wide sea, not a smooth pale veil over it (s27p3 region)
+                half broken = 1.0h;   // (session 27, context 4: the moon's path broken by the same fields - by night s27n1's region view had a smooth pale veil)
                 {
                     half g1 = Noise2(uvA / 340.0 + float2(t * 0.004, -t * 0.003)), g2 = Noise2(uvA / 120.0 - float2(t * 0.006, t * 0.002));
                     half field = saturate(0.25h + 1.1h * g1 * g1 + 0.6h * (g2 - 0.5h) * (half)saturate(1.0 - fp / 40.0) + 0.8h * (w1 + 0.5h) * (w1 + 0.5h));   // (the finer field only where a pixel resolves it)
-                    spec *= lerp(1.0h, field * 1.35h, rough * far);
+                    broken = lerp(1.0h, field * 1.35h, rough * far);
+                    spec *= broken;
                 }
                 // (session 27) a cloud between the water and the sun: its shadow dims the sea and takes the glint
                 half cloud = TC2CloudShadow(i.positionWS, l.direction, length(fwidth(i.positionWS)), _TC2CloudScale.z);
@@ -101,7 +103,7 @@ Shader "TC2/Water"
                 body *= 1.0h - 0.6h * cloud;
                 // the moon's path on the water at night
                 float3 hm = normalize(_TC2MoonDir.xyz + v);
-                half moon = pow(saturate(dot(n, hm)), 90.0h) * 0.55h * (1.0h - day) * (half)_TC2NightLift;
+                half moon = pow(saturate(dot(n, hm)), 90.0h) * 0.55h * (1.0h - day) * (half)_TC2NightLift * broken;
                 half3 sky = lerp(_Sky.rgb, _TC2FogColor.rgb, 0.6h) * half3(0.85h, 0.95h, 1.05h);
                 half3 c = (body * (1.0h + (w1 + w2) * 0.25h * far) + sky * fres * 0.42h) * (0.12h * (half)_TC2NightLift + (0.88h + 0.12h * (1.0h - (half)_TC2NightLift)) * day) + l.color * spec * day + half3(0.62h, 0.70h, 0.85h) * moon;
                 half alpha = saturate(_Alpha + fres * 0.3h);

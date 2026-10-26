@@ -71,7 +71,8 @@ function wasmNames(dir) {
   let buf = fs.readFileSync(f);
   for (const un of [(b) => b, zlib.brotliDecompressSync, zlib.gunzipSync]) {
     let s; try { s = un(buf).toString('utf8'); } catch { continue; }
-    try { const o = JSON.parse(s); const m = new Map(); for (const k of Object.keys(o)) m.set(Number(k), String(o[k])); if (m.size) return m; } catch { /* lines? */ }
+    // (IL2CPP's names end in a hash of the method's signature: TerrainLod_Update_m2E59...; dropped)
+    try { const o = JSON.parse(s); const m = new Map(); for (const k of Object.keys(o)) m.set(Number(k), String(o[k]).replace(/_m[0-9A-F]{40}$/, '')); if (m.size) return m; } catch { /* lines? */ }
     const m = new Map(); for (const l of s.split('\n')) { const i = l.indexOf(':'); if (i > 0 && /^\d+$/.test(l.slice(0, i))) m.set(Number(l.slice(0, i)), l.slice(i + 1).trim()); }
     if (m.size) return m;
   }

@@ -2,6 +2,7 @@ using System;
 using NUnit.Framework;
 using TC2.Core.Foundation;
 using TC2.Core.History;
+using TC2.Core.Knowledge;
 using TC2.Core.Places;
 using TC2.Core.Simulation;
 
@@ -40,6 +41,48 @@ namespace TC2.Tests.Core
             Assert.AreEqual(evs.Count + pe.Count, life.Split('\n').Length - 1, "nothing but its records");
             StringAssert.Contains("became first among the people of", life, "its headman in its history");
         }
+
+        /// <summary>
+        /// (session 27, context 4: the paper pages of s27book6) the page says each thing once - the crafts gathered by their best hand ("masters among
+        /// them" once, not after every craft), no bracket inside a bracket, the homes counted once - and reading it changes nothing.
+        /// </summary>
+        [Test]
+        public void APagesWordsSayEachThingOnce()
+        {
+            var w = TestWorlds.Make(1501);
+            w.AdvanceTo(w.Now + SimTime.Years(1));
+            int sid = 0;
+            for (int o = w.Settlements.First(); o != 0 && sid == 0; o = w.Settlements.Next(o)) if (w.Settlements.Get(o).Inhabited) sid = o;
+            Assume.That(sid != 0, "a living village");
+            ref var s = ref w.Settlements.Get(sid);
+            // premise: three crafts known with masters, none other practised
+            s.TechKnown = (byte)((1 << Tech.Nets) | (1 << Tech.Loom) | (1 << Tech.Quern));
+            s.BestNets = 0.95f; s.BestLoom = 0.92f; s.BestQuern = 0.97f; s.BestPottery = 0f; s.BestArd = 0f; s.BestMetal = 0f; s.BestIron = 0f; s.BestBoat = 0f;
+            string crafts = Gazetteer.Crafts(w, sid);
+            Console.WriteLine(crafts);
+            Assert.AreEqual(1, Times(crafts, "masters among them"), "the masters said once: " + crafts);
+            StringAssert.Contains(" and ", crafts, "the crafts as a list");
+            // then a skilled loom and pottery tried but not yet known: three groups, each said once
+            s.BestLoom = 0.7f; s.BestPottery = 0.3f;
+            crafts = Gazetteer.Crafts(w, sid);
+            Console.WriteLine(crafts);
+            Assert.AreEqual(1, Times(crafts, "(masters among them)"), crafts);
+            Assert.AreEqual(1, Times(crafts, "(skilled hands among them)"), crafts);
+            Assert.AreEqual(1, Times(crafts, "(none of them yet competent)"), crafts);
+            // every place's overview: no bracket inside a bracket, its houses counted once
+            ulong h = w.StateHash();
+            for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o))
+            {
+                string ov = Gazetteer.Overview(w, o);
+                int depth = 0, most = 0;
+                foreach (char ch in ov) { if (ch == '(') most = Math.Max(most, ++depth); else if (ch == ')') depth--; }
+                Assert.LessOrEqual(most, 1, "a bracket inside a bracket: " + ov);
+                StringAssert.DoesNotMatch(@"\d+ houses \(\d+ on stone footings\)", ov, "the houses counted twice");
+            }
+            Assert.AreEqual(h, w.StateHash(), "the page reads only");
+        }
+
+        static int Times(string s, string what) { int n = 0; for (int i = s.IndexOf(what, StringComparison.Ordinal); i >= 0; i = s.IndexOf(what, i + what.Length, StringComparison.Ordinal)) n++; return n; }
 
         [Test]
         public void ReadingEveryPlacesPageChangesNothing()

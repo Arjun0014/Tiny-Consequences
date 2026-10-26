@@ -21,6 +21,7 @@ namespace TC2.Core.History
         static string F(double v, string fmt = "0") => v.ToString(fmt, CultureInfo.InvariantCulture);
         static string Name(World w, int sid) => w.History.NameOf(EntityRef.Settlement(sid));
         static string Year(long t) => "year " + (t / SimTime.Year);
+        static string And(List<string> l) => l.Count == 1 ? l[0] : string.Join(", ", l.GetRange(0, l.Count - 1).ToArray()) + " and " + l[l.Count - 1];
 
         /// <summary>What its size makes it: a hamlet (under 50 people), a village, a town (300 and more); abandoned when nobody lives there.</summary>
         public static string Word(in Settlement s) => !s.Inhabited ? "an abandoned place" : s.Population < 50 ? "a hamlet" : s.Population < 300 ? "a village" : "a town";
@@ -41,10 +42,15 @@ namespace TC2.Core.History
             bool origin = false;
             if (s.FoundedEvent != 0 && w.History.TryGet(s.FoundedEvent, out var fe) && fe.Kind == HistoryKind.SettlementFounded)
             {
-                if (fe.Object.Kind == EntityKind.Settlement && fe.Object.Id != 0 && fe.Object.Id != sid) { sb.Append(" by people of ").Append(Name(w, fe.Object.Id)); if (fe.ArgA == 1) sb.Append(" on the margins of its land"); origin = true; }   // (a daughter village: C3.6g)
-                if (fe.Cause1 != 0 && w.History.TryGet(fe.Cause1, out var fc))
+                HistoryEvent fc = default;
+                bool cause = fe.Cause1 != 0 && w.History.TryGet(fe.Cause1, out fc), party = cause && fc.Kind == HistoryKind.PartySetOut;
+                // (session 27, context 4) the party that founded it told in the sentence - "by 29 people of Dreford, 8 households who had set out to make a
+                // new home": it had read "by people of Dreford (8 households of Dreford (29 people) set out to make a new home)"
+                if (fe.Object.Kind == EntityKind.Settlement && fe.Object.Id != 0 && fe.Object.Id != sid) { sb.Append(" by ").Append(party ? fc.ArgB + (fc.ArgB == 1 ? " person" : " people") : "people").Append(" of ").Append(Name(w, fe.Object.Id)); if (fe.ArgA == 1) sb.Append(" on the margins of its land"); origin = true; }   // (a daughter village: C3.6g)
+                if (cause)
                 {
-                    sb.Append(" (").Append(HistoryText.Describe(w, in fc).TrimEnd('.')).Append(')');
+                    if (party && origin) sb.Append(", ").Append(fc.ArgA).Append(fc.ArgA == 1 ? " household that had" : " households who had").Append(" set out to make a new home");
+                    else sb.Append(" (").Append(HistoryText.Describe(w, in fc).TrimEnd('.')).Append(')');
                     if (fc.Cause1 != 0 && w.History.TryGet(fc.Cause1, out var fs) && fs.Kind == HistoryKind.VillageSplit) sb.Append(": ").Append(HistoryText.Describe(w, in fs).TrimEnd('.'));   // (C10.3)
                 }
             }
@@ -60,8 +66,16 @@ namespace TC2.Core.History
                 ref var b = ref w.Buildings.Get(hh.Building);
                 if (b.Kind == Structures.House) { houses++; if (b.Mat >= 1) footed++; } else huts++;
             }
-            sb.Append(s.Population).Append(" people in ").Append(hl.Count).Append(" households: ").Append(houses).Append(houses == 1 ? " house" : " houses")
-              .Append(footed > 0 ? " (" + footed + " on stone footings)" : "").Append(huts > 0 ? ", " + huts + (huts == 1 ? " hut" : " huts") : "").Append(camps > 0 ? ", " + camps + " in camps" : "").Append(".\n");
+            // (session 27, context 4) where its households live, in words: "189 households: 177 in houses (all on stone footings) and 12 in camps" - it had
+            // read "177 houses (177 on stone footings), 12 in camps"
+            var homes = new List<string>();
+            if (houses > 0) homes.Add(houses + (houses == 1 ? " in a house" + (footed > 0 ? " on stone footings" : "") : " in houses" + (footed == houses ? " (all on stone footings)" : footed > 0 ? " (" + footed + " of them on stone footings)" : "")));
+            if (huts > 0) homes.Add(huts + (huts == 1 ? " in a hut" : " in huts"));
+            if (camps > 0) homes.Add(camps + (camps == 1 ? " in a camp" : " in camps"));
+            sb.Append(s.Population).Append(s.Population == 1 ? " person in " : " people in ").Append(hl.Count == 1 ? "one household" : hl.Count + " households");
+            if (homes.Count == 1) { string only = homes[0].Substring(homes[0].IndexOf(' ')); sb.Append(hl.Count == 1 ? "," + only : ", all" + only); }
+            else if (homes.Count > 1) sb.Append(": ").Append(And(homes));
+            sb.Append(".\n");
             if (!Society.Leaders.Off && s.HeadHh != 0 && w.Households.Exists(s.HeadHh))
             {
                 // its first household and its headman (C10.2): who follows them and why
@@ -347,16 +361,29 @@ namespace TC2.Core.History
         public static string Crafts(World w, int sid)
         {
             ref var s = ref w.Settlements.Get(sid);
-            var sb = new StringBuilder();
+            // (session 27: the page a leaf of the book) by its best hand in words, not "(best 0.87)"; (context 4) the crafts gathered by that hand - "make
+            // fishing nets, weave on the loom and smelt iron, masters among them at each" - not "(masters among them)" after every one (s27book6)
+            var byHand = new List<string>[4];
             for (int t = 0; t < Tech.Count; t++)
             {
                 double best = Learning.Best(in s, t);
                 if (best < 0.1) continue;
-                // (session 27: the page a leaf of the book) by its best hand in words, not "(best 0.87)"
-                string hand = (s.TechKnown & (1 << t)) == 0 ? "none of them yet competent" : best >= 0.9 ? "masters among them" : best >= 0.6 ? "skilled hands among them" : "fair hands among them";
-                sb.Append(sb.Length > 0 ? "; " : "").Append(Tech.Laws[t].Now).Append(" (").Append(hand).Append(")");
+                int hand = (s.TechKnown & (1 << t)) == 0 ? 3 : best >= 0.9 ? 0 : best >= 0.6 ? 1 : 2;
+                (byHand[hand] ??= new List<string>()).Add(Tech.Laws[t].Now);
             }
-            return sb.Length > 0 ? "Its people " + sb + ".\n" : "No craft beyond the everyday.\n";
+            string[] among = { "masters among them", "skilled hands among them", "fair hands among them", "none of them yet competent" };
+            var groups = new List<int>();
+            for (int h = 0; h < 4; h++) if (byHand[h] != null) groups.Add(h);
+            if (groups.Count == 0) return "No craft beyond the everyday.\n";
+            var sb = new StringBuilder("Its people ");
+            if (groups.Count == 1)
+            {
+                var l = byHand[groups[0]];
+                sb.Append(And(l)).Append(l.Count == 1 ? " (" + among[groups[0]] + ")" : groups[0] == 3 ? " - none of them yet competent at any" : ", " + among[groups[0]] + " at each");
+            }
+            else
+                for (int g = 0; g < groups.Count; g++) sb.Append(g > 0 ? "; " : "").Append(And(byHand[groups[g]])).Append(" (").Append(among[groups[g]]).Append(')');
+            return sb.Append(".\n").ToString();
         }
 
         /// <summary>The ways worn to its neighbours, traders coming, tribute, and the wrongs between it and others still weighed.</summary>

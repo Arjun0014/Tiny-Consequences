@@ -97,14 +97,20 @@ namespace TC2.Core.History
             return 0;
         }
 
+        static readonly string[] AtHomeVerbs = { "resting", "asleep", "eating", "abed" };
+
         /// <summary>Where they are, what they do and why (the decision's own reason), how they are in body.</summary>
         public static string Now(World w, int pid)
         {
             ref var p = ref w.People.Get(pid);
             if (!p.Alive) return "";
             var sb = new StringBuilder();
-            sb.Append(p.At == 0 ? "On the road" : (p.At == p.Home ? "At home in " + Place(w, p.At) : "Visiting " + Place(w, p.At))).Append(", ")
-              .Append(HistoryText.Doing(w, in p)).Append(p.T1 > w.Now ? ", until " + Until(w.Now, p.T1) : "").Append(".\n");
+            // (session 27, context 4) at home the doing says so once: "At home in Kriford, resting" - not "At home in Kriford, resting at home" (s27book6)
+            string doing = HistoryText.Doing(w, in p);
+            bool home = p.At != 0 && p.At == p.Home;
+            if (home) foreach (string verb in AtHomeVerbs) if (doing.StartsWith(verb + " at home", System.StringComparison.Ordinal)) { doing = verb + doing.Substring(verb.Length + 8); break; }
+            sb.Append(p.At == 0 ? "On the road" : (home ? "At home in " + Place(w, p.At) : "Visiting " + Place(w, p.At))).Append(", ")
+              .Append(doing).Append(p.T1 > w.Now ? ", until " + Until(w.Now, p.T1) : "").Append(".\n");
             // (session 27: the page a leaf of the book) how they fare in words, as the inspector's card says it - "Health 1.00, fed 1.00, 42 days of reserve"
             // had read as a tool's output
             bool ill = p.Sick != 0 && p.SickPhase != Health.Disease.Latent;

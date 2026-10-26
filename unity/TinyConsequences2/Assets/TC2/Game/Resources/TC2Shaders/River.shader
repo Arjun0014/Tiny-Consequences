@@ -94,7 +94,7 @@ Shader "TC2/River"
                 half nightK = 0.30h * (half)_TC2NightLift;
                 half moonUp = saturate((half)dot(up, _TC2MoonDir.xyz) * 0.7h + 0.3h) * (1.0h - day) * (half)_TC2NightLift;
                 float3 hm = normalize(_TC2MoonDir.xyz + v);
-                half moonPath = pow(saturate(dot(n, hm)), lerp(30.0h, 90.0h, near)) * 0.5h * (1.0h - day) * (half)_TC2NightLift;
+                half moonPath = pow(saturate(dot(n, hm)), lerp(90.0h, 140.0h, near)) * 0.45h * (1.0h - day) * (half)_TC2NightLift;   // (as narrow as the sea's: s27n1's broad lobe lit a far river's whole length, 107/124/141)
                 half3 c = (body + sky * fres * 0.55h) * (nightK + (1.0h - nightK) * day) + l.color * spec * day
                         + half3(0.13h, 0.17h, 0.29h) * moonUp * 0.6h + half3(0.62h, 0.70h, 0.85h) * moonPath;
                 // wet earth along the banks, near the camera

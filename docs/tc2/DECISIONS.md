@@ -6066,10 +6066,15 @@ pages judged (then the pages' words: until/due, crafts, zeros). **The terrain's 
 year 300, paused): **x1.022 at the region view, x1.063 at the village view** - its pixels are not most of its cost; **the patches' shadow pass**
 (`terrainshadow`) x1.03 / x0.954. Found by it: every terrain measure had been taken in a paused world while the ground's colouring cycle ran on (every
 cell's colour and a patch or two a frame recoloured and re-uploaded, every 2.5 s, for ever) - now only when the world has moved (6ae81de), and the warp
-read on a lattice over a fine patch; measured again in `s27perf4` (paused terrain; the colouring at 1 h/s) - **pending at the context handoff (16:45): fill in from `tc2/out/webtest/s27perf4/*.txt`**.
+read on a lattice over a fine patch; measured again in `s27perf4` (Web `s27web6`, main e748638, 9/9 with main's headless rebuilt - the determinism
+check passes): **the whole terrain in a paused world now x0.966 at the region view and x0.871 at the village view** (was x0.589 / x0.660 in `s27perf2`:
+the colouring cycle on a still world had been most of the terrain's cost), and **the colouring in a running world** (1 h/s, `recolour`) x0.926 / x0.962 -
+a moderate cost, left as it is.
 **Later in the context (judged in `s27web5`/`s27book5`, `s27e1`-`s27e3`).** The pages' words (a doing's end "until 08:34" / "tomorrow at 06:00", a child
 "due in N days", crafts "masters among them", no zero clauses in the Land tab, the year margin wide enough for "early autumn", the raised initial only on a
 page's first letter-led paragraph); "Your hand" not drawn over an open page; a strike that kindled nothing told as "one lightning strike"; a quieter console
 (the walls' procedural meshes say so; the Overlay material an asset). **The palisade's slabs on the beach were the shore, not the mesh**: `Shore.Dry` along
 the waterline flips dry/wet stretch by stretch and every other stretch went - now two passes (fill a lone wet stretch, then drop a lone dry one; a part-built
-ring does not wrap): shots `s27f7` pending at the handoff. The night lights at 512 a face showed no visible change from orbit (`s27e2`).
+ring does not wrap) - **but shots `s27f7` drew the beach exactly as `s27e3` did** (1,147 pixels of 1.44 M changed, people moving): the panels down the
+beach are not that flip; probed stretch by stretch with `place --ring` (session 27, context 4). The night lights at 512 a face showed no visible change
+from orbit (`s27e2`).

@@ -634,13 +634,15 @@ namespace TC2.Game
             float topY = Mathf.Max(62f, _left.yMax + 8f);   // (below the top bar, two rows of it on a narrow screen)
             if (_book) { float bw = Mathf.Min(1280f, sw - 60f); _bookRect = new Rect(sw * 0.5f - bw * 0.5f, topY, bw, sh - 50f - topY); Book(_bookRect, w); }
 
-            // inspector
+            // inspector (session 27, context 4: not over the open book - s27book6 had the chosen person's card over its right-hand page; the book holds
+            // the screen while it is open, and a name clicked in it closes it for that page)
             Rect insp = new Rect(sw - 400, 190, 390, 300);
-            bool showInsp = _selected != 0 && w.People.Exists(_selected);
+            bool showInsp = !_book && _selected != 0 && w.People.Exists(_selected);
             if (showInsp) Inspector(insp, w);
             _pageRect = Rect.zero;
             float pageH = sh - 136f - topY;   // (ending above the power bar: its foot had run under it - s27web2)
-            if (_placeSid != 0 && w.Settlements.Exists(_placeSid)) { float pw = Mathf.Min(600, sw - 430); _pageRect = new Rect(Mathf.Max(10, sw - 410 - pw), topY - 2f, pw, pageH); PlacePage(_pageRect, w); }
+            if (_book) { /* (the book holds the screen) */ }
+            else if (_placeSid != 0 && w.Settlements.Exists(_placeSid)) { float pw = Mathf.Min(600, sw - 430); _pageRect = new Rect(Mathf.Max(10, sw - 410 - pw), topY - 2f, pw, pageH); PlacePage(_pageRect, w); }
             else if (_personPage && _selected != 0 && w.People.Exists(_selected)) { float pw = Mathf.Min(600, sw - 430); _pageRect = new Rect(Mathf.Max(10, sw - 410 - pw), topY - 2f, pw, pageH); PersonPage(_pageRect, w); }
             else if (_building != 0 && w.Buildings.Exists(_building)) { showInsp = true; BuildingPage(insp, w); }
             _powersRect = Rect.zero;
