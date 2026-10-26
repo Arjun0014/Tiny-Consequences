@@ -44,6 +44,10 @@
   `wip/s27-int` while no Unity job runs - `0_v` is a browser job, main's checkout is free then): `$Q/stage/0_w_shots_s27b.sh` (flames v3 + the meteor's scar
   by day/night `s27e6`/`e7`, the training ground's standards `s27q3`, the head up close `s27q4` view `chosen`, seed 42's lumpy cumulus `s27p6`, bare crowns over
   snow `s27f4`, the rain forest's tones `s27f5`). The next Web build must carry `--meteor-play` (the meteor's fall, landing and scar in the browser).
+- **Prospecting's compare (14:47) is inside the noise - LAND IT**: ten seeds `_pro1` against `_rui1` (`tc2/out/tools/s26/results/cmp_rui1_pro1.txt`):
+  people x1.02 (t 0.38), hunger a person-year x0.73 (t -1.29), famines x0.76 (t -1.48), raids x1.13 (t 1.38), walls x1.14 (t 1.81), loot x1.27 (t 1.74),
+  births x1.00, deaths x1.00; seeds with metal looked 2,836-7,464 seasons and found 5-115 bodies within reach (s4, s2, s7, s11); the five without metal
+  never looked. Write D2-190 from it.
 - **Prospecting** (`wip/prospect` 85acede, sim 108): merged onto main's tip in the landing worktree **`C:/Game Dev/tc-s27land` (`wip/s27-land` 142ffc5)**; its
   tests `N_d_land_tests` run after the compare `N_c_cmp_pro1` (`tc2/out/tools/s26/results/cmp_rui1_pro1.txt`). **Land only after `P_a_shots_s27c` and
   `P_b_web_s27web4` finish** (they load sim-107 saves): then fast-forward main to `wip/s27-land` (merge `wip/s27-int` into it first if it moved), write
