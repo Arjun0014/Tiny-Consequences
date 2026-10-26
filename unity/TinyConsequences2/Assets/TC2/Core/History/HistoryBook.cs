@@ -504,6 +504,18 @@ namespace TC2.Core.History
                     else if (Folded(e.Kind)) folded.Add(e);
                     else if (wt == 1) notable.Add(e);
                 }
+                // (session 27) at most three great events of one kind: the rest stand among the notable (an age of nine abandonments had listed only those)
+                {
+                    var kinds = new Dictionary<HistoryKind, int>();
+                    great.Sort((p, q) => { int k = q.Importance.CompareTo(p.Importance); return k != 0 ? k : p.Id.CompareTo(q.Id); });
+                    for (int g = 0; g < great.Count; g++)
+                    {
+                        kinds.TryGetValue(great[g].Kind, out int had);
+                        kinds[great[g].Kind] = had + 1;
+                        if (had >= 3) { notable.Add(great[g]); great.RemoveAt(g); g--; }
+                    }
+                    great.Sort((p, q) => p.Id.CompareTo(q.Id));
+                }
                 Best(great, 7);
                 if (great.Count > 0)
                 {

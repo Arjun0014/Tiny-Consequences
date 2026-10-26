@@ -161,9 +161,9 @@ namespace TC2.Game
             _small = new GUIStyle(_label) { fontSize = 12 };
             _small.normal.textColor = new Color(0.78f, 0.82f, 0.88f);
             _title = new GUIStyle(_label) { fontSize = 16, fontStyle = FontStyle.Bold, wordWrap = false };
-            // (session 27) the date in the book's display type, warm gold; buttons of dark glass that warm to gold under the pointer and when on
-            var display = Resources.Load<Font>("Fonts/IMFellEnglish");
-            if (display != null) { _title.font = display; _title.fontSize = 20; _title.fontStyle = FontStyle.Normal; _title.normal.textColor = new Color(0.98f, 0.88f, 0.62f); }
+            // (session 27) buttons of dark glass that warm to gold under the pointer and when on
+            // (the date in the UI type, warm gold: IM FELL's old-style figures read "Year o ... oo:44" - session 27, s27web2)
+            _title.fontSize = 18; _title.normal.textColor = new Color(0.98f, 0.88f, 0.62f);
             _btn = new GUIStyle(GUI.skin.button) { fontSize = 12, padding = new RectOffset(9, 9, 4, 4), border = new RectOffset(8, 8, 8, 8), margin = new RectOffset(2, 2, 2, 2) };
             var bNormal = Rounded(new Color(0.10f, 0.11f, 0.14f, 0.86f), new Color(0.50f, 0.42f, 0.27f, 0.50f));
             var bHover = Rounded(new Color(0.17f, 0.15f, 0.12f, 0.92f), new Color(0.88f, 0.70f, 0.36f, 0.90f));
@@ -297,8 +297,11 @@ namespace TC2.Game
                 float wdt = Mathf.Max(ns.x, ss.x) + 6f, hgt = ns.y + ss.y;
                 var box = new Rect(x - wdt * 0.5f, y - hgt - 7f, wdt, hgt);
                 if (box.y < _left.yMax + 6f || box.yMax > sh - 46f) continue;   // (clear of the bar at the top and the ticker at the foot)
-                // (session 27) a small flag in its polity's colour before its name - a realm's villages fly one colour, as their standards do
+                // (session 27) a small flag in its polity's colour before its name - a realm's villages fly one colour, as their standards do; only a
+                // realm's (a village alone flies none: two unbound hamlets in near pinks read as one realm - s27web2)
+                bool inRealm = s.Lord != 0 || _seats.Contains(sid);
                 var flag = new Rect(x - ns.x * 0.5f - (town ? 17f : 15f), box.y + ns.y * 0.5f - (town ? 5f : 4.5f), town ? 13f : 11f, town ? 9f : 8f);
+                if (!inRealm) flag = new Rect(box.x + 2f, box.y, 0f, 0f);
                 var room = new Rect(Mathf.Min(box.x, flag.x - 2f), box.y, box.xMax - Mathf.Min(box.x, flag.x - 2f), box.height);
                 bool clash = false;
                 foreach (var r in _placed) if (r.Overlaps(room)) { clash = true; break; }
@@ -307,7 +310,7 @@ namespace TC2.Game
                 shown++;
                 GUI.color = new Color(0f, 0f, 0f, 0.8f); GUI.DrawTexture(new Rect(x - 3f, y - 3f, 6f, 6f), _dot); GUI.color = Color.white;
                 GUI.DrawTexture(new Rect(x - 2f, y - 2f, 4f, 4f), _dot);
-                if (Event.current.type == EventType.Repaint)
+                if (inRealm && Event.current.type == EventType.Repaint)
                 {
                     GUI.color = new Color(0.04f, 0.05f, 0.06f, 0.85f); GUI.DrawTexture(new Rect(flag.x - 1f, flag.y - 1f, flag.width + 2f, flag.height + 2f), _dot);
                     GUI.color = WorldObjectsView.PolityColour(w, sid); GUI.DrawTexture(flag, _dot);
@@ -1143,7 +1146,7 @@ namespace TC2.Game
             var tl = _timeline;
             GUILayout.Label("A Timeline of the World", _inkTitle);
             GUILayout.Label(tl.To > tl.From ? "years " + tl.From + " to " + tl.To + ": its ages, its realms and its people" : "its first days", _inkSub);
-            _bookScroll = GUILayout.BeginScrollView(_bookScroll, GUILayout.Height(r.height * 0.80f));
+            _bookScroll = GUILayout.BeginScrollView(_bookScroll, GUILayout.Height(Mathf.Max(120f, r.height - 210f)));   // (room left for the leaf's foot: it was clipped at 720 px)
             float cw = Mathf.Max(200f, r.width * 0.64f - 100f);   // (the right leaf's text width: Hud.Book.cs)
             float ch = 250f;
             Rect ages = GUILayoutUtility.GetRect(cw, 20f);

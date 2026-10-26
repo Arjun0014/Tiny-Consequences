@@ -169,7 +169,7 @@ namespace TC2.Game
                 GUILayout.Label("Preface", _bkTitle);
                 GUILayout.Label("the world in year " + _writer.Book.Year, _bkSub);
                 Rule(0.0f, 1f);
-                _bookScroll = GUILayout.BeginScrollView(_bookScroll, GUIStyle.none, GUI.skin.verticalScrollbar);
+                _bookScroll = GUILayout.BeginScrollView(_bookScroll, GUIStyle.none, GUI.skin.verticalScrollbar, GUILayout.Height(Mathf.Max(120f, right.height - 200f)));
                 bool first = true;
                 foreach (var para in _writer.Book.Preface) { GUILayout.Label(first ? Initial(para) : para, _bkBody); first = false; }
                 GUILayout.EndScrollView();
@@ -193,7 +193,7 @@ namespace TC2.Game
                     GUILayout.EndHorizontal();
                     if (!string.IsNullOrEmpty(ch.Sub)) GUILayout.Label(ch.Sub, _bkSub);
                     Rule(0.0f, 1f);
-                    _bookScroll = GUILayout.BeginScrollView(_bookScroll, GUIStyle.none, GUI.skin.verticalScrollbar, GUILayout.Height((right.height - 150f) * (_line != 0 ? 0.62f : 1f)));
+                    _bookScroll = GUILayout.BeginScrollView(_bookScroll, GUIStyle.none, GUI.skin.verticalScrollbar, GUILayout.Height(Mathf.Max(120f, right.height - 200f) * (_line != 0 ? 0.62f : 1f)));   // (room left for the leaf's foot: it was clipped at 720 px)
                     if (_bookChapter == 0 && !string.IsNullOrEmpty(part.Intro)) GUILayout.Label(part.Intro, _bkNote);
                     if (ch.MapSeat > 0 && w.Settlements.Exists(ch.MapSeat)) RealmMap(w, ch, right.width);
                     bool lead = true;
