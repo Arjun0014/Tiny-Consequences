@@ -150,15 +150,25 @@ namespace TC2.Game
         {
             _scale = Mathf.Max(1f, Screen.height / 900f);
             if (_box != null) return;
-            _box = new GUIStyle(GUI.skin.box) { alignment = TextAnchor.UpperLeft, padding = new RectOffset(10, 10, 8, 8) };
-            var bg = new Texture2D(1, 1); bg.SetPixel(0, 0, new Color(0.05f, 0.07f, 0.1f, 0.55f)); bg.Apply();
-            _box.normal.background = bg;
+            _box = new GUIStyle(GUI.skin.box) { alignment = TextAnchor.UpperLeft, padding = new RectOffset(10, 10, 8, 8), border = new RectOffset(8, 8, 8, 8) };
+            // (session 27: the HUD as a game's) panels of dark glass with a thin gold edge, rounded
+            _box.normal.background = Rounded(new Color(0.045f, 0.055f, 0.075f, 0.70f), new Color(0.62f, 0.50f, 0.28f, 0.55f));
             _label = new GUIStyle(GUI.skin.label) { fontSize = 14, wordWrap = true, richText = true };
             _label.normal.textColor = new Color(0.92f, 0.93f, 0.95f);
             _small = new GUIStyle(_label) { fontSize = 12 };
             _small.normal.textColor = new Color(0.78f, 0.82f, 0.88f);
             _title = new GUIStyle(_label) { fontSize = 16, fontStyle = FontStyle.Bold, wordWrap = false };
-            _btn = new GUIStyle(GUI.skin.button) { fontSize = 12, padding = new RectOffset(7, 7, 3, 3) };
+            // (session 27) the date in the book's display type, warm gold; buttons of dark glass that warm to gold under the pointer and when on
+            var display = Resources.Load<Font>("Fonts/IMFellEnglish");
+            if (display != null) { _title.font = display; _title.fontSize = 20; _title.fontStyle = FontStyle.Normal; _title.normal.textColor = new Color(0.98f, 0.88f, 0.62f); }
+            _btn = new GUIStyle(GUI.skin.button) { fontSize = 12, padding = new RectOffset(9, 9, 4, 4), border = new RectOffset(8, 8, 8, 8), margin = new RectOffset(2, 2, 2, 2) };
+            var bNormal = Rounded(new Color(0.10f, 0.11f, 0.14f, 0.86f), new Color(0.50f, 0.42f, 0.27f, 0.50f));
+            var bHover = Rounded(new Color(0.17f, 0.15f, 0.12f, 0.92f), new Color(0.88f, 0.70f, 0.36f, 0.90f));
+            var bActive = Rounded(new Color(0.32f, 0.23f, 0.10f, 0.95f), new Color(0.95f, 0.78f, 0.42f, 1f));
+            _btn.normal.background = bNormal; _btn.hover.background = bHover; _btn.active.background = bActive; _btn.focused.background = bNormal;
+            _btn.onNormal.background = bActive; _btn.onHover.background = bActive; _btn.onActive.background = bActive; _btn.onFocused.background = bActive;
+            _btn.normal.textColor = new Color(0.90f, 0.88f, 0.82f); _btn.hover.textColor = new Color(1f, 0.86f, 0.52f); _btn.active.textColor = new Color(1f, 0.92f, 0.65f);
+            _btn.onNormal.textColor = new Color(1f, 0.90f, 0.62f); _btn.onHover.textColor = new Color(1f, 0.92f, 0.68f); _btn.onActive.textColor = new Color(1f, 0.92f, 0.68f);
             _page = new GUIStyle(_box) { padding = new RectOffset(14, 14, 10, 10) };   // (the book reads on a page, not over the world)
             var page = new Texture2D(1, 1); page.SetPixel(0, 0, new Color(0.06f, 0.07f, 0.09f, 0.92f)); page.Apply();
             _page.normal.background = page;
@@ -460,6 +470,25 @@ namespace TC2.Game
         static string Cap(string s) => string.IsNullOrEmpty(s) ? s : char.ToUpperInvariant(s[0]) + s.Substring(1);
 
         static Texture2D Solid(Color c) { var t = new Texture2D(1, 1); t.SetPixel(0, 0, c); t.Apply(); return t; }
+
+        /// <summary>(session 27) A rounded rectangle for 9-slicing (border 8): its fill, a one-pixel edge, soft corners.</summary>
+        static Texture2D Rounded(Color fill, Color edge)
+        {
+            const int n = 24; const float rad = 6f;
+            var t = new Texture2D(n, n, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear };
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    float cx = Mathf.Clamp(x + 0.5f, rad, n - rad), cy = Mathf.Clamp(y + 0.5f, rad, n - rad);
+                    float d = rad - Mathf.Sqrt((x + 0.5f - cx) * (x + 0.5f - cx) + (y + 0.5f - cy) * (y + 0.5f - cy));   // (inside the corner's arc: > 0)
+                    float inside = Mathf.Clamp01(d + 0.5f), rim = Mathf.Clamp01(1.5f - Mathf.Abs(d - 0.5f));
+                    var c = Color.Lerp(fill, edge, rim * edge.a);
+                    c.a = inside * Mathf.Max(fill.a, rim * edge.a);
+                    t.SetPixel(x, y, c);
+                }
+            t.Apply(false, true);
+            return t;
+        }
 
         void OnGUI()
         {
