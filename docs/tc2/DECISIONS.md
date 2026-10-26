@@ -5993,6 +5993,6 @@ strength 0).
 
 **Evidence.** The same world on Web `s27web3` (with (1) and (2), before (3)), paired in one page (`tc2/out/webtest/s27perf2/*.txt`):
 **about 30 fps at the region view (was 12.4) and 16 at the village view (was 8.4)**. Far detail on against off x1.89 / x1.14; the graded light shadows
-against the old four cascades x1.06 / x1.31; cloud shadows x0.97 / x1.00 (kept); the HUD's names x0.99 / x0.99. What is left: the terrain x0.59 of the
-region view's frame (its canopy, plots and cover in one shader) - the next cost; at the village view the near village in full detail and the terrain.
+against the old four cascades x1.06 / x1.31; cloud shadows x0.97 / x1.00 (kept); the HUD's names x0.99 / x0.99. What is left: **the terrain x0.59 of the
+region view's frame and x0.66 of the village view's** (about 15 and 24 ms: its canopy, plots, cover and lighting in one shader) - the next cost.
 Web `s27web3` 9/9 with all of it; real shots at every view since (`s27e6`-`s27q4`) show the near villages unchanged (detail and shadows within 2.2 km).

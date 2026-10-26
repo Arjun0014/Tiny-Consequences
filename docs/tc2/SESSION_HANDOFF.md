@@ -34,8 +34,9 @@
   x0.92, the villages' trees - / x0.89, people - / x0.91; clouds and cover ~1. Shadow set-ups against 4 cascades x3.2: 4 x1.6 -> x1.02/x1.02 (reach is not
   the cost), 2 x1.6 -> x1.12/x1.29, 2 x1.0 -> x1.22/x1.29, 1 x1.0 -> x1.25/x1.51 (each cascade is a pass over every caster). Built from it: villages beyond
   2.2 km of the camera without their homes' small details and casting no shadow (homes and yard trees: `WorldObjectsView.DetailFar`, bridge `fardetail`),
-  and the light shadows graded by height and made the default (`Sky.ShadowLite`: 4 cascades below 300 m, 2 below 900 m, 1 above). `0_y_perf2_s27` measures
-  them on s27web3 (fardetail, shadowlite, cloudshadow, names, terrain) - then D2-195.
+  and the light shadows graded by height and made the default (`Sky.ShadowLite`: 4 cascades below 300 m, 2 below 900 m, 1 above). Measured on s27web3
+  (`s27perf2`): region ~30 fps (was 12.4), village ~16 (was 8.4); fardetail x1.89/x1.14, the graded shadows x1.06/x1.31, cloud shadows ~1, names ~1;
+  **the terrain x0.59/x0.66 - the next cost** (Terrain.shader: canopy, plots, cover per pixel). D2-195 written.
 - **The queue** (runner `tc2/out/tools/s23/runq.sh`, `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`,
   the background task `bbgjl1nqj`): `0_u_web_s27web2` (the Web build of main c06833f = the reader, E, marks, flags, the top bar; webtest `s27web2`, bookshots
   `s27book2 --play`), then `0_v_perf_s27` (each layer's paired frame cost on seed 2's year 300: clouds, shadows, trees, cover, people, buildings, air -
