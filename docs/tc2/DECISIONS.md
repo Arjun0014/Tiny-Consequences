@@ -6155,9 +6155,12 @@ loads only in a binary of its own version; the header is `TC2W`, u16 format, i32
    branches stay (`git worktree add "C:/Game Dev/tc-X" wip/X` brings one back). A stale worktree in an old scratchpad was pruned. Left: `tc-s27int`
    (`wip/s27-int`, main's twin) and the seven unmerged: `tc-g4` (`wip/g4-standing`), `tc-s24m` (`wip/s24-tools87`), `tc-sgtally` (`wip/siege-tally`),
    `tc-siege` (`wip/peace`), `tc-statesizes` (`wip/statesizes`, one uncommitted change), `tc-sworn` (`wip/c107b-sworn`), `tc-tribute` (`wip/c106-tribute`).
-4. **From now on**: a Unity log past ~100 MB is a runaway - stop the job and read its first repeated message; when a landing changes the sim version,
+4. **From now on**: a Unity log past ~100 MB is a bug signal, not a reason to stop the job - let it finish (each 9 Oct job wrote ~6 GB in ~10 minutes
+   and finished normally; stopping it would have lost its shots), read its first repeated message and fix the cause, then delete the log (healthy logs
+   are at most 1.2 MB); when a landing changes the sim version,
    saves two or more versions old may go unless a queued job names them; `shots`/`webtest` images older than the last two sessions may go once their
-   judgement is written here. `unity.mjs` does not cap a log's size (a cap is a tooling change for a working session, not done here).
+   judgement is written here. `unity.mjs` does not cap a log's size; the protection that needs nobody watching is the queue (or `unity.mjs`) trimming
+   any log past 100 MB to its first and last few MB when the job ends - a tooling change for a working session, not done here.
 
 **Evidence.** The project folder 38 GB -> 4.2 GB; drive C: 29 GB -> 68 GB free (with the worktrees); `tc2/out/logs` 62 MB, `tc2/out/civ` 529 MB,
 `tc2/out/shots` 261 MB, `tc2/out/webtest` 494 MB, `out/` 147 MB; `git worktree list` 9 entries.

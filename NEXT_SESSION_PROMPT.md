@@ -112,8 +112,8 @@ listener at 0 in shots).
   `lib.sh`: `gate`, `low`, `world`); never kill processes you did not start (the user's Chrome and other Claude sessions share the machine).
 - **The scratchpad can vanish between sessions**: `S`/`N` in `tc2/out/tools/s23/lib.sh` and `Q` in `runq.sh` are hard-coded - point them at a live one and
   rebuild each binary from its worktree before using it. Saves the jobs read live in `tc2/out/civ` (ignored, persistent; since D2-198 only sim 107/108
-  and the saves queued jobs name - make any other with its binary). A Unity log past ~100 MB is a runaway (D2-198: 6 GB logs of one repeated assertion) -
-  stop the job and read its first repeated message. Note: `lib.sh` sets `S` - do not
+  and the saves queued jobs name - make any other with its binary). A Unity log past ~100 MB is a bug signal (D2-198: 6 GB logs of one repeated assertion) -
+  let the job finish, read its first repeated message and fix the cause, then delete the log. Note: `lib.sh` sets `S` - do not
   name your own shell variables `S`/`N`/`O`/`R` after sourcing it.
 - Develop in a worktree per slice (`git worktree add -b wip/<slice> "C:/Game Dev/tc-<slice>" main`); new test files need a `.meta` (fileFormatVersion 2, a
   new guid).
