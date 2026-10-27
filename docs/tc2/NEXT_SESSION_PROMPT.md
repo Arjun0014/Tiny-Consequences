@@ -447,6 +447,10 @@ full length, names laid out on every event - all fixed on main (d4057ed); their 
 faced in the village's frame (`place --ring`), the book holding the screen and the pages' words judged in shots and Web builds (D2-197). SESSION_HANDOFF
 "Session 27, context 4" has the exact state and the queue.
 
+**Where we are (session 28, 27 Oct 2026)**: housekeeping only, no development (Arjun) - D2-198: about 33 GB of ignored output deleted (runaway Unity
+logs, saves below sim 107, pre-25-Oct images, TC1's media) and 62 merged worktrees removed; nothing tracked changed. The work resumes exactly where
+session 27 stopped (SESSION_HANDOFF "Session 28" then "Session 27, context 4"). A Unity log past ~100 MB is a runaway: stop the job.
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.

@@ -6129,3 +6129,35 @@ wavy at the village view; at the region view still a little jagged (a coarse pat
 night sea** (`s27w3`): the moon's path broken into patches, still a broad pale veil from the region view - open. **Pending at the session's end**: the
 frame's fixes measured (`0_qb_web_s27prof2`, held in `$Q/hold`: a Web build of d4057ed with symbols, webtest `s27web8`, `s27prof2` profiles, bookshots
 `s27book7`).
+
+## D2-198 — 2026-10-27 — Housekeeping: what the tooling's outputs keep (no rule, sim or presentation change; sim 108)
+
+**Context.** Session 28 (27 Oct 2026, Arjun: no development, a disk audit) found the project folder at 38 GB on a drive 94 % full (29 GB free of 477 GB).
+Tracked files are 51 MB (TC2's 13.6 MB) and `.git` 91 MB; the rest was ignored output. `tc2/out/logs` 17.5 GB: three `unity-shots` logs of 9 Oct
+(`T09-23-20`, `T09-34-47`, `T09-45-55`; 6.3, 6.2 and 6.1 GB) were one URP assertion, `Assertion failed on expression: 'std::abs(det) > FLT_MIN'` in
+`CullingResults.ComputeDirectionalShadowMatricesAndCullingPrimitives`, with its full stack every frame of `ShotRunner.Save` - no shot log since has
+passed 1 MB. `tc2/out/civ` 11.4 GB: 2,864 saves of sim 33 to 108 in 1,194 run folders, of which only sim 108's 13 (0.11 GB) load in main's binary (a save
+loads only in a binary of its own version; the header is `TC2W`, u16 format, i32 sim version); saves are already compressed (gzip keeps 97 %). `tc2/out/shots`
+1.8 GB and `webtest` 1.1 GB (PNGs from 5 Oct on), `tc2/out/scale` 0.27 GB (7 Oct). TC1's `out/` 2.3 GB (Defold shots, webm, saves; last written 7 Oct),
+`tools/bob` 0.2 GB. Outside the folder, 70 worktrees `C:/Game Dev/tc-*` (3.9 GB), 63 of them on branches merged into main.
+
+**Decision.** Ignored outputs are kept only while something can still use them; records of measurement are always kept.
+1. **Deleted**: the three runaway logs (17.4 GB); every save below sim 107 except those a queued or held job names (2,813 saves, 10.9 GB; 1,163 emptied
+   run folders removed); the images and saves of every `shots`/`webtest` entry last written before 25 Oct (their `.txt`, `.json`, `.log` and
+   `.cpuprofile` kept); `tc2/out/scale`; TC1's media and saves in `out/` (`png`, `webm`, `gif`, `mp4`, `tcsave`, `arcd`, `zip`, `wasm`), `tools/bob`
+   (`npm run setup` downloads it again) and `build/` (bob's output). No tracked file of TC1 or TC2 changed.
+2. **Kept**: sim 107/108 saves (45, 0.39 GB; `s2_ac5/world_y300|y600|y1000` - the saves the held `0_qb_web_s27prof2` reads), the older saves the held
+   jobs name (`s2_a7`, `s2_k0`, `s2_sx1`, `s2_lp1`, `s4_a7`, `s4_sx1` at year 300), every run's `.txt`/`.csv` in `tc2/out/civ` (2,869: run tags are still
+   found by `ls tc2/out/civ | grep _TAG`), every `s26*`/`s27*` webtest and shot (`s27prof1` is `s27prof2`'s baseline), `tc2/out/tools` (the queue's
+   `runq.sh`/`lib.sh`), `tc2/out/cc`, Unity's `Library` (2.1 GB: a full re-import and cold Web builds otherwise), TC1's `out/audio_cache` (paid
+   ElevenLabs generations) and TC1's small scripts and text results, `dist/`.
+3. **Worktrees**: the 62 clean worktrees whose branches are merged into main were removed with `git worktree remove` (no `--force`; none refused); their
+   branches stay (`git worktree add "C:/Game Dev/tc-X" wip/X` brings one back). A stale worktree in an old scratchpad was pruned. Left: `tc-s27int`
+   (`wip/s27-int`, main's twin) and the seven unmerged: `tc-g4` (`wip/g4-standing`), `tc-s24m` (`wip/s24-tools87`), `tc-sgtally` (`wip/siege-tally`),
+   `tc-siege` (`wip/peace`), `tc-statesizes` (`wip/statesizes`, one uncommitted change), `tc-sworn` (`wip/c107b-sworn`), `tc-tribute` (`wip/c106-tribute`).
+4. **From now on**: a Unity log past ~100 MB is a runaway - stop the job and read its first repeated message; when a landing changes the sim version,
+   saves two or more versions old may go unless a queued job names them; `shots`/`webtest` images older than the last two sessions may go once their
+   judgement is written here. `unity.mjs` does not cap a log's size (a cap is a tooling change for a working session, not done here).
+
+**Evidence.** The project folder 38 GB -> 4.2 GB; drive C: 29 GB -> 68 GB free (with the worktrees); `tc2/out/logs` 62 MB, `tc2/out/civ` 529 MB,
+`tc2/out/shots` 261 MB, `tc2/out/webtest` 494 MB, `out/` 147 MB; `git worktree list` 9 entries.

@@ -4,6 +4,12 @@
 
 **Phases: F0 done; F1 closed (D2-043); F2 closed (D2-046); F3 closed (D2-060: D2-042, -045, -047 to -050, -052, -056, -058, -059); F4 closed (D2-065: D2-062 to D2-064); F5 closed (D2-068: D2-066, D2-067); F6 closed (D2-076: D2-069, D2-071 to D2-075); F7 closed (D2-078: D2-077); Web checked on WebGPU (s2webf, after F6) and WebGL2 (D2-051); Mono determinism repaired (D2-057).**
 
+- **Session 28 (27 Oct 2026, ~16:00-17:15 IST) - housekeeping only, no development (Arjun).** The project folder was 38 GB on a drive 94 % full; about
+  33 GB of it was ignored output and is gone (D2-198): three runaway Unity shot logs of 9 Oct (17.4 GB of one URP shadow assertion), the saves below sim
+  107 (10.9 GB - only sim 108 loads in main's binary), the images of shots and webtests before 25 Oct, `tc2/out/scale`, TC1's media, `tools/bob` and
+  `build/`; and 62 merged worktrees beside the project. Kept: sim 107/108 saves (`s2_ac5`), the saves the held jobs name, every run's `.txt`/`.csv`,
+  `s26*`/`s27*` shots and webtests (`s27prof1`), `tc2/out/tools`, Unity's `Library`. main unchanged but for these docs (sim 108); the queue still stopped
+  with `0_qb_web_s27prof2` held - the next step is still SESSION_HANDOFF "Session 27, context 4" "Next, in order".
 - **Session 27, context 4 (26 Oct 2026, from 16:40 IST; Control Room run #81 session 4) - the frame by function; the night from above; the palisade
   faced.** The frame profiled by function in the Web build for the first time (`realmsperf --profile` with the wasm's names from a `--symbols` build;
   `tc2/scripts/cpuprof.mjs`): the main thread busy 99.9 % - the CPU's frame; at the region view the people's placing on the fine relief was half the frame

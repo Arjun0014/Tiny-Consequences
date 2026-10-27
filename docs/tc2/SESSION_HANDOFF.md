@@ -1,5 +1,24 @@
 # TC2 Session handoff
 
+## Session 28 (27 Oct 2026, ~16:00-17:15 IST) - housekeeping only: the disk audit and cleanup (D2-198); no development
+
+### Exact state (keep current)
+- **Arjun's word**: no development this session - find what fills the project's 40 GB, keep what development needs, delete the rest, update the docs,
+  end. Nothing tracked changed but these docs; **main** = `wip/s27-int` (sim **108**), the docs commit after 872cb2c, fast-forwarded as before.
+- **Measured before**: the folder 38 GB, drive C: 94 % full (29 GB free of 477 GB). `tc2/out/logs` 17.5 GB (three `unity-shots-2026-10-09T09-*` logs,
+  6.3/6.2/6.1 GB, one URP assertion `'std::abs(det) > FLT_MIN'` with its stack every frame of `ShotRunner.Save`), `tc2/out/civ` 11.4 GB (2,864 saves,
+  sim 33-108; sim 108's 13 = 0.11 GB), `tc2/out/shots` 1.8 GB, `tc2/out/webtest` 1.1 GB, `tc2/out/scale` 0.27 GB, TC1's `out/` 2.3 GB, Unity's `Library`
+  2.1 GB, `tools/bob` 0.2 GB; tracked files 51 MB, `.git` 91 MB. 70 worktrees `C:/Game Dev/tc-*` 3.9 GB.
+- **Measured after**: **the folder 4.2 GB; drive C: 68 GB free (86 %)**. `tc2/out/logs` 62 MB, `tc2/out/civ` 529 MB, `tc2/out/shots` 261 MB,
+  `tc2/out/webtest` 494 MB, `out/` 147 MB; `git worktree list`: main, `tc-s27int` and the seven unmerged (`tc-g4`, `tc-s24m`, `tc-sgtally`, `tc-siege`,
+  `tc-statesizes` - one uncommitted change, `tc-sworn`, `tc-tribute`).
+- **What was deleted and kept**: DECISIONS D2-198 lists it (kept: sim 107/108 saves incl. `s2_ac5/world_y300|y600|y1000`; the older year-300 saves held
+  jobs name - `s2_a7`, `s2_k0`, `s2_sx1`, `s2_lp1`, `s4_a7`, `s4_sx1`; every run's `.txt`/`.csv`; `s26*`/`s27*` shots and webtests incl. `s27prof1`;
+  `tc2/out/tools`, `tc2/out/cc`; Unity's `Library`; TC1's `out/audio_cache`, scripts and text; `dist/`). Removed worktrees' branches are all still in git.
+- **The queue**: untouched - still stopped (`$Q/stop`), `0_qb_web_s27prof2` held in `$Q/hold` with the older held jobs; `$Q` lives in session 24's
+  scratchpad under `%TEMP%\claude` - do not clear `%TEMP%\claude` wholesale.
+- **Next**: exactly as "Session 27, context 4" below ("Next, in order" 1: run the held `0_qb_web_s27prof2`).
+
 ## Session 27, context 4 (26 Oct 2026, from 16:40 IST; Control Room run #81 session 4) - the frame by function; the night from above; the regions' edges; the palisade faced; the pages' words
 
 ### Exact state (keep current)

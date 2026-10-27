@@ -30,6 +30,10 @@ listener at 0 in shots).
 4. `git status`, `git log --oneline -15`, `git worktree list`, and the queue: `cat $Q/runq.log` (`Q` below) - which jobs ended, with what; `ls $Q/todo`.
 
 ## FIRST - the state at the end of session 27 (26 Oct 2026, ~17:50 IST; Arjun ended the session)
+- **Session 28 (27 Oct 2026) was housekeeping only** (D2-198; SESSION_HANDOFF "Session 28"): ~33 GB of ignored output deleted - runaway Unity logs, saves
+  below sim 107, shots/webtest images before 25 Oct, TC1's media, `tools/bob`, `build/` - and 62 merged worktrees removed (their branches kept). Still here:
+  `s2_ac5` (sim 108) and the saves the held jobs name, every run's `.txt`/`.csv`, `s26*`/`s27*` shots and webtests (`s27prof1`), `tc2/out/tools`, Unity's
+  `Library`, `tc-s27int` and the seven unmerged worktrees. Nothing below changed: start at "Do next" 1.
 - **main** = `wip/s27-int` (the docs commit after d4057ed; sim 108; worktree `C:/Game Dev/tc-s27int` - work there, fast-forward main between Unity jobs:
   `git -C "C:/Game Dev/tiny-consequences" merge --ff-only wip/s27-int`, never while a Unity job holds main's checkout). Verify `git log -1 main` = `git log -1 wip/s27-int`.
   After any Web build: `git checkout -- unity/TinyConsequences2/ProjectSettings/ProjectSettings.asset` in main's checkout.
@@ -107,7 +111,9 @@ listener at 0 in shots).
 - **Resource rule (Arjun D-1/D-2)**: one low-priority heavy job at a time while RAM < 86 % and CPU < 85 % - the job queue (`tc2/out/tools/s23/runq.sh`,
   `lib.sh`: `gate`, `low`, `world`); never kill processes you did not start (the user's Chrome and other Claude sessions share the machine).
 - **The scratchpad can vanish between sessions**: `S`/`N` in `tc2/out/tools/s23/lib.sh` and `Q` in `runq.sh` are hard-coded - point them at a live one and
-  rebuild each binary from its worktree before using it. Saves the jobs read live in `tc2/out/civ` (ignored, persistent). Note: `lib.sh` sets `S` - do not
+  rebuild each binary from its worktree before using it. Saves the jobs read live in `tc2/out/civ` (ignored, persistent; since D2-198 only sim 107/108
+  and the saves queued jobs name - make any other with its binary). A Unity log past ~100 MB is a runaway (D2-198: 6 GB logs of one repeated assertion) -
+  stop the job and read its first repeated message. Note: `lib.sh` sets `S` - do not
   name your own shell variables `S`/`N`/`O`/`R` after sourcing it.
 - Develop in a worktree per slice (`git worktree add -b wip/<slice> "C:/Game Dev/tc-<slice>" main`); new test files need a `.meta` (fileFormatVersion 2, a
   new guid).
@@ -116,6 +122,7 @@ listener at 0 in shots).
   is judged against a matched placebo** (the old rules with `--nudge Y` at each world's parting year; `tc2/out/tools/s24/lean.py`), then explained by
   its mechanism by century (as D2-168 did). Wall-clock time is not evidence.
 - The queue's test gate requires `0 skipped`. Test premises that set state directly must also tell it as the game would (the record a bond stands on).
-- Saves carry a sim version; a save loads only in a binary of the same version (main 90, C10.8 91, C10.9 92; `_i2`/`_m5`/`_l9i2` saves 90, `_dm1`/`_l9dm1` 91).
+- Saves carry a sim version; a save loads only in a binary of the same version (the header: `TC2W`, u16 format, i32 sim version at byte 6; main is 108).
+  The saves of sim 90-92 this rule once listed (`_i2`, `_m5`, `_l9i2`, `_dm1`, `_l9dm1`) were deleted in D2-198.
 - Run tags in `tc2/out/civ` are reused across sessions: check `ls tc2/out/civ | grep _TAG` first (`_dmp`, `_lp0`, `_lp1` are this session's).
 - To shoot something rare, find it first (`voyages --load SAVE --days N` and probes like it), then `unity.mjs shots --village V --days D --hour H`.
