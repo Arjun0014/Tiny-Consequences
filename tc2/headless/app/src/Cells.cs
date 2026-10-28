@@ -16,6 +16,35 @@ namespace TC2.Headless
         {
             var w = SaveFile.Load(File.ReadAllBytes(a.Get("load")), out _);
             var P = w.Planet;
+            if (a.Get("homes") != null)
+            {
+                // (--homes SID) where a place's buildings stand from its anchor (the square the camera and its name go to): lived-in homes, empty, fallen;
+                // works - by distance band
+                var iv = CultureInfo.InvariantCulture;
+                int hs = int.Parse(a.Get("homes"), iv);
+                ref var st = ref w.Settlements.Get(hs);
+                var bands = new int[8, 4];   // [band of 50 m][lived, empty, fallen, work]
+                double sx = 0, sy = 0; int nl = 0;
+                var bl = w.BuildingsOf(hs);
+                for (int i = 0; i < bl.Count; i++)
+                {
+                    var b = w.Buildings.Get(bl[i]);
+                    if (TC2.Core.Places.Boats.IsBoat(b.Kind)) continue;
+                    double d = Math.Sqrt(b.X * b.X + b.Y * b.Y);
+                    int band = Math.Min(7, (int)(d / 50.0));
+                    bool home = TC2.Core.Places.Structures.IsHome(b.Kind);
+                    int kind = !home ? 3 : TC2.Core.Places.Homes.Fallen(in b, w.Now) ? 2 : b.Household != 0 ? 0 : 1;
+                    bands[band, kind]++;
+                    if (kind == 0) { sx += b.X; sy += b.Y; nl++; }
+                }
+                Console.WriteLine("place #" + hs + " " + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(hs)) + ": people " + st.Population + "; lived-in homes' centre " + (nl > 0 ? (sx / nl).ToString("0", iv) + ", " + (sy / nl).ToString("0", iv) + " m from the anchor" : "-"));
+                var an = st.Anchor; double d2r = 180.0 / Math.PI;
+                var lc = nl > 0 ? st.LocalToSphere(sx / nl, sy / nl, P.Radius) : an;
+                Console.WriteLine("  anchor lat " + (an.Latitude * d2r).ToString("0.00", iv) + " lon " + (an.Longitude * d2r).ToString("0.00", iv) + "; lived centre lat " + (lc.Latitude * d2r).ToString("0.00", iv) + " lon " + (lc.Longitude * d2r).ToString("0.00", iv));
+                Console.WriteLine("  from anchor   lived  empty  fallen  works");
+                for (int k = 0; k < 8; k++) Console.WriteLine("  " + (k * 50).ToString(iv).PadLeft(4) + (k == 7 ? "+  m" : "-" + ((k + 1) * 50).ToString(iv).PadRight(4) + "m") + "   " + bands[k, 0].ToString(iv).PadLeft(4) + "   " + bands[k, 1].ToString(iv).PadLeft(4) + "   " + bands[k, 2].ToString(iv).PadLeft(5) + "   " + bands[k, 3].ToString(iv).PadLeft(4));
+                return 0;
+            }
             if (a.Get("burned") != null)
             {
                 // (--burned YEARS) homes burned by bands and buildings flattened by stones from the sky in the last YEARS, and the ruins standing now that fell

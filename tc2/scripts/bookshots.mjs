@@ -218,6 +218,14 @@ try {
     await page.mouse.move(800, 450);
     await page.waitForTimeout(1800);
     await snap('extra_work_hover');
+    // (session 29) the ruin last burned (a band's torches, a stone from the sky): its page - how it fell - and the pointer over it
+    await cmd('building burned');
+    await page.waitForTimeout(3500);
+    await snap('extra_ruin_page');
+    await cmd('closepages');
+    await page.mouse.move(800, 450);
+    await page.waitForTimeout(1800);
+    await snap('extra_ruin_hover');
     // (session 29) the History panel, and its latest line opened in the book (why it happened)
     await page.mouse.move(1500, 120);
     await cmd('history on');

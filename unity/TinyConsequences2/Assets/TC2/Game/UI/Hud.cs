@@ -89,7 +89,7 @@ namespace TC2.Game
         readonly System.Collections.Generic.HashSet<int> _seats = new System.Collections.Generic.HashSet<int>();   // (places others pay and that pay nobody: realms' seats)
         float _byPeopleAt = -99f;
         int _hoverPid, _hoverBid; float _hoverAt;
-        string _news = ""; float _newsAge = 99f; long _newsTotal;
+        string _news = ""; float _newsAge = 99f; long _newsTotal, _newsId;
 
         void Update()
         {
@@ -106,7 +106,7 @@ namespace TC2.Game
             if (Input.GetKeyDown(KeyCode.H)) _hidden = !_hidden;
             if (Input.GetKeyDown(KeyCode.R)) RealmsView.On = !RealmsView.On;   // (the realms map layer, D2-167)
             if (Input.GetKeyDown(KeyCode.N)) Names = !Names;   // (places named on the map)
-            if (Host.FeedTotal != _newsTotal) { _newsTotal = Host.FeedTotal; _news = Host.Feed.Count > 0 ? Host.Feed[Host.Feed.Count - 1] : ""; _newsAge = 0f; }   // (session 29: by the lines ever added - the full feed's count stands still)
+            if (Host.FeedTotal != _newsTotal) { _newsTotal = Host.FeedTotal; _news = Host.Feed.Count > 0 ? Host.Feed[Host.Feed.Count - 1] : ""; _newsId = Host.FeedIds.Count > 0 ? Host.FeedIds[Host.FeedIds.Count - 1] : 0; _newsAge = 0f; }   // (session 29: by the lines ever added - the full feed's count stands still)
             _newsAge += Time.unscaledDeltaTime;
             for (int i = 0; i < SimHost.Speeds.Length && i < 8; i++) if (Input.GetKeyDown(KeyCode.Alpha1 + i)) { Host.SpeedIndex = i; Host.MaxSpeed = false; }
             if (Input.GetKeyDown(KeyCode.Alpha9)) Host.MaxSpeed = !Host.MaxSpeed;
@@ -304,8 +304,9 @@ namespace TC2.Game
                 if (!w.Settlements.Exists(sid)) continue;
                 ref var s = ref w.Settlements.Get(sid);
                 if (!s.Inhabited) continue;
-                Vector3 up = PlanetGeo.ToVector(s.Anchor);
-                Vector3 at = PlanetGeo.Surface(P, s.Anchor);
+                Vec3d lived = PlaceCentres.Of(w, sid, Host.WorldVersion);   // (session 29: where its people live - its first square may lie in ruins)
+                Vector3 up = PlanetGeo.ToVector(lived);
+                Vector3 at = PlanetGeo.Surface(P, lived);
                 Vector3 toCam = camPos - at;
                 if (Vector3.Dot(up, toCam.normalized) < 0.10f) continue;   // (over the horizon)
                 Vector3 sp = cam.WorldToScreenPoint(at);
@@ -615,7 +616,7 @@ namespace TC2.Game
             {
                 ref var s = ref w.Settlements.Get(sid);
                 if (!s.Inhabited) continue;
-                Vector3 at = PlanetGeo.Surface(w.Planet, s.Anchor);
+                Vector3 at = PlanetGeo.Surface(w.Planet, PlaceCentres.Of(w, sid, Host.WorldVersion));   // (session 29: where its people live, as its name)
                 if (Vector3.Dot(at.normalized, (camPos - at).normalized) < 0.10f) continue;   // (over the horizon)
                 Vector3 sp = cam.WorldToScreenPoint(at);
                 if (sp.z <= 0f) continue;
@@ -649,6 +650,13 @@ namespace TC2.Game
         }
 
         float _workTextAt = -99f; int _workTextFor; string _workText = "";
+        int _fellFor; long _fellAt = -1, _fellEv;   // (session 29) the building page's ruin cause, found once a building and a ledger state (IMGUI asks every event)
+
+        long FellCached(TC2.Core.Simulation.World w, int bid)
+        {
+            if (bid != _fellFor || w.History.LastId != _fellAt) { _fellFor = bid; _fellAt = w.History.LastId; _fellEv = Whys.FellTo(w, in w.Buildings.Get(bid)); }
+            return _fellEv;
+        }
 
         /// <summary>(session 29) How a ruin fell, under its name: the fire's record (burned by a band, flattened by a stone) with its year and that its why is on
         /// its page, or fallen in of age since its people left it.</summary>
@@ -896,7 +904,9 @@ namespace TC2.Game
                 GUI.color = new Color(1, 1, 1, Mathf.Clamp01(1.5f - _newsAge / 10f));
                 _ticker = new Rect(sw * 0.5f - 330, sh - 46, 660, 34);
                 GUILayout.BeginArea(_ticker, _box);
-                GUILayout.Label(_news, _small);
+                if (_feedLine == null) { _feedLine = new GUIStyle(_small) { wordWrap = true, richText = true }; _feedLine.hover.textColor = new Color(1f, 0.86f, 0.45f); }
+                // (session 29) the news opens its why in the book, as a line of the History panel does
+                if (GUILayout.Button(_news, _feedLine) && _newsId != 0 && w.History.TryGet(_newsId, out _)) { _book = true; _line = _newsId; _whyScroll = Vector2.zero; }
                 GUILayout.EndArea();
                 GUI.color = old;
             }
@@ -1061,7 +1071,7 @@ namespace TC2.Game
             {
                 sb.Append("fallen in: a ruin (").Append((Homes.RuinLeft(in b, now) * 100).ToString("0", CultureInfo.InvariantCulture)).Append("% of it still stands out of the ground)\n");
                 // (session 29: war scars) how it fell, when a fire brought it down - the record at its fall's moment (Whys.FellTo)
-                long fev = Whys.FellTo(w, in b);
+                long fev = FellCached(w, _building);
                 if (fev != 0 && w.History.TryGet(fev, out var fe)) sb.Append(HistoryText.Dated(w, fe)).Append('\n');
             }
             else sb.Append("standing ").Append(age.ToString("0", CultureInfo.InvariantCulture)).Append(" years   condition ").Append(cond.ToString("0.00", CultureInfo.InvariantCulture)).Append(b.Left != 0 ? "   unkept since " + SimTime.FormatShort(b.Left) : "").Append('\n');
@@ -1238,7 +1248,7 @@ namespace TC2.Game
             }
             // why it was raised, told as a story from its root (Core/History/Whys)
             if (b.Cause != 0 && w.History.TryGet(b.Cause, out _)) WhyToggle(w, "Why was it raised? The story from its root", b.Cause, r.width - 60f);
-            { long fev = Whys.FellTo(w, in b); if (fev != 0 && w.History.TryGet(fev, out _)) WhyToggle(w, "How did it fall? The story from its root", fev, r.width - 60f); }   // (session 29: war scars)
+            { long fev = FellCached(w, _building); if (fev != 0 && w.History.TryGet(fev, out _)) WhyToggle(w, "How did it fall? The story from its root", fev, r.width - 60f); }   // (session 29: war scars)
             GUILayout.EndScrollView();
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("its village  ›", _bkNav)) ShowPlace(b.Settlement);
@@ -1544,10 +1554,10 @@ namespace TC2.Game
         }
 
         /// <summary>Where an event happened, for the camera: its village, else its cell.</summary>
-        static bool Place(TC2.Core.Simulation.World w, in HistoryEvent e, out double lat, out double lon)
+        bool Place(TC2.Core.Simulation.World w, in HistoryEvent e, out double lat, out double lon)
         {
             lat = 0; lon = 0;
-            if (e.Settlement > 0 && w.Settlements.Exists(e.Settlement)) { var a = w.Settlements.Get(e.Settlement).Anchor; lat = a.Latitude; lon = a.Longitude; return true; }
+            if (e.Settlement > 0 && w.Settlements.Exists(e.Settlement)) { var a = PlaceCentres.Of(w, e.Settlement, Host.WorldVersion); lat = a.Latitude; lon = a.Longitude; return true; }
             if (e.Cell >= 0 && e.Cell < w.Planet.Cells) { var c = w.Planet.Grid.Center[e.Cell]; lat = c.Latitude; lon = c.Longitude; return true; }
             return false;
         }

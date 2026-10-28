@@ -204,7 +204,7 @@ namespace TC2.Game
                         GUILayout.FlexibleSpace();
                         // (session 29) a place's chapter opens its live page - its history, a realm's chapter its realm
                         if (GUILayout.Button(ch.MapSeat > 0 ? "its realm now  ›" : "its page  ›", _bkNav, GUILayout.ExpandWidth(false))) { ShowPlace(ch.Settlement, ch.MapSeat > 0 ? PlaceRealmTab : 0); }
-                        if (GUILayout.Button("go there", _bkNav, GUILayout.Width(90))) { var a = w.Settlements.Get(ch.Settlement).Anchor; Rig.Lat = a.Latitude; Rig.Lon = a.Longitude; }
+                        if (GUILayout.Button("go there", _bkNav, GUILayout.Width(90))) { var a = PlaceCentres.Of(w, ch.Settlement, Host.WorldVersion); Rig.Lat = a.Latitude; Rig.Lon = a.Longitude; }
                     }
                     GUILayout.EndHorizontal();
                     if (!string.IsNullOrEmpty(ch.Sub)) GUILayout.Label(ch.Sub, _bkSub);

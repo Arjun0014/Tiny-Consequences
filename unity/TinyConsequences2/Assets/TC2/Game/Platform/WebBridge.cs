@@ -91,6 +91,21 @@ namespace TC2.Game
                     {
                         // (session 29) tests: "building SID|big [KIND]" - a work of a place (its smithy, else its first granary, else its first home) as a click on it opens it
                         var hud = Object.FindFirstObjectByType<Hud>(); var w = Host.World; int sid = 0;
+                        if (a.Length > 1 && a[1] == "burned")
+                        {
+                            // (session 29) "building burned": the ruin last brought down by fire (a band's burning, a stone from the sky - Whys.FellTo), its page
+                            // open and the camera over it
+                            int ruin = 0; long latest = long.MinValue;
+                            for (int id = w.Buildings.First(); id != 0; id = w.Buildings.Next(id))
+                            {
+                                ref var rb = ref w.Buildings.Get(id);
+                                if (rb.Left == 0 || !w.Settlements.Exists(rb.Settlement) || !TC2.Core.Places.Homes.Fallen(in rb, w.Now) || rb.Left <= latest) continue;
+                                if (TC2.Core.History.Whys.FellTo(w, in rb) == 0) continue;
+                                latest = rb.Left; ruin = id;
+                            }
+                            if (ruin != 0 && hud != null) { hud.ShowBuilding(ruin); ref var rb = ref w.Buildings.Get(ruin); ref var rs = ref w.Settlements.Get(rb.Settlement); Rig.LookAt(rs.LocalToSphere(rb.X, rb.Y, w.Planet.Radius), 110); }
+                            break;
+                        }
                         if (a.Length > 1 && a[1] != "big") sid = int.Parse(a[1], inv);
                         else { int most = -1; for (int id = w.Settlements.First(); id != 0; id = w.Settlements.Next(id)) { ref var s = ref w.Settlements.Get(id); if (s.Inhabited && s.Population > most) { most = s.Population; sid = id; } } }
                         if (sid == 0 || hud == null) break;
@@ -286,7 +301,7 @@ namespace TC2.Game
                 for (int id = w.Settlements.First(); id != 0; id = w.Settlements.Next(id)) { ref var s = ref w.Settlements.Get(id); if (s.Inhabited && s.Population > most) { most = s.Population; big = id; } }
                 if (big != 0)
                 {
-                    Vector3 sp = Rig.Cam.WorldToScreenPoint(PlanetGeo.Surface(w.Planet, w.Settlements.Get(big).Anchor));
+                    Vector3 sp = Rig.Cam.WorldToScreenPoint(PlanetGeo.Surface(w.Planet, PlaceCentres.Of(w, big, Host.WorldVersion)));   // (as its name and the far tag)
                     sb.Append(",\"bigX\":").Append(sp.x.ToString("0", inv)).Append(",\"bigY\":").Append((Screen.height - sp.y).ToString("0", inv)).Append(",\"bigFront\":").Append(sp.z > 0 ? "true" : "false");
                 }
                 if (_wayProbeOn)
