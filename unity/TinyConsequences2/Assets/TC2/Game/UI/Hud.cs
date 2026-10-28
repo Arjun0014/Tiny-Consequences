@@ -890,8 +890,10 @@ namespace TC2.Game
                 GUILayout.FlexibleSpace();
                 if (GUILayout.Button("the book", _btn)) OpenBook(-1);
                 GUILayout.EndHorizontal();
+                // the newest first, under the heading: oldest first, lines that wrap had pushed the newest below the panel's edge (s29book5: the panel ended
+                // on "A fire started ..." while the newest, the quake, was cut off)
                 int from = Mathf.Max(0, Host.Feed.Count - 10);
-                for (int i = from; i < Host.Feed.Count; i++)
+                for (int i = Host.Feed.Count - 1; i >= from; i--)
                 {
                     long id = i < Host.FeedIds.Count ? Host.FeedIds[i] : 0;
                     if (GUILayout.Button(Host.Feed[i], _feedLine) && id != 0 && w.History.TryGet(id, out _)) { _book = true; _line = id; _whyScroll = Vector2.zero; }   // (lit gold under the pointer: the HUD's font has no "›")
