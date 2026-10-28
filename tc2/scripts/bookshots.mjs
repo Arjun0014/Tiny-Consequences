@@ -82,6 +82,8 @@ try {
   if (String(s0.seed) !== seed.toString() || s0.catchingUp) throw new Error('the game did not load the save as saved');
   const cmd = (c) => page.evaluate((x) => { (window.__TC2_CMDS = window.__TC2_CMDS || []).push(x); }, c);
   await cmd('names on');
+  // (session 29) --pre "C1;C2": bridge commands given once the world is loaded (e.g. "setting clouds 0" to tell the ground from the clouds in a picture)
+  for (const c of opt('--pre', '').split(';').map((x) => x.trim()).filter((x) => x)) await cmd(c);
   for (const v of views) {
     await cmd(`look ${lat} ${lon} ${v.dist}`);
     await page.waitForTimeout(5000);

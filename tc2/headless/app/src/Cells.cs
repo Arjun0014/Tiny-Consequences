@@ -16,6 +16,26 @@ namespace TC2.Headless
         {
             var w = SaveFile.Load(File.ReadAllBytes(a.Get("load")), out _);
             var P = w.Planet;
+            if (a.Get("meridian") != null)
+            {
+                // (--meridian LON [--days D]) the climate along a meridian, degree by degree of latitude, after D days lived (a season's soil): the cells'
+                // temperature now and its yearly swing, the soil's water, the rain today - to find an edge the ground's seasons draw across the land
+                var iv = CultureInfo.InvariantCulture;
+                double lon = double.Parse(a.Get("meridian"), iv) * Math.PI / 180.0;
+                int days = a.Int("days", 0);
+                if (days > 0) w.AdvanceTo(w.Now + days * TC2.Core.Foundation.SimTime.Day);
+                Console.WriteLine("at " + TC2.Core.Foundation.SimTime.FormatDate(w.Now) + " along longitude " + a.Get("meridian"));
+                Console.WriteLine("  lat  cell land  tMean  tAmp   temp  moist soilW  rain");
+                for (double lat = a.Double("from", -40); lat <= a.Double("to", 40); lat += a.Double("dlat", 1))
+                {
+                    double la = lat * Math.PI / 180.0;
+                    var d = TC2.Core.Foundation.Vec3d.FromLatLon(la, lon);
+                    int c = P.Grid.CellOf(d);
+                    Console.WriteLine(lat.ToString("0.0", iv).PadLeft(5) + " " + c.ToString(iv).PadLeft(5) + " " + (P.IsLand(c) ? "  y " : "  - ") + P.TMean[c].ToString("0.0", iv).PadLeft(6) + " " + P.TAmp[c].ToString("0.0", iv).PadLeft(5) + " " +
+                        P.Temp[c].ToString("0.0", iv).PadLeft(6) + " " + P.Moist[c].ToString("0.00", iv).PadLeft(5) + " " + P.SoilWater[c].ToString("0.00", iv).PadLeft(5) + " " + P.RainToday[c].ToString("0.00", iv).PadLeft(5));
+                }
+                return 0;
+            }
             int sid = a.Int("sid", w.Settlements.First());
             if (sid == 0 || !w.Settlements.Exists(sid)) { Console.WriteLine("no place " + sid); return 1; }
             ref var s = ref w.Settlements.Get(sid);
