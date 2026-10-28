@@ -1760,8 +1760,11 @@ namespace TC2.Game
         }
 
         /// <summary>How far a climate is the seasonal tropics' (W-FOREST pass 2b): warm, and too dry for rain forest - ForestTypes' dry tropics,
-        /// smoothed across its edges. Its woods and grass follow the soil's water through the year.</summary>
-        public static float SeasonalTropic(float tMean, float moist) => Edge(16f, 20f, tMean) * (1f - Edge(0.50f, 0.62f, moist));
+        /// smoothed across its edges. Its woods and grass follow the soil's water through the year. (session 29: the moisture ramp 0.44-0.72, was
+        /// 0.50-0.62 - about a degree and a half of latitude on the 6 km planet, ~160 m: from orbit the straw of the dry season began at a hard straight
+        /// line along a parallel, in every timelapse - `cells --meridian` along 131.5 E: the climate's moisture falls smoothly, 0.78 at 10 N to 0.12 at
+        /// 23 N; only the colour's ramp was steep)</summary>
+        public static float SeasonalTropic(float tMean, float moist) => Edge(15f, 21f, tMean) * (1f - Edge(0.44f, 0.72f, moist));
 
         /// <summary>How green the seasonal tropics are now: 0 at the dry season's height (the soil dried out), 1 in the rains.</summary>
         public static float RainsGreen(float soilWater) => Edge(0.10f, 0.32f, soilWater);
