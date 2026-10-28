@@ -1764,33 +1764,29 @@ namespace TC2.Game
         void FieldFrames(TC2.Core.Simulation.World w, Patch p)
         {
             int V = N + 1;
-            // (session 30) a vertex of one village's fields beside a vertex where two villages' fields meet takes the same two villages, in the same
-            // order, with all of its share in its own: their triangles then carry both villages alike, and the shader's choice of furlong holds across
-            // them (else it fell back to the first village's frame there)
-            // (the vertices that take another's pair found first, then given it: one ring only, never passed on along a row)
+            // (session 30) where three villages' fields meet, a vertex holding one pair beside a vertex holding another (B and A, A and C) would leave
+            // both slots changing across their triangles - strips squeezed along a sawtooth (s30v2): such a vertex keeps its own village alone, and the
+            // shader draws that village's frame there, as before. (A triangle where only one slot changes falls back to the other, which holds.)
             for (int j = 0; j < V; j++)
                 for (int i = 0; i < V; i++)
                 {
-                    int o = j * V + i, own = _slot1[o];
+                    int o = j * V + i, a = _slot1[o], b = _slot2[o];
                     _frameOf[o] = 0;
-                    if (own == 0 || own != _slot2[o] || p.Farm[o].x <= 0f) continue;
+                    if (a == b) continue;
                     for (int dj = -1; dj <= 1 && _frameOf[o] == 0; dj++)
                         for (int di = -1; di <= 1; di++)
                         {
                             int ni = i + di, nj = j + dj;
                             if (ni < 0 || ni > N || nj < 0 || nj > N) continue;
-                            int n = nj * V + ni, a = _slot1[n], b = _slot2[n];
-                            if (a == b || (a != own && b != own) || _fieldOf[n] <= 0) continue;
-                            _frameOf[o] = n + 1;
-                            break;
+                            int n = nj * V + ni;
+                            if (_slot1[n] != _slot2[n] && (_slot1[n] != a || _slot2[n] != b)) { _frameOf[o] = 1; break; }
                         }
                 }
             for (int o = 0; o < V * V; o++)
             {
                 if (_frameOf[o] == 0) continue;
-                int n = _frameOf[o] - 1, own = _slot1[o];
                 Vector3 dv = p.Dirs[o];
-                Slots(w, p, o, new Vec3d(dv.x, dv.y, dv.z), _slot1[n], _slot2[n], _slot2[n] == own ? 1f : 0f, true);
+                Slots(w, p, o, new Vec3d(dv.x, dv.y, dv.z), _fieldOf[o], _fieldOf[o], 1f, p.Farm[o].x > 0f || p.Farm2[o].z > 0f);
             }
             for (int pass = 0; pass < 2; pass++)
             {
@@ -1806,11 +1802,11 @@ namespace TC2.Game
                         else if (j > 0 && _fieldOf[o - V] > 0) no = o - V;
                         else if (j < N && _fieldOf[o + V] > 0) no = o + V;
                         if (no < 0) continue;
-                        int nb = _fieldOf[no], a = _slot1[no] != 0 ? _slot1[no] : nb, b = _slot2[no] != 0 ? _slot2[no] : nb;
-                        if (!w.Settlements.Exists(a) || !w.Settlements.Exists(b)) continue;
-                        // (its neighbour's villages, their frames here, nothing worked: session 30)
+                        int nb = _fieldOf[no];
+                        if (!w.Settlements.Exists(nb)) continue;
+                        // (that village alone in both slots, its frame here, nothing worked: session 30)
                         Vector3 dv = p.Dirs[o];
-                        Slots(w, p, o, new Vec3d(dv.x, dv.y, dv.z), a, b, p.Slot[no].w, false);
+                        Slots(w, p, o, new Vec3d(dv.x, dv.y, dv.z), nb, nb, 1f, false);
                         _fieldOf[o] = mark;
                         _frameOf[o] = nb;
                     }
