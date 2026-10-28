@@ -138,6 +138,27 @@ try {
       await cmd('speed 0');
     }
   }
+  // (session 30: the powers as play) --powers "1,2,..." - each power by its place on the bar (0 lightning ... 8 meteor, 9 plague ... 14 ore) aimed at
+  // the fields 260 m off the greatest place's first home, cast, eight hours lived at 1 h/s (below the timelapse), then Your hand: what it says came of it
+  // (power_K.png); the world paused between
+  const powersList = opt('--powers', '').split(',').filter((v) => v !== '').map(Number);
+  if (powersList.length > 0) {
+    const snap = async (name) => { const f = path.join(outDir, `${name}.png`); await page.screenshot({ path: f }); report.shots.push(f); console.log('shot ' + name); };
+    for (const k of powersList) {
+      await cmd('home big 700');
+      await page.waitForTimeout(3000);
+      await cmd(`aim ${k}`);
+      await page.mouse.move(800 + 170, 450 + 60);
+      await page.waitForTimeout(1200);
+      await cmd('speed 5');
+      await page.mouse.down(); await page.waitForTimeout(80); await page.mouse.up();
+      await page.waitForTimeout(8000);
+      await cmd('speed 0');
+      await page.mouse.move(1500, 120);   // (off the ground: no tag over the hand)
+      await page.waitForTimeout(1300);
+      await snap(`power_${k}`);
+    }
+  }
   if (flag('--lapse')) {
     const snap = async (name) => { const f = path.join(outDir, `${name}.png`); await page.screenshot({ path: f }); report.shots.push(f); const st = await page.evaluate(() => window.__TC2); const row = { name, lapse: st.lapse, light: st.lapseLight, alt: st.camAlt, year: st.year, date: st.date, speed: st.speed, catchingUp: st.catchingUp, skipping: st.skipping }; (report.lapse = report.lapse || []).push(row); console.log('shot ' + name + ' ' + JSON.stringify(row)); };
     await cmd('follow oldest');
