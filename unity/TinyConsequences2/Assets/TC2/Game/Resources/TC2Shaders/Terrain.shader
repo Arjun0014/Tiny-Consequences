@@ -99,12 +99,14 @@ Shader "TC2/Terrain"
                 half3 plot = lerp(fallow, crop * (0.84h + 0.30h * h) * (1.0h - 0.16h * furAmp + 0.16h * furAmp * fur), worked);
                 // (session 29) the crop burned this season (Settlement.CropBurnt: a band's torches, a wildfire) - that share of the sown strips charred
                 // whole, furlong by furlong as a fire runs on from strip to strip: black stubble streaked with grey ash, the spared strips standing
-                half3 ash = lerp(half3(0.022h, 0.019h, 0.016h), half3(0.17h, 0.16h, 0.15h), saturate(fur * 0.55h + h * 0.35h - 0.25h));
+                // (strip by strip more or less burned to ash, the furrows' streaks faint and fading with distance as the furrows do: s29v3's close and
+                // village views had strong 1.45 m streaks as a grey moire)
+                half3 ash = lerp(half3(0.016h, 0.013h, 0.010h), half3(0.105h, 0.092h, 0.078h), saturate(0.15h + h * 0.55h + (fur - 0.5h) * furAmp * 0.2h));
                 half charred = worked * ((burnt > 0.01h && Hash21(blk + 5.3) * 0.6 + h * 0.4 < burnt) ? 1.0h : 0.0h);
                 plot = lerp(plot, ash, charred);
                 plot = lerp(plot, half3(0.045h, 0.085h, 0.025h), hedge * 0.85h);
                 // a pixel wider than a strip sees the field's average, not a moire of strips (px: metres per pixel)
-                half3 mean = lerp(fallow, lerp(crop * 0.99h, half3(0.06h, 0.055h, 0.05h), burnt), saturate(farm.z));
+                half3 mean = lerp(fallow, lerp(crop * 0.99h, half3(0.045h, 0.039h, 0.032h), burnt), saturate(farm.z));
                 return lerp(plot, mean, smoothstep(0.18, 0.45, px / sz.x));
             }
 
