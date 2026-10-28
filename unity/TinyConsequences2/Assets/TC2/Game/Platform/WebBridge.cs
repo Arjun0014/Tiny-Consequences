@@ -99,9 +99,21 @@ namespace TC2.Game
                     {
                         // the person page (C12.1): "person PID [TAB]", or "person oldest" - the oldest living person
                         var hud = Object.FindFirstObjectByType<Hud>(); var w = Host.World; int pid = 0;
-                        if (a.Length > 1 && a[1] != "oldest") pid = int.Parse(a[1], inv);
+                        if (a.Length > 1 && a[1] == "head") { int most = -1; for (int id = w.Settlements.First(); id != 0; id = w.Settlements.Next(id)) { ref var s = ref w.Settlements.Get(id); if (s.Inhabited && s.Population > most && s.Head != 0) { most = s.Population; pid = s.Head; } } }   // (session 29: the first of the greatest place)
+                        else if (a.Length > 1 && a[1] != "oldest") pid = int.Parse(a[1], inv);
                         else { double best = -1; for (int id = w.People.First(); id != 0; id = w.People.Next(id)) { ref var p = ref w.People.Get(id); if (p.Alive && p.AgeYears(w.Now) > best) { best = p.AgeYears(w.Now); pid = id; } } }
                         if (hud != null && pid != 0 && w.People.Exists(pid)) hud.ShowPerson(pid, a.Length > 2 ? int.Parse(a[2], inv) : 0);
+                        break;
+                    }
+                case "select":
+                    {
+                        // (session 29) tests: "select PID|oldest|head" - a person chosen as a click does (their card), the camera near them; "head": the first of the
+                        // greatest place
+                        var hud = Object.FindFirstObjectByType<Hud>(); var w = Host.World; int pid = 0;
+                        if (a.Length > 1 && a[1] == "head") { int most = -1; for (int id = w.Settlements.First(); id != 0; id = w.Settlements.Next(id)) { ref var s = ref w.Settlements.Get(id); if (s.Inhabited && s.Population > most && s.Head != 0) { most = s.Population; pid = s.Head; } } }
+                        else if (a.Length > 1 && a[1] != "oldest") pid = int.Parse(a[1], inv);
+                        else { double best = -1; for (int id = w.People.First(); id != 0; id = w.People.Next(id)) { ref var p = ref w.People.Get(id); if (p.Alive && p.AgeYears(w.Now) > best) { best = p.AgeYears(w.Now); pid = id; } } }
+                        if (hud != null && pid != 0 && w.People.Exists(pid)) { hud.Select(pid); if (TC2.Core.Agents.Presence.Of(w, in w.People.Get(pid), Host.RenderTime, out var pd, out _, out _, out _)) Rig.LookAt(pd, 120); }
                         break;
                     }
                 case "follow":

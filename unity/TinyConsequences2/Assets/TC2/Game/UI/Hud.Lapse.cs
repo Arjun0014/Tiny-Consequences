@@ -36,6 +36,9 @@ namespace TC2.Game
         static readonly long[] SkipSeconds = { 12 * SimTime.Day, SimTime.Year, 10 * SimTime.Year, 100 * SimTime.Year };
         static readonly string[] SkipNames = { "a season", "a year", "ten years", "a century" };
 
+        /// <summary>Chooses a person as a click does - their card (the bridge's way in: tests).</summary>
+        public void Select(int pid) { _book = false; _personPage = false; _placeSid = 0; _selected = pid; _building = 0; }
+
         /// <summary>Follows a person as their card's Follow does (the bridge's way in: tests).</summary>
         public void Follow(int pid) { _book = false; _selected = pid; _follow = pid; _building = 0; }
 
@@ -111,6 +114,19 @@ namespace TC2.Game
             }
             if (_lostNote != null && _lapseSummary == null) { _lapseSummary = new List<string>(); _lapseTitle = "Year " + SimTime.YearOf(w.Now); _lapseSummaryAt = Time.unscaledTime; }
             _heads = null;
+        }
+
+        /// <summary>(session 29) A death the player was watching: told on the leaf, with their life and the kin to go on with - not a page that silently
+        /// closes, a camera that silently stops.</summary>
+        void NoteDeath(TC2.Core.Simulation.World w, int pid, bool followed)
+        {
+            if (!w.People.Exists(pid)) return;
+            ref var p = ref w.People.Get(pid);
+            string how = p.DeathEvent != 0 && w.History.TryGet(p.DeathEvent, out var de) ? HistoryText.Describe(w, de) : "";
+            _lostPid = pid; _lostKin = Heir(w, pid); _lostSid = 0;
+            _lostNote = w.History.NameOf(EntityRef.Person(pid)) + (followed ? ", whom you followed," : "") + " has died, aged " + ((int)p.AgeYears(p.Died)).ToString(CultureInfo.InvariantCulture) + (how.Length > 0 ? ": " + how : ".");
+            if (_lapseSummary == null) { _lapseSummary = new List<string>(); _lapseTitle = "Year " + SimTime.YearOf(w.Now); _headAll.Clear(); }
+            _lapseSummaryAt = Time.unscaledTime;
         }
 
         /// <summary>The one to follow on after a death: their eldest living child, else their partner, else the eldest of their household still living.</summary>
@@ -252,7 +268,7 @@ namespace TC2.Game
             }
             GUILayout.BeginArea(new Rect(r.x + 20f, r.y + 12f, r.width - 34f, r.height - 18f));
             GUILayout.BeginHorizontal();
-            Kicker("The years passed");
+            Kicker(_lapseSummary != null && _lapseSummary.Count > 0 ? "The years passed" : "A death");
             GUILayout.FlexibleSpace();
             if (GUILayout.Button("close  ×", _bkNav, GUILayout.Width(84))) { _lapseSummary = null; _lostNote = null; }
             GUILayout.EndHorizontal();

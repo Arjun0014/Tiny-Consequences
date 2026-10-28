@@ -1832,6 +1832,27 @@ namespace TC2.Game
 
         static int DyeOf(ulong who) => (int)(KeyedRng.Mix(who) % (ulong)Dyes.Length);
 
+        /// <summary>(session 29: the person page's portrait) A person's cloth as the world draws it (Livery's rule): the first in their realm's colour, a
+        /// sworn man in it with his cap and shield, the first's household in it, everyone else in their household's dye, children's paler. Rank: 0 common,
+        /// 1 the first, 2 sworn, 3 of the first's household.</summary>
+        public static Color PageLivery(TC2.Core.Simulation.World w, int pid, out byte rank)
+        {
+            rank = RankCommon;
+            if (!w.People.Exists(pid)) return Dyes[0];
+            ref var p = ref w.People.Get(pid);
+            float age = (float)p.AgeYears(p.Alive ? w.Now : p.Died);
+            if (p.Alive && w.Settlements.Exists(p.Home))
+            {
+                ref var s = ref w.Settlements.Get(p.Home);
+                if (s.Head == p.Id) { rank = RankFirst; return Color.Lerp(PolityColour(w, p.Home), Color.white, 0.08f); }
+                if (p.Sworn != 0 && p.Sworn == s.Head) { rank = RankSworn; return PolityColour(w, p.Home); }
+                if (p.Household != 0 && p.Household == s.HeadHh) { rank = RankFirstHousehold; Color c = PolityColour(w, p.Home); return age < 14f ? Color.Lerp(c, Dyes[0], 0.4f) : c; }
+            }
+            int key = DyeOf(p.Household != 0 ? (ulong)p.Household * 0x9E3779B97F4A7C15UL : (ulong)p.Id * 0x2545F4914F6CDD1DUL);
+            Color d = Dyes[key]; d.a = 1f;
+            return age < 14f ? Color.Lerp(d, Dyes[0], 0.35f) : d;
+        }
+
         /// <summary>(session 27) A household's colour as its people wear it: its own dye, or its polity's when it is its village's first household.</summary>
         public static Color HouseholdColour(TC2.Core.Simulation.World w, int sid, int hh)
         {

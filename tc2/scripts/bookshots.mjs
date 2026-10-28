@@ -177,10 +177,12 @@ try {
   // (session 27) the person and place pages as leaves of the book: --pages "person:0,person:5,place:0,place:2" - the oldest living person's page and
   // the greatest place's at those sections (page_person_0.png ...)
   for (const pp of opt('--pages', '').split(',').filter((v) => v)) {
-    const [kind, sec] = pp.split(':');
-    await cmd(`${kind} ${kind === 'person' ? 'oldest' : 'big'} ${Number(sec || 0)}`);
+    const [kind, sec, who] = pp.split(':');
+    // (session 29) "card:0" the oldest person's card as a click opens it; "person:N:head" the first of the greatest place's page at section N
+    if (kind === 'card') await cmd(`select ${who || 'oldest'}`);
+    else await cmd(`${kind} ${who || (kind === 'person' ? 'oldest' : 'big')} ${Number(sec || 0)}`);
     await page.waitForTimeout(2500);
-    const f = path.join(outDir, `page_${kind}_${Number(sec || 0)}.png`);
+    const f = path.join(outDir, `page_${kind}_${Number(sec || 0)}${who ? '_' + who : ''}.png`);
     await page.screenshot({ path: f });
     report.shots.push(f);
     console.log('shot ' + path.basename(f));

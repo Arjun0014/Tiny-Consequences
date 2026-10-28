@@ -32,7 +32,6 @@ namespace TC2.Game
         bool _info, _history, _worldPanel, _hidden, _book;
         // the person page (C12.1): a person's life in sections, from the world's state and its ledger (Core/History/Biography)
         bool _personPage; int _pageTab, _pagePid = -1, _pageTabBuilt = -1; float _pageAt; string _pageText = "", _pageTitle = ""; Vector2 _pageScroll; Rect _pageRect;
-        static readonly string[] PageTabs = { "Now", "Family", "Work", "Deeds", "Home", "Life" };
         // the settlement page (C12.2): a place's founding, people, food, works, land and making, neighbours and history (Core/History/Gazetteer)
         int _placeSid, _placeTab, _placeBuilt = -1, _placeFor; float _placeAt; string _placeText = "", _placeTitle = "";
         static readonly string[] PlaceTabs = { "Place", "Food", "Works", "Land", "Neighbours", "History" };
@@ -103,7 +102,7 @@ namespace TC2.Game
             var fw = Host.World;
             if (_follow != 0 && fw != null && !Rig.LapseFlies)   // (while the camera flies a timelapse it keeps the person's place: Hud.Lapse.cs)
             {
-                if (!fw.People.Exists(_follow) || !fw.People.Get(_follow).Alive) _follow = 0;
+                if (!fw.People.Exists(_follow) || !fw.People.Get(_follow).Alive) { NoteDeath(fw, _follow, true); _follow = 0; }   // (session 29: their death told, the kin to go on with offered)
                 else
                 {
                     Presence.Of(fw, in fw.People.Get(_follow), Host.RenderTime, out var d, out _, out _, out _);   // (where they are drawn)
@@ -657,13 +656,14 @@ namespace TC2.Game
             // inspector (session 27, context 4: not over the open book - s27book6 had the chosen person's card over its right-hand page; the book holds
             // the screen while it is open, and a name clicked in it closes it for that page)
             Rect insp = new Rect(sw - 400, 190, 390, 300);
-            bool showInsp = !_book && !lapse && _selected != 0 && w.People.Exists(_selected);
-            if (showInsp) Inspector(insp, w);
+            Rect card = new Rect(sw - 436f, Mathf.Max(ry + 6f + (realmsRect.height > 0f ? realmsRect.height + 6f : 0f), _left.yMax + 10f), 420f, 268f);   // (session 29: the person's card as a small leaf - Hud.Person.cs)
+            bool showInsp = !_book && !lapse && !_personPage && _selected != 0 && w.People.Exists(_selected);   // (session 29: the page holds all the card held)
+            if (showInsp) PersonCard(card, w);
             _pageRect = Rect.zero;
             float pageH = sh - 136f - topY;   // (ending above the power bar: its foot had run under it - s27web2)
             if (_book || lapse) { /* (the book holds the screen; the timelapse the picture) */ }
             else if (_placeSid != 0 && w.Settlements.Exists(_placeSid)) { float pw = Mathf.Min(600, sw - 430); _pageRect = new Rect(Mathf.Max(10, sw - 410 - pw), topY - 2f, pw, pageH); PlacePage(_pageRect, w); }
-            else if (_personPage && _selected != 0 && w.People.Exists(_selected)) { float pw = Mathf.Min(600, sw - 430); _pageRect = new Rect(Mathf.Max(10, sw - 410 - pw), topY - 2f, pw, pageH); PersonPage(_pageRect, w); }
+            else if (_personPage && _selected != 0 && w.People.Exists(_selected)) { float pw = Mathf.Min(820f, sw - 40f); _pageRect = new Rect(sw - 16f - pw, topY - 2f, pw, pageH); PersonSheet(_pageRect, w); }   // (session 29: Hud.Person.cs)
             else if (_building != 0 && w.Buildings.Exists(_building)) { showInsp = true; BuildingPage(insp, w); }
             _powersRect = Rect.zero;
             if (!_book && !lapse) PowerBar(w, sw, sh);   // (the god's powers: F9.1)
@@ -675,7 +675,7 @@ namespace TC2.Game
             KeepSettings();
             Vector2 m = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y) / _scale;
             bool overLapse = lapse && PointerOverUi;   // (the overlay's own rects, set as it drew)
-            PointerOverUi = overLapse || _skipRect.Contains(m) || _summaryRect.Contains(m) || _settingsRect.Contains(m) || _powersRect.Contains(m) || _left.Contains(m) || _toggles.Contains(m) || _right.Contains(m) || worldRect.Contains(m) || realmsRect.Contains(m) || _bottom.Contains(m) || _ticker.Contains(m) || (showInsp && insp.Contains(m)) || (_book && _bookRect.Contains(m)) || _pageRect.Contains(m);
+            PointerOverUi = overLapse || _skipRect.Contains(m) || _summaryRect.Contains(m) || _settingsRect.Contains(m) || _powersRect.Contains(m) || _left.Contains(m) || _toggles.Contains(m) || _right.Contains(m) || worldRect.Contains(m) || realmsRect.Contains(m) || _bottom.Contains(m) || _ticker.Contains(m) || (showInsp && (_building != 0 ? insp.Contains(m) : card.Contains(m))) || (_book && _bookRect.Contains(m)) || _pageRect.Contains(m);
             if (!_book) HoverTag(w, sw, sh);
             // (session 27) who is ringed on the ground: the person whose page is open, the one under the pointer, the chosen home's household
             WorldObjectsView.Chosen = _personPage ? _selected : 0;
@@ -741,113 +741,6 @@ namespace TC2.Game
                                 (RealmsView.FeudPairs == 1 ? " pair of villages" : " pairs of villages") + (RealmsView.FeudsWithin > 0 ? ", " + RealmsView.FeudsWithin + " of one realm" : ", none of one realm"), _small);
             GUILayout.EndArea();
             return r;
-        }
-
-        void Inspector(Rect r, TC2.Core.Simulation.World w)
-        {
-            // (session 27) a card to read, not a dump of numbers: who they are and their standing, where they live and with whom, what they are doing,
-            // how they fare in words, what they know and are best at, the last of their life as the book dates it
-            ref var p = ref w.People.Get(_selected);
-            var sb = new StringBuilder();
-            sb.Append("<b>").Append(Biography.Title(w, p.Id)).Append("</b>\n");
-            string standing = Biography.Standing(w, p.Id);
-            if (standing.Length > 0) sb.Append("<color=#f2c35f>").Append(Cap(standing)).Append("</color>\n");
-            sb.Append("of ").Append(w.History.NameOf(EntityRef.Settlement(p.Home)));
-            if (w.Households.Exists(p.Household))
-            {
-                var hh = w.Households.Get(p.Household);
-                int n = w.Members(p.Household).Count;
-                sb.Append(", in the ").Append(hh.Shelter == Construction.House ? "house" : hh.Shelter == Construction.Hut ? "hut" : "camp").Append(" of the ")
-                  .Append(HistoryText.Plural(w.History.NameOf(EntityRef.Household(p.Household)))).Append(" (").Append(n).Append(n == 1 ? " soul)" : " souls)");
-            }
-            sb.Append(p.At == 0 ? " - on the road" : p.At != p.Home ? " - visiting " + w.History.NameOf(EntityRef.Settlement(p.At)) : "").Append('\n');
-            sb.Append("<b>").Append(HistoryText.Doing(w, in p)).Append("</b>\n");
-            if (p.Alive)
-            {
-                string health = p.Sick != 0 ? (p.SickPhase == TC2.Core.Health.Disease.Latent ? "carrying " : "sick with ") + w.History.NameOf(new EntityRef(EntityKind.Pathogen, p.Sick))
-                              : p.Health >= 0.9 ? "in good health" : p.Health >= 0.6 ? "unwell" : p.Health >= 0.3 ? "ailing" : "near death";
-                string fed = p.Nutrition >= 0.8 ? "well fed" : p.Nutrition >= 0.5 ? "hungry" : "starving";
-                sb.Append(Cap(health)).Append(", ").Append(fed);
-                if (p.Partner != 0) sb.Append("; partner ").Append(w.History.NameOf(EntityRef.Person(p.Partner)));
-                sb.Append('\n');
-            }
-            if (w.Households.Exists(p.Household))
-            {
-                var hh = w.Households.Get(p.Household);
-                int n = System.Math.Max(1, w.Members(p.Household).Count);
-                int cattle = 0, goats = 0, pigs = 0; var beasts = w.BeastsOf(p.Household);
-                for (int i = 0; i < beasts.Count; i++) { byte k = w.Beasts.Get(beasts[i]).Kind; if (k == Livestock.Cattle) cattle++; else if (k == Livestock.Goat) goats++; else pigs++; }
-                var have = new System.Collections.Generic.List<string>();
-                if (cattle > 0) have.Add(cattle + " cattle");
-                if (goats > 0) have.Add(goats + (goats == 1 ? " goat" : " goats"));
-                if (pigs > 0) have.Add(pigs + (pigs == 1 ? " pig" : " pigs"));
-                double days = hh.Larder / n;
-                sb.Append("Their household: ").Append(have.Count > 0 ? string.Join(", ", have.ToArray()) + "; " : "").Append(days >= 1.0 ? "food at home for " + days.ToString("0", CultureInfo.InvariantCulture) + " days" : "little food at home").Append('\n');
-            }
-            var knows = new System.Collections.Generic.List<string>();
-            if (p.KNets >= 0.5f) knows.Add("nets");
-            if (p.KLoom >= 0.5f) knows.Add("the loom");
-            if (p.KQuern >= 0.5f) knows.Add("the quern");
-            if (p.KPottery >= 0.5f) knows.Add("pottery");
-            if (p.KArd >= 0.5f) knows.Add("the plough");
-            if (p.KMetal >= 0.5f) knows.Add("copper");
-            if (p.KIron >= 0.5f) knows.Add("iron");
-            if (p.KBoat >= 0.5f) knows.Add("boats");
-            float best = p.SkFarm; string bestAt = "farming";
-            if (p.SkWood > best) { best = p.SkWood; bestAt = "woodwork"; }
-            if (p.SkHunt > best) { best = p.SkHunt; bestAt = "hunting"; }
-            if (p.SkFish > best) { best = p.SkFish; bestAt = "fishing"; }
-            if (p.SkFight > best) { best = p.SkFight; bestAt = "fighting"; }
-            if (knows.Count > 0 || best >= 0.3f)
-                sb.Append(knows.Count > 0 ? "Knows " + string.Join(", ", knows.ToArray()) + (best >= 0.3f ? "; " : "") : "").Append(best >= 0.3f ? "best at " + bestAt : "")
-                  .Append(p.Fights > 0 ? " (" + p.Fights + (p.Fights == 1 ? " fight" : " fights") + " lived through)" : "").Append('\n');
-            var evs = w.History.EventsOf(EntityRef.Person(p.Id));
-            if (evs != null && evs.Count > 0)
-            {
-                sb.Append("<b>Of late</b>\n");
-                for (int i = System.Math.Max(0, evs.Count - 3); i < evs.Count; i++)
-                    if (w.History.TryGet(evs[i], out var e)) sb.Append(HistoryText.Dated(w, e)).Append('\n');
-                for (int i = evs.Count - 1; i >= 0; i--)
-                    if (w.History.TryGet(evs[i], out var e) && e.Kind == HistoryKind.JourneyInterrupted) { sb.Append("<b>Why?</b>\n").Append(HistoryText.Why(w, e.Id)); break; }
-            }
-            GUILayout.BeginArea(r, _box);
-            GUILayout.Label(sb.ToString(), _small);
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button(_follow == _selected ? "Stop following" : "Follow", _btn)) _follow = _follow == _selected ? 0 : _selected;
-            if (GUILayout.Button(_personPage ? "Close life page" : "Life page", _btn)) { _personPage = !_personPage; _pagePid = -1; _placeSid = 0; }
-            if (p.Home != 0 && GUILayout.Button("Their village", _btn)) ShowPlace(p.Home);
-            GUILayout.EndHorizontal();
-            GUILayout.EndArea();
-        }
-
-        /// <summary>
-        /// The person page (C12.1, D2-099; 07 §9): who they are, then a section at a time - what they are doing now and why, their family, their
-        /// work and what they know, their deeds and what they can do in a fight, their home, their life as the ledger keeps it. The text comes
-        /// from Biography (Core), rebuilt once a second; nothing here writes the world.
-        /// </summary>
-        void PersonPage(Rect r, TC2.Core.Simulation.World w)
-        {
-            if (_pagePid != _selected || _pageTabBuilt != _pageTab || Time.unscaledTime - _pageAt > 1f)
-            {
-                _pagePid = _selected; _pageTabBuilt = _pageTab; _pageAt = Time.unscaledTime;
-                _pageTitle = Biography.Title(w, _selected);
-                _pageStanding = Biography.Standing(w, _selected);   // (session 27)
-                string body;
-                switch (_pageTab)
-                {
-                    case 0: body = Biography.Identity(w, _selected) + "\n" + Biography.Now(w, _selected); break;
-                    case 1: body = Biography.Family(w, _selected); break;
-                    case 2: body = Biography.Work(w, _selected); break;
-                    case 3: body = Biography.Deeds(w, _selected); break;
-                    case 4: body = Biography.Home(w, _selected); break;
-                    default: body = Biography.Life(w, _selected, 80); break;
-                }
-                _pageText = body;
-            }
-            // (session 27) a leaf of the book
-            int tab = PaperPage(r, "A Life", _pageTitle, Cap(_pageStanding), PageTabs, _pageTab, _pageText, out bool close);
-            if (tab != _pageTab) { _pageTab = tab; _pageScroll = Vector2.zero; }
-            if (close) _personPage = false;
         }
 
         /// <summary>Opens a person's page (tools: shots of the page; a click in the world selects, the button opens it).</summary>
