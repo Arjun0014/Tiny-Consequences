@@ -12,19 +12,23 @@
   `tail -n 0 -F $Q/runq.log | grep --line-buffered -E "^end |^start |runner"`). Done this context: `0_qf` (s29v2), `0_qg` (Web c1fffc6: s29web3 9/9,
   s29book2, s29book3), `0_qh` (s29v3), `0_qi` (s29v4), `0_qj` (Web 5464411: s29web4 9/9, s29book4, s29lapse3), `0_qk` (s29v5). **Running at the
   handoff**: `0_ql_web_s29e` (started 00:52, Web of a453afe: `s29web5`, `s29book5` with --play --meteor-play --extras --pages person:2 --book 7:0,
-  `s29lapse4` = the timelapse with the softened seasonal ramp). Then the queue idles.
+  `s29lapse4` = the timelapse with the softened seasonal ramp). **Queued behind it**: `0_qm_shots_s29v6` (Paitaimwick's burned homes with the forty-year
+  soot, close/low) and `0_qn_web_s29f` (Web of 0e3f897+: `s29web6`; `s29book6` = the extras with the ruin last burned - extra_ruin_page/_hover; `s29book7`
+  = Kaihope at year 600, village and region views with names - its name at its lived homes). Then the queue idles.
 - **Built and committed this context** (D2-203, all on the branch): the burned crop as charred strips; the rivers' far glint; works' tags with why; the
   History panel's lines opening the book, above the power bar; the ticker on a loaded world; no name under a panel; the book's words (XI, men sworn
   counted, no "0 days' grain"); charred ruins from the ledger and a ruin's tag/page saying how it fell (`Whys.FellTo`); the aim's words in a box; a
   person's crafts by name and works told once; the fields ending furlong by furlong (`TerrainLod.FieldFrames`); the seasonal tropics' ramp softened
-  (the timelapse's straight edge); soot for forty years. Tools: `unity.mjs` forwards shader errors; bridge `way big`, `history`, `feedline`; bookshots
+  (the timelapse's straight edge); soot for forty years; a village's name, far tag and "go there" at its lived homes (`PlaceCentres`: Kaihope's homes
+  stand 250-400 m from its ruined first square); the news ticker opening its why. Tools: `unity.mjs` forwards shader errors; bridge `way big`, `history`, `feedline`; bookshots
   `--extras` (road, work, History panel, a line) and `--pre`; headless `cells` (`--sid`, `--meridian`, `--burned`).
 
 ### Next, in order
 1. When `0_ql_web_s29e` ends: judge `s29web5` (9/9 expected); `tc2/out/webtest/s29book5`: play_aim / play_aimfar (the aim's words in a box, no road tag
    over them), extra_history (the panel above the bar), page_person_2 (crafts by name, "four times (years ...)"), book_7_0; `s29lapse4/lapse_3_orbit_later.png`
    and `lapse_7_skip_orbit.png` (the straw's edge soft, no straight line). Fill D2-203's "Pending".
-2. Queue Unity shots of the forty-year soot (fec03b0): `--village 51 --views "close,low"` on `s2_ac5/world_y600.tc2` (Paitaimwick's two burned homes).
+2. Judge `0_qm_shots_s29v6` (`tc2/out/shots/s29v6`: the burned homes black among grey ruins) and `0_qn_web_s29f` (`s29web6` 9/9; `s29book6/extra_ruin_page.png`,
+   `extra_ruin_hover.png`; `s29book7/village.png`, `region.png`: "Kaihope" over its lived homes, not over the ruins).
 3. Then by the brief: the owner-to-owner crop boundary (two villages' fields at different stages meet along the cells - D2-203 "left"); W-FOREST's
    sameness; the night sea's moon veil; readability gaps the pictures show.
 

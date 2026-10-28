@@ -6372,7 +6372,11 @@ and the realm rows' arrows "»" (the HUD's font has no "›"), a line opened in 
 straight seasonal edge found**: `s29lapse3` ran the timelapse with the clouds off (`--pre "setting clouds 0"`) - the edge stayed, and it shows at 1 day/s
 too: the seasonal tropics' straw ramped over moisture 0.50-0.62, about a degree and a half of latitude (~160 m on the 6 km planet), a hard line along a
 parallel from orbit, while the climate's moisture falls smoothly (`cells --meridian 131.5`: 0.78 at 10 N, 0.12 at 23 N); `TerrainLod.SeasonalTropic` now
-ramps over 0.44-0.72 and 15-21 C.
+ramps over 0.44-0.72 and 15-21 C. (14) **A village's name where its people live**: a village keeps its anchor (its first square: roads and reach are
+measured from it) but its homes can move off it - Kaihope's 77 lived-in homes stand 250-400 m from a first square in ruins (25 fallen homes, 114 fallen
+works within 250 m: `cells --homes`), and its name, the far tag and "go there" pointed at the ruins; `PlaceCentres.Of` gives the centre of the lived-in
+homes when more than 120 m off (cached ten world days) for those, and the anchor for the rest. (15) **The news ticker** opens its line's why in the book,
+as the History panel's lines.
 
 **Considered and left.** The seat's standard is life-size by D2-152/C10.6 (realms read from afar through the map's flags and the realms layer): not
 enlarged. **Two villages' fields side by side at different stages** (one sown and brown, one growing and green) still meet along the cells' staircase
@@ -6388,4 +6392,5 @@ year 217 - nobody at it now - why: The people of Skekdraistead now smelt and wor
 PeaceTests 3/3, LivesTests 4/4, WhysTests 3/3, BiographyTests 4/4; `unity.mjs cc` clean at each commit. The year-300 book (headless): "In all 142 men
 swore to them"; "The people of Endstead were bound to make amends to Ithustead for a wounding ... but their store had no grain to spare"; "XI. Your
 Actions". **Pending**: the Web build of a453afe (`0_ql_web_s29e`: `s29web5`, `s29book5` - the aim's box, the panel above the bar, a person's crafts and
-works; `s29lapse4` - the seasonal edge softened) and shots of the forty-year soot (fec03b0).
+works; `s29lapse4` - the seasonal edge softened) and `s29lapse4`'s judgement; shots of the forty-year soot (`0_qm_shots_s29v6`); Web `0_qn_web_s29f` (`s29web6`, the ruin's page and tag `s29book6`,
+Kaihope's name at year 600 `s29book7`).
