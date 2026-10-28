@@ -23,6 +23,31 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void AVillagesFieldsAreToldAsTheGroundDrawsThem()
+        {
+            // (session 30: the fields read) the pointer over a village's fields names it and tells its crop's stage - the colour the ground draws - from the
+            // state the colour is read from: sown earth (darker with muck), growing, ripe, stubble; how much it sows of its arable
+            var w = Lived(633, 30);
+            int told = 0;
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                ref var s = ref w.Settlements.Get(sid);
+                if (!s.Inhabited || s.FieldHa <= 0.0) continue;
+                var l = Whys.Fields(w, sid);
+                told++;
+                Assert.GreaterOrEqual(l.Count, 3, "name, stage, sown of arable");
+                StringAssert.StartsWith("The fields of " + w.History.NameOf(EntityRef.Settlement(sid)), l[0]);
+                string stage = s.Crop == TC2.Core.Places.CropStage.Sown ? "sown" : s.Crop == TC2.Core.Places.CropStage.Growing ? "growing" :
+                               s.Crop == TC2.Core.Places.CropStage.Ripe ? "ripe" : s.Crop == TC2.Core.Places.CropStage.Harvested ? "stubble" : "fallow";
+                StringAssert.Contains(stage, l[1]);
+                StringAssert.Contains(" ha sown of the ", l[2]);
+                foreach (var line in l) { StringAssert.DoesNotContain("NaN", line); StringAssert.DoesNotContain("cells", line); }
+            }
+            Assert.Greater(told, 0, "villages with fields to tell");
+            Assert.AreEqual(0, Whys.Fields(w, 999999).Count, "no place, no words");
+        }
+
+        [Test]
         public void EveryQuestionStandsOnARecordAndItsAnswerEndsThere()
         {
             var w = Lived(631, 40);

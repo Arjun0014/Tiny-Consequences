@@ -313,6 +313,47 @@ namespace TC2.Core.History
         }
 
         /// <summary>
+        /// (session 30: the fields read) A village's fields as they lie now, in the words for what the ground draws (TerrainLod.CropColour): the crop's
+        /// stage - sown earth, darker for the muck its herds and yards put on it; green and how far grown; ripe gold; stubble and how far its herds have
+        /// grazed it - how much of its arable within reach it sows, and the share of its standing crop burned this season and by whom. Where two villages'
+        /// fields meet at different stages, this is what tells them apart. The first line is its name. Every word from state and records.
+        /// </summary>
+        public static List<string> Fields(World w, int sid)
+        {
+            var l = new List<string>();
+            if (!w.Settlements.Exists(sid)) return l;
+            ref var s = ref w.Settlements.Get(sid);
+            var iv = CultureInfo.InvariantCulture;
+            l.Add("The fields of " + Name(w, sid));
+            switch (s.Crop)
+            {
+                case CropStage.Sown:
+                    {
+                        double muck = Muck.Off ? 0.0 : Muck.TonnesPerHa(in s);
+                        l.Add("sown, the seed in the earth" + (muck >= 1.0 ? " - darkened by the muck spread on them, " + muck.ToString("0", iv) + " t a hectare from its herds and yards" : ""));
+                        break;
+                    }
+                case CropStage.Growing: l.Add("the crop growing, " + (DMath.Clamp01(s.CropGrowth) * 100.0).ToString("0", iv) + " % grown"); break;
+                case CropStage.Ripe: l.Add("the crop ripe, waiting for its reapers"); break;
+                case CropStage.Harvested:
+                    {
+                        double full = s.FieldHa * Stubble.PerHa;
+                        double grazed = Stubble.Off || full <= 0.0 ? 0.0 : 1.0 - DMath.Min(1.0, s.Stubble / full);
+                        l.Add("harvested: stubble" + (grazed >= 0.1 ? ", " + (grazed * 100.0).ToString("0", iv) + " % of it grazed down by its herds" : ""));
+                        break;
+                    }
+                default: l.Add("lying fallow"); break;
+            }
+            if (s.FieldHa > 0.0)
+                l.Add(s.FieldHa.ToString("0", iv) + " ha sown of the " + s.ArableHa.ToString("0", iv) + " ha of arable within its reach" +
+                      (s.ArableHa > s.FieldHa * 1.15 ? " - the rest lies fallow" : ""));
+            if (s.CropBurnt > 0.05 && (s.Crop == CropStage.Sown || s.Crop == CropStage.Growing || s.Crop == CropStage.Ripe))
+                l.Add((s.CropBurnt * 100.0).ToString("0", iv) + " % of its standing crop burned this season" +
+                      (s.CropCause != 0 && w.History.TryGet(s.CropCause, out var ce) && ce.Kind == HistoryKind.FieldsHarried ? ", by a band driven off from its walls" : ""));
+            return l;
+        }
+
+        /// <summary>
         /// (session 29: roads read) A way between two villages as it is: a track, a path or a road by how often it is walked now (its wear halves each year
         /// it is not renewed: about 0.7 of it is the walks of a year), when it was first worn into a path or beaten into a road, what is on it at this moment
         /// and why - traders and their loads, carriers of a lord's tenth, gifts of grain, bands, households moving, kin visiting - and the bond between its two

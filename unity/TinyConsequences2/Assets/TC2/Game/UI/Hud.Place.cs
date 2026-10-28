@@ -17,7 +17,7 @@ namespace TC2.Game
     /// </summary>
     public sealed partial class Hud
     {
-        const int PlaceNowTab = 1, PlaceWhyTab = 2, PlaceRealmTab = 3;
+        const int PlaceNowTab = 1, PlaceWhyTab = 2, PlaceRealmTab = 3, PlaceLandTab = 6;   // (Hud.PlaceTabs)
         readonly HashSet<long> _whyOpen = new HashSet<long>();
         // (built once a second: the counts of what its people do, the trend, the questions, the realm)
         int _plBuiltFor = -1; float _plBuiltAt = -99f;

@@ -1972,6 +1972,37 @@ namespace TC2.Game
             return (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty;
         }
 
+        static readonly int[] _atWc = new int[9];
+        static readonly float[] _atWw = new float[9];
+
+        /// <summary>(session 30: the fields read) The village whose fields the ground draws at a point - the cells' shares read where a vertex reads them (the
+        /// warp), the largest village's - or 0 where none is drawn there: its field weight under a half, or its village's own ground (yards and square,
+        /// within 110 m of it). The pointer's tag and a click on the fields (Hud).</summary>
+        public static int FieldOwnerAt(TC2.Core.Simulation.World w, Vec3d d, int c)
+        {
+            var P = w.Planet;
+            if (c < 0 || !P.IsLand(c)) return 0;
+            Vec3d dw = d; int cw = c;
+            WarpCells(P, d, c, ref dw, ref cw);
+            int n = Ground.MaskWeights(P, dw, cw, _atWc, _atWw);
+            float f = 0f;
+            for (int q = 0; q < n; q++) if (P.FieldOwner[_atWc[q]] != 0) f += _atWw[q];
+            if (Edge(0.25f, 0.75f, f) < 0.5f) return 0;
+            n = Ground.ColourWeights(P, dw, cw, _atWc, _atWw);
+            int owner = 0; float best = 0f;
+            for (int q = 0; q < n; q++)
+            {
+                int fo = P.FieldOwner[_atWc[q]];
+                if (fo == 0) continue;
+                float sum = 0f;
+                for (int k = 0; k < n; k++) if (P.FieldOwner[_atWc[k]] == fo) sum += _atWw[k];
+                if (sum > best) { best = sum; owner = fo; }
+            }
+            if (owner == 0 || !w.Settlements.Exists(owner)) return 0;
+            w.Settlements.Get(owner).SphereToLocal(d, P.Radius, out double x, out double y);
+            return x * x + y * y < 110.0 * 110.0 ? 0 : owner;
+        }
+
         /// <summary>How much of a point is the village's farmland (soft at the edge of the claimed cells).</summary>
         float FarmWeight(PlanetState P, Vec3d d, int c)
         {

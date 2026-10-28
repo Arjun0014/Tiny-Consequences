@@ -149,6 +149,34 @@ namespace TC2.Game
                         Rig.LookAt(_wayProbe, a.Length > 2 && a[2] != "-" ? double.Parse(a[2], inv) : 450);
                         break;
                     }
+                case "field":
+                    {
+                        // (session 30) tests: "field meet [ALT]" - two villages' fields meeting with their crops most unlike (one sown, one green or gold),
+                        // the camera over the first's side of their edge, ALT (300) m up; the point's screen position in the state (wayX/wayY/wayFront) to
+                        // point at it - the fields' tag (Hud, Whys.Fields) and a click to its land
+                        var w = Host.World; var P = w.Planet;
+                        _wayProbeOn = false;
+                        int best = -1, bestNb = -1; float bestDiff = -1f;
+                        for (int c = 0; c < P.Cells; c++)
+                        {
+                            int fa = P.FieldOwner[c];
+                            if (fa == 0 || !w.Settlements.Exists(fa)) continue;
+                            for (int k = 0; k < 8; k++)
+                            {
+                                int nb = P.Grid.Nbr8[c * 8 + k], fb = P.FieldOwner[nb];
+                                if (fb == 0 || fb == fa || !w.Settlements.Exists(fb)) continue;
+                                Color ca = TerrainLod.CropColour(w.Settlements.Get(fa)), cb = TerrainLod.CropColour(w.Settlements.Get(fb));
+                                float diff = Mathf.Abs(ca.r - cb.r) + Mathf.Abs(ca.g - cb.g) + Mathf.Abs(ca.b - cb.b);
+                                if (diff > bestDiff) { bestDiff = diff; best = c; bestNb = nb; }
+                            }
+                        }
+                        if (best < 0) break;
+                        Vec3d pa = P.Grid.Center[best], pb = P.Grid.Center[bestNb];
+                        _wayProbe = new Vec3d(pa.X * 0.7 + pb.X * 0.3, pa.Y * 0.7 + pb.Y * 0.3, pa.Z * 0.7 + pb.Z * 0.3).Normalized;   // (on the first's side)
+                        _wayProbeOn = true;
+                        Rig.LookAt(_wayProbe, a.Length > 2 ? double.Parse(a[2], inv) : 300);
+                        break;
+                    }
                 case "names": Hud.Names = a.Length < 2 || a[1] == "on"; break;   // (session 25) places named on the map
                 case "setting":   // (F11.2) tests: a setting changed as the panel changes it, and kept
                     {

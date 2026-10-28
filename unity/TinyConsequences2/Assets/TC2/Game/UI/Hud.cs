@@ -176,7 +176,9 @@ namespace TC2.Game
                     if (d < bestB) { bestB = d; bestBid = bl[i]; }
                 }
             }
-            if (bestBid != 0) { _building = bestBid; _selected = 0; }
+            if (bestBid != 0) { _building = bestBid; _selected = 0; return; }
+            // (session 30) nothing built there either: on a village's fields, its page at its land (the fields the tag under the pointer named)
+            if (_hoverField != 0 && w.Settlements.Exists(_hoverField)) ShowPlace(_hoverField, PlaceLandTab);
         }
 
         void Styles()
@@ -480,12 +482,12 @@ namespace TC2.Game
             if (Time.unscaledTime - _hoverAt > 0.12f)
             {
                 _hoverAt = Time.unscaledTime;
-                _hoverPid = 0; _hoverBid = 0;
+                _hoverPid = 0; _hoverBid = 0; _hoverField = 0;
                 double t = Host.RenderTime;
                 float best = 16f * _scale;
                 // (session 27, context 4: the frame) only those near the ground under the pointer are placed and measured on the screen - every one of a
                 // great world's people had been, eight times a second, the far side of the planet too: 11.7 ms of a running village view's 71 (s27prof1_run)
-                if (!GroundUnder(mp, out Vec3d under, out _)) return;
+                if (!GroundUnder(mp, out Vec3d under, out int underCell)) return;
                 double R = w.Planet.Radius, cosNear = System.Math.Cos(System.Math.Max(80.0, alt * 0.25) / R);
                 for (int id = w.People.First(); id != 0; id = w.People.Next(id))
                 {
@@ -521,8 +523,22 @@ namespace TC2.Game
                 // (session 29: roads read) nobody and nothing built under the pointer: the worn way under it, if one passes within a few metres
                 _hoverWayA = _hoverWayB = 0;
                 if (_hoverPid == 0 && _hoverBid == 0) HoverWay(w, under, alt);
+                // (session 30: the fields read) nor a way: the fields the ground draws there, whose they are and what they are doing
+                if (_hoverPid == 0 && _hoverBid == 0 && _hoverWayA == 0) _hoverField = TerrainLod.FieldOwnerAt(w, under, underCell);
             }
             string text = null;
+            if (_hoverPid == 0 && _hoverBid == 0 && _hoverWayA == 0 && _hoverField != 0 && w.Settlements.Exists(_hoverField))
+            {
+                if (Time.unscaledTime - _fieldTextAt > 0.5f || _fieldTextFor != _hoverField)
+                {
+                    _fieldTextAt = Time.unscaledTime; _fieldTextFor = _hoverField;
+                    var lines = Whys.Fields(w, _hoverField);
+                    _fieldText = lines.Count > 0 ? "<b>" + lines[0] + "</b>" : "";
+                    for (int i = 1; i < lines.Count; i++) _fieldText += "\n" + (i == 1 ? lines[i] : "<color=#e6dfcf>" + lines[i] + "</color>");
+                    _fieldText += "\n<size=10><color=#9a9486>click for its land</color></size>";
+                }
+                text = _fieldText;
+            }
             if (_hoverPid == 0 && _hoverBid == 0 && _hoverWayA != 0 && w.Settlements.Exists(_hoverWayA) && w.Settlements.Exists(_hoverWayB))
             {
                 if (Time.unscaledTime - _wayTextAt > 0.5f || _wayTextFor != _hoverWayA * 100003L + _hoverWayB)
@@ -732,6 +748,7 @@ namespace TC2.Game
 
         // (session 29: roads read) the worn way under the pointer: the ways as they stand (collected every two seconds), each by its route's line
         int _hoverWayA, _hoverWayB; float _waysAt = -99f, _wayTextAt = -99f; long _wayTextFor; string _wayText = "";
+        int _hoverField, _fieldTextFor; float _fieldTextAt = -99f; string _fieldText = "";   // (session 30: the fields under the pointer - Whys.Fields)
         readonly System.Collections.Generic.List<TC2.Core.Agents.Way> _hoverWays = new System.Collections.Generic.List<TC2.Core.Agents.Way>();
 
         void HoverWay(TC2.Core.Simulation.World w, Vec3d under, float alt)

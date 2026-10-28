@@ -211,6 +211,20 @@ try {
       await page.waitForTimeout(1800);
       await snap('extra_way_hover');
     } else console.log('no worn way of the greatest place in view');
+    // (session 30: the fields read) two villages' fields meeting with their crops unlike: the pointer over the first's (its tag - whose, what stage, why
+    // that colour) and a click (its page at its land)
+    await cmd('field meet 300');
+    await page.waitForTimeout(5000);
+    const sf = await page.evaluate(() => window.__TC2);
+    if (sf.wayFront && sf.wayX > 0 && sf.wayY > 0) {
+      await page.mouse.move(sf.wayX, sf.wayY);
+      await page.waitForTimeout(1800);
+      await snap('extra_field_hover');
+      await page.mouse.down(); await page.waitForTimeout(80); await page.mouse.up();
+      await page.waitForTimeout(2500);
+      await snap('extra_field_page');
+      await cmd('closepages');
+    } else console.log('no two villages\' fields meeting in view');
     // (session 29) a work pointed at (the greatest place's smithy at the screen's centre: when raised, who is at it now, why it was made)
     await cmd('building big');
     await page.waitForTimeout(3500);
