@@ -34,31 +34,32 @@ process you did not start.
    world now, the building leaf, the book's order/Peoples/links, the powers' word); `docs/tc2/PROGRESS.md` CURRENT STATE; `25_CIVILISATION_ROADMAP.md` §8.
 4. `git status`, `git log --oneline -20`, `git worktree list`, and the queue: `cat $Q/runq.log` (`Q` below) - which jobs ended, with what; `ls $Q/todo`.
 
-## FIRST - the state at the end of session 29's second context (29 Oct 2026, ~01:10 IST)
+## FIRST - the state at the end of session 29's second context (29 Oct 2026, ~01:30 IST)
 - **The branch `wip/s27-int` is the work** (worktree `C:/Game Dev/tc-s27int`, every edit there; tip = this note's commit). **Each queued job fast-forwards
   main to it at its start** (`git merge --ff-only wip/s27-int`); when the queue is idle and main is behind, fast-forward it yourself:
   `git -C "C:/Game Dev/tiny-consequences" merge --ff-only wip/s27-int` - never while a Unity job holds main's checkout. After any Web build:
   `git checkout -- unity/TinyConsequences2/ProjectSettings/ProjectSettings.asset` in main's checkout (the jobs do it). Sim **108** unchanged all session.
 - **The queue** (`Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`,
   hard-coded in `tc2/out/tools/s23/runq.sh` and `lib.sh`; the runner (task `bp3fvcitn`, started in session 29's first context) keeps polling `$Q/todo`;
-  `touch $Q/stop` stops it after its job). **Running at this handoff**: `0_ql_web_s29e` (started 00:52: the Web build of a453afe, then webtest `s29web5`,
-  bookshots `s29book5` (--play --meteor-play --extras --pages person:2 --book 7:0) and `s29lapse4` (the timelapse, the seasonal ramp softened)). Add a
-  job by writing `$Q/todo/0_<name>.sh` (source `lib.sh`; `gate`, `low`; see `$Q/done/0_qk_shots_s29v5.sh` for a shots job, `0_ql_web_s29e.sh` for a Web job).
-- **Done in session 29's second context** (DECISIONS **D2-203**; SESSION_HANDOFF "Session 29, context 2"): D2-202's pages seen in Web builds (`s29web3`,
-  `s29web4` 9/9; `s29book2`, `s29book4`); the visual world judged in Unity shots `s29v1`-`s29v5` (0 shader errors, read from Unity's own logs) and fixed:
-  burned crops and burned homes drawn as fire left them, a ruin saying how it fell, the rivers' far glint, the fields ending furlong by furlong, the
-  timelapse's straight seasonal edge (found: a steep colour ramp of the seasonal tropics, not the clouds or the recolouring); readability: works' tags
-  with why, the History panel's lines opening the book, the ticker on a loaded world, no names under panels, the aim's words in a box, crafts and works
-  in words, the book's words.
+  `touch $Q/stop` stops it after its job; jobs run in name order). **At this handoff**: `0_qn_web_s29f` running (started 01:13: Web of 5ad5c7f -
+  `s29web6`, `s29book6` (extras with the ruin last burned), `s29book7` (Kaihope at year 600 with names, its Now/Why? pages), `s29lapse5` (the skip from
+  orbit after the stale-patch fix)); then `0_qo_shots_s29v7` (Paitaimwick's burned homes, the soot in the alpha) and `0_qp_fullsuite_s29c2` (the full
+  headless suite on the branch, into `$N/bin_s29c2`; `$N/fs_s29c2_ok` when it passes). Add a job by writing `$Q/todo/0_<name>.sh` (source `lib.sh`;
+  `gate`, `low`; `$Q/done/0_qm_shots_s29v6.sh` for a shots job, `0_qn_web_s29f.sh` for a Web job).
+- **Done in session 29's second context** (DECISIONS **D2-203** (1)-(18); SESSION_HANDOFF "Session 29, context 2"): D2-202's pages seen in Web builds
+  (`s29web3`-`s29web5` 9/9); the visual world judged in Unity shots `s29v1`-`s29v6`, `s29n1` (0 shader errors, read from Unity's own logs) and fixed: burned
+  crops and burned homes drawn as fire left them, a ruin saying how it fell, the rivers' far glint, the fields ending furlong by furlong, the timelapse's
+  straight seasonal edge (a steep colour ramp) and its out-of-step block (stale cached patches); readability: works' tags with why, the History panel's
+  lines (newest first) and the news opening the book, the ticker on a loaded world, no names under panels, the aim's words in a box, crafts and works in
+  words, the book's words, a village's name where its people live and its page saying so, the title's guide.
 
 ## Do next, in order
-1. When `0_ql_web_s29e` ends (the Monitor above, or `tail $Q/runq.log`): judge `s29web5` (9/9) and the pictures listed in SESSION_HANDOFF "Session 29,
-   context 2" step 1 (the aim's box, the History panel above the bar, the person page's crafts and works, the timelapse's soft seasonal edge); fill
-   D2-203's "Pending"; fix what the pictures show; commit.
-2. Shots of the forty-year soot (fec03b0): a job like `$Q/done/0_qk_shots_s29v5.sh` with `--views "close,low"`, tag `s29v6`.
-3. Then the brief's open looks and readability: two villages' fields meeting along the cells (D2-203 "left": needs both villages' crop colours at a
-   pixel), W-FOREST's sameness, the night sea's moon veil; any gap the pictures show (validate: compile -> focused tests -> real Web play/shots -> fix ->
-   commit; no seed batteries for UI).
+1. When `0_qn_web_s29f` ends: judge `s29web6` (9/9); `tc2/out/webtest/s29book6/extra_ruin_page.png` and `extra_ruin_hover.png` (how it fell);
+   `s29book7/village.png`, `region.png` ("Kaihope" over its lived homes), `page_place_1_1.png`/`page_place_2_1.png` ("Its people live 310 m from its first
+   square ..." and its Why?); `s29lapse5/lapse_7_skip_orbit.png` and `lapse_8_skip_1.png` (no block out of step). Then `0_qo_shots_s29v7`
+   (`tc2/out/shots/s29v7`: the burned homes black among grey ruins) and `0_qp_fullsuite_s29c2` (0 failed, 0 skipped). Fill D2-203's "Pending"; fix; commit.
+2. Then the brief's open looks and readability: two villages' fields meeting along the cells (D2-203 "left"), W-FOREST's sameness (a dedicated art pass),
+   any gap the pictures show (validate: compile -> focused tests -> real Web play/shots -> fix -> commit; no seed batteries for UI).
 
 ## Rules that bite
 - **After a sim version change, rebuild main's headless (`tc2/headless/app`) before a webtest**: its determinism check compares the browser with
