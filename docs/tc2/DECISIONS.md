@@ -6464,5 +6464,12 @@ play_meteor_land - the gold word beside Your hand, nothing under it; `s30lapse1`
 block; lapse_8 (year 310) smooth. Shots `s30v3`/`s30v4` (693d915) and `s30v5`/`s30v6` (b5789df), 0 shader errors: the shores beside their before
 (`~SeaTrue=0`) - the faces' triangles along the water's edge gone (year 300's shallow inland water: the sawtooth on both edges), the edge the ground's own
 contour, the swash an even band close in; the surface's ripples now show over the shallowest water too. The year-300 junction's squeezed strips stayed
-after bf5ca22: they lie along a crest and run down its slope - a hillside seen obliquely, not two frames. **Pending**: Kaihope's shore in a Web build
-(the case that showed the faces).
+after bf5ca22: they lie along a crest and run down its slope - a hillside seen obliquely, not two frames. Web `0_re_web_s30b` (e5667d1): `s30web2` 9/9; Kaihope's shore
+(`s30book2` page_place_1_1 against `s29book8`'s) - the faces' dark and light wedges gone, a soft swash edge with its surf; the fields from the region
+and village views (`s30book2`, `s30book3`) - the villages' parcels meeting along furlongs. (6) **Readability from s30web1's pictures** (6b0896a): no map
+name under the catch-up's years or headline cards (the overlay returned before the HUD's rects were set; its own were never among them); the years' leaf
+stops short of an open page (at 1280 wide it lay over a person's portrait and tabs) or waits; the news ticker one line, cut at a word ("..."; its second
+line ran off a 720-high screen); a fire's burned ground in hectares by the world's own measure ("burnt out after 17 hours (1 cells)" - now "..., having
+burned about 5 ha"). HistoryBookTests 7/7, WhysTests 3/3, Lives 23/23, BiographyTests 4/4, Chronicle 4/4 (this branch, headless). **Pending**: Web
+`0_rf_web_s30c` (`s30web3`: 7_after_a_century, 9_person_life, the ticker, 5h_your_actions); `0_rg_book_s30d` (year 300's village view with the clouds off
+and on: a tan veil with a straight edge and vertical streaks over the fields at its left in `s29lapse6`/`s30book3` - which layer draws it).

@@ -14,10 +14,12 @@
   skip's gold blocks); (3) the cast's word beside Your hand; (4) camera views `fieldmeet`, `shore`.
 
 ### Next, in order
-0. Judge Web `0_rb_web_s30a` (bdf3e41): `s30web1` 9/9; `tc2/out/webtest/s30book1/play_meteor_land.png` (the gold word beside Your hand, not under it),
-   `extra_way_hover.png` (Vaindwick's and Towick's fields along furlongs); `s30lapse1/lapse_7_skip_orbit.png` (year 303: no gold blocks, no straight edge).
-   Then shots `0_rc_shots_s30v3` (`s30v3`, `s30v4`: no squeezed strips where three villages meet; `shore*`: the sea's edge on the true sphere).
-1. Then the brief's open looks: W-FOREST's sameness; the coast's stepped shelf from orbit; readability gaps the pictures show.
+0. (done) `0_rb_web_s30a` (s30web1 9/9, the cast's word, the skip's year 303), shots `s30v1`-`s30v6` (fields, shores), `0_re_web_s30b` (s30web2 9/9,
+   Kaihope's shore) - all judged, D2-204.
+1. Judge Web `0_rf_web_s30c` (6b0896a): `tc2/out/webtest/s30web3/7_after_a_century.png` (no name under the headline cards), `9_person_life.png` (the
+   years' leaf not over the page), the ticker (one line), `5h_your_actions.png` ("having burned about N ha"). Then `0_rg_book_s30d` (`s30cloud0` vs
+   `s30cloud1` village.png: is the tan veil with the straight edge the clouds? if so, find the straight edge in TC2CloudForm/CloudView; else find its layer).
+2. Then the brief's open looks: W-FOREST's sameness; the coast's stepped shelf from orbit; readability gaps the pictures show.
 
 ## Session 29, context 2 (29 Oct 2026, 00:00 - ~01:10 IST; Control Room run #86 session 2; Arjun AFK) - the visual world as evidence (D2-203)
 
