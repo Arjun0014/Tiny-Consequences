@@ -6314,5 +6314,57 @@ follows and why (kin; grain it owes; fed by them in hard times) and who follows 
 **Evidence.** WhysTests 3/3 (a way read from its wear and its travellers), LivesTests 4/4 (reading the followings every 12 days changes nothing),
 HistoryBookTests 7/7, TongueTests 4/4, PeaceTests 3/3, PowersTests 13/13; `unity.mjs cc` clean. The seed-2 year-300 book: "The People of Kaihope: 18
 villages, 18 lived in today, 3,879 people ... its greatest place today is Ithustead, a town of 655 people; two of its villages are realms' seats"; "The
-Long Feud of Kaihope and Thaloundton ... Its bands were led by Teinddrost Kobo (four raids), Tei Traiskor (three raids) ...". **Pending**: these pages in
-a Web build (the next job: bookshots `--extras` for the world now, the building leaf, the far village's tag and click).
+Long Feud of Kaihope and Thaloundton ... Its bands were led by Teinddrost Kobo (four raids), Tei Traiskor (three raids) ...". **Seen in the Web build**
+(`s29web3` 9/9 and `s29book2`, main c1fffc6, session 29's second context): the world now (the present age "The Years of the Lords (since year 256)", 11,076
+people in 56 places, the three greatest realms, "4 villages in famine, 4 raids in the last ten years"); the smithy's leaf (its smiths, its metal, why it
+was raised); the far village's tag from the region view (Thindford: lord of 16 villages, its first, what its people do now, the wrong it holds) and its
+click opening its page at Now; the cast's word over the bar ("Strike at Skekdraistead - what comes of it shows in Your hand, and in the book's last
+part"); a road's tag under the pointer ("The track between Stirnstead and Thindford, walked about 7 times a year - a faint track, nobody on it at this
+moment"); Your hand after the meteor (98 deaths, a fire, a quake; its longest thread); V Peoples, III a feud with its band leaders, VIII Lives with
+"their life", XI Your Actions with the dead named and the longest thread - all as built. Faults found there and fixed in D2-203.
+
+## D2-203 — 2026-10-29 — The visual world as evidence, judged in shots: a burned crop as fire left it, the rivers' far glint; works and the History panel that answer why; the book's words (presentation and observers; session 29, second context)
+
+**Context.** The brief's section 7 (the visual world where it is evidence of the simulation), judged in real Unity shots of seed 2 at year 600 (`s29v1`:
+orbit, region, village, close, a seat's standard, the greatest town and its streets; main 92b75fd, 0 shader errors) and the Web build of D2-202's pages
+(`s29book2`). What the pictures showed: the town and its market read as a living town (half-timbered houses, a market with stalls, beasts and people,
+roads converging, smoke); the planet from orbit reads; but the region view had **a dark green country with the cells' staircase for an edge** round
+Kaihope, **thick white zigzags** across the fields where blue rivers ran on, and in the browser **names showing through the hover tag, Your hand and the
+power bar**, a ruler's deeds that were men swearing one by one, "XI" numbered "11", and "0 days' grain" in raids and amends.
+
+**Decision.** (1) **A burned crop as fire left it.** The dark country was not a region: the region view's dark zone stayed with the clouds' shadow and
+forms off (`s29v2`), and the new headless `cells` tool (the ground's cells along lines out of a place; the field owners met with their crop, growth and
+share burned) found Kaihope's fields 60 % burned - "Driven off from its walls, the band from Vaindwick burned the crop of Kaihope outside them (60 %)"
+(year 599). `TerrainLod.CropColour` had darkened the whole of a village's fields by the share burned, which read as dark grass. Now the share
+(`Settlement.CropBurnt`, until the next sowing) goes to the terrain per vertex (`Patch.RealmS.y`, kept by the realms wash) and the field shader chars that
+share of the **sown strips whole, furlong by furlong** as a fire runs on: black stubble and a warm brown-grey ash, varying strip by strip, the furrows'
+streaks faint and fading with distance (the first version's 1.45 m streaks aliased into a grey moire at the village and close views: `s29v3`); far off
+the fields' mean takes it. The state is the world's; only its drawing changed. (2) **The rivers' far glint narrow**: the white zigzags were the sun's
+glint on the far ribbons (their normal flat there, a 10-degree lobe: whole reaches glared along their widened ribbons) - far off now as narrow as the
+moon's path (exponent 500) and dimmer. (3) **A village's works named with why**: the pointer over a work tells when it was raised (or how far raised,
+or fallen in), how many of its village are at it now by the work its kind is for (smiths at this smithy, weavers, potters, quarry, mine, charcoal hearth,
+training ground, threshing at the barn, raising it; at all of the kind where it has several) and why it was made (its Cause record), and that a click opens
+its page - it said only "The smithy of Kaihope". (4) **The History panel as the book's recent pages**: each line opens the book on its record (why it
+happened back to its root, the people and places it names, go there; `SimHost.FeedIds`), "the book" opens the present age. **The ticker on a loaded world**:
+it took a change in the feed's count for news, but the feed holds 60 lines and a loaded world's starts full - its ticker never showed a new line; now
+`SimHost.FeedTotal`. (5) **No name under a panel**: the panels, bars, pages, card and tag drawn last frame are places no map name is set
+(`Hud._uiRects`). (6) **The book's words**: XI numbered as such; a life's deeds tell the first man sworn to them and count the rest ("In all 142 men swore
+to them"); "found nothing in it to carry off", "no grain carried off"; amends that a lord's judgment bound a village to pay as far as its store could spare,
+when it spared nothing: "were bound to make amends ... but their store had no grain to spare". (7) **Tools**: `unity.mjs` now forwards Unity's "Shader
+error" lines from shots and Web builds - the jobs had counted them in output that never carried them (the `s29v1`/`s29v2` Unity logs were read directly:
+0); bridge `way big [ALT] [AT]` (wayX/wayY/wayFront), `history on|off`, `feedline [N]`; bookshots `--extras` points at a road and a work and opens the
+History panel and a line, `--pre "C1;C2"`; headless `cells --load F [--sid N]` and `--meridian LON [--days D]`.
+
+**Considered and left.** The seat's standard is life-size by D2-152/C10.6 (realms read from afar through the map's flags and the realms layer): not
+enlarged. **Homes burned in raids** fall at once and are drawn as any old ruin (`Homes.Burnt` sets `Left` back past the fall): no state tells a burned
+ruin from an abandoned one, so drawing them charred needs a new saved field (a sim version and new saves) - left for a sim landing. **The straight
+seasonal edge from orbit** (`s29lapse2` lapse_7): not the hemispheres' season (along 131.5 E the yearly swing falls to 0.1 C at the equator and the soil's
+water varies cell by cell with no jump: `cells --meridian`), not the planet shell (the ground is all TerrainLod), not the staggered recolouring (every shown
+patch recolours together while the camera watches from orbit) - the Web job `s29lapse3` runs the timelapse with the clouds off to tell the ground's from
+the clouds' (the cover cubemap's faces).
+
+**Evidence.** Shots `s29v3` (main 86f978e) and `s29v4` (main 7592a69), 0 shader errors in Unity's own logs, the integrated Radeon: Kaihope's fields
+charred strip by strip among the green from the region, village and close views, no dark staircase region, no moire. HistoryBookTests 7/7, PeaceTests
+3/3, LivesTests 4/4, WhysTests 3/3; `unity.mjs cc` clean at each commit. The year-300 book (headless): "In all 142 men swore to them"; "The people of
+Endstead were bound to make amends to Ithustead for a wounding ... but their store had no grain to spare"; "XI. Your Actions". **Pending**: the Web build
+of 5464411 (`s29web4`, `s29book4` - a road, a work, the History panel and a line opened; `s29lapse3` - the edge with the clouds off).
