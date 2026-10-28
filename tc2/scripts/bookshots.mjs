@@ -6,6 +6,9 @@
 //        [--book "-1,0:0,1:0,2:0,3:0,4:0,5:0,6:0,7:0"] [--tag NAME] [--webgl2] [--play] [--pages "person:0,place:0"]
 // --play (session 27): the pointer over a home, a lightning aimed, cast and its "Your hand", a storm aimed from afar (play_*.png);
 // with --meteor-play also a meteor thrown near that home: its fall, its landing and what it left (play_meteor_*.png).
+// --lapse (session 29): the timelapse - the oldest person followed at the village view, 1 day/s (the camera rises, watches from orbit), 1 min/s (it
+// comes back to them), then a skip of --skip YEARS (default 2) watched from orbit to its end and the leaf of what the years did (lapse_*.png, the
+// camera's state at each in report.json `lapse`); --flash N: N frames 120 ms apart at 10 days/s from orbit (lapse_flash_*.png) to measure flicker.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -130,6 +133,46 @@ try {
       await snap('play_meteor_after');
       await cmd('speed 0');
     }
+  }
+  if (flag('--lapse')) {
+    const snap = async (name) => { const f = path.join(outDir, `${name}.png`); await page.screenshot({ path: f }); report.shots.push(f); const st = await page.evaluate(() => window.__TC2); const row = { name, lapse: st.lapse, light: st.lapseLight, alt: st.camAlt, year: st.year, date: st.date, speed: st.speed, catchingUp: st.catchingUp, skipping: st.skipping }; (report.lapse = report.lapse || []).push(row); console.log('shot ' + name + ' ' + JSON.stringify(row)); };
+    await cmd('follow oldest');
+    await page.waitForTimeout(3500);
+    await snap('lapse_0_ground');
+    await cmd('speed 6');   // (1 day/s: a day a second - too fast to watch from the ground)
+    await page.waitForTimeout(1600);
+    await snap('lapse_1_rising');
+    await page.waitForTimeout(3500);
+    await snap('lapse_2_orbit');
+    await page.waitForTimeout(6000);
+    await snap('lapse_3_orbit_later');
+    const flashes = Number(opt('--flash', '0'));
+    if (flashes > 0) {
+      await cmd('speed 7');   // (10 days/s: ten days a second - the strobe a steady light must not show)
+      await page.waitForTimeout(2500);
+      for (let i = 0; i < flashes; i++) { const f = path.join(outDir, `lapse_flash_${String(i).padStart(2, '0')}.png`); await page.screenshot({ path: f }); await page.waitForTimeout(120); }
+      await cmd('speed 6');
+      await page.waitForTimeout(1500);
+    }
+    await cmd('speed 3');   // (1 min/s: the camera comes back to the person followed)
+    await page.waitForTimeout(1800);
+    await snap('lapse_4_returning');
+    await page.waitForTimeout(4500);
+    await snap('lapse_5_back');
+    await cmd(`skip ${Number(opt('--skip', '2'))}`);
+    await page.waitForTimeout(2500);
+    await snap('lapse_6_skip_rising');
+    await page.waitForTimeout(5000);
+    await snap('lapse_7_skip_orbit');
+    const t0 = Date.now(); let k = 0;
+    while (Date.now() - t0 < Number(opt('--skipwait', '600')) * 1000) {
+      const st = await page.evaluate(() => window.__TC2);
+      if (!st.catchingUp && st.lapse === 'Off') break;
+      await page.waitForTimeout(1000);
+      if ((Date.now() - t0) / 1000 > 20 * (k + 1)) { k++; await snap(`lapse_8_skip_${k}`); }
+    }
+    await page.waitForTimeout(1500);
+    await snap('lapse_9_skip_back');
   }
   // (session 27) the person and place pages as leaves of the book: --pages "person:0,person:5,place:0,place:2" - the oldest living person's page and
   // the greatest place's at those sections (page_person_0.png ...)

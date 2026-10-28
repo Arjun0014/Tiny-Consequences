@@ -45,6 +45,13 @@ namespace TC2.Game
         public long CatchUpRealStartMs;
         public readonly List<string> CatchUpFeed = new List<string>();
         long _catchUpCursor;
+        /// <summary>(session 29) The catch-up is the player's own skip ahead (the bar's Skip), not an absence: it ends at its target and gives back the speed
+        /// the player had. Lived exactly as a catch-up (its plan of resolutions a logged command), so a skip changes history only as any span lived COARSE does.</summary>
+        public bool Skipping;
+        int _skipSpeed; bool _skipMax;
+        /// <summary>(session 29: the timelapse) The ms of each frame the world may take, set by the camera while it flies and while it watches from orbit
+        /// (a flight wants smooth frames; the orbit's picture is cheap, so the world may take more): &lt; 0 the host's own budgets.</summary>
+        public float FrameBudgetOverride = -1f;
 
         // the recent history feed (historical and local events)
         public readonly List<string> Feed = new List<string>();
@@ -165,8 +172,54 @@ namespace TC2.Game
             _feedCursor = w.History.LastId;
         }
 
+        /// <summary>
+        /// (session 29) The player's skip ahead: the world lives <paramref name="seconds"/> more as fast as it can - a span holding many lives at COARSE, its
+        /// last two days in full, as an absence's catch-up is (OfflineProgress.PlanCatchUp, Living's plan - never DEEP) - and the player's speed comes back
+        /// at its end. The camera watches it from orbit (CameraRig's timelapse); nothing the camera does changes what is lived.
+        /// </summary>
+        public void BeginSkip(long seconds)
+        {
+            if (World == null || CatchingUp || seconds <= 0) return;
+            _skipSpeed = SpeedIndex; _skipMax = MaxSpeed;
+            long target = World.Now + seconds;
+            bool coarse = OfflineProgress.PlanCatchUp(World, target, OfflineMode.Living);
+            Skipping = true;
+            CatchUpCoarse = coarse || World.Resolution == TC2.Core.Simulation.Resolution.Coarse;
+            CatchingUp = true;
+            CatchUpFrom = World.Now;
+            CatchUpTarget = target;
+            CatchUpRealStartMs = Browser.NowUtcMs();
+            CatchUpFeed.Clear();
+            _catchUpCursor = World.History.LastId;
+            Debug.Log("[TC2] skipping from " + SimTime.Format(CatchUpFrom) + " to " + SimTime.Format(target) + (coarse ? " (COARSE)" : ""));
+        }
+
+        /// <summary>
+        /// (session 29) Stops a skip early: lived days come back at the next midnight (a logged command, as the plan's own return is) and the skip ends there.
+        /// A catch-up of an absence cannot be stopped - the absence is owed.
+        /// </summary>
+        public void StopSkip()
+        {
+            if (!CatchingUp || !Skipping) return;
+            var w = World;
+            if (!CatchUpCoarse) CatchUpTarget = w.Now;   // (lived day by day all along: it ends now)
+            else
+            {
+                // (COARSE now, or due at the next midnight by the plan: lived days asked back for that midnight - after the plan's own switch at the same
+                // moment, so a skip stopped before its COARSE began never lives a COARSE day; the plan's later return is then a no-op)
+                long next = SimTime.StartOfDay(w.Now) + SimTime.Day;
+                if (next + SimTime.Hour < CatchUpTarget)
+                {
+                    w.RequestResolution(TC2.Core.Simulation.Resolution.Activity, next);
+                    CatchUpTarget = next + SimTime.Hour;
+                }
+            }
+            Debug.Log("[TC2] skip stopped: it ends at " + SimTime.Format(CatchUpTarget));
+        }
+
         public void BeginCatchUp(long target, bool resumed = false)
         {
+            Skipping = false;
             bool coarse = !resumed && OfflineProgress.PlanCatchUp(World, target, Offline);   // (Ancient and Deep time: DEEP, F8)
             CatchUpCoarse = coarse || World.Resolution == TC2.Core.Simulation.Resolution.Coarse;
             CatchingUp = true;
@@ -185,13 +238,15 @@ namespace TC2.Game
             long before = World.Now;
             if (CatchingUp)
             {
-                var budget = new Budget { MaxEvents = long.MaxValue, ShouldYield = () => _sw.Elapsed.TotalMilliseconds > CatchUpBudgetMs };
+                float catchBudget = FrameBudgetOverride >= 0f ? FrameBudgetOverride : CatchUpBudgetMs;
+                var budget = new Budget { MaxEvents = long.MaxValue, ShouldYield = () => _sw.Elapsed.TotalMilliseconds > catchBudget };
                 bool reached = World.AdvanceTo(CatchUpTarget, ref budget);
                 PollCatchUpFeed();
                 if (reached)
                 {
                     CatchingUp = false;
-                    Debug.Log("[TC2] caught up to " + SimTime.Format(World.Now) + " in " + ((Browser.NowUtcMs() - CatchUpRealStartMs) / 1000.0).ToString("0.0", CultureInfo.InvariantCulture) + " s");
+                    Debug.Log("[TC2] " + (Skipping ? "skipped" : "caught up") + " to " + SimTime.Format(World.Now) + " in " + ((Browser.NowUtcMs() - CatchUpRealStartMs) / 1000.0).ToString("0.0", CultureInfo.InvariantCulture) + " s");
+                    if (Skipping) { Skipping = false; SpeedIndex = _skipSpeed; MaxSpeed = _skipMax; _carry = 0; }   // (the player's speed again)
                     SaveNow();
                 }
                 else if (Browser.NowUtcMs() - _lastSaveRealMs > 30000) SaveNow(); // an interrupted catch-up resumes the same span
@@ -204,7 +259,8 @@ namespace TC2.Game
                 long whole = (long)Math.Floor(_carry);
                 if (whole > 0)
                 {
-                    var budget = new Budget { MaxEvents = long.MaxValue, ShouldYield = () => _sw.Elapsed.TotalMilliseconds > WatchBudgetMs };
+                    float watchBudget = FrameBudgetOverride >= 0f ? FrameBudgetOverride : WatchBudgetMs;
+                    var budget = new Budget { MaxEvents = long.MaxValue, ShouldYield = () => _sw.Elapsed.TotalMilliseconds > watchBudget };
                     bool reached = World.AdvanceTo(World.Now + whole, ref budget);
                     if (reached) _carry -= whole; else _carry = 0; // the clock waits for the world, never the reverse
                 }

@@ -94,7 +94,9 @@ namespace TC2.Game
             int fc = _face; _face = (_face + 1) % 6;
             var now = _now[fc]; var target = _target[fc];
             if (Time.unscaledTime >= _nextFill[fc]) { FillTarget(w, fc, target); _nextFill[fc] = Time.unscaledTime + 1f; }
-            float k = _filled[fc] ? Mathf.Clamp01(Time.unscaledDeltaTime * 6f * 0.35f) : 1f;
+            // (session 29: in the timelapse each face's weather comes from a day ten or a hundred days on from the last fill - eased four times slower, the
+            // cover is the weather's running mean, growing and fading rather than boiling)
+            float k = _filled[fc] ? Mathf.Clamp01(Time.unscaledDeltaTime * 6f * 0.35f * Mathf.Lerp(1f, 0.22f, Rig.LapseLight)) : 1f;
             _filled[fc] = true;
             for (int i = 0, j = 0; i < _px.Length; i++, j += 4)
             {

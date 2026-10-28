@@ -7,7 +7,7 @@ namespace TC2.Game
     /// Orbit camera from the whole planet down to a village: drag to turn the world, wheel/pinch to zoom; the view
     /// tilts toward the horizon as it comes down. Also drives the sun from world time (day, season, declination).
     /// </summary>
-    public sealed class CameraRig : MonoBehaviour
+    public sealed partial class CameraRig : MonoBehaviour
     {
         public SimHost Host;
         public Camera Cam;
@@ -25,7 +25,10 @@ namespace TC2.Game
             if (w == null) return;
             if (_framedVersion != Host.WorldVersion) { FrameFirstSettlement(); _framedVersion = Host.WorldVersion; }
             double R = w.Planet.Radius;
-            // input (legacy input manager)
+            // input (legacy input manager); (session 29) while the world is skipped through from orbit the planet may be turned but not come down to - nobody
+            // is drawn while a span is lived at speed
+            bool held = LapseHoldsCamera;
+            double lat0 = Lat, lon0 = Lon, dist0 = Distance;
             if (Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1)) { _lastMouse = Input.mousePosition; _dragging = !Hud.PointerOverUi; }
             if (Input.GetMouseButtonUp(0) || Input.GetMouseButtonUp(1)) _dragging = false;
             if (_dragging && (Input.GetMouseButton(0) || Input.GetMouseButton(1)))
@@ -38,33 +41,25 @@ namespace TC2.Game
                 Lat -= dm.y * k;
             }
             float wheel = Input.mouseScrollDelta.y;
-            if (Hud.PointerOverUi) wheel = 0;
+            if (Hud.PointerOverUi || held) wheel = 0;
             if (Mathf.Abs(wheel) > 0.01f) Zoom(wheel);
-            if (Input.GetKey(KeyCode.Q)) Zoom(Time.unscaledDeltaTime * 4f);
-            if (Input.GetKey(KeyCode.E)) Zoom(-Time.unscaledDeltaTime * 4f);
+            if (!held && Input.GetKey(KeyCode.Q)) Zoom(Time.unscaledDeltaTime * 4f);
+            if (!held && Input.GetKey(KeyCode.E)) Zoom(-Time.unscaledDeltaTime * 4f);
             double kk = (Distance - R) / R * 0.9 + 0.01;
             if (Input.GetKey(KeyCode.A)) Lon -= Time.unscaledDeltaTime * kk;
             if (Input.GetKey(KeyCode.D)) Lon += Time.unscaledDeltaTime * kk;
             if (Input.GetKey(KeyCode.W)) Lat += Time.unscaledDeltaTime * kk;
             if (Input.GetKey(KeyCode.S)) Lat -= Time.unscaledDeltaTime * kk;
             Lat = System.Math.Max(-1.45, System.Math.Min(1.45, Lat));
-            // while the world lives through an absence the camera rises to the planet (12 §5: the catch-up shows the world ageing from
-            // above), leaving the frame's time to the simulation rather than to the near views behind the catch-up screen; the view
-            // the player left comes back when the world arrives
-            if (Host.CatchingUp)
-            {
-                if (!_holding) { _held = Distance; _holding = true; }
-                Distance = R + CatchUpAltitude * w.Planet.GeoScale;
-            }
-            else if (_holding) { Distance = _held; _holding = false; }
+            // (session 29) the timelapse: the player's place kept, the camera up to the planet while the days would flash past, and back
+            LapseUpdate(w, Lat - lat0, Lon - lon0, Distance - dist0);
             Apply();
             UpdateSun();
         }
 
-        /// <summary>The camera's height while the world catches up an absence (m on the 10 km world; with the planet's size).</summary>
+        /// <summary>The camera's height while the world catches up an absence or a skip, or runs too fast for its days to be watched (m on the 10 km world;
+        /// with the planet's size).</summary>
         public static double CatchUpAltitude = 22000;
-        bool _holding;
-        double _held;
 
         public void Zoom(float notches)
         {
@@ -701,8 +696,9 @@ namespace TC2.Game
             double hour = (SimTime.SecondOfDay(tl) + (t - tl)) / SimTime.Hour;
             double decl = P.Declination(tl);
             double sunLon = DMath.TwoPi * (12.0 - hour) / 24.0;
-            Vec3d toSun = Vec3d.FromLatLon(decl, sunLon);
-            Sun.transform.rotation = Quaternion.LookRotation(-PlanetGeo.ToVector(toSun), Vector3.up);
+            Vector3 toSun = PlanetGeo.ToVector(Vec3d.FromLatLon(decl, sunLon));
+            toSun = LapseSun(toSun, (float)decl);   // (session 29: the timelapse's steady light while the days run too fast to watch)
+            Sun.transform.rotation = Quaternion.LookRotation(-toSun, Vector3.up);
         }
     }
 }

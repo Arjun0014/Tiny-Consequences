@@ -84,6 +84,8 @@ namespace TC2.Game
             _frames++; _fpsT += Time.unscaledDeltaTime;
             if (_fpsT > 0.5f) { _fps = _frames / _fpsT; _frames = 0; _fpsT = 0; }
             var w = Host.World;
+            LapseHook();   // (session 29: the timelapse - Hud.Lapse.cs)
+            if (w != null && Rig != null && Rig.LapseActive) PollHeadlines(w);
             if (w == null || Host.CatchingUp) return;
             if (_titleOn) return;   // (the title holds the world still: F11.1)
             if (!_bookAsked) { _bookAsked = true; if (Browser.Param("book") != null) OpenBook(-1); }   // (?book=1: open at the present age)
@@ -99,7 +101,7 @@ namespace TC2.Game
             if (!PowersInput() && Input.GetMouseButtonUp(0) && !PointerOverUi) Pick();   // (a click while aiming a power casts it: F9.1)
             // following: the camera keeps over the person as they go about their day (its height as the player left it)
             var fw = Host.World;
-            if (_follow != 0 && fw != null)
+            if (_follow != 0 && fw != null && !Rig.LapseFlies)   // (while the camera flies a timelapse it keeps the person's place: Hud.Lapse.cs)
             {
                 if (!fw.People.Exists(_follow) || !fw.People.Get(_follow).Alive) _follow = 0;
                 else
@@ -532,7 +534,8 @@ namespace TC2.Game
             float sw = Screen.width / _scale, sh = Screen.height / _scale;
             var w = Host.World;
             if (w == null) { GUI.Label(new Rect(20, 20, 600, 40), Host.StatusLine, _title); return; }
-            if (Host.CatchingUp) { CatchUpScreen(sw, sh); PointerOverUi = true; return; }
+            // (session 29) a catch-up or a skip is watched from orbit, the years in large type and the headlines as they come (Hud.Lapse.cs)
+            if (Host.CatchingUp) { LapseOverlay(w, sw, sh, 16f); return; }
             if (Title(sw, sh)) return;   // (the opening: F11.1)
 
             if (_hidden) { PointerOverUi = false; WorldObjectsView.Chosen = WorldObjectsView.Pointed = WorldObjectsView.ChosenHome = WorldObjectsView.PointedHome = 0; return; }
@@ -546,6 +549,7 @@ namespace TC2.Game
                 _dateW = _title.CalcSize(new GUIContent("Year 0000 · Early Autumn · Day 48 · 00:00")).x + 10f;
                 foreach (string s in SimHost.SpeedNames) _speedsW += _btn.CalcSize(new GUIContent(s)).x + _btn.margin.horizontal;
                 _speedsW += _btn.CalcSize(new GUIContent("Max")).x + _btn.margin.horizontal;
+                _speedsW += _btn.CalcSize(new GUIContent("Skip...")).x + _btn.margin.horizontal + 6f;   // (session 29: the skip ahead)
                 _togglesW = 24f;
                 foreach (string s in new[] { "Info", "History", "Book", "World", "Realms", "Sound", "Settings" }) _togglesW += _btn.CalcSize(new GUIContent(s)).x + _btn.margin.horizontal;
             }
@@ -562,8 +566,15 @@ namespace TC2.Game
                 if (GUILayout.Toggle(on, SimHost.SpeedNames[i], _btn) && !on) { Host.SpeedIndex = i; Host.MaxSpeed = false; }
             }
             if (GUILayout.Toggle(Host.MaxSpeed, "Max", _btn) != Host.MaxSpeed) Host.MaxSpeed = !Host.MaxSpeed;
+            GUILayout.Space(6);
+            _skipMenu = GUILayout.Toggle(_skipMenu, "Skip...", _btn);
             GUILayout.EndHorizontal();
             GUILayout.EndArea();
+            _skipRect = Rect.zero;
+            SkipMenu(sw);
+            // (session 29) a speed too fast to watch from the ground: the camera watches from orbit - the HUD's pages and powers wait, the headlines come
+            bool lapse = Rig != null && Rig.LapseActive;
+            if (lapse) LapseOverlay(w, sw, sh, _left.yMax + 10f);
 
             // top-right: toggles for the panels
             _toggles = new Rect(sw - _togglesW - 10f, 10, _togglesW, 40);
@@ -627,7 +638,7 @@ namespace TC2.Game
                 for (int i = from; i < Host.Feed.Count; i++) GUILayout.Label(Host.Feed[i], _small);
                 GUILayout.EndArea();
             }
-            else if (_news.Length > 0 && _newsAge < 14f)
+            else if (_news.Length > 0 && _newsAge < 14f && !lapse)
             {
                 var old = GUI.color;
                 GUI.color = new Color(1, 1, 1, Mathf.Clamp01(1.5f - _newsAge / 10f));
@@ -646,23 +657,25 @@ namespace TC2.Game
             // inspector (session 27, context 4: not over the open book - s27book6 had the chosen person's card over its right-hand page; the book holds
             // the screen while it is open, and a name clicked in it closes it for that page)
             Rect insp = new Rect(sw - 400, 190, 390, 300);
-            bool showInsp = !_book && _selected != 0 && w.People.Exists(_selected);
+            bool showInsp = !_book && !lapse && _selected != 0 && w.People.Exists(_selected);
             if (showInsp) Inspector(insp, w);
             _pageRect = Rect.zero;
             float pageH = sh - 136f - topY;   // (ending above the power bar: its foot had run under it - s27web2)
-            if (_book) { /* (the book holds the screen) */ }
+            if (_book || lapse) { /* (the book holds the screen; the timelapse the picture) */ }
             else if (_placeSid != 0 && w.Settlements.Exists(_placeSid)) { float pw = Mathf.Min(600, sw - 430); _pageRect = new Rect(Mathf.Max(10, sw - 410 - pw), topY - 2f, pw, pageH); PlacePage(_pageRect, w); }
             else if (_personPage && _selected != 0 && w.People.Exists(_selected)) { float pw = Mathf.Min(600, sw - 430); _pageRect = new Rect(Mathf.Max(10, sw - 410 - pw), topY - 2f, pw, pageH); PersonPage(_pageRect, w); }
             else if (_building != 0 && w.Buildings.Exists(_building)) { showInsp = true; BuildingPage(insp, w); }
             _powersRect = Rect.zero;
-            if (!_book) PowerBar(w, sw, sh);   // (the god's powers: F9.1)
-            if (!_book && _pageRect.width <= 0f) YourHand(w, sw, sh);   // (what came of your casts, live: session 27; not over a person's or a place's page - s27book5)
+            if (!_book && !lapse) PowerBar(w, sw, sh);   // (the god's powers: F9.1)
+            if (!_book && !lapse && _pageRect.width <= 0f) YourHand(w, sw, sh);   // (what came of your casts, live: session 27; not over a person's or a place's page - s27book5)
+            if (!_book && !lapse) LapseSummaryLeaf(w, sw, sh); else _summaryRect = Rect.zero;   // (what the years did: Hud.Lapse.cs)
             if (!_book) DrawTip(); else _tip = null;
             _settingsRect = Rect.zero;
             if (_settings) SettingsPanel(sw);
             KeepSettings();
             Vector2 m = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y) / _scale;
-            PointerOverUi = _settingsRect.Contains(m) || _powersRect.Contains(m) || _left.Contains(m) || _toggles.Contains(m) || _right.Contains(m) || worldRect.Contains(m) || realmsRect.Contains(m) || _bottom.Contains(m) || _ticker.Contains(m) || (showInsp && insp.Contains(m)) || (_book && _bookRect.Contains(m)) || _pageRect.Contains(m);
+            bool overLapse = lapse && PointerOverUi;   // (the overlay's own rects, set as it drew)
+            PointerOverUi = overLapse || _skipRect.Contains(m) || _summaryRect.Contains(m) || _settingsRect.Contains(m) || _powersRect.Contains(m) || _left.Contains(m) || _toggles.Contains(m) || _right.Contains(m) || worldRect.Contains(m) || realmsRect.Contains(m) || _bottom.Contains(m) || _ticker.Contains(m) || (showInsp && insp.Contains(m)) || (_book && _bookRect.Contains(m)) || _pageRect.Contains(m);
             if (!_book) HoverTag(w, sw, sh);
             // (session 27) who is ringed on the ground: the person whose page is open, the one under the pointer, the chosen home's household
             WorldObjectsView.Chosen = _personPage ? _selected : 0;
@@ -1337,22 +1350,6 @@ namespace TC2.Game
             if (e.Settlement > 0 && w.Settlements.Exists(e.Settlement)) { var a = w.Settlements.Get(e.Settlement).Anchor; lat = a.Latitude; lon = a.Longitude; return true; }
             if (e.Cell >= 0 && e.Cell < w.Planet.Cells) { var c = w.Planet.Grid.Center[e.Cell]; lat = c.Latitude; lon = c.Longitude; return true; }
             return false;
-        }
-
-        void CatchUpScreen(float sw, float sh)
-        {
-            var w = Host.World;
-            GUI.Box(new Rect(0, 0, sw, sh), GUIContent.none, _box);
-            float span = Mathf.Max(1f, (float)(Host.CatchUpTarget - Host.CatchUpFrom));
-            float done = Mathf.Clamp01((float)(w.Now - Host.CatchUpFrom) / span);
-            GUI.Label(new Rect(sw * 0.5f - 300, 60, 600, 40), "While you were away...", _title);
-            GUI.Label(new Rect(sw * 0.5f - 300, 100, 600, 30), SimTime.Format(Host.CatchUpFrom) + "  ->  " + SimTime.Format(Host.CatchUpTarget), _label);
-            GUI.Box(new Rect(sw * 0.5f - 300, 140, 600, 18), GUIContent.none);
-            GUI.Box(new Rect(sw * 0.5f - 300, 140, 600 * done, 18), GUIContent.none, _box);
-            GUI.Label(new Rect(sw * 0.5f - 300, 165, 600, 30), "now " + SimTime.Format(w.Now) + "   " + w.LivingPeople() + " people in " + w.InhabitedSettlements() + " places   " + FormatSpeed(Host.AchievedSpeed), _small);
-            float y = 200;
-            int from = Mathf.Max(0, Host.CatchUpFeed.Count - 22);
-            for (int i = from; i < Host.CatchUpFeed.Count; i++) { GUI.Label(new Rect(sw * 0.5f - 300, y, 600, 22), Host.CatchUpFeed[i], _small); y += 20; }
         }
 
         string _wild = ""; float _wildAt = -99f;

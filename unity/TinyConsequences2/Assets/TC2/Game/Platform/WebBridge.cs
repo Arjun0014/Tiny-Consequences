@@ -75,6 +75,8 @@ namespace TC2.Game
                     }
                 case "new": Host.NewWorld(ulong.Parse(a[1], inv)); break;
                 case "view": Rig.SetView(a[1]); break;   // the camera's named views (forest, forestlow, coast, volcano...: D2-079)
+                case "skip": { var hud = Object.FindFirstObjectByType<Hud>(); if (hud != null) hud.Skip(double.Parse(a[1], inv)); break; }   // (session 29) "skip YEARS": the bar's skip ahead
+                case "stopskip": Host.StopSkip(); break;
                 case "catchupalt": CameraRig.CatchUpAltitude = double.Parse(a[1], CultureInfo.InvariantCulture); break;   // tools: the camera's height while catching up
                 case "book": { var hud = Object.FindFirstObjectByType<Hud>(); if (hud != null) hud.OpenBook(a.Length > 1 ? int.Parse(a[1], inv) : -1); break; }   // the History Book (D2-077)
                 case "bookat": { var hud = Object.FindFirstObjectByType<Hud>(); if (hud != null) hud.OpenBookAt(int.Parse(a[1], inv), a.Length > 2 ? int.Parse(a[2], inv) : 0); break; }   // (session 25) a part and chapter (-1: the preface)
@@ -100,6 +102,15 @@ namespace TC2.Game
                         if (a.Length > 1 && a[1] != "oldest") pid = int.Parse(a[1], inv);
                         else { double best = -1; for (int id = w.People.First(); id != 0; id = w.People.Next(id)) { ref var p = ref w.People.Get(id); if (p.Alive && p.AgeYears(w.Now) > best) { best = p.AgeYears(w.Now); pid = id; } } }
                         if (hud != null && pid != 0 && w.People.Exists(pid)) hud.ShowPerson(pid, a.Length > 2 ? int.Parse(a[2], inv) : 0);
+                        break;
+                    }
+                case "follow":
+                    {
+                        // (session 29) tests: "follow PID|oldest" - the camera keeps with a person, as the card's Follow does
+                        var hud = Object.FindFirstObjectByType<Hud>(); var w = Host.World; int pid = 0;
+                        if (a.Length > 1 && a[1] != "oldest") pid = int.Parse(a[1], inv);
+                        else { double best = -1; for (int id = w.People.First(); id != 0; id = w.People.Next(id)) { ref var p = ref w.People.Get(id); if (p.Alive && p.AgeYears(w.Now) > best && p.At != 0) { best = p.AgeYears(w.Now); pid = id; } } }
+                        if (hud != null && pid != 0 && w.People.Exists(pid)) { hud.Follow(pid); if (TC2.Core.Agents.Presence.Of(w, in w.People.Get(pid), Host.RenderTime, out var pd, out _, out _, out _)) Rig.LookAt(pd, a.Length > 2 ? double.Parse(a[2], inv) : 260); }
                         break;
                     }
                 case "place":
@@ -202,6 +213,8 @@ namespace TC2.Game
             sb.Append(",\"simMs\":").Append(Host.LastSimMs.ToString("0.###", inv));
             sb.Append(",\"catchingUp\":").Append(Host.CatchingUp ? "true" : "false");
             sb.Append(",\"catchUpTarget\":").Append(Host.CatchUpTarget);
+            sb.Append(",\"skipping\":").Append(Host.Skipping ? "true" : "false");
+            if (Rig != null) sb.Append(",\"lapse\":\"").Append(Rig.Lapse).Append("\",\"lapseLight\":").Append(Rig.LapseLight.ToString("0.###", inv)).Append(",\"camAlt\":").Append((Rig.Distance - (w != null ? w.Planet.Radius : 0)).ToString("0", inv));   // (session 29: the timelapse)
             sb.Append(",\"saveBytes\":").Append(Host.LastSaveBytes);
             sb.Append(",\"saveOk\":").Append(Host.LastSaveOk ? "true" : "false");
             sb.Append(",\"saves\":").Append(Host.SavesStored);   // (saves stored: a tool waits for it to rise after its save)
