@@ -16,6 +16,39 @@ namespace TC2.Headless
         {
             var w = SaveFile.Load(File.ReadAllBytes(a.Get("load")), out _);
             var P = w.Planet;
+            if (a.Get("burned") != null)
+            {
+                // (--burned YEARS) homes burned by bands and buildings flattened by stones from the sky in the last YEARS, and the ruins standing now that fell
+                // at such a moment - the view's rule for a charred ruin (WorldObjectsView.Charred: Left + its fall time + 1 ms = a fire record's time)
+                var iv = CultureInfo.InvariantCulture;
+                long since = w.Now - (long)(double.Parse(a.Get("burned"), iv) * TC2.Core.Foundation.SimTime.Year);
+                var at = new System.Collections.Generic.HashSet<long>();
+                var bySid = new System.Collections.Generic.SortedDictionary<int, int>();
+                for (int i = 0; i < w.History.Count; i++)
+                {
+                    var e = w.History.At(i);
+                    if (e.Kind != TC2.Core.History.HistoryKind.BuildingBurned && e.Kind != TC2.Core.History.HistoryKind.MeteorStruck) continue;
+                    at.Add(e.Time);
+                    if (e.Time >= since) bySid[e.Settlement] = bySid.TryGetValue(e.Settlement, out int n0) ? n0 + 1 : 1;
+                }
+                Console.WriteLine("fire records (burned homes, stones from the sky): " + at.Count + " in all; in the last " + a.Get("burned") + " years by place:");
+                foreach (var kv in bySid) Console.WriteLine("  #" + kv.Key + " " + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(kv.Key)) + ": " + kv.Value);
+                int charred = 0, ruins = 0;
+                var charredBy = new System.Collections.Generic.SortedDictionary<int, int>();
+                for (int id = w.Buildings.First(); id != 0; id = w.Buildings.Next(id))
+                {
+                    var b = w.Buildings.Get(id);
+                    if (!TC2.Core.Places.Homes.Fallen(in b, w.Now) || TC2.Core.Places.Homes.RuinLeft(in b, w.Now) <= 0.03) continue;
+                    ruins++;
+                    long fell = b.Left + TC2.Core.Foundation.DMath.ToLong(TC2.Core.Places.Homes.FallYears(in b) * TC2.Core.Foundation.SimTime.Year) + 1;
+                    if (!at.Contains(fell)) continue;
+                    charred++;
+                    if (fell >= since) charredBy[b.Settlement] = charredBy.TryGetValue(b.Settlement, out int n1) ? n1 + 1 : 1;
+                }
+                Console.WriteLine("ruins standing " + ruins + ", fallen to fire " + charred + "; fallen to fire in the last " + a.Get("burned") + " years by place:");
+                foreach (var kv in charredBy) Console.WriteLine("  #" + kv.Key + " " + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(kv.Key)) + ": " + kv.Value);
+                return 0;
+            }
             if (a.Get("meridian") != null)
             {
                 // (--meridian LON [--days D]) the climate along a meridian, degree by degree of latitude, after D days lived (a season's soil): the cells'

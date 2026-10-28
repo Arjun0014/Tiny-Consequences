@@ -661,6 +661,7 @@ namespace TC2.Game
             DrawOre(w, P);
             _ricks.Clear(); _graves.Clear(); _gravesOld.Clear(); _standards.Clear(); _standardsBig.Clear(); _muck.Clear(); _huts.Clear(); _tents.Clear(); _ruins.Clear(); _beached.Clear(); _beachedP.Clear(); _walls.Clear(); _stoneWalls.Clear(); _towers.Clear(); _woodpiles.Clear();
             _smoke.Clear(); _watch.Clear();
+            BurnTimes(w);   // (session 29: which ruins fell to fire - a raid's torches, a stone from the sky)
             MuckHeaps = 0; MuckLargestKg = 0;   // (tools: the heaps drawn, and where the largest stands - the "muck" shot views)
             // (the frame pass, 14 §7) a village wholly beyond the planet's limb is not built: none of its buildings, lights or smoke can be seen - its
             // farthest work is within `PlacesReach` of its anchor, and the places are built again as soon as the camera has moved a quarter of that
@@ -1036,6 +1037,36 @@ namespace TC2.Game
             return false;
         }
 
+        // (session 29) the moments buildings fell to fire, from the ledger: a raid's torches (BuildingBurned) and a stone from the sky (MeteorStruck) - read
+        // as the records come, never written
+        readonly HashSet<long> _burnAt = new HashSet<long>();
+        long _burnLastId; int _burnWorld = -1;
+
+        void BurnTimes(TC2.Core.Simulation.World w)
+        {
+            if (_burnWorld != (Host != null ? Host.WorldVersion : 0)) { _burnWorld = Host != null ? Host.WorldVersion : 0; _burnAt.Clear(); _burnLastId = 0; }
+            var H = w.History;
+            for (int i = H.FirstIndexAfter(_burnLastId); i < H.Count; i++)
+            {
+                var e = H.At(i);
+                if (e.Kind == TC2.Core.History.HistoryKind.BuildingBurned || e.Kind == TC2.Core.History.HistoryKind.MeteorStruck) _burnAt.Add(e.Time);
+            }
+            _burnLastId = H.LastId;
+        }
+
+        /// <summary>(session 29: war scars) A ruin that fell to fire - burned by a band, or flattened and fired by a stone from the sky - drawn black with soot,
+        /// weathering back to a ruin's moss and stone over fifteen years; a ruin that fell of age or to the sea as it was. A building that fell at once fell at
+        /// the moment `Homes.Burnt`/the stone set: its `Left` back by exactly its fall time and a millisecond - matched to a fire's record at that moment (no
+        /// state of the world says "burned": the ledger does).</summary>
+        Color Charred(TC2.Core.Simulation.World w, in Building b, Color ruin)
+        {
+            if (_burnAt.Count == 0 || b.Left == 0) return ruin;
+            long fell = b.Left + DMath.ToLong(Homes.FallYears(in b) * SimTime.Year) + 1;
+            if (!_burnAt.Contains(fell)) return ruin;
+            float k = Mathf.Clamp01((float)((w.Now - fell) / (15.0 * SimTime.Year)));
+            return Color.Lerp(new Color(0.16f, 0.13f, 0.11f, 1f), ruin, k * k);
+        }
+
         /// <summary>
         /// A village work (C1.1): a well or a granary where its people raised it - while being raised a pale frame rising with the hours put
         /// in, standing as it was built and weathering with its condition, fallen a low ruin (a well's stone ring outlasts the rest, D2-052).
@@ -1070,7 +1101,7 @@ namespace TC2.Game
                 float c = (float)Homes.RuinLeft(in b, w.Now);
                 if (c <= 0.03f) return;
                 if (b.Kind == Structures.Well) inst.Add(1, Color.Lerp(moss, new Color(0.75f, 0.80f, 0.70f, 1f), c), m * Matrix4x4.Scale(new Vector3(1f, 0.4f, 1f)));
-                else _ruins.Add((int)(c * 4), Color.Lerp(moss, Color.white, c), PlaceFaced(P, s, b.X, b.Y, face, 1f) * Matrix4x4.Scale(new Vector3(ex * 0.7f, ex * 0.7f * (0.25f + 0.75f * c), ex * 0.7f)));
+                else _ruins.Add((int)(c * 4), Charred(w, in b, Color.Lerp(moss, Color.white, c)), PlaceFaced(P, s, b.X, b.Y, face, 1f) * Matrix4x4.Scale(new Vector3(ex * 0.7f, ex * 0.7f * (0.25f + 0.75f * c), ex * 0.7f)));
                 return;
             }
             float cond = (float)Structures.Condition(in b, w.Now);
@@ -1350,7 +1381,7 @@ namespace TC2.Game
                 float size = ex * (b.Kind >= Construction.House ? 1f : 0.6f);
                 mr = mr * Matrix4x4.Scale(new Vector3(size, size * (0.25f + 0.75f * c), size));   // the walls fall lower
                 Color moss = new Color(0.50f, 0.60f, 0.40f, 1f);
-                _ruins.Add((int)(c * 4), Color.Lerp(moss, Color.white, c), mr);
+                _ruins.Add((int)(c * 4), Charred(w, in b, Color.Lerp(moss, Color.white, c)), mr);
                 return false;
             }
             bool lived = b.Household != 0 && w.Households.Exists(b.Household);
