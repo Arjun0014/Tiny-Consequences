@@ -6274,3 +6274,45 @@ charcoal hearth" (213): "Its longest thread, 113 years on").
 Thaksournton pay tribute to Rindford?" -> Rindford's harvest (beside it, Verhope's tribute) -> a man swore to its first -> it asked Thaksournton a tenth
 -> Thaksournton bowed); a place's trend counts its own birth records; LivesTests 3/3, GazetteerTests 3/3, HistoryBookTests 7/7, PowersTests 13/13.
 **Pending**: the pages in the Web build (`s29book1`).
+
+**Results of the pending checks (session 29, job `0_qd_web_s29b`, Web 4c9eb9f).** Web `s29web2` 9/9. `s29book1`: the card, every section of the person page
+(the first of Thindford: portrait in her realm's colour with the circlet, badges "Lord of 16 villages", "31 sworn men", "Master of farming", temperament,
+Why?, the drawn tree with 12 grandchildren, skill and craft bars, the life by decade), the place's Now/Why?/Realm (21 villages by tier, 97 sworn men,
+12,802 days' grain of tribute) and Your Actions with the meteor's longest thread all drawn as built; found and fixed after: the tree's two inner
+grandparents overlapped and its "and N more brothers and sisters" sat on a line (0c35860). `s29lapse2`: 1 day/s 260 m -> 13,200 m -> 260 m again; a
+10-year skip from orbit (headlines; the leaf: 11,210 -> 9,283 people, 3,212 dead of hunger, Thindford's realm 21 -> 49 villages, three realms fallen
+apart; the followed man's death at 109 with his daughter to follow on) - **the seasons' blocks from orbit are mostly gone but one straight brown/green
+edge still crosses the continent (open: a patch not in the shown list, or the cells' colour layer)**. `s29perf2` (the road cache, paired on a running
+village view): **x1.115** (34.4 -> 32.4 ms a frame), TerrainLod_RoadAt 4.04 -> 0.43 ms.
+
+## D2-202 — 2026-10-28 — Readable at every level: roads, a village from afar, the world now, the building as a leaf, the book's order and links, the powers' word (presentation and observers; session 29)
+
+**Context.** The rest of session 29's brief after D2-199-D2-201: roads and trade must say why they exist and what moves on them; disclosure from the world
+down (world -> realm -> settlement -> household -> person -> life); the book's sections as a reader looks for them, its rulers linked to their lives, its
+wars to their participants and costs, Your Actions to what a cast ultimately caused; no uncertainty whether a cast worked; no tool's text in front of the
+player.
+
+**Decision.** (1) **Roads read** (`Whys.Way`, `Hud.HoverWay`): the pointer over a worn way names it - a track, a path or a road by its wear now ("walked
+about 83 times a year"; the wear halves each year unrenewed), since when worn or beaten (its WayWorn records), who is on it now and why from the people on
+its route (trading grain, carrying the lord's tenth, grain to a famine, in a band, visiting kin, moving house...), the bond between its ends (tribute, one
+realm, a wrong held). (2) **A village from afar**: above 1.3 km the pointer over a village tells what it is, its bond and its first, its three largest
+doings now and what it faces; a click opens its page at Now (nothing had answered a click there); a camera drag picks nothing. (3) **The world now**: the
+Info panel opens on the present age (Chronicle), people and places, realms and villages alone, the three greatest realms each opening its realm page,
+what troubles the world now (famine, hunger, sickness, raids of the last ten years from the annals); the tool's numbers kept small below. (4) **The
+building page as a leaf** like the person's and the place's: kicker, name, words, dated history, why it was raised as a story, links to its village, its
+household and who led it. (5) **The book in the brief's order**: I Ages, II Realms and Rulers, III Wars and Feuds, IV Great Settlements, V Peoples and
+Their Ways (new part: the peoples together, then each people of 2+ villages - its villages founding by founding, the living and the abandoned, its
+greatest place, its seats), VI Famine/Plague/Disaster, VII Discoveries and Works, VIII Lives, IX Threads, X Chronology, XI Your Actions
+(`YourActionsPart` = 10; the webtest's `bookat 8` had shown Discoveries since session 27 - now 10). A war's chapter says who led its bands and what its
+years cost each side (dead of wounds, homes burned, from `RecordsAt`); a life's heading (rulers, founders, war leaders, finders) opens that person's page
+(`BookBlock.Person`). (6) **The powers' word**: a cast says what it did and where, a refused one why (not back yet, the sky), for four seconds over the
+bar; Your hand shows each cast's longest thread so far (`HistoryBook.Thread`); what came of a cast counts the ore found and dug, works, crafts, smithies
+forging arms, bows, raids, bands, gifts of grain, rationing. (7) **The hover tag** says why under what. (8) **The feed** in the book's words ("Year 299,
+mid winter: ...", not "Y299 d48 14:23 [Historical/Nature] ..."). (9) **Among the households** (the person page's Standing): whom their household
+follows and why (kin; grain it owes; fed by them in hard times) and who follows it (`Lives.Following`, from `Society.Leaders`).
+
+**Evidence.** WhysTests 3/3 (a way read from its wear and its travellers), LivesTests 4/4 (reading the followings every 12 days changes nothing),
+HistoryBookTests 7/7, TongueTests 4/4, PeaceTests 3/3, PowersTests 13/13; `unity.mjs cc` clean. The seed-2 year-300 book: "The People of Kaihope: 18
+villages, 18 lived in today, 3,879 people ... its greatest place today is Ithustead, a town of 655 people; two of its villages are realms' seats"; "The
+Long Feud of Kaihope and Thaloundton ... Its bands were led by Teinddrost Kobo (four raids), Tei Traiskor (three raids) ...". **Pending**: these pages in
+a Web build (the next job: bookshots `--extras` for the world now, the building leaf, the far village's tag and click).

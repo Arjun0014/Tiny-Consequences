@@ -6,73 +6,55 @@ road, mine, boat, market, army and polity arises from simulated need, labour, ma
 presentation never invents state. The legacy Defold game (TC1: `game/`, `sim/`, `docs/` outside `docs/tc2/`) is research material
 only - never modify or stage it. **Do not stop at a milestone**: after each slice choose the next highest-value dependency from the
 evidence and keep going; context handoffs are a continuation mechanism, not a stop condition. Stop only for a real external blocker.
-**No subagents.** Simulation and presentation advance together: every slice answers "what changes in the world picture?" and is judged
-in real game shots.
+**No subagents.**
 
-**Arjun's direction (26 Oct 2026, session 27) - CURRENT**: about two weeks remain; **implementation and game quality, not endless validation** (no
-new replications, placebos or seed batteries without a real unexplained regression; no new 1,000-year run for a presentation change). The majority of the
-work is the visible, player-facing game, in order: **A** the planet from orbit (a beautiful small Earth: limb, oceans, land, clouds from the weather, storms,
-shadows - never faked climate); **B** people and places recognisable (lords, heads, sworn men, families, households, settlements, buildings; hover/click);
-**C** the History Book as an evolving chronicle with eras, sections and visual hierarchy; **D** W-FOREST; **E** game feel for the god's powers (targeting,
-response, consequences in Your Actions and the book). Each slice: implement -> compile -> focused tests -> real shots/playtest -> Web smoke when needed ->
-fix -> commit -> next.
+**Arjun's direction (28 Oct 2026, session 29) - CURRENT: "THE JAM MUST CLEARLY READ AS A REAL SIMULATION TO THE PLAYER."** Every feature answers: what is
+happening, who is doing it, why, from what resources/relationships/history, what changed, how the player can inspect and follow the chain, and how the
+picture shows it. The player's own casts must be traceable: power -> immediate effect -> people/places affected -> secondary consequences -> long-term
+history. Never fabricate an explanation: read the real state and the causal ledger; if a truth is not kept, add the smallest real state. Order of the
+brief: (0) the held perf check - DONE; (1) the long skip as an orbital timelapse - DONE (D2-199); (2) the person page as a person - DONE (D2-200); (3)
+readability with progressive disclosure world -> realm -> settlement -> household -> person -> life/causes - DONE in large part (D2-201, D2-202); (4)
+"Why?" from the ledger - DONE (D2-201); (5) the History Book as the world's memory - its sections, links and Your Actions' threads DONE (D2-201, D2-202);
+(6) the powers as play - their word and live threads DONE (D2-202), keep polishing; (7) the visual world where it is evidence of the simulation (orbit,
+clouds, region edges, W-FOREST, settlements, people, important buildings, roads, political centres, war scars, ruins) - NEXT, judged in real shots.
+Validation for presentation: compile -> focused tests -> real Web play/shots -> fix -> commit; no seed batteries or 1,000-year runs for UI.
+Arjun is AFK: make normal design decisions; never ask "should I continue".
 
-**THE MACHINE: never draw on the RX 5600M** - it restarts the PC under load (26 Oct, 10:45, during Unity shots). `tc2/scripts/gpusafe.mjs` (called by
-`unity.mjs` and every browser script) sets Unity and Playwright's Chromium to the power-saving GPU and refuses to start while the card is present; never set
-`TC2_ALLOW_DGPU=1`. Each Unity run prints `gpu ...` from its log - it must be "AMD Radeon(TM) Graphics (ID=0x1636)". Runs are silent (`--mute-audio`, the
-listener at 0 in shots).
+**THE MACHINE: never draw on the RX 5600M** - it restarts the PC under load. `tc2/scripts/gpusafe.mjs` (called by `unity.mjs` and every browser script)
+sets Unity and Playwright's Chromium to the power-saving GPU and refuses to start while the card is present; never set `TC2_ALLOW_DGPU=1`. Each Unity run
+prints `gpu ...` - it must be "AMD Radeon(TM) Graphics (ID=0x1636)". Runs are silent. RAM < 86 %, CPU < 85 %, one heavy job at a time; never kill a
+process you did not start.
 
 ## Read first (this order), then work autonomously
-1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the standing prompt (architecture, rules, every direction; "Where we are (session 27)").
-2. `docs/tc2/SESSION_HANDOFF.md` - the top block **"Session 27, context 4"** (and the contexts under it): the exact state, the queue, "Next, in order".
-3. `docs/tc2/25_CIVILISATION_ROADMAP.md` §8 - **the status ledger** (what is built, measured-only, in evaluation; the next slices A-E) and §6 (the acceptance
-   runs); `docs/tc2/DECISIONS.md` newest (D2-190-D2-197; D2-197 this session's frame, night, palisade, pages); `docs/tc2/PROGRESS.md` CURRENT STATE.
-4. `git status`, `git log --oneline -15`, `git worktree list`, and the queue: `cat $Q/runq.log` (`Q` below) - which jobs ended, with what; `ls $Q/todo`.
+1. `docs/tc2/NEXT_SESSION_PROMPT.md` - the standing prompt (architecture, rules, every direction; "Where we are (session 29)").
+2. `docs/tc2/SESSION_HANDOFF.md` - the top block **"Session 29"**: the exact state, the queue, "Next, in order".
+3. `docs/tc2/DECISIONS.md` newest: D2-199 (the timelapse; the frame), D2-200 (the person page), D2-201 (Why?), D2-202 (roads, a village from afar, the
+   world now, the building leaf, the book's order/Peoples/links, the powers' word); `docs/tc2/PROGRESS.md` CURRENT STATE; `25_CIVILISATION_ROADMAP.md` §8.
+4. `git status`, `git log --oneline -20`, `git worktree list`, and the queue: `cat $Q/runq.log` (`Q` below) - which jobs ended, with what; `ls $Q/todo`.
 
-## FIRST - the state at the end of session 27 (26 Oct 2026, ~17:50 IST; Arjun ended the session)
-- **Session 28 (27 Oct 2026) was housekeeping only** (D2-198; SESSION_HANDOFF "Session 28"): ~33 GB of ignored output deleted - runaway Unity logs, saves
-  below sim 107, shots/webtest images before 25 Oct, TC1's media, `tools/bob`, `build/` - and 62 merged worktrees removed (their branches kept). Still here:
-  `s2_ac5` (sim 108) and the saves the held jobs name, every run's `.txt`/`.csv`, `s26*`/`s27*` shots and webtests (`s27prof1`), `tc2/out/tools`, Unity's
-  `Library`, `tc-s27int` and the seven unmerged worktrees. Nothing below changed: start at "Do next" 1.
-- **main** = `wip/s27-int` (the docs commit after d4057ed; sim 108; worktree `C:/Game Dev/tc-s27int` - work there, fast-forward main between Unity jobs:
-  `git -C "C:/Game Dev/tiny-consequences" merge --ff-only wip/s27-int`, never while a Unity job holds main's checkout). Verify `git log -1 main` = `git log -1 wip/s27-int`.
-  After any Web build: `git checkout -- unity/TinyConsequences2/ProjectSettings/ProjectSettings.asset` in main's checkout.
-- **The queue is stopped** (`$Q/stop` touched; `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`,
-  hard-coded in `tc2/out/tools/s23/runq.sh` and `lib.sh` - if that scratchpad is gone, point `Q`/`S`/`N` at a live one). Its last job `0_qa_shots_s27w`
-  (shots s27w1-w4, then main's headless rebuilt) ended rc 0 at 17:39: GazetteerTests 3/3, LeadersTests 8/8, 0 skipped. **Held, not run: `$Q/hold/0_qb_web_s27prof2.sh`** - the Web build that measures this session's frame fixes. To resume: `rm $Q/stop`, start
-  `bash tc2/out/tools/s23/runq.sh` in the background from main's checkout (only with memory to spare: a Web build takes the machine from ~60 % to ~96 %),
-  `mv $Q/hold/0_qb_web_s27prof2.sh $Q/todo/`, follow with a Monitor on `tail -n 0 -F $Q/runq.log | grep --line-buffered -E "^end |^start "`.
-- **The frame by function** (new this session): build with `node tc2/scripts/unity.mjs build-web --jobs 2 --symbols`; profile with `realmsperf.mjs ...
-  --profile 6000` (a layer off and on) or `--layer none --pairs 0 --speed 5 --profile 8000` (the game running); re-read a saved profile with
-  `node tc2/scripts/cpuprof.mjs F.cpuprofile --frames N` (N: the run's report.json `profiles`). `place --load SAVE --ring [--sid N]`: each ring stretch by stretch.
-
-## Session 27, context 3 (26 Oct 2026, 14:52 - 16:45 IST) - prospecting landed (sim 108); the shots' findings fixed; the frame's real waste found
-- **main** = `wip/s27-int` (worktree `C:/Game Dev/tc-s27int`; work there, fast-forward main between Unity jobs). At the handoff main was e748638 and a
-  background waiter (task `b2qjknhr7`) fast-forwards it to `wip/s27-int` (c16b86c or later) once the running Web build exits - verify
-  `git log -1 main` = `git log -1 wip/s27-int`; if not, `git checkout -- unity/TinyConsequences2/ProjectSettings/ProjectSettings.asset` and
-  `git merge --ff-only wip/s27-int` in `C:/Game Dev/tiny-consequences` (never while a Unity job runs there).
-- **Landed**: C5.3c prospecting (D2-190; sim 108). Saves for shots/Web: `tc2/out/civ/s2_ac5/world_y300.tc2`, `world_y600`, `world_y1000` (sim 108).
-- **Fixed in real shots and Web builds** (D2-196): rivers far off; the meteor (one fall, grey dust, its fall heard); the regions' cell staircase
-  (`TerrainLod.WarpCells`, on a lattice); night clouds by the moon; the far glint; no road over a lake; pools in waterlogged woods (never under snow);
-  the palisade (stakes; along a shore two passes - pending shots `s27f7`); night lights at 512; the book's repeated ages named by their realm; Your
-  Actions folds a cast's dead; the person and place pages as leaves of the book and in words; Your hand never over a page.
-- **The frame**: Terrain.shader branched (gain only x1.02 region / x1.06 village, `s27perf3`); shadows x0.93, buildings x0.84/x0.88. Every terrain
-  measure had been taken paused while the ground's colouring cycle ran on for ever - now only when the world moved (6ae81de; bridge `recolour`,
-  realmsperf `--speed`). `s27perf4` (in q6) measures the terrain paused again and the colouring at 1 h/s.
-- **Running at the handoff (16:45)**: the queue (runner task `bbgjl1nqj`; `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/
-  60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`; follow `tail -n 0 -F $Q/runq.log | grep --line-buffered -E "^end |^start "`): `0_q6_web_s27web6`
-  (headless rebuilt, Web build of main e748638, webtest `s27web6`, `tc2/out/webtest/s27perf4/`, bookshots `s27book6`), then `0_q7_shots_s27f` (needs main
-  to hold 5c62ace; shots `s27f7` - the shore palisade).
+## FIRST - the state at the end of session 29's first context (28 Oct 2026, ~23:45 IST)
+- **main = 92b75fd, BEHIND `wip/s27-int`** (worktree `C:/Game Dev/tc-s27int` - work there) because the Unity shots job held main's checkout at the handoff:
+  once `0_qe_shots_s29v` has ended, `git -C "C:/Game Dev/tiny-consequences" merge --ff-only wip/s27-int` (never while a Unity job holds main's checkout) and
+  verify `git log -1 main` = `git log -1 wip/s27-int`. After any Web build:
+  `git checkout -- unity/TinyConsequences2/ProjectSettings/ProjectSettings.asset` in main's checkout (the queued jobs do it).
+- **The queue runs** (`Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`,
+  hard-coded in `tc2/out/tools/s23/runq.sh` and `lib.sh`; the runner was started in session 29 as background task `bp3fvcitn` and keeps polling `$Q/todo`;
+  `touch $Q/stop` stops it after its job). At the handoff: `0_qd_web_s29b` done (the road cache x1.115 on a running village view, RoadAt 4.04 -> 0.43 ms);
+  `0_qe_shots_s29v` RUNNING from 23:39 (Unity shots `tc2/out/shots/s29v1`, seed 2 year 600; log `$Q/log/0_qe_shots_s29v.log`). Add a job by writing `$Q/todo/0_<name>.sh` (source `lib.sh`; `gate`, `low`).
+- **Verified in the Web build** (`s29web1`/`s29web2` 9/9, `s29lapse1`/`s29lapse2`, `s29book1`): the timelapse (1 day/s, skips, catch-up; exact return;
+  no strobe; the death of the followed person told), the person page and card, the place's Now/Why?/Realm, Your Actions' thread. **Built, compiled and
+  tested headless but not yet seen in a Web build**: roads read, the far village's tag and click, the world now, the building leaf, the book's new order and
+  Peoples part, wars' leaders and costs, lives linked, the cast's word and Your hand's live thread, the hover's why, the feed in the book's words, the
+  followings, the family tree's layout fix.
 
 ## Do next, in order
-1. Read `0_qa_shots_s27w`'s tests; then run the held `0_qb_web_s27prof2` (webtest `s27web8` 9/9; `s27prof2` against `s27prof1` with `cpuprof.mjs`:
-   RebuildPeople, Hud_HoverTag, TerrainLod_RoadAt, writeBuffer, WaterView_BuildRoads should all have fallen; `s27book7`: no card over the open book, the
-   hover tag found, every instanced thing in its colours - the instanced arrays now go by size (Instancer.Draw: 16/64/256/1023) and are the suspect if any
-   draws black). Fill D2-197's "Pending" (DECISIONS, its last paragraph) and 25 §8; SESSION_HANDOFF "Session 27, context 4" has the details.
-2. The frame by the new profile: the draws' submission (bind groups, constant buffers, the shadow passes), RebuildPlaces, Presence.Of/PositionAt - each change
-   measured paired in one page (`realmsperf --layer NAME`).
-3. Open looks: the region view's region edges a little jagged still; the night sea's broad moon veil from the region view; the person page's sparse Now tab;
-   keep judging A-E in real shots and Web builds.
+1. When `0_qe_shots_s29v` ends: fast-forward main; judge the shots `s29v1` (the visual world: political centres, ruins, walls, roads, war scars, the
+   orbit) - grep the job log for "Shader error" and the GPU line.
+2. Queue a Web build of main's tip: webtest `s29web3` (9/9), `bookshots --extras --play --meteor-play --pages "card:0,person:3:head,place:0"
+   --book "4:0,4:1,2:0,7:0,10:0"` (the new book parts: Peoples, a war, Lives, Your Actions). Judge every new page in its pictures; fix; commit; fill D2-202's
+   "Pending".
+3. Open looks: one straight seasonal edge still crosses the land from orbit during a skip (`s29lapse2` lapse_7); the region view's jagged region edges; the
+   night sea's broad moon veil; W-FOREST. Then section 7 of the brief by the shots, and any readability gap the pictures show.
 
 ## Rules that bite
 - **After a sim version change, rebuild main's headless (`tc2/headless/app`) before a webtest**: its determinism check compares the browser with

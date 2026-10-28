@@ -1,35 +1,43 @@
 # TC2 Session handoff
 
-## Session 29 (28 Oct 2026, from 22:23 IST; Arjun AFK overnight, "the jam must clearly read as a real simulation") - the timelapse, the person page, Why?
+## Session 29 (28 Oct 2026, 22:23 - ~23:45 IST; Control Room run #86 session 1; Arjun AFK overnight, "the jam must clearly read as a real simulation") - the timelapse, the person page, Why?, every level readable
 
 ### Exact state (keep current)
 - **The machine**: never draw on the RX 5600M (gpusafe.mjs; Unity logs "AMD Radeon(TM) Graphics (ID=0x1636)"); silent runs; one heavy job at a time.
-- **main** = `wip/s27-int` (worktree `C:/Game Dev/tc-s27int`, where all edits are made; fast-forward main between Unity jobs: `git -C "C:/Game Dev/tiny-consequences"
-  merge --ff-only wip/s27-int`, never while a Unity job holds main's checkout). Sim **108** unchanged all session (presentation and observers only).
-- **The queue** (`Q` = session 24's scratchpad `.../60b1de9e-.../scratchpad/q`; runner `bash tc2/out/tools/s23/runq.sh` in the background; follow with a
-  Monitor on `tail -n 0 -F $Q/runq.log $Q/log/<job>.log | grep -E "^end |^start |exit|FAIL|pictures"`). Done this session: `0_qb_web_s27prof2` (the held
-  verification), `0_qc_web_s29a`. Running/queued: `0_qd_web_s29b` (Web build of 4c9eb9f+, webtest `s29web2`, bookshots `s29book1` - every person page
-  section, the card, the place's Place/Now/Why?/Realm, the book after a lightning and a meteor -, `s29lapse2` - the timelapse with a 10-year skip -, and
-  `s29perf2` - the road cache in pairs on a running village view).
-- **Built and committed this session** (each in DECISIONS):
-  - D2-199 the long skip as a timelapse (`CameraRig.Lapse.cs`, `Hud.Lapse.cs`, `Core/History/Headlines.cs`, `SimHost.BeginSkip/StopSkip`, the bar's
-    Skip...); the frame by s27prof2 (`WorldObjectsView.PeopleStale`, `TerrainLod.RoadsLaid` road cache); the ground in step from orbit
-    (`TerrainLod.RecolourTogether`).
-  - D2-200 the person page (`Hud.Person.cs`: portrait, badges, Now/Family tree/Work/Standing/Household/Life; the card; `Core/History/Lives.cs`).
-  - D2-201 Why? (`Core/History/Whys.cs`; `Hud.Place.cs`: the place's Now/Why?/Realm; the building's story; the book's links, a cast's longest thread;
-    `HistoryLedger.RecordsAt`).
-- **Tests**: HeadlinesTests 3/3, LivesTests 3/3, WhysTests 2/2, GazetteerTests 3/3, HistoryBookTests 7/7, PowersTests 13/13 (headless, worktree);
-  `unity.mjs cc --src` clean. Web `s27web8` 9/9, `s29web1` 9/9.
-- **Tools**: bridge `skip YEARS`, `stopskip`, `follow PID|oldest`, `select PID|oldest|head`, `person head N`, toggles `peoplestale`, `roadcache`; state
-  `lapse`, `lapseLight`, `skipping`, `camAlt`; `bookshots --lapse [--flash N] [--skip Y]`, `--pages card:N[:who],person:N[:head]`.
+- **Code**: all of it on `wip/s27-int` (worktree `C:/Game Dev/tc-s27int`, where every edit is made), tip = the handoff docs commit after 0c35860. **main
+  = 92b75fd at the handoff, BEHIND the branch** (the Unity shots job `0_qe_shots_s29v` holds main's checkout from 23:39): once it ends, fast-forward -
+  `git -C "C:/Game Dev/tiny-consequences" merge --ff-only wip/s27-int` - and verify `git log -1 main` = `git log -1 wip/s27-int`. Sim **108** unchanged all session (presentation and observers only).
+- **The queue** (`Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`; the runner
+  `bash tc2/out/tools/s23/runq.sh` started this session (task `bp3fvcitn`) keeps running; follow with a Monitor on
+  `tail -n 0 -F $Q/runq.log $Q/log/<job>.log | grep --line-buffered -E "^end |^start |exit|FAIL|pictures"`). Done: `0_qb_web_s27prof2`, `0_qc_web_s29a`,
+  `0_qd_web_s29b` (rc 0 at 23:39: `s29web2` 9/9, `s29book1`, `s29lapse2`, `s29perf2` - the road cache x1.115 on a running village view, RoadAt 4.04 ->
+  0.43 ms). **Running at the handoff**: `0_qe_shots_s29v` (started 23:39) - Unity shots of seed 2 year 600 (orbit, region, village, close, standardlow,
+  town, townlow) into `tc2/out/shots/s29v1`, its log `$Q/log/0_qe_shots_s29v.log` (shader errors, GPU line) - for the brief's section 7. Then the queue
+  idles.
+- **Built and committed this session** (DECISIONS D2-199 to D2-202): the timelapse (`CameraRig.Lapse.cs`, `Hud.Lapse.cs`, `Core/History/Headlines.cs`,
+  `SimHost.BeginSkip/StopSkip`, the bar's Skip...); the frame (`WorldObjectsView.PeopleStale`, `TerrainLod.RoadsLaid`, `TerrainLod.RecolourTogether`);
+  the person page (`Hud.Person.cs`, `Core/History/Lives.cs`); Why? (`Core/History/Whys.cs`, `Hud.Place.cs`, `HistoryLedger.RecordsAt`); roads read, a
+  village from afar, the world now, the building leaf (`Hud.cs`); the book's order with a Peoples part, wars' leaders and costs, lives linked, casts'
+  threads (`HistoryBook.cs`, `Hud.Book.cs`); the powers' word (`Hud.Powers.cs`); the feed in the book's words (`SimHost`).
+- **Verified in Web builds**: `s27web8`, `s29web1`, `s29web2` 9/9; `s29lapse1`/`s29lapse2` (the timelapse played for real); `s29book1` (every person and
+  place section, the card, Your Actions). **Not yet in a Web build**: roads read, the far village's tag/click, the world now, the building leaf, the book's
+  new order/Peoples/wars/lives links, the cast's word and live thread, the hover's why, the feed's words, the followings, the tree's layout fix.
+- **Tests** (headless, worktree): HeadlinesTests 3/3, LivesTests 4/4, WhysTests 3/3, GazetteerTests 3/3, HistoryBookTests 7/7, PowersTests 13/13,
+  TongueTests 4/4, PeaceTests 3/3; `unity.mjs cc --src "C:/Game Dev/tc-s27int/unity/TinyConsequences2"` clean.
+- **Tools**: bridge `skip YEARS`, `stopskip`, `follow PID|oldest`, `select PID|oldest|head`, `person head N`, `info on|off`, `building SID|big [KIND]`,
+  toggles `peoplestale`, `roadcache`; state `lapse`, `lapseLight`, `skipping`, `camAlt`, `bigX/bigY/bigFront`; `bookshots --lapse [--flash N] [--skip Y]`,
+  `--extras`, `--pages card:N[:who],person:N[:head]`. Book parts are now 0-10 (Your Actions 10).
 
 ### Next, in order
-1. Read `0_qd_web_s29b`: `s29web2` 9/9; `s29book1` (the card, each person section - the tree's layout with many children, the portrait, badges; the place's
-   Now bars, Why? stories, Realm tiers; Your Actions with a meteor's longest thread; a chosen line's links); `s29lapse2` (no seam blocks from orbit;
-   the 10-year skip's headlines and leaf); `s29perf2` (RoadAt gone from a running village view's profile?). Fix what the pictures show; fill D2-199-D2-201's
-   "Pending".
-2. The book (section 5 of the brief): Peoples as a part, great settlements, important lives linked to their pages, wars with participants and consequences.
-3. The powers (section 6): each power's reach and anticipation, the consequence thread surfaced in "Your hand" live; then the visual world (section 7).
+1. When `0_qe_shots_s29v` ends: fast-forward main (above); read `s29v1` (judge political centres, ruins, walls, roads, war scars, the orbit's planet; the
+   job log's "Shader error" count and GPU line).
+2. Queue a Web build of main (the tip) with webtest `s29web3`, bookshots `--extras --pages "card:0,person:3:head,place:0" --book "4:0,4:1,2:0,7:0,10:0"`
+   and `--play` (the cast's word, Your hand's thread); judge the new pages; fix; commit; fill D2-202's "Pending".
+3. Open: the one straight seasonal edge across the land from orbit during a skip (`s29lapse2` lapse_7: a patch outside `_shownLast` or the cells'
+   colour layer - check `TerrainLod.RecolourSome`'s list against the patches drawn); the region view's jagged region edges and the night sea's broad moon
+   veil (25 §8); W-FOREST's sameness.
+4. Then by the brief: keep making the simulation readable where the pictures show a gap (a village's works named with why on hover; the realms layer's
+   legend in the leaf style; the History panel as the book's recent pages), and the visual world where it is evidence (section 7).
 
 ## Session 28 (27 Oct 2026, ~16:00-17:15 IST) - housekeeping only: the disk audit and cleanup (D2-198); no development
 
