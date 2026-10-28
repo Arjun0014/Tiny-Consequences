@@ -525,7 +525,13 @@ namespace TC2.Game
                     text = "<b>" + (b.Kind == Structures.House ? (Architecture.Has(b.Form) ? "A " + Architecture.PlanName(Architecture.PlanOf(b.Form)) : "A house") : "A hut") + "</b> of " + place +
                            (b.Household != 0 && w.Households.Exists(b.Household) ? "\nhome of the " + HistoryText.Plural(w.History.NameOf(EntityRef.Household(b.Household))) + " (" + w.Members(b.Household).Count + ")" +
                             (w.Settlements.Exists(b.Settlement) && w.Settlements.Get(b.Settlement).HeadHh == b.Household ? "\n<color=#f2c35f>the first household of " + place + "</color>" : "") : "\nstanding empty");
-                else text = "<b>The " + Structures.Of(b.Kind).Name + "</b> of " + place;
+                else
+                {
+                    // (session 29: a village's works named with why) when it was raised, who is at it this moment, and the need its making answered (its
+                    // Cause record, as the book tells it) - read every half second
+                    if (Time.unscaledTime - _workTextAt > 0.5f || _workTextFor != _hoverBid) { _workTextAt = Time.unscaledTime; _workTextFor = _hoverBid; _workText = WorkTag(w, _hoverBid); }
+                    text = "<b>The " + Structures.Of(b.Kind).Name + "</b> of " + place + _workText;
+                }
             }
             if (text == null) return;
             var content = new GUIContent(text);
@@ -618,6 +624,53 @@ namespace TC2.Game
             return "<b>" + name + "</b>  " + Gazetteer.Word(in s).Substring(2) + " of " + s.Population.ToString("N0", CultureInfo.InvariantCulture) +
                    "\n<color=#f2c35f>" + bond + first + "</color>" + (doing.Count > 0 ? "\nnow: " + string.Join(", ", doing.ToArray()) : "") +
                    (now.Count > 0 ? "\n<color=#e6b8a0>" + now[0] + "</color>" : "") + "\n<size=10><color=#9a9486>click for its page</color></size>";
+        }
+
+        float _workTextAt = -99f; int _workTextFor; string _workText = "";
+
+        /// <summary>(session 29) A work's tag under its name: being raised, fallen in, or standing since its year; how many of its village are at
+        /// it now (by the work its kind is for: the smithy's smiths at this smithy, the weavers at the shed, the potters at the kiln, those cutting at
+        /// the quarry, digging at the mine, burning at the hearth, practising at the ground, threshing at the barn, raising it); and why it was
+        /// made - its Cause record's words. Nothing said that the world does not hold.</summary>
+        static string WorkTag(TC2.Core.Simulation.World w, int bid)
+        {
+            ref var b = ref w.Buildings.Get(bid);
+            long now = w.Now;
+            var inv = CultureInfo.InvariantCulture;
+            var sb = new StringBuilder();
+            var k = Structures.Of(b.Kind);
+            if (b.Done == 0) sb.Append("\nbeing raised: ").Append((100.0 * b.Hours / System.Math.Max(1.0, k.Hours)).ToString("0", inv)).Append(" % of its work done");
+            else if (Homes.Fallen(in b, now)) sb.Append("\nfallen in: a ruin");
+            else sb.Append("\nraised in year ").Append(SimTime.YearOf(b.Built).ToString(inv)).Append(b.Left != 0 ? ", unkept since year " + SimTime.YearOf(b.Left).ToString(inv) : "");
+            ActivityKind act = b.Done == 0 ? ActivityKind.Build : b.Kind == Structures.Smithy ? ActivityKind.Smith : b.Kind == Structures.Workshop ? ActivityKind.Weave : b.Kind == Structures.Kiln ? ActivityKind.Pot
+                : b.Kind == Structures.Quarry ? ActivityKind.Quarry : b.Kind == Structures.Mine || b.Kind == Structures.BogPits ? ActivityKind.Mine : b.Kind == Structures.CharHearth ? ActivityKind.Burn
+                : b.Kind == Structures.Ground ? ActivityKind.Train : b.Kind == Structures.Barn ? ActivityKind.Thresh : ActivityKind.None;
+            if (act != ActivityKind.None && !Homes.Fallen(in b, now) && w.Settlements.Exists(b.Settlement))
+            {
+                int same = 0;   // (the village's other works of the kind: the count is then the village's at all of them, and says so)
+                var bl = w.BuildingsOf(b.Settlement);
+                for (int i = 0; i < bl.Count; i++) { ref var o = ref w.Buildings.Get(bl[i]); if (o.Kind == b.Kind && o.Done != 0 && !Homes.Fallen(in o, now)) same++; }
+                int n = 0;
+                var res = w.Residents(b.Settlement);
+                for (int i = 0; i < res.Count; i++)
+                {
+                    ref var q = ref w.People.Get(res[i]);
+                    if (!q.Alive || q.Act != act || q.At != b.Settlement || q.Step == StepKind.Travel) continue;
+                    if (act == ActivityKind.Smith && q.WhyArg != 0 && q.WhyArg != bid) continue;   // (at another of its smithies: C1.4b, as the smoke)
+                    n++;
+                }
+                bool all = act != ActivityKind.Smith && act != ActivityKind.Build && same > 1;
+                string at = act == ActivityKind.Build ? "raising it" : act == ActivityKind.Thresh ? "threshing" : all ? "at its " + same + " " + k.Name + "s" : "at it";
+                sb.Append('\n').Append(n == 0 ? "nobody " + at + " now" : n + " of its people " + at + " now");
+            }
+            if (b.Cause != 0 && w.History.TryGet(b.Cause, out var cause))
+            {
+                string why = HistoryText.Describe(w, cause);
+                if (why.Length > 96) why = why.Substring(0, 93) + "...";
+                sb.Append("\n<i><color=#c9c3b4>why: ").Append(why).Append("</color></i>");
+            }
+            sb.Append("\n<size=10><color=#9a9486>click for its page</color></size>");
+            return sb.ToString();
         }
 
         // (session 29: roads read) the worn way under the pointer: the ways as they stand (collected every two seconds), each by its route's line

@@ -20,6 +20,7 @@ namespace TC2.Game
         string _hashTest = "";
         BenchRunner _bench;
         string _lastCmd = "";
+        Vec3d _wayProbe; bool _wayProbeOn;   // (session 29: tests - a point on the greatest place's busiest way, to point at it as a player would)
 
         void Start() { Browser.TC2_RegisterPageEvents(); if (GetComponent<FrameClock>() == null) gameObject.AddComponent<FrameClock>(); }
 
@@ -102,6 +103,33 @@ namespace TC2.Game
                                 else if (pass == 2 && TC2.Core.Places.Structures.IsHome(b.Kind) && b.Household != 0) pick = bl[i];
                             }
                         if (pick != 0) { hud.ShowBuilding(pick); ref var pb = ref w.Buildings.Get(pick); ref var ps = ref w.Settlements.Get(sid); Rig.LookAt(ps.LocalToSphere(pb.X, pb.Y, w.Planet.Radius), 140); }
+                        break;
+                    }
+                case "way":
+                    {
+                        // (session 29) tests: "way big [ALT] [AT]" - the camera over the greatest place's busiest worn way, AT (0.4) of the way out along its
+                        // route from the place; the point's screen position in the state (wayX/wayY/wayFront) to point at it (Hud.HoverWay)
+                        var w = Host.World; int sid = 0, most = -1;
+                        for (int id = w.Settlements.First(); id != 0; id = w.Settlements.Next(id)) { ref var s = ref w.Settlements.Get(id); if (s.Inhabited && s.Population > most) { most = s.Population; sid = id; } }
+                        _wayProbeOn = false;
+                        if (sid == 0) break;
+                        var ways = new System.Collections.Generic.List<TC2.Core.Agents.Way>();
+                        w.Ways.Collect(w.Now, ways);
+                        double bestUse = 0; int other = 0;
+                        for (int i = 0; i < ways.Count; i++)
+                        {
+                            var wy = ways[i];
+                            if (wy.A != sid && wy.B != sid) continue;
+                            int o = wy.A == sid ? wy.B : wy.A;
+                            if (!w.Settlements.Exists(o) || w.Routes.Get(w, sid, o) == null) continue;
+                            if (wy.Use > bestUse) { bestUse = wy.Use; other = o; }
+                        }
+                        if (other == 0) break;
+                        var route = w.Routes.Get(w, sid, other);
+                        double at = a.Length > 3 ? double.Parse(a[3], inv) : 0.4;
+                        _wayProbe = route.PointAt(route.A == sid ? route.Length * at : route.Length * (1.0 - at));
+                        _wayProbeOn = true;
+                        Rig.LookAt(_wayProbe, a.Length > 2 && a[2] != "-" ? double.Parse(a[2], inv) : 450);
                         break;
                     }
                 case "names": Hud.Names = a.Length < 2 || a[1] == "on"; break;   // (session 25) places named on the map
@@ -258,6 +286,11 @@ namespace TC2.Game
                 {
                     Vector3 sp = Rig.Cam.WorldToScreenPoint(PlanetGeo.Surface(w.Planet, w.Settlements.Get(big).Anchor));
                     sb.Append(",\"bigX\":").Append(sp.x.ToString("0", inv)).Append(",\"bigY\":").Append((Screen.height - sp.y).ToString("0", inv)).Append(",\"bigFront\":").Append(sp.z > 0 ? "true" : "false");
+                }
+                if (_wayProbeOn)
+                {
+                    Vector3 wp = Rig.Cam.WorldToScreenPoint(PlanetGeo.Surface(w.Planet, _wayProbe));
+                    sb.Append(",\"wayX\":").Append(wp.x.ToString("0", inv)).Append(",\"wayY\":").Append((Screen.height - wp.y).ToString("0", inv)).Append(",\"wayFront\":").Append(wp.z > 0 ? "true" : "false");
                 }
             }
             if (Rig != null) sb.Append(",\"lapse\":\"").Append(Rig.Lapse).Append("\",\"lapseLight\":").Append(Rig.LapseLight.ToString("0.###", inv)).Append(",\"camAlt\":").Append((Rig.Distance - (w != null ? w.Planet.Radius : 0)).ToString("0", inv));   // (session 29: the timelapse)
