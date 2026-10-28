@@ -182,12 +182,19 @@ try {
     // (session 29) the world now (Info), a building's leaf (the greatest place's smithy), and from the region view the greatest place pointed at (its tag)
     // and clicked (its page at Now)
     const snap = async (name) => { const f = path.join(outDir, `${name}.png`); await page.screenshot({ path: f }); report.shots.push(f); console.log('shot ' + name); };
+    // (session 30) after the camera moves, until the ground it asks for is built (terrainPending 0 twice running; 12 s at most) - extra_building had been
+    // shot 3.5 s after a fly-in from 6 km, the village's finest ground and its trees not yet there
+    const settle = async (ms = 12000) => {
+      let calm = 0;
+      for (let t = 0; t < ms && calm < 2; t += 250) { await page.waitForTimeout(250); const s = await page.evaluate(() => window.__TC2); calm = s && s.terrainPending === 0 ? calm + 1 : 0; }
+    };
     await cmd('closepages'); await cmd('info on'); await cmd(`look ${lat} ${lon} 6000`);
     await page.waitForTimeout(6000);
     await snap('extra_world_now');
     await cmd('info off');
     await cmd('building big');
     await page.waitForTimeout(3500);
+    await settle();
     await snap('extra_building');
     await cmd('closepages');
     await cmd(`look ${lat} ${lon} 6000`);
@@ -205,6 +212,7 @@ try {
     // (session 29) a road read: the pointer on the greatest place's busiest way, out in its fields (its tag - what it is, since when, who walks it now and why)
     await cmd('way big 450');
     await page.waitForTimeout(4000);
+    await settle();
     const sw = await page.evaluate(() => window.__TC2);
     if (sw.wayFront && sw.wayX > 0 && sw.wayY > 0) {
       await page.mouse.move(sw.wayX, sw.wayY);
@@ -215,6 +223,7 @@ try {
     // that colour) and a click (its page at its land)
     await cmd('field meet 300');
     await page.waitForTimeout(5000);
+    await settle();
     const sf = await page.evaluate(() => window.__TC2);
     if (sf.wayFront && sf.wayX > 0 && sf.wayY > 0) {
       await page.mouse.move(sf.wayX, sf.wayY);
@@ -228,6 +237,7 @@ try {
     // (session 29) a work pointed at (the greatest place's smithy at the screen's centre: when raised, who is at it now, why it was made)
     await cmd('building big');
     await page.waitForTimeout(3500);
+    await settle();
     await cmd('closepages');
     await page.mouse.move(800, 450);
     await page.waitForTimeout(1800);
@@ -235,6 +245,7 @@ try {
     // (session 29) the ruin last burned (a band's torches, a stone from the sky): its page - how it fell - and the pointer over it
     await cmd('building burned');
     await page.waitForTimeout(3500);
+    await settle();
     await snap('extra_ruin_page');
     await cmd('closepages');
     await page.mouse.move(800, 450);

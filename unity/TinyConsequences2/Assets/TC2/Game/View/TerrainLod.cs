@@ -308,9 +308,20 @@ namespace TC2.Game
             if (p.Built) _draw.Add(p); else _wanted.Add(p);
         }
 
+        /// <summary>(session 30, tools) The patches the view wants and has not built yet (0: the ground as fine as the camera asks) - bookshots waits for it
+        /// after the camera moves, so a picture is of the settled ground (a building's page had been shot 3.5 s after a fly-in from 6 km, the village's
+        /// finest ground and its trees not yet built).</summary>
+        public static int Pending;
+
         void BuildSome(TC2.Core.Simulation.World w)
         {
+            Pending = 0;
             if (_wanted.Count == 0) return;
+            try { BuildSomeOf(w); } finally { for (int k = 0; k < _wanted.Count; k++) if (!_wanted[k].Built) Pending++; }
+        }
+
+        void BuildSomeOf(TC2.Core.Simulation.World w)
+        {
             Vector3 cam = Rig.Cam.transform.position;
             var P = w.Planet;
             // nearest first

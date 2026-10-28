@@ -339,6 +339,7 @@ namespace TC2.Game
                 }
             }
             if (Rig != null) sb.Append(",\"lapse\":\"").Append(Rig.Lapse).Append("\",\"lapseLight\":").Append(Rig.LapseLight.ToString("0.###", inv)).Append(",\"camAlt\":").Append((Rig.Distance - (w != null ? w.Planet.Radius : 0)).ToString("0", inv));   // (session 29: the timelapse)
+            sb.Append(",\"terrainPending\":").Append(TerrainLod.Pending);   // (session 30, tools: the ground still to be built for this view - bookshots' settle)
             sb.Append(",\"saveBytes\":").Append(Host.LastSaveBytes);
             sb.Append(",\"saveOk\":").Append(Host.LastSaveOk ? "true" : "false");
             sb.Append(",\"saves\":").Append(Host.SavesStored);   // (saves stored: a tool waits for it to rise after its save)
