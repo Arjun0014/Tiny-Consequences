@@ -6481,4 +6481,11 @@ camera under 2.5-5 km a ray grazing the sphere within 150-600 m now ends where i
 keep the limb's whole way. (8) **floatcheck** had failed on the branch (Whys.Now's ruin distance in float, session 29 - the full-suite jobs never run the
 lint): now in double (b49bbe3). Web `0_rk_web_s30h` (fbd708a, 0 shader errors): `s30web4` 9/9; `s30air` - the high fields
 clear at 1,100, 1,400 and 1,800 m (the warm veil and its straight edge gone; at 1,100 m the "smooth brown" region of `s30wedge1100` was the same veil),
-the region view's and orbit's limb as before.
+the region view's and orbit's limb as before. (9) **The fields read** (10c8c60): with two villages' fields drawn
+apart in their own colours the picture asked why - the pointer over fields (nobody, nothing built and no way under it) now names whose they are and what
+they are doing, from state (`Whys.Fields`, an observer): sown earth and the muck that darkens it (t a hectare), the crop's growth, ripe, stubble and how
+far its herds have grazed it; how much of its arable within reach it sows; a burned share and by whom. The village is the one the ground draws there
+(`TerrainLod.FieldOwnerAt`: the cells' shares read where a vertex reads them; none within 110 m of its square or where the field weight is under a half);
+a click opens its page at its Land. WhysTests.AVillagesFieldsAreToldAsTheGroundDrawsThem (4/4). Tools: bridge `field meet [ALT]`; bookshots --extras
+`extra_field_hover`, `extra_field_page`. **Pending**: the full suite `0_rl_fullsuite_s30` (f7de2f8, with the lint first); Web `0_rm_web_s30i` (10c8c60:
+`s30web5`, `s30book4`/`s30book5` extra_field_hover and extra_field_page).
