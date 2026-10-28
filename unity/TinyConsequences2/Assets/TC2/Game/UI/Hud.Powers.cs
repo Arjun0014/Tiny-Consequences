@@ -202,7 +202,8 @@ namespace TC2.Game
             {
                 var x = _hand[k];
                 long ago = w.Now - x.time;
-                string when = ago < SimTime.Day ? "today" : ago < SimTime.Year ? (ago / SimTime.Day) + " days ago" : (ago / (double)SimTime.Year).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + " years ago";
+                long days = ago / SimTime.Day;   // ("(1 days ago)": s30pow1)
+                string when = ago < SimTime.Day ? "today" : ago < SimTime.Year ? (days == 1 ? "yesterday" : days + " days ago") : (ago / (double)SimTime.Year).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + (ago < 2 * SimTime.Year && ago / (double)SimTime.Year < 1.05 ? " year ago" : " years ago");
                 _handText[k] = "<b>" + x.what + "</b> <size=11>(" + when + ")</size>\n" + (x.came.Length > 0 ? x.came : "<i>nothing yet that the world remembers</i>") + (k < _handThread.Count && _handThread[k].Length > 0 ? "\n" + _handThread[k] : "");
                 hh += _handLine.CalcHeight(new GUIContent(_handText[k]), inner) + _handLine.margin.vertical;
             }

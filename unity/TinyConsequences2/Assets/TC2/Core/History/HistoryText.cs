@@ -49,7 +49,7 @@ namespace TC2.Core.History
                 case HistoryKind.LightningStrike: return (e.RootKind == RootKind.You ? "Your lightning" : "Lightning") + " struck near " + place + ".";
                 case HistoryKind.FireStarted: return "A fire started near " + place + ".";
                 case HistoryKind.Wildfire: return "A wildfire spread near " + place + " (" + Burned(w, in e) + " burnt so far).";
-                case HistoryKind.FireOut: return "The fire near " + place + " burnt out after " + e.ArgA + (e.ArgA == 1 ? " hour" : " hours") + ", having burned " + Burned(w, in e) + ".";
+                case HistoryKind.FireOut: return "The fire near " + place + " burnt out " + (e.ArgA <= 0 ? "within the hour" : "after " + e.ArgA + (e.ArgA == 1 ? " hour" : " hours")) + ", having burned " + Burned(w, in e) + ".";   // ("after 0 hours": s30pow1)
                 case HistoryKind.FieldsBurned: return "The fields of " + subj + " burned.";
                 case HistoryKind.CropsBlighted: return "A blight took the crop of " + subj + ".";
                 case HistoryKind.FieldsHarried:   // (C8.1a: the cause is the raid - its band named from it)

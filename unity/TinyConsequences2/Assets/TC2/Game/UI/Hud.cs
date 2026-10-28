@@ -457,8 +457,11 @@ namespace TC2.Game
         }
 
         /// <summary>Close in, who or what is under the pointer: a person's name, age and doing; a building's kind and whose it is.</summary>
+        Rect _lastTagRect;   // (session 30: last frame's tag - among last frame's panels, which the tag keeps clear of, it is not one)
+
         void HoverTag(TC2.Core.Simulation.World w, float sw, float sh)
         {
+            _lastTagRect = _tagRect;
             _tagRect = Rect.zero;
             if (Rig == null || Rig.Cam == null || PointerOverUi || _aim >= 0) return;   // (session 29: while a power is aimed its own words are the tag)
             var cam = Rig.Cam;
@@ -586,17 +589,22 @@ namespace TC2.Game
             if (text == null) return;
             var content = new GUIContent(text);
             Vector2 size = _mapTag.CalcSize(content);
-            float x = mp.x / _scale + 14f, y = (Screen.height - mp.y) / _scale + 10f;
-            if (x + size.x > sw) x = sw - size.x - 4f;
-            if (y + size.y > sh) y = sh - size.y - 4f;
-            // (session 30) never over an open page: to the pointer's left, else none - a click on fields opened their village's page under a tag that lay
-            // across it (s30book4 extra_field_page)
-            if (_pageRect.width > 0f && new Rect(x, y, size.x, size.y).Overlaps(_pageRect))
+            // (session 30) never over a page or a panel: below and right of the pointer, else left, else above it (right, then left), else none - a click
+            // on fields opened their village's page under a tag that lay across it (s30book4 extra_field_page), and a tag over fields near the screen's foot
+            // lay over the power bar (s30book8); kept on the screen. (Last frame's panels: Hud._uiRects, but for the tag itself.)
+            float px = mp.x / _scale, py = (Screen.height - mp.y) / _scale;
+            Rect tagAt = Rect.zero;
+            for (int k = 0; k < 4 && tagAt.width <= 0f; k++)
             {
-                x = mp.x / _scale - 14f - size.x;
-                if (x < 4f || new Rect(x, y, size.x, size.y).Overlaps(_pageRect)) return;
+                float x = k % 2 == 0 ? px + 14f : px - 14f - size.x, y = k < 2 ? py + 10f : py - 10f - size.y;
+                x = Mathf.Clamp(x, 4f, sw - size.x - 4f); y = Mathf.Clamp(y, 4f, sh - size.y - 4f);
+                var r = new Rect(x, y, size.x, size.y);
+                bool clear = true;
+                for (int i = 0; i < _uiRects.Count && clear; i++) if (_uiRects[i].width > 0f && _uiRects[i] != _lastTagRect && r.Overlaps(_uiRects[i])) clear = false;
+                if (clear) tagAt = r;
             }
-            _tagRect = new Rect(x, y, size.x, size.y);
+            if (tagAt.width <= 0f) { _tagRect = Rect.zero; return; }
+            _tagRect = tagAt;
             GUI.Box(_tagRect, content, _mapTag);
         }
 
