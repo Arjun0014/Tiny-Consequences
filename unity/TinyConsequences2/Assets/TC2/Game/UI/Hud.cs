@@ -90,6 +90,18 @@ namespace TC2.Game
         float _byPeopleAt = -99f;
         int _hoverPid, _hoverBid; float _hoverAt;
         string _news = ""; float _newsAge = 99f; long _newsTotal, _newsId;
+        string _tickFor, _tickText = ""; float _tickW; GUIStyle _tickLine;   // (session 30: the ticker's one line, cut for its width once a line)
+
+        /// <summary>(session 30) A line cut to a width at a word's end with "..." (the HUD's font has no ellipsis), whole when it fits.</summary>
+        static string OneLine(string s, GUIStyle st, float width)
+        {
+            if (string.IsNullOrEmpty(s) || st.CalcSize(new GUIContent(s)).x <= width) return s ?? "";
+            int lo = 0, hi = s.Length;
+            while (lo < hi) { int mid = (lo + hi + 1) / 2; if (st.CalcSize(new GUIContent(s.Substring(0, mid) + "...")).x <= width) lo = mid; else hi = mid - 1; }
+            int cut = lo, sp = cut > 0 ? s.LastIndexOf(' ', cut - 1) : -1;
+            if (sp > cut * 0.6f) cut = sp;
+            return s.Substring(0, cut).TrimEnd(' ', ',', ';', ':', '-') + "...";
+        }
 
         void Update()
         {
@@ -774,7 +786,7 @@ namespace TC2.Game
             var w = Host.World;
             if (w == null) { GUI.Label(new Rect(20, 20, 600, 40), Host.StatusLine, _title); return; }
             // (session 29) a catch-up or a skip is watched from orbit, the years in large type and the headlines as they come (Hud.Lapse.cs)
-            if (Host.CatchingUp) { LapseOverlay(w, sw, sh, 16f); return; }
+            if (Host.CatchingUp) { LapseOverlay(w, sw, sh, 16f); _uiRects.Clear(); LapseRects(); return; }   // (only the overlay is drawn: its rects alone keep names off it)
             if (Title(sw, sh)) return;   // (the opening: F11.1)
 
             if (_hidden) { PointerOverUi = false; WorldObjectsView.Chosen = WorldObjectsView.Pointed = WorldObjectsView.ChosenHome = WorldObjectsView.PointedHome = 0; return; }
@@ -907,8 +919,13 @@ namespace TC2.Game
                 _ticker = new Rect(sw * 0.5f - 330, sh - 46, 660, 34);
                 GUILayout.BeginArea(_ticker, _box);
                 if (_feedLine == null) { _feedLine = new GUIStyle(_small) { wordWrap = true, richText = true }; _feedLine.hover.textColor = new Color(1f, 0.86f, 0.45f); }
+                if (_tickLine == null) { _tickLine = new GUIStyle(_feedLine) { wordWrap = false, clipping = TextClipping.Clip }; }
+                // (session 30) one line, cut at a word with "..." - a second line had run off the foot of a 720-high screen (s30web1); the whole story opens
+                // in the book on a click
+                float tickW = _ticker.width - _box.padding.horizontal - 6f;
+                if (!ReferenceEquals(_tickFor, _news) || _tickW != tickW) { _tickFor = _news; _tickW = tickW; _tickText = OneLine(_news, _tickLine, tickW); }
                 // (session 29) the news opens its why in the book, as a line of the History panel does
-                if (GUILayout.Button(_news, _feedLine) && _newsId != 0 && w.History.TryGet(_newsId, out _)) { _book = true; _line = _newsId; _whyScroll = Vector2.zero; }
+                if (GUILayout.Button(_tickText, _tickLine) && _newsId != 0 && w.History.TryGet(_newsId, out _)) { _book = true; _line = _newsId; _whyScroll = Vector2.zero; }
                 GUILayout.EndArea();
                 GUI.color = old;
             }
@@ -948,6 +965,7 @@ namespace TC2.Game
             _uiRects.Add(_left); _uiRects.Add(_toggles); _uiRects.Add(_right); _uiRects.Add(worldRect); _uiRects.Add(realmsRect); _uiRects.Add(_bottom); _uiRects.Add(_ticker);
             _uiRects.Add(_powersRect); _uiRects.Add(_handRect); _uiRects.Add(_summaryRect); _uiRects.Add(_settingsRect); _uiRects.Add(_pageRect); _uiRects.Add(_tagRect);
             _uiRects.Add(_aimRect); _uiRects.Add(_tipShown); _uiRects.Add(_noteRect);
+            if (lapse) LapseRects();
             if (showInsp) _uiRects.Add(_building != 0 ? insp : card);
             // (session 27) who is ringed on the ground: the person whose page is open, the one under the pointer, the chosen home's household
             WorldObjectsView.Chosen = _personPage ? _selected : 0;

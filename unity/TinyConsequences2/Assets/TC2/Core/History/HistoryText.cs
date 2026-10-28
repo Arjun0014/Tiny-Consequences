@@ -14,6 +14,16 @@ namespace TC2.Core.History
     {
         static string F(double v, string fmt = "0.#") => v.ToString(fmt, CultureInfo.InvariantCulture);
 
+        /// <summary>(session 30) A fire's burned ground (its record's cells) in hectares, as the world's laws measure land - the book had said "(1 cells)",
+        /// the grid's word.</summary>
+        static string Burned(World w, in HistoryEvent e)
+        {
+            var P = w.Planet;
+            double ha = e.Magnitude * (e.Cell >= 0 && e.Cell < P.Cells ? P.GeoAreaHa(e.Cell) : 0.0);
+            if (ha <= 0.0) return "its ground";
+            return "about " + (ha >= 100.0 ? F(DMath.RoundHalfUp(ha / 10.0) * 10.0, "0") : F(DMath.Max(1.0, DMath.RoundHalfUp(ha)), "0")) + " ha";
+        }
+
         /// <summary>Where, as a place name reads after a deed: at a village, on the land beyond it, in the wilds (`World.PlaceName`).</summary>
         public static string At(string place) => place == "the wilds" ? "in the wilds" : place.StartsWith("the land", System.StringComparison.Ordinal) ? "on " + place : "at " + place;
 
@@ -38,8 +48,8 @@ namespace TC2.Core.History
                 case HistoryKind.HouseholdFormed: return "The household of the " + Plural(subj) + " was formed in " + place + ".";
                 case HistoryKind.LightningStrike: return (e.RootKind == RootKind.You ? "Your lightning" : "Lightning") + " struck near " + place + ".";
                 case HistoryKind.FireStarted: return "A fire started near " + place + ".";
-                case HistoryKind.Wildfire: return "A wildfire spread near " + place + " (" + F(e.Magnitude, "0") + " cells burnt so far).";
-                case HistoryKind.FireOut: return "The fire near " + place + " burnt out after " + e.ArgA + " hours (" + F(e.Magnitude, "0") + " cells).";
+                case HistoryKind.Wildfire: return "A wildfire spread near " + place + " (" + Burned(w, in e) + " burnt so far).";
+                case HistoryKind.FireOut: return "The fire near " + place + " burnt out after " + e.ArgA + (e.ArgA == 1 ? " hour" : " hours") + ", having burned " + Burned(w, in e) + ".";
                 case HistoryKind.FieldsBurned: return "The fields of " + subj + " burned.";
                 case HistoryKind.CropsBlighted: return "A blight took the crop of " + subj + ".";
                 case HistoryKind.FieldsHarried:   // (C8.1a: the cause is the raid - its band named from it)

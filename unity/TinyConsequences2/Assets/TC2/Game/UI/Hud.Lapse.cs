@@ -255,6 +255,15 @@ namespace TC2.Game
             }
             Vector2 m = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y) / _scale;
             PointerOverUi = stopRect.Contains(m) || heads.Contains(m);
+            _lapseTop = top; _lapseHeads = heads;   // (session 30: no map name under the years or the headlines - s30web1 7_after_a_century)
+        }
+
+        /// <summary>(session 30) The overlay's date block and headline cards as drawn this frame: places no map name is set (Hud._uiRects).</summary>
+        Rect _lapseTop, _lapseHeads;
+
+        void LapseRects()
+        {
+            _uiRects.Add(_lapseTop); _uiRects.Add(_lapseHeads);
         }
 
         /// <summary>The leaf of what the years did, at the left when the camera is back: kept until closed (or a minute).</summary>
@@ -264,6 +273,9 @@ namespace TC2.Game
             if (Time.unscaledTime - _lapseSummaryAt > 60f) { _lapseSummary = null; _lostNote = null; _summaryRect = Rect.zero; return; }
             BookStyles();
             float lw = Mathf.Min(470f, sw - 40f);
+            // (session 30) it stops short of a page open at the right, or waits while the page is open if there is no room beside it - at 1280 wide it
+            // had lain over the left edge of a person's page, their portrait and tabs (s30web1 9_person_life)
+            if (_pageRect.width > 0f) { lw = Mathf.Min(lw, _pageRect.x - 16f - 12f); if (lw < 320f) { _summaryRect = Rect.zero; return; } }
             float lh = Mathf.Min(sh - 200f, 120f + 30f * _lapseSummary.Count + (_lostNote != null ? 110f : 0f) + 26f * Mathf.Min(6, _headAll.Count));
             var r = new Rect(16f, Mathf.Max(62f, _left.yMax + 10f), lw, lh);
             _summaryRect = r;
