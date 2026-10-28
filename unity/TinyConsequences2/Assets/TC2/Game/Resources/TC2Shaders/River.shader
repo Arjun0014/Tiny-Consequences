@@ -88,7 +88,10 @@ Shader "TC2/River"
                 body = lerp(body, half3(0.09h, 0.27h, 0.34h) * (0.60h + 0.40h * lit) + sky * 0.14h, farK);   // (the sea's shallows' tone: s27d1 still read a dark teal line)
                 half fres = pow(1.0h - saturate(dot(n, v)), 4.0h);
                 float3 h = normalize(l.direction + v);
-                half spec = pow(saturate(dot(n, h)), lerp(40.0h, 200.0h, near)) * lerp(0.8h, 2.2h, near) * l.shadowAttenuation;
+                // (session 29) far off the sun's glint as narrow as the moon's path and dimmer: with its normal flat there and a broad lobe (40) every
+                // reach within ten degrees of the mirror angle glared white along its widened ribbon - s29v1's region and village views had thick white
+                // zigzags across the fields where blue rivers ran on
+                half spec = pow(saturate(dot(n, h)), lerp(500.0h, 200.0h, near)) * lerp(0.45h, 2.2h, near) * l.shadowAttenuation;
                 // (session 27, context 4) by night as the sea's shallows beside it - the night sky's share and the moon's sheen and path - not a
                 // tenth of the day's colour: s27e2's village view at 21:00 had the river a black stroke (5/12/13) over moonlit fields (39/68/36)
                 half nightK = 0.30h * (half)_TC2NightLift;
