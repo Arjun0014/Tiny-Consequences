@@ -100,6 +100,14 @@ namespace TC2.Core.History
             if (s.RestEvent != 0) Q("Why does " + n + " rest a share of its fields?", s.RestEvent);
             if (s.WatchEvent != 0) Q("Why does " + n + " keep a watch at its store?", s.WatchEvent);
             Q("Why was " + n + " founded here?", s.FoundedEvent);
+            if (LivedApart(w, sid, out _, out _, out _))
+            {
+                // (session 29) the last time the sea took its homes, if the ledger keeps it - their people built on higher ground
+                long drowned = 0;
+                var at = w.History.RecordsAt(sid);
+                if (at != null) for (int i = at.Count - 1; i >= 0 && drowned == 0; i--) if (w.History.TryGet(at[i], out var e) && e.Kind == HistoryKind.HomesDrowned) drowned = e.Id;
+                Q("Why do its people live away from its first square?", drowned);
+            }
             return l;
         }
 
@@ -229,7 +237,46 @@ namespace TC2.Core.History
             if (s.Wall == 1) l.Add("Building a palisade.");
             byte next = Construction.NextWork(in s);
             if (next != 0 && s.Wall != 1) l.Add("Building: " + Structures.Name(next) + ".");
+            // (session 29) its people's homes moved off its first square: how far, and what lies fallen there
+            if (LivedApart(w, sid, out double ax, out double ay, out _))
+            {
+                double far = DMath.Sqrt(ax * ax + ay * ay);
+                int homes = 0, works = 0;
+                var bl = w.BuildingsOf(sid);
+                for (int i = 0; i < bl.Count; i++)
+                {
+                    ref var b = ref w.Buildings.Get(bl[i]);
+                    if (Boats.IsBoat(b.Kind) || !Homes.Fallen(in b, w.Now) || Homes.RuinLeft(in b, w.Now) <= 0.03 || b.X * b.X + b.Y * b.Y > far * far * 0.36) continue;
+                    if (Structures.IsHome(b.Kind)) homes++; else works++;
+                }
+                l.Add("Its people live " + (far / 10.0).ToString("0", CultureInfo.InvariantCulture) + "0 m from its first square" + (homes + works > 0 ? ", where " +
+                      (homes > 0 ? homes + (homes == 1 ? " home" : " homes") : "") + (homes > 0 && works > 0 ? " and " : "") + (works > 0 ? works + (works == 1 ? " work" : " works") : "") +
+                      (homes + works == 1 ? " lies" : " lie") + " fallen." : "."));
+            }
             return l;
+        }
+
+        /// <summary>How far a village's homes must stand from its first square before its people are said to live away from it (m).</summary>
+        public const double LivedApartM = 120.0;
+
+        /// <summary>(session 29) Whether a village's lived-in homes stand away from its first square (its anchor - its roads and reach are measured from it
+        /// for ever): the centre of its lived-in homes in its own frame (m), true when more than <see cref="LivedApartM"/> off. Kaihope's (seed 2, year 600)
+        /// stand 250-400 m from a square in ruins since the sea took homes and they built on higher ground.</summary>
+        public static bool LivedApart(World w, int sid, out double x, out double y, out int lived)
+        {
+            x = 0; y = 0; lived = 0;
+            if (!w.Settlements.Exists(sid)) return false;
+            double sx = 0, sy = 0;
+            var bl = w.BuildingsOf(sid);
+            for (int i = 0; i < bl.Count; i++)
+            {
+                ref var b = ref w.Buildings.Get(bl[i]);
+                if (!Structures.IsHome(b.Kind) || b.Household == 0 || Homes.Fallen(in b, w.Now)) continue;
+                sx += b.X; sy += b.Y; lived++;
+            }
+            if (lived == 0) return false;
+            x = sx / lived; y = sy / lived;
+            return x * x + y * y > LivedApartM * LivedApartM;
         }
 
         /// <summary>(session 29: war scars) The record of the fire that brought a ruin down, or 0: a building that fell at once fell at the moment a band burned

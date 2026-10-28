@@ -42,6 +42,8 @@ namespace TC2.Headless
                 var lc = nl > 0 ? st.LocalToSphere(sx / nl, sy / nl, P.Radius) : an;
                 Console.WriteLine("  anchor lat " + (an.Latitude * d2r).ToString("0.00", iv) + " lon " + (an.Longitude * d2r).ToString("0.00", iv) + "; lived centre lat " + (lc.Latitude * d2r).ToString("0.00", iv) + " lon " + (lc.Longitude * d2r).ToString("0.00", iv));
                 Console.WriteLine("  from anchor   lived  empty  fallen  works");
+                foreach (var line in TC2.Core.History.Whys.Now(w, hs)) Console.WriteLine("  now: " + line);
+                foreach (var q in TC2.Core.History.Whys.OfPlace(w, hs)) Console.WriteLine("  why: " + q.Question + " [" + q.Event + "]");
                 for (int k = 0; k < 8; k++) Console.WriteLine("  " + (k * 50).ToString(iv).PadLeft(4) + (k == 7 ? "+  m" : "-" + ((k + 1) * 50).ToString(iv).PadRight(4) + "m") + "   " + bands[k, 0].ToString(iv).PadLeft(4) + "   " + bands[k, 1].ToString(iv).PadLeft(4) + "   " + bands[k, 2].ToString(iv).PadLeft(5) + "   " + bands[k, 3].ToString(iv).PadLeft(4));
                 return 0;
             }
