@@ -49,6 +49,7 @@ namespace TC2.Game
             public Matrix4x4[] Trees; public byte[] TreeKind; public ushort[] TreeGroup; public int TreeCount;   // the woods' trees (finest level)
             public Matrix4x4[] Tufts; public byte[] TuftKind, TuftGroup; public int TuftCount; // ground cover (finest level)
             public int ColourCycle;
+            public long ColourNow;    // (session 29) the world's time its colours were read at (Show recolours a patch shown again long after)
             public float[] RoadV; public int RoadVer = int.MinValue;   // (session 29: the roads under each vertex, kept until the roads change - RoadsVersion)
             public long PlacedDay = long.MinValue;   // the world day its trees and cover were last placed (D2-081: once a day at most)
         }
@@ -228,7 +229,7 @@ namespace TC2.Game
             Shader.SetGlobalFloat(YearId, (float)System.Math.Floor(w.Now / (double)SimTime.Year));   // (which strips rest: Terrain.shader)
             Select(w);
             BuildSome(w);
-            Show();
+            Show(w);
             RefreshRealms();   // (the realms layer's wash on the shown ground, when it moved: D2-167)
             if (NeedGather())
             {
@@ -369,7 +370,12 @@ namespace TC2.Game
             return false;
         }
 
-        void Show()
+        /// <summary>(session 29) A patch shown again after its colours have grown this stale (world time) is coloured again as it comes into view: a
+        /// cached patch had come back with whatever it was last coloured with - in a skip watched from orbit, a block of land green in a dry season, until
+        /// the next cycle (2.5 s: 25 days of a skip) reached it (s29lapse4 lapse_7). At play speeds no patch is ever this stale.</summary>
+        const long StaleShow = 20 * SimTime.Day;
+
+        void Show(TC2.Core.Simulation.World w)
         {
             if (_patchShadows != PatchShadows)
             {
@@ -384,7 +390,11 @@ namespace TC2.Game
             for (int k = 0; k < _draw.Count; k++)
             {
                 var p = _draw[k];
-                if (!p.Go.activeSelf) { p.Go.SetActive(true); _shownVersion++; }
+                if (!p.Go.activeSelf)
+                {
+                    if (p.Built && p.ColourCycle != _cycle && System.Math.Abs(w.Now - p.ColourNow) > StaleShow) Recolour(w, p);
+                    p.Go.SetActive(true); _shownVersion++;
+                }
                 _shownLast.Add(p);
                 _shownByKey[p.Key] = p;
                 if (p.Level < _shownLo) _shownLo = p.Level;
@@ -1039,23 +1049,30 @@ namespace TC2.Game
                 _recolourIndex = (_recolourIndex + 1) % _shownLast.Count;
                 var p = _shownLast[_recolourIndex];
                 if (p.ColourCycle == _cycle || !p.Built) continue;
-                Colourise(w, p);
-                p.Mesh.colors = p.Colours;
-                p.Mesh.SetUVs(0, p.Plots);
-                p.Mesh.SetUVs(1, p.Farm);
-                p.Mesh.SetUVs(2, p.Wood);
-                p.Mesh.SetUVs(3, p.Land);
-                p.Mesh.SetUVs(4, p.Kind);
-                p.Mesh.SetUVs(5, p.Realm);
-                p.Mesh.SetUVs(6, p.RealmS);
-                long today = SimTime.FloorDiv(w.Now, SimTime.Day);
-                if (p.Level >= MaxLevel && p.Pos != null && p.Nrm != null && p.PlacedDay != today)
-                {
-                    // the woods and the cover change with the forest and the seasons: placed again once a world day at most
-                    PlaceForest(w, p); PlaceCover(w, p, p.Pos, p.Nrm); SortCover(p); _contentVersion++; p.PlacedDay = today;
-                }
-                p.ColourCycle = _cycle;
+                Recolour(w, p);
             }
+        }
+
+        /// <summary>A built patch coloured again from the world now (this cycle's cell colours) and its mesh's colours and data uploaded; its woods and
+        /// cover placed again once a world day at most.</summary>
+        void Recolour(TC2.Core.Simulation.World w, Patch p)
+        {
+            Colourise(w, p);
+            p.Mesh.colors = p.Colours;
+            p.Mesh.SetUVs(0, p.Plots);
+            p.Mesh.SetUVs(1, p.Farm);
+            p.Mesh.SetUVs(2, p.Wood);
+            p.Mesh.SetUVs(3, p.Land);
+            p.Mesh.SetUVs(4, p.Kind);
+            p.Mesh.SetUVs(5, p.Realm);
+            p.Mesh.SetUVs(6, p.RealmS);
+            long today = SimTime.FloorDiv(w.Now, SimTime.Day);
+            if (p.Level >= MaxLevel && p.Pos != null && p.Nrm != null && p.PlacedDay != today)
+            {
+                // the woods and the cover change with the forest and the seasons: placed again once a world day at most
+                PlaceForest(w, p); PlaceCover(w, p, p.Pos, p.Nrm); SortCover(p); _contentVersion++; p.PlacedDay = today;
+            }
+            p.ColourCycle = _cycle;
         }
 
         static readonly int YearId = Shader.PropertyToID("_TC2Year");
@@ -1672,6 +1689,7 @@ namespace TC2.Game
                 cols[o] = lin;
             }
             if (roadFill) p.RoadVer = _roadsVersion;
+            p.ColourNow = w.Now;
             FieldFrames(w, p);
             FillRealm(p);
         }
