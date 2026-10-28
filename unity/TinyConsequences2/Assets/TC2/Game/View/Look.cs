@@ -26,14 +26,15 @@ namespace TC2.Game
         public static float CloudTile = 3600f;   // (session 27) the forms' noise tile (m): its large shapes ~ a quarter of it, the cumulus' puffs ~ a thirtieth
         public static float CloudShadow = 0.6f;  // (session 27) the share of the sun a thick cloud takes from the ground, the sea and what stands there
         public static float NightFar = 0.16f;    // (session 27) the night's sky and moon light on the ground seen from orbit (x the near view's)
+        public static float SeaTrue = 1f;        // (session 30) the sea drawn where its true sphere is (0: on its mesh's faces, as before - a shot's "before")
 
-        static readonly float[] Defaults = { AtmoH, AtmoTop, AtmoTau, AtmoMie, AtmoSun, AtmoGround, CloudDeck, CloudCu, CloudStretch, CloudShade, CloudTile, CloudShadow, NightFar };
+        static readonly float[] Defaults = { AtmoH, AtmoTop, AtmoTau, AtmoMie, AtmoSun, AtmoGround, CloudDeck, CloudCu, CloudStretch, CloudShade, CloudTile, CloudShadow, NightFar, SeaTrue };
 
         /// <summary>Every tunable back to its default (a shot's next view).</summary>
         public static void Reset()
         {
             AtmoH = Defaults[0]; AtmoTop = Defaults[1]; AtmoTau = Defaults[2]; AtmoMie = Defaults[3]; AtmoSun = Defaults[4]; AtmoGround = Defaults[5];
-            CloudDeck = Defaults[6]; CloudCu = Defaults[7]; CloudStretch = Defaults[8]; CloudShade = Defaults[9]; CloudTile = Defaults[10]; CloudShadow = Defaults[11]; NightFar = Defaults[12];
+            CloudDeck = Defaults[6]; CloudCu = Defaults[7]; CloudStretch = Defaults[8]; CloudShade = Defaults[9]; CloudTile = Defaults[10]; CloudShadow = Defaults[11]; NightFar = Defaults[12]; SeaTrue = Defaults[13];
             Sky.ShadowLite = true;   // (session 27: the light shadows are the game's default - shots show what a player sees)
         }
 
@@ -56,6 +57,7 @@ namespace TC2.Game
                 case "CloudTile": CloudTile = v; return true;
                 case "CloudShadow": CloudShadow = v; return true;
                 case "NightFar": NightFar = v; return true;
+                case "SeaTrue": SeaTrue = v; return true;
                 case "ShadowLite": Sky.ShadowLite = v > 0f; return true;   // (the frame pass's shadow cascades, 14 §7: judged in real shots before chosen)
             }
             return false;

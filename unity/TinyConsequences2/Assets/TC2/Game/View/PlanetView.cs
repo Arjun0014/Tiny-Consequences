@@ -46,6 +46,8 @@ namespace TC2.Game
             _sinceBuild += Time.unscaledDeltaTime;
             bool iceMoved = System.Math.Abs(P.IceVolume - _builtIce) > 0.04 * System.Math.Max(_builtIce, 1e9) && _sinceBuild > 10f;
             if (_built != Host.WorldVersion || _coast != P.CoastVersion) BuildShell(); // the ground itself is TerrainLod
+            // (session 30) the sea drawn where its true sphere is, not on its mesh's faces (Water.shader; Look.SeaTrue 0 for a shot's "before")
+            if (_sea != null) _water.SetFloat(SeaSphere, Look.SeaTrue > 0.5f ? _sea.transform.localScale.x : 0f);
             // the air's shell encloses the drawn atmosphere's top (Look: a shot may change it between views)
             if (_air != null) _air.transform.localScale = Vector3.one * (Look.AirTop((float)(P.Radius + Ground.WaterHeight(P, P.SeaLevel))) * 1.01f);
         }
@@ -67,7 +69,6 @@ namespace TC2.Game
                 var ar = _air.AddComponent<MeshRenderer>(); ar.sharedMaterial = _atmo; ar.shadowCastingMode = ShadowCastingMode.Off;
             }
             _sea.transform.localScale = Vector3.one * (float)(P.Radius + Ground.WaterHeight(P, P.SeaLevel));
-            _water.SetFloat(SeaSphere, (float)(P.Radius + Ground.WaterHeight(P, P.SeaLevel)));   // (session 30: drawn where the true sphere is - Water.shader)
         }
         static readonly int SeaSphere = Shader.PropertyToID("_SeaSphere");
 
