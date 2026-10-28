@@ -60,11 +60,15 @@ Shader "TC2/Water"
                 // their corners, and the ground colours its shallows, wet sand and surf by the true radius (_TC2SeaRadius) - on a flat beach the water's
                 // edge stood tens of metres off them in the faces' pattern, a sawtooth of bare and covered triangles along the shore (s29book8, Kaihope's
                 // shore). The view ray's own meeting with the sphere gives the depth the ground is tested against; lakes keep their meshes (_SeaSphere 0).
+                // The sphere a quarter of a metre below the sea's level, about the faces' mean sag: the first quarter metre of water at the shore is the
+                // swash - wet sand and the ground's surf (Terrain.shader), uncovered - an even band where the faces had left it in their triangles
+                // (s30v4 shore-low: on the exact sphere the edge was crisp and the surf under the surface)
                 depthOut = i.positionCS.z;
                 if (_SeaSphere > 0.0)
                 {
+                    float rs = _SeaSphere - 0.25;
                     float3 ro = _WorldSpaceCameraPos, rd = normalize(i.positionWS - ro);
-                    float b = dot(ro, rd), cc = dot(ro, ro) - _SeaSphere * _SeaSphere, disc = b * b - cc;
+                    float b = dot(ro, rd), cc = dot(ro, ro) - rs * rs, disc = b * b - cc;
                     if (cc > 0.0 && disc > 0.0)
                     {
                         float4 cp = TransformWorldToHClip(ro + rd * (-b - sqrt(disc)));

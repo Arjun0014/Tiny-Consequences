@@ -180,17 +180,23 @@ namespace TC2.Game
                 // (session 30 tools) the coast nearest the framed village - a land cell beside the sea - where the sea's edge meets the beach: "shore" 250 m
                 // up, "shore:low" 110 m, "shore:far" 600 m
                 var P = w.Planet;
-                int best = -1; double bd = double.MaxValue;
+                int best = -1, bestSea = -1; double bd = double.MaxValue;
                 for (int c = 0; c < P.Cells; c++)
                 {
                     if (!P.IsLand(c)) continue;
-                    bool coast = false;
-                    for (int k = 0; k < 8 && !coast; k++) coast = !P.IsLand(P.Grid.Nbr8[c * 8 + k]);
-                    if (!coast) continue;
+                    int sea = -1;
+                    for (int k = 0; k < 8 && sea < 0; k++) if (!P.IsLand(P.Grid.Nbr8[c * 8 + k])) sea = P.Grid.Nbr8[c * 8 + k];
+                    if (sea < 0) continue;
                     double dd = Vec3d.ArcDistance(P.Grid.Center[c], d, P.Radius);
-                    if (dd < bd) { bd = dd; best = c; }
+                    if (dd < bd) { bd = dd; best = c; bestSea = sea; }
                 }
-                if (best >= 0) { d = P.Grid.Center[best]; Debug.Log("[TC2] the nearest shore: cell " + best + ", " + bd.ToString("0") + " m from the framed village"); }
+                if (best >= 0)
+                {
+                    // (over the water's edge: midway between the coast's cell and the sea's beside it - the cell's own centre had framed only fields, s30v3)
+                    Vec3d la = P.Grid.Center[best], sa = P.Grid.Center[bestSea];
+                    d = new Vec3d(la.X + sa.X, la.Y + sa.Y, la.Z + sa.Z).Normalized;
+                    Debug.Log("[TC2] the nearest shore: cell " + best + ", " + bd.ToString("0") + " m from the framed village");
+                }
                 LookAt(d, view.EndsWith(":low") ? 110 : view.EndsWith(":far") ? 600 : 250);
                 return;
             }
