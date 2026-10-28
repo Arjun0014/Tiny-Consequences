@@ -232,6 +232,33 @@ namespace TC2.Core.History
             return l;
         }
 
+        /// <summary>(session 29: war scars) The record of the fire that brought a ruin down, or 0: a building that fell at once fell at the moment a band burned
+        /// it (`Homes.Burnt`) or a stone from the sky flattened it - its `Left` set back by exactly its fall time and a millisecond - so the record of that
+        /// kind at that moment is its cause (looked for at its own place, else by its moment in the whole ledger). The view draws such a ruin charred.</summary>
+        public static long FellTo(World w, in Building b)
+        {
+            if (b.Left == 0 || !Homes.Fallen(in b, w.Now)) return 0;
+            long fell = b.Left + DMath.ToLong(Homes.FallYears(in b) * SimTime.Year) + 1;
+            var at = w.History.RecordsAt(b.Settlement);
+            if (at != null)
+                for (int i = at.Count - 1; i >= 0; i--)
+                {
+                    if (!w.History.TryGet(at[i], out var e)) continue;
+                    if (e.Time < fell) break;
+                    if (e.Time == fell && (e.Kind == HistoryKind.BuildingBurned || e.Kind == HistoryKind.MeteorStruck)) return e.Id;
+                }
+            // (a stone's record names the village nearest its fall; the buildings it flattened may be another's) - by its moment, the ledger in time order
+            int lo = 0, hi = w.History.Count - 1;
+            while (lo < hi) { int mid = (lo + hi) / 2; if (w.History.At(mid).Time < fell) lo = mid + 1; else hi = mid; }
+            for (int i = lo; i < w.History.Count; i++)
+            {
+                var e = w.History.At(i);
+                if (e.Time != fell) break;
+                if (e.Kind == HistoryKind.MeteorStruck || e.Kind == HistoryKind.BuildingBurned) return e.Id;
+            }
+            return 0;
+        }
+
         /// <summary>
         /// (session 29: roads read) A way between two villages as it is: a track, a path or a road by how often it is walked now (its wear halves each year
         /// it is not renewed: about 0.7 of it is the walks of a year), when it was first worn into a path or beaten into a road, what is on it at this moment

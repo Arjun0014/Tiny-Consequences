@@ -33,7 +33,7 @@ namespace TC2.Headless
                 }
                 Console.WriteLine("fire records (burned homes, stones from the sky): " + at.Count + " in all; in the last " + a.Get("burned") + " years by place:");
                 foreach (var kv in bySid) Console.WriteLine("  #" + kv.Key + " " + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(kv.Key)) + ": " + kv.Value);
-                int charred = 0, ruins = 0;
+                int charred = 0, ruins = 0, found = 0;
                 var charredBy = new System.Collections.Generic.SortedDictionary<int, int>();
                 for (int id = w.Buildings.First(); id != 0; id = w.Buildings.Next(id))
                 {
@@ -42,10 +42,10 @@ namespace TC2.Headless
                     ruins++;
                     long fell = b.Left + TC2.Core.Foundation.DMath.ToLong(TC2.Core.Places.Homes.FallYears(in b) * TC2.Core.Foundation.SimTime.Year) + 1;
                     if (!at.Contains(fell)) continue;
-                    charred++;
+                    charred++; if (TC2.Core.History.Whys.FellTo(w, in b) != 0) found++;
                     if (fell >= since) charredBy[b.Settlement] = charredBy.TryGetValue(b.Settlement, out int n1) ? n1 + 1 : 1;
                 }
-                Console.WriteLine("ruins standing " + ruins + ", fallen to fire " + charred + "; fallen to fire in the last " + a.Get("burned") + " years by place:");
+                Console.WriteLine("ruins standing " + ruins + ", fallen to fire " + charred + " (their fire record found by Whys.FellTo: " + found + "); fallen to fire in the last " + a.Get("burned") + " years by place:");
                 foreach (var kv in charredBy) Console.WriteLine("  #" + kv.Key + " " + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(kv.Key)) + ": " + kv.Value);
                 return 0;
             }

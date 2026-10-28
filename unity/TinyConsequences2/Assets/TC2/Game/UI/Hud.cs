@@ -534,7 +534,14 @@ namespace TC2.Game
             {
                 ref var b = ref w.Buildings.Get(_hoverBid);
                 string place = w.History.NameOf(EntityRef.Settlement(b.Settlement));
-                if (Structures.IsHome(b.Kind))
+                if (Structures.IsHome(b.Kind) && Homes.Fallen(in b, w.Now))
+                {
+                    // (session 29: war scars) a fallen home says how it fell - burned by a band, flattened by a stone from the sky (the record at its fall's
+                    // moment), or fallen in of age since it was left - not "standing empty"
+                    if (Time.unscaledTime - _workTextAt > 0.5f || _workTextFor != _hoverBid) { _workTextAt = Time.unscaledTime; _workTextFor = _hoverBid; _workText = RuinTag(w, _hoverBid); }
+                    text = "<b>A ruin</b> of " + place + _workText;
+                }
+                else if (Structures.IsHome(b.Kind))
                     text = "<b>" + (b.Kind == Structures.House ? (Architecture.Has(b.Form) ? "A " + Architecture.PlanName(Architecture.PlanOf(b.Form)) : "A house") : "A hut") + "</b> of " + place +
                            (b.Household != 0 && w.Households.Exists(b.Household) ? "\nhome of the " + HistoryText.Plural(w.History.NameOf(EntityRef.Household(b.Household))) + " (" + w.Members(b.Household).Count + ")" +
                             (w.Settlements.Exists(b.Settlement) && w.Settlements.Get(b.Settlement).HeadHh == b.Household ? "\n<color=#f2c35f>the first household of " + place + "</color>" : "") : "\nstanding empty");
@@ -642,6 +649,21 @@ namespace TC2.Game
 
         float _workTextAt = -99f; int _workTextFor; string _workText = "";
 
+        /// <summary>(session 29) How a ruin fell, under its name: the fire's record (burned by a band, flattened by a stone) with its year and that its why is on
+        /// its page, or fallen in of age since its people left it.</summary>
+        static string RuinTag(TC2.Core.Simulation.World w, int bid)
+        {
+            ref var b = ref w.Buildings.Get(bid);
+            long ev = Whys.FellTo(w, in b);
+            if (ev != 0 && w.History.TryGet(ev, out var e))
+            {
+                string how = HistoryText.Describe(w, e);
+                if (how.Length > 110) how = how.Substring(0, 107) + "...";
+                return "\n<color=#e6b8a0>" + how + "</color> <size=11>(year " + SimTime.YearOf(e.Time).ToString(CultureInfo.InvariantCulture) + ")</size>\n<size=10><color=#9a9486>click for its page</color></size>";
+            }
+            return "\nfallen in" + (b.Left != 0 ? " - left in year " + SimTime.YearOf(b.Left).ToString(CultureInfo.InvariantCulture) : "") + "\n<size=10><color=#9a9486>click for its page</color></size>";
+        }
+
         /// <summary>(session 29) A work's tag under its name: being raised, fallen in, or standing since its year; how many of its village are at
         /// it now (by the work its kind is for: the smithy's smiths at this smithy, the weavers at the shed, the potters at the kiln, those cutting at
         /// the quarry, digging at the mine, burning at the hearth, practising at the ground, threshing at the barn, raising it); and why it was
@@ -654,7 +676,7 @@ namespace TC2.Game
             var sb = new StringBuilder();
             var k = Structures.Of(b.Kind);
             if (b.Done == 0) sb.Append("\nbeing raised: ").Append((100.0 * b.Hours / System.Math.Max(1.0, k.Hours)).ToString("0", inv)).Append(" % of its work done");
-            else if (Homes.Fallen(in b, now)) sb.Append("\nfallen in: a ruin");
+            else if (Homes.Fallen(in b, now)) { long fev = Whys.FellTo(w, in b); sb.Append(fev != 0 && w.History.TryGet(fev, out var fe) ? "\n<color=#e6b8a0>" + HistoryText.Describe(w, fe) + "</color>" : "\nfallen in: a ruin"); }
             else sb.Append("\nraised in year ").Append(SimTime.YearOf(b.Built).ToString(inv)).Append(b.Left != 0 ? ", unkept since year " + SimTime.YearOf(b.Left).ToString(inv) : "");
             ActivityKind act = b.Done == 0 ? ActivityKind.Build : b.Kind == Structures.Smithy ? ActivityKind.Smith : b.Kind == Structures.Workshop ? ActivityKind.Weave : b.Kind == Structures.Kiln ? ActivityKind.Pot
                 : b.Kind == Structures.Quarry ? ActivityKind.Quarry : b.Kind == Structures.Mine || b.Kind == Structures.BogPits ? ActivityKind.Mine : b.Kind == Structures.CharHearth ? ActivityKind.Burn
@@ -1031,7 +1053,13 @@ namespace TC2.Game
             if (b.Done == 0)
                 sb.Append("being raised: ").Append(b.Hours.ToString("0", CultureInfo.InvariantCulture)).Append(" of ").Append(k.Hours.ToString("0", CultureInfo.InvariantCulture)).Append(" hours of work, ")
                   .Append(b.Wood.ToString("0", CultureInfo.InvariantCulture)).Append(" of ").Append(k.Wood.ToString("0", CultureInfo.InvariantCulture)).Append(" loads of wood; laid out ").Append(age.ToString("0.0", CultureInfo.InvariantCulture)).Append(" years ago\n");
-            else if (fallen) sb.Append("fallen in: a ruin (").Append((Homes.RuinLeft(in b, now) * 100).ToString("0", CultureInfo.InvariantCulture)).Append("% of it still stands out of the ground)\n");
+            else if (fallen)
+            {
+                sb.Append("fallen in: a ruin (").Append((Homes.RuinLeft(in b, now) * 100).ToString("0", CultureInfo.InvariantCulture)).Append("% of it still stands out of the ground)\n");
+                // (session 29: war scars) how it fell, when a fire brought it down - the record at its fall's moment (Whys.FellTo)
+                long fev = Whys.FellTo(w, in b);
+                if (fev != 0 && w.History.TryGet(fev, out var fe)) sb.Append(HistoryText.Dated(w, fe)).Append('\n');
+            }
             else sb.Append("standing ").Append(age.ToString("0", CultureInfo.InvariantCulture)).Append(" years   condition ").Append(cond.ToString("0.00", CultureInfo.InvariantCulture)).Append(b.Left != 0 ? "   unkept since " + SimTime.FormatShort(b.Left) : "").Append('\n');
             // what it is for
             if (home)
@@ -1206,6 +1234,7 @@ namespace TC2.Game
             }
             // why it was raised, told as a story from its root (Core/History/Whys)
             if (b.Cause != 0 && w.History.TryGet(b.Cause, out _)) WhyToggle(w, "Why was it raised? The story from its root", b.Cause, r.width - 60f);
+            { long fev = Whys.FellTo(w, in b); if (fev != 0 && w.History.TryGet(fev, out _)) WhyToggle(w, "How did it fall? The story from its root", fev, r.width - 60f); }   // (session 29: war scars)
             GUILayout.EndScrollView();
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("its village  ›", _bkNav)) ShowPlace(b.Settlement);
