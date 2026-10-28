@@ -14,7 +14,9 @@
   handoff**: `0_ql_web_s29e` (started 00:52, Web of a453afe: `s29web5`, `s29book5` with --play --meteor-play --extras --pages person:2 --book 7:0,
   `s29lapse4` = the timelapse with the softened seasonal ramp). **Queued behind it**: `0_qm_shots_s29v6` (Paitaimwick's burned homes with the forty-year
   soot, close/low) and `0_qn_web_s29f` (Web of 0e3f897+: `s29web6`; `s29book6` = the extras with the ruin last burned - extra_ruin_page/_hover; `s29book7`
-  = Kaihope at year 600, village and region views with names - its name at its lived homes). Then the queue idles.
+  = Kaihope at year 600, village and region views with names - its name at its lived homes, and its Now/Why? pages `page_place_1_1`/`page_place_2_1`;
+  `s29lapse5` = the skip from orbit after the stale-patch fix 5ad5c7f) - started 01:13; then `0_qo_shots_s29v7` (Paitaimwick's burned homes with the soot in
+  the alpha, 3b66e4c). Done meanwhile: `0_qm` (s29v6: the soot did not show - fixed in 3b66e4c), `0_qmb` (s29n1: the night - fine). Then the queue idles.
 - **Built and committed this context** (D2-203, all on the branch): the burned crop as charred strips; the rivers' far glint; works' tags with why; the
   History panel's lines opening the book, above the power bar; the ticker on a loaded world; no name under a panel; the book's words (XI, men sworn
   counted, no "0 days' grain"); charred ruins from the ledger and a ruin's tag/page saying how it fell (`Whys.FellTo`); the aim's words in a box; a
