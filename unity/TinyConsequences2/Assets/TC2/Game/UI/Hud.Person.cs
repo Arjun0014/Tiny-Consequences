@@ -493,7 +493,7 @@ namespace TC2.Game
                 float k = TC2.Core.Knowledge.Tech.Get(in p, t);
                 if (k < 0.1f) continue;
                 any = true;
-                Bar(Cap(TC2.Core.Knowledge.Tech.Laws[t].Name.Split(' ')[0]) + "...", k, (k >= 0.5f ? "knows how to " : "learning to ") + TC2.Core.Knowledge.Tech.Laws[t].Name, new Color(0.30f, 0.42f, 0.55f), cw);
+                Bar(TC2.Core.Knowledge.Tech.Laws[t].Short, k, (k >= 0.5f ? "knows how to " : "learning to ") + TC2.Core.Knowledge.Tech.Laws[t].Name, new Color(0.30f, 0.42f, 0.55f), cw);
             }
             if (!any) GUILayout.Label("No craft beyond the everyday.", _pgBody);
             // what they are known for and the works they led (Biography's words)

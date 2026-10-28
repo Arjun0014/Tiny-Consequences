@@ -212,11 +212,24 @@ namespace TC2.Core.History
             if (knows.Count + learning.Count == 0) sb.Append("No craft beyond the everyday.\n");
             else sb.Append("Crafts they carry: ").Append(knows.Count > 0 ? And(knows) : "none yet").Append(learning.Count > 0 ? "; learning " + And(learning) : "").Append(".\n");
             // works they were first at (history keeps the leader as Other)
+            // (session 29) the same work of the same place raised again and again told once with its years ("Led the raising of the charcoal hearth of
+            // Thindford" had stood four times on a page)
             var evs = w.History.EventsOf(EntityRef.Person(pid));
+            var led = new List<long>(); var ledYears = new Dictionary<long, List<string>>();
             if (evs != null)
                 for (int i = 0; i < evs.Count; i++)
                     if (w.History.TryGet(evs[i], out var e) && e.Kind == HistoryKind.WorkBuilt && e.Other.Id == pid)
-                        sb.Append("Led the raising of the ").Append(Structures.Name((byte)e.ArgA)).Append(" of ").Append(Place(w, e.Settlement)).Append(" (").Append(Year(e.Time)).Append(").\n");
+                    {
+                        long key = (long)e.Settlement * 256 + (byte)e.ArgA;
+                        if (!ledYears.TryGetValue(key, out var ys)) { ledYears[key] = ys = new List<string>(); led.Add(key); }
+                        ys.Add((e.Time / SimTime.Year).ToString(CultureInfo.InvariantCulture));
+                    }
+            foreach (long key in led)
+            {
+                var ys = ledYears[key];
+                sb.Append("Led the raising of the ").Append(Structures.Name((byte)(key % 256))).Append(" of ").Append(Place(w, (int)(key / 256)))
+                  .Append(ys.Count == 1 ? " (year " + ys[0] + ")" : " " + Times(ys.Count) + " (years " + And(ys) + ")").Append(".\n");
+            }
             return sb.ToString();
         }
 
@@ -224,6 +237,7 @@ namespace TC2.Core.History
         static int Level(float s) => s >= 0.9f ? 0 : s >= 0.6f ? 1 : s >= 0.3f ? 2 : s >= 0.1f ? 3 : -1;
 
         /// <summary>"a", "a and b", "a, b and c".</summary>
+        static string Times(int n) => n == 2 ? "twice" : n == 3 ? "three times" : n == 4 ? "four times" : n == 5 ? "five times" : n.ToString(CultureInfo.InvariantCulture) + " times";
         static string And(List<string> l) => l.Count == 1 ? l[0] : string.Join(", ", l.GetRange(0, l.Count - 1)) + " and " + l[l.Count - 1];
 
         /// <summary>The plank boats a person led the building of (history keeps the leader of a boat's building as its record's Other).</summary>

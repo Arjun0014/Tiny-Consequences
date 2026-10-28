@@ -444,7 +444,7 @@ namespace TC2.Game
         void HoverTag(TC2.Core.Simulation.World w, float sw, float sh)
         {
             _tagRect = Rect.zero;
-            if (Rig == null || Rig.Cam == null || PointerOverUi) return;
+            if (Rig == null || Rig.Cam == null || PointerOverUi || _aim >= 0) return;   // (session 29: while a power is aimed its own words are the tag)
             var cam = Rig.Cam;
             float alt = cam.transform.position.magnitude - (float)w.Planet.Radius;
             if (alt > 1300f)
@@ -892,7 +892,7 @@ namespace TC2.Game
             else if (_placeSid != 0 && w.Settlements.Exists(_placeSid)) { float pw = Mathf.Min(760f, sw - 40f); _pageRect = new Rect(sw - 16f - pw, topY - 2f, pw, pageH); PlacePage(_pageRect, w); }
             else if (_personPage && _selected != 0 && w.People.Exists(_selected)) { float pw = Mathf.Min(820f, sw - 40f); _pageRect = new Rect(sw - 16f - pw, topY - 2f, pw, pageH); PersonSheet(_pageRect, w); }   // (session 29: Hud.Person.cs)
             else if (_building != 0 && w.Buildings.Exists(_building)) { showInsp = true; insp = new Rect(sw - 476f, card.y, 460f, Mathf.Min(430f, sh - card.y - 140f)); BuildingPage(insp, w); }   // (session 29: a leaf, larger)
-            _powersRect = Rect.zero;
+            _powersRect = Rect.zero; _aimRect = Rect.zero;
             if (!_book && !lapse) { PowerBar(w, sw, sh); DrawCastNote(sw); }   // (the god's powers: F9.1; the last cast's word: session 29)
             _handRect = Rect.zero;
             if (!_book && !lapse && _pageRect.width <= 0f) YourHand(w, sw, sh);   // (what came of your casts, live: session 27; not over a person's or a place's page - s27book5)
@@ -908,6 +908,7 @@ namespace TC2.Game
             _uiRects.Clear();
             _uiRects.Add(_left); _uiRects.Add(_toggles); _uiRects.Add(_right); _uiRects.Add(worldRect); _uiRects.Add(realmsRect); _uiRects.Add(_bottom); _uiRects.Add(_ticker);
             _uiRects.Add(_powersRect); _uiRects.Add(_handRect); _uiRects.Add(_summaryRect); _uiRects.Add(_settingsRect); _uiRects.Add(_pageRect); _uiRects.Add(_tagRect);
+            _uiRects.Add(_aimRect); _uiRects.Add(_tipShown);
             if (showInsp) _uiRects.Add(_building != 0 ? insp : card);
             // (session 27) who is ringed on the ground: the person whose page is open, the one under the pointer, the chosen home's household
             WorldObjectsView.Chosen = _personPage ? _selected : 0;

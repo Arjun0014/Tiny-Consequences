@@ -54,7 +54,7 @@ namespace TC2.Game
         int _aim = -1;                 // the power being aimed (-1 none)
         Vector2 _downAt;               // where the pointer went down (a cast is a click, not a drag of the camera)
         Rect _powersRect;
-        GUIStyle _powerOn, _powerOff, _aimLabel;
+        GUIStyle _powerOn, _powerOff;
 
         /// <summary>Aims a power as its button does (-1 stops aiming): the tests' way in (F9.1).</summary>
         public void Aim(int k) { _aim = k >= 0 && k < Powers.Length ? k : -1; }
@@ -156,10 +156,11 @@ namespace TC2.Game
         GUIStyle _handLine, _tipStyle;
         string[] _handText = new string[3];
         GUIContent _tip;
-        Rect _tipRect;
+        Rect _tipRect, _tipShown, _aimRect;   // (session 29: the tip and the aim's words as drawn this frame - no map name under them)
+        GUIStyle _aimBox;
 
         /// <summary>The pending tooltip of the power under the pointer, drawn over everything else at the end of the HUD's frame.</summary>
-        void DrawTip() { if (_tip != null && Event.current.type == EventType.Repaint) GUI.Box(_tipRect, _tip, _tipStyle); _tip = null; }
+        void DrawTip() { _tipShown = _tip != null ? _tipRect : Rect.zero; if (_tip != null && Event.current.type == EventType.Repaint) GUI.Box(_tipRect, _tip, _tipStyle); _tip = null; }
 
         void YourHand(World w, float sw, float sh)
         {
@@ -247,7 +248,6 @@ namespace TC2.Game
                 _powerOn = new GUIStyle(_btn) { fontSize = 13, fontStyle = FontStyle.Bold, padding = new RectOffset(10, 10, 5, 5) };
                 _powerOn.normal.textColor = new Color(1f, 0.86f, 0.45f);
                 _powerOff = new GUIStyle(_btn) { fontSize = 13, padding = new RectOffset(10, 10, 5, 5) };
-                _aimLabel = new GUIStyle(_label) { fontSize = 13, alignment = TextAnchor.UpperLeft };
             }
             float bw = 960f, bh = 78f;
             _powersRect = new Rect((sw - bw) * 0.5f, sh - bh - 44f, bw, bh);
@@ -307,7 +307,15 @@ namespace TC2.Game
             string reach = InReach(w, dir, pwr);
             Vector2 m = Event.current.mousePosition;
             string where = TC2.Core.History.HistoryText.At(w.PlaceName(cell));
-            GUI.Label(new Rect(m.x + 18, m.y + 12, 460, 90), "<b>" + pwr.Doing + "</b> " + where + (reach.Length > 0 ? "\n<size=12>" + reach + "</size>" : "") + "\n<size=11>" + pwr.Help + " - click to cast, right-click to stop</size>", _aimLabel);
+            // (session 29) in a box sized to its words and kept on the screen, as the hover tag - a bare label had run over the map's names (s29book2)
+            if (_aimBox == null) _aimBox = new GUIStyle(_mapTag) { wordWrap = true, richText = true, fontSize = 13, padding = new RectOffset(9, 9, 6, 7) };
+            var ac = new GUIContent("<b>" + pwr.Doing + "</b> " + where + (reach.Length > 0 ? "\n<size=12>" + reach + "</size>" : "") + "\n<size=11><color=#c9c3b4>" + pwr.Help + " - click to cast, right-click to stop</color></size>");
+            float aw = Mathf.Min(470f, sw - 8f), ah = _aimBox.CalcHeight(ac, aw);
+            float ax = m.x + 18f, ay = m.y + 12f;
+            if (ax + aw > sw - 4f) ax = Mathf.Max(4f, m.x - 18f - aw);
+            if (ay + ah > _powersRect.y - 4f) ay = Mathf.Max(4f, m.y - 12f - ah);
+            _aimRect = new Rect(ax, ay, aw, ah);
+            GUI.Box(_aimRect, ac, _aimBox);
         }
     }
 }
