@@ -34,8 +34,8 @@ process you did not start.
 
 ## FIRST - the state at the end of session 29's first context (28 Oct 2026, ~23:45 IST)
 - **main = 92b75fd, BEHIND `wip/s27-int`** (worktree `C:/Game Dev/tc-s27int` - work there) because the Unity shots job held main's checkout at the handoff:
-  once `0_qe_shots_s29v` has ended, `git -C "C:/Game Dev/tiny-consequences" merge --ff-only wip/s27-int` (never while a Unity job holds main's checkout) and
-  verify `git log -1 main` = `git log -1 wip/s27-int`. After any Web build:
+  a background waiter (task `bvdt0x46v`) fast-forwards main the moment `0_qe_shots_s29v` ends - verify `git log -1 main` = `git log -1 wip/s27-int`, else
+  `git -C "C:/Game Dev/tiny-consequences" merge --ff-only wip/s27-int` (never while a Unity job holds main's checkout). After any Web build:
   `git checkout -- unity/TinyConsequences2/ProjectSettings/ProjectSettings.asset` in main's checkout (the queued jobs do it).
 - **The queue runs** (`Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`,
   hard-coded in `tc2/out/tools/s23/runq.sh` and `lib.sh`; the runner was started in session 29 as background task `bp3fvcitn` and keeps polling `$Q/todo`;
