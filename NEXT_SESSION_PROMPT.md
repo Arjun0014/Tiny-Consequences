@@ -53,9 +53,9 @@ process you did not start.
   `s30air`; shots `s30v1`-`s30v6`.
 
 ## Do next, in order
-1. Judge the full suite `0_rl_fullsuite_s30` (the lint first; `$N/fullsuite_s30.txt`, `$N/fs_s30_ok`) and Web `0_rm_web_s30i` (10c8c60: `s30web5` 9/9;
-   `tc2/out/webtest/s30book4/extra_field_hover.png`, `extra_field_page.png` and the same in `s30book5`). Fix what they show; commit; fast-forward main
-   when the queue is idle.
+1. (done: the full suite 524/0/0 with the lint; `s30web5` 9/9 and the fields' tag seen.) Judge Web `0_rn_web_s30j` (b677e73: `s30web6` 9/9;
+   `tc2/out/webtest/s30book6/extra_field_hover.png` - "it works N ha of ..."; `extra_field_page.png` - no tag over the page). Fix what it shows; commit;
+   fast-forward main when the queue is idle.
 2. Then the brief's open looks (W-FOREST's sameness is a dedicated art pass awaiting Arjun's judgement - `18` W-FOREST) and readability gaps the pictures
    show (validate: compile -> focused tests -> real Web play/shots -> fix -> commit; no seed batteries for UI). Keep D2-204, PROGRESS, SESSION_HANDOFF and
    this note current.

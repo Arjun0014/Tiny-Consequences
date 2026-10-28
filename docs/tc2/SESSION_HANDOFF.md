@@ -18,9 +18,9 @@
    Kaihope's shore) - all judged, D2-204.
 1. (done) `0_rf_web_s30c` (s30web3 9/9: the HUD fixes seen), the tan veil found by elimination and fixed (the air near the ground, fbd708a;
    `0_rk_web_s30h`: s30web4 9/9, `s30air` clear at 1,100-1,800 m, the limb as before). D2-204 (1)-(8).
-2. Judge the full suite `0_rl_fullsuite_s30` (`$N/fullsuite_s30.txt`, `$N/fs_s30_ok`; the lint first) and Web `0_rm_web_s30i` (10c8c60: `s30web5` 9/9;
-   `tc2/out/webtest/s30book4/extra_field_hover.png` and `extra_field_page.png`, the same in `s30book5` - the fields' tag over the first village's side
-   of a meeting, its Land page on a click). D2-204 (9).
+2. (done) The full suite 524/0/0 with the lint (f7de2f8); Web `0_rm_web_s30i` (s30web5 9/9; the fields' tag and click seen in `s30book4`/`s30book5`).
+   Then b677e73 (the fields' words; no tag across a page): judge Web `0_rn_web_s30j` - `s30web6` 9/9; `tc2/out/webtest/s30book6/extra_field_hover.png`
+   ("it works N ha of ..."), `extra_field_page.png` (no tag over the page). D2-204 (9).
 3. Next: the brief's open looks (W-FOREST's sameness is a dedicated art pass awaiting Arjun's judgement) and readability gaps the pictures show -
    e.g. a building's page shot in bookshots is taken 3.5 s after the camera flies in from 6 km, before the finest ground and its trees are built (a
    script's timing, not the game's: `extra_building.png`).
