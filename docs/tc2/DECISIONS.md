@@ -6479,5 +6479,6 @@ but not from 1,800 m up (`s30wedge1100`, `s30wedge1800`, `s30wedge`). The shell 
 meeting it took the limb's whole grazing way - though from low down such a ray may end on high land beyond the sphere's horizon (its edge). With the
 camera under 2.5-5 km a ray grazing the sphere within 150-600 m now ends where it passes closest and is veiled as the ground is; the region view and orbit
 keep the limb's whole way. (8) **floatcheck** had failed on the branch (Whys.Now's ruin distance in float, session 29 - the full-suite jobs never run the
-lint): now in double (b49bbe3). **Pending**: Web `0_rk_web_s30h` (fbd708a: `s30web4`; `s30air` v1100/v1400/v1800 - no veil, region and orbit - the limb as
-before).
+lint): now in double (b49bbe3). Web `0_rk_web_s30h` (fbd708a, 0 shader errors): `s30web4` 9/9; `s30air` - the high fields
+clear at 1,100, 1,400 and 1,800 m (the warm veil and its straight edge gone; at 1,100 m the "smooth brown" region of `s30wedge1100` was the same veil),
+the region view's and orbit's limb as before.

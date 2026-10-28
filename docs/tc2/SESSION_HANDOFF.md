@@ -16,10 +16,11 @@
 ### Next, in order
 0. (done) `0_rb_web_s30a` (s30web1 9/9, the cast's word, the skip's year 303), shots `s30v1`-`s30v6` (fields, shores), `0_re_web_s30b` (s30web2 9/9,
    Kaihope's shore) - all judged, D2-204.
-1. Judge Web `0_rf_web_s30c` (6b0896a): `tc2/out/webtest/s30web3/7_after_a_century.png` (no name under the headline cards), `9_person_life.png` (the
-   years' leaf not over the page), the ticker (one line), `5h_your_actions.png` ("having burned about N ha"). Then `0_rg_book_s30d` (`s30cloud0` vs
-   `s30cloud1` village.png: is the tan veil with the straight edge the clouds? if so, find the straight edge in TC2CloudForm/CloudView; else find its layer).
-2. Then the brief's open looks: W-FOREST's sameness; the coast's stepped shelf from orbit; readability gaps the pictures show.
+1. (done) `0_rf_web_s30c` (s30web3 9/9: the HUD fixes seen), the tan veil found by elimination and fixed (the air near the ground, fbd708a;
+   `0_rk_web_s30h`: s30web4 9/9, `s30air` clear at 1,100-1,800 m, the limb as before). D2-204 (1)-(8).
+2. Next: the brief's open looks (W-FOREST's sameness is a dedicated art pass awaiting Arjun's judgement) and readability gaps the pictures show -
+   e.g. a building's page shot in bookshots is taken 3.5 s after the camera flies in from 6 km, before the finest ground and its trees are built (a
+   script's timing, not the game's: `extra_building.png`).
 
 ## Session 29, context 2 (29 Oct 2026, 00:00 - ~01:10 IST; Control Room run #86 session 2; Arjun AFK) - the visual world as evidence (D2-203)
 
