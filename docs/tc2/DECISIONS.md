@@ -6164,3 +6164,113 @@ loads only in a binary of its own version; the header is `TC2W`, u16 format, i32
 
 **Evidence.** The project folder 38 GB -> 4.2 GB; drive C: 29 GB -> 68 GB free (with the worktrees); `tc2/out/logs` 62 MB, `tc2/out/civ` 529 MB,
 `tc2/out/shots` 261 MB, `tc2/out/webtest` 494 MB, `out/` 147 MB; `git worktree list` 9 entries.
+
+## D2-199 — 2026-10-28 — The long skip as a timelapse; the frame's last CPU waste by s27prof2 (presentation; 14 §7; session 29 - Arjun: "the jam must clearly read as a real simulation")
+
+**Context.** Arjun (28 Oct, session 29's brief): during a long advance the local camera lived dozens of day/night cycles a second - the picture strobed light and
+dark. Asked: keep the player's exact context, pull smoothly back to the whole planet, run the advance from orbit with the planet visibly living but no
+day/night flashing, surface only the great events, then settle to the world's real light and return to the exact context - the person followed where
+they are, or what became of them. Also the held verification `0_qb_web_s27prof2` (the frame's fixes of d4057ed).
+
+**Decision.**
+1. **Where the threshold is**: a lapse begins when the world's days would pass in under four of the player's seconds (0.25 days a second; it ends below
+   0.12, half, so Max's wandering achieved speed does not flap): from 1 day/s up, and always for a catch-up of an absence or a skip. The speeds' steps go
+   from 1 h/s - a day in 24 s, dawn and dusk to watch - to 1 day/s, where the whole picture went light and dark once a second. A speed alone waits 0.35 s
+   before flying (keys pressed through 7 to 3 do not), a skip or catch-up goes at once.
+2. **The Skip** (the bar's "Skip...": a season, a year, ten years, a century) is lived exactly as an absence's catch-up is - `OfflineProgress.PlanCatchUp`
+   in Living's plan (COARSE from the next midnight when the span holds many lives, its last two days in full; never DEEP), a logged plan of resolutions -
+   then the player's speed comes back. "Stop here" asks lived days back at the next midnight (a logged command) and ends there; a span lived day by day
+   ends at once. Watching changes nothing: the camera, the light and the overlay never reach the world.
+3. **The camera** (`CameraRig.Lapse.cs`): Off -> Rising (3 s: altitude log-eased, latitude toward the player's own clamped off the poles, the slow turn
+   eased in) -> Orbit (one turn in 120 s, paused 3 s after the player turns it) -> Returning (3.6 s: the short way round to the context - the followed
+   person's live position via `Hud.LocateFollowed` - then down to the exact distance). In a catch-up or skip the planet may be turned but not come down to
+   (nobody is drawn then); in a speed's lapse the player may take the camera (then no return flight). The world's share of a frame is the camera's: 8 ms
+   while it flies (smooth flights), 55 ms (catch-up/skip) or 30 ms (a speed) in orbit (`SimHost.FrameBudgetOverride`).
+4. **The light** is the picture's only: in a lapse the sun stands 0.95 rad east of the camera at the seasons' running mean height (2.5 s), so the
+   land turns under a calm terminator with the night side's lights at the limb; eased in from the sun as it was when the lapse began (1.1 s), eased out to
+   the world's own as the camera comes down. The clouds ease four times slower (their cover becomes the weather's running mean); from orbit a colouring
+   cycle recolours every shown patch in the same frame (`TerrainLod.RecolourTogether` - patches recoloured one by one over 2.5 s had shown hard-edged
+   blocks of different seasons, s29lapse1).
+5. **What it says** (`Core/History/Headlines`, `Hud.Lapse.cs`): the year in large type, the span's bar for a catch-up or skip; as the years run only the
+   great records - a new sickness and each plague's first coming, a famine (a village a year), a founding, an abandonment, a split, a realm grown (3+
+   villages) or a bond broken, a war's first raid between a pair, a succession at a seat, a discovery, walls of stone, the earth's violence (M 5.5+, VEI 2+,
+   waves, great storms, falling stars, ice ages), the sea taking homes, a kind gone from the world, and anything the player's hand set going - one at a
+   time every 1.6 s at most, the greatest waiting first (a test world: 6 headlines from 1,551 records over 40 years). When it ends, a leaf of what the years
+   did from the world's own counters and state (years; people then and now, births, deaths by cause; places founded and abandoned; realms risen, grown,
+   shrunk, fallen apart; plagues, famines, raids, splits; discoveries; records rooted in the player's hand) with its headlines to open in the book; and
+   what became of what the player watched - a death told with their life and the eldest living child (else partner, else household) to follow on, a
+   place whose page was open abandoned. A followed person's death outside a lapse is told the same way (it had silently stopped the camera).
+6. **The frame** (`s27prof2`, then `s29perf1`): people are posed again only when the world's time, the camera, the chosen or pointed ones or the world
+   change, and from 2 km at most every third frame (`WorldObjectsView.PeopleStale`; bridge `peoplestale`); each terrain patch keeps its vertices' road
+   values until the roads change (`TerrainLod.RoadsLaid`: the table laid every 10 s, its content's signature moves the version only when it differs;
+   bridge `roadcache`) - a first per-patch filter of the stretches measured as nothing at the village view (a patch is about a town's cell) and was replaced.
+
+**Evidence.** Web `s27web8` 9/9 (d4057ed+); `s27prof2`: the region view paused 56 -> 36.5 ms a frame (RebuildPeople 29 -> 15 ms), the village view 33,
+running 40/37; `s27book7` (houses coloured - the instanced arrays by size hold; no card over the book). Web `s29web1` 9/9 (fe5dc01; the day-away catch-up
+now flown, 94 s). `s29perf1`: people stale-gated - the paused region view's main thread 96.7 % -> 55.7 % busy, RebuildPeople gone, the frame now waiting
+on the integrated GPU (fps x1.037/x1.035); the per-patch road filter x1.003/x0.987, RoadAt 4.12 -> 4.16 ms (no effect; replaced). `s29lapse1` (seed 2
+year 300, the oldest person followed at 260 m): 1 day/s rose to 13,200 m and came back to 260 m on him (report `lapse` rows); ten frames at 10 days/s
+120 ms apart within 73-81 mean brightness (no strobe); a 5-year skip lived in ~12 s at COARSE with its headlines (realms grown to 31-33 villages, a war,
+famines) and on its end the leaf: "Thou Kobo, whom you followed, died in year 307, at 109 ... follow Brokdru, their son", people 10,993 -> 9,544 (2,055
+dead of hunger), realms grown and one fallen apart. HeadlinesTests 3/3 (an observer: the world read every day lives as the one never read).
+**Pending**: the seams fix and the road cache in `s29lapse2`/`s29perf2` (job `0_qd_web_s29b`).
+
+## D2-200 — 2026-10-28 — The person as a person: a page with a face, a life told as it is lived (presentation and an observer; 07 §9, 25 §8 B; session 29)
+
+**Context.** Arjun: "When I click one simulated human, I want to feel: this is actually a person living inside this simulation" - identity, right now,
+family as a tree with clickable relatives, work and skills, possessions, social and political standing, combat, and a life chronicle that reads like a
+biography being written as they live, followed through life and past death. Audited first what the state knows: the person (sex, birth, death and its
+record, parents, partner, household, home, where they are, activity and its why, until, destination, cargo, health, nutrition, reserve, wounds and their
+deed, sickness and its phase and cause, pregnancy, nursing, eight skills, eight crafts, fights, band, voyage, sworn-to, and six inborn leanings - Bold,
+Social, Diligence, Chrono, Pace, Curious - that the world's choices read every day: training, trade, migration, hunting, taking at night, visits, evening
+company, work choice, waking hour, walking pace, noticing danger); the household (home and how it was built, larder, water, warmth, gear, wares, pots,
+land and grain held, debts, beasts, cart, boat); their records and their household's. Not in the state: friends or rivals (a "friend" visit is to a
+village, not a person), a person's own debts (they are the household's), teachers and pupils (learning is from a village's best), places known (a
+village's). None of those is shown or invented.
+
+**Decision.** `Core/History/Lives` (reads only): **the chronicle** - their own records told from their side ("Married ...", "Found how to ... - nobody in X
+had known it", "Led the raising of ...", sworn, first, bands, raids led, blows given and taken), their household's since they joined it (homes raised or
+taken, moves, keep, boats, carts), their closest kin from the people themselves (a child born - by its record or by the child; a parent, a partner, a
+child lost with how they died; the first grandchild), what their village lived through while they lived there (famines, plagues and their dead, bows and
+bonds, walls, the earth's violence, successions - the weightiest dozen; "while they lived there": from birth if born there, else from their household's
+move or their marriage there), the first people's birth before the land's history; a line said again within three years told once with how often; the
+men sworn in a year in one line; pronouns by the person's sex. **The tree** (grandparents, parents, brothers and sisters full and half, every partner -
+married or the other parent of a child - with each one's children, grandchildren). **The temperament**: only marked leanings (above 190 or below 65 of
+255), each with what it does in their days. **The skills** with how each grows. The HUD (`Hud.Person.cs`): the page as a leaf with a portrait drawn from
+what the world draws them in (`WorldObjectsView.PageLivery`), name, a line of who they are, standing, badges, and sections Now (what and why apart, where
+and until, carrying, body as bars, temperament, Why?, of late), Family (the drawn tree; every name opens that person; back), Work (skill bars, crafts,
+roles, works and finds), Standing and arms, Household (members as links, their home, their village), Life (by decade, each entry's year and age in the
+margin, a mark in its kind's ink, weight by size; a name opens that person, a record opens its causes). The click card as a small leaf with the portrait,
+doing and why, health and food bars, the last of their life.
+
+**Evidence.** LivesTests 3/3 (a founder's chronicle: born 29 years before the land's first year, ten children with two wives, losses, a feud's claims
+"8 times, to year 13", his wife dead of wounds, remarriage, the kiln he led, first among Theimstead at 55, six men sworn); compile clean. **Pending**: the
+pages in the Web build (`s29book1`, job `0_qd_web_s29b`).
+
+## D2-201 — 2026-10-28 — Why?: questions bound to records, answered from the root; a place's now, its last years and its realm (an observer; 11 §5, 25 §8 C)
+
+**Context.** Arjun: the player must be able to point at something strange and eventually understand why - a tribute traced through famine, grain aid and
+dependence; stone walls through raids and losses; a sworn man through surplus and oath; a starving village through its harvest, stores, war and weather -
+never canned, always from the real causes. The ledger keeps causes (each record's first and sometimes second), and the settlement keeps handles to its key
+records (LordEvent, WallEvent, StoneWallEvent, FoeEvent, HeadEvent, FamineEvent, TilthEvent, RestEvent, WatchEvent, FoundedEvent ...). But the place index
+held only political records (`PlaceEventsOf`: headmen, splits, tilth, rest).
+
+**Decision.** `Core/History/Whys` (reads only): **questions** asked only when a record answers them (a place: why it pays its lord, why it is a lord - its
+oldest standing bond, why its walls of stone or its palisade, its wrong, its first, its famine, its hunger, its sickness, its harder work, its rested fields,
+its watch, its founding; a person: why they died, are sick, are first, are sworn, are wounded, raised a band); **the story** from the root - the first-cause
+chain told oldest first, each record dated, the link to the next from how it was recorded (which brought about / in answer to which / which made possible /
+part of which), a second recorded cause told beside its step, and where it began (nature, people's choices, your hand; or "its earlier causes are no longer
+remembered"); **a place's last ten years** from its own records (born, died by cause, households gone and come, growing/shrinking and what most moved it,
+the worst trouble's record to ask why); **its troubles and works now**; **a realm** (seat, ruler, villages by tier, people, sworn men, the seat's tribute
+in the last year, raids with outsiders, bonds made and broken, its oldest standing bond). `HistoryLedger.RecordsAt(sid)`: every record by its place - a
+derived index (rebuilt at a load and after the memory pass), never saved, never read by the world. The place page gains Now (its people's doings this moment
+as bars, grain in days, troubles, the ten years), Why? and Realm; the realms legend's rows open a realm's page; the building page tells why it was raised
+as a story; the person page's Now asks its why. **The book**: a chosen line opens the people and places its record names; a place's chapter its live page,
+a realm's chapter its realm now; Your Actions tells each cast's **longest thread** - the record furthest down one line of causes from it, link by link,
+with the years between (seed 7, the god's copper at year 100: "Copper ore lay bare at Kraby" -> "The people of Vaestdal saw copper ore" (159) -> "built a
+charcoal hearth" (213): "Its longest thread, 113 years on").
+
+**Evidence.** WhysTests 2/2 (11 questions asked of a test world's places, each on its record, each story ending at it and told oldest first; "Why does
+Thaksournton pay tribute to Rindford?" -> Rindford's harvest (beside it, Verhope's tribute) -> a man swore to its first -> it asked Thaksournton a tenth
+-> Thaksournton bowed); a place's trend counts its own birth records; LivesTests 3/3, GazetteerTests 3/3, HistoryBookTests 7/7, PowersTests 13/13.
+**Pending**: the pages in the Web build (`s29book1`).

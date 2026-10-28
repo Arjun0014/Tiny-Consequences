@@ -270,3 +270,5 @@ names on every event - cut on main (d4057ed; re-measure pending, `s27prof2`). **
 glow, no rose disc, the moon's path broken), the regions' warp made to reach (the staircase gone at village views; a little jagged still at the region
 view); **B** the palisade faced in the village's frame (the beach's slabs, `place --ring`); **C** the book holds the screen, the place page's words (D2-197).
 The running world's heap plateaus (832 MB).
+
+**Session 29 (28 Oct 2026; Arjun: "the jam must clearly read as a real simulation")**: **the long skip as a timelapse** (D2-199: from 1 day/s, a catch-up or the Skip, the camera to orbit and back to the exact place, a steady light, headlines of the great records, a leaf of what the years did and what became of whom the player followed); **B** the person page as a person (D2-200: a portrait from the livery, badges, the drawn family tree, skill bars, the life chronicle from records and kin); **C** Why? (D2-201: questions bound to records, stories from the root; a place's Now, Why? and Realm; the book's links and each cast's longest thread). The frame: people posed only when stale, roads kept per patch.

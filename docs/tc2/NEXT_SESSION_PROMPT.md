@@ -452,6 +452,10 @@ logs, saves below sim 107, pre-25-Oct images, TC1's media) and 62 merged worktre
 session 27 stopped (SESSION_HANDOFF "Session 28" then "Session 27, context 4"). A Unity log past ~100 MB is a bug signal: let the job finish, read
 its first repeated message and fix the cause, then delete the log.
 
+**Direction from Arjun (28 Oct 2026, session 29) - THE CURRENT PRIORITY**: "the jam must clearly read as a real simulation to the player" - every feature answers what is happening, who, why, from what resources/relationships/history, what changed, how the player can inspect and follow the chain, and how the picture shows it; the player's own casts traceable from the power to its long-term history; never fabricated explanations (add the smallest real state if the truth is not kept). In order: the long skip as an orbital timelapse; the person page as a person; place/realm/building readability with progressive disclosure (world -> realm -> settlement -> household -> person -> life/causes); "Why?" chains from the ledger; the History Book as the world's memory (cross-links, Your Actions' consequences); the powers as play; the visual world where it is evidence of the simulation. Presentation is validated by compile -> focused tests -> real Web play/shots -> fix -> commit; no seed batteries or 1,000-year runs for presentation.
+
+**Where we are (session 29, 28 Oct 2026, from 22:23 IST)**: D2-199 the timelapse (judged in `s29lapse1`), D2-200 the person page, D2-201 Why? - on main (sim 108 unchanged); their Web pictures in the queue (`0_qd_web_s29b`). SESSION_HANDOFF "Session 29" has the exact state and the next steps.
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.
