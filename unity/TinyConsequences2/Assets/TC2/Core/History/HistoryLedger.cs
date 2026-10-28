@@ -40,6 +40,9 @@ namespace TC2.Core.History
         // a village's political events by the village they happened in - its headmen, its splits (C10.2, C10.3): they name people and households,
         // not the village, so the entity index would not find them; for the pages only (the simulation never reads this index)
         readonly Dictionary<int, LongList> _byPlace = new Dictionary<int, LongList>();
+        // (session 29: "why?" and the person's chronicle) every record by the place it happened at - births, deaths, famines, plagues, households come and gone;
+        // derived (rebuilt at a load and after the memory pass), never saved, never read by the world
+        readonly Dictionary<int, LongList> _atPlace = new Dictionary<int, LongList>();
         long _compactedThrough; // events with id <= this have been examined by compaction at least once
         public long Dropped;     // total events dropped by compaction (statistics)
         /// <summary>Names dropped by `PruneNames` since this world began or was loaded (statistics; not saved).</summary>
@@ -92,6 +95,7 @@ namespace TC2.Core.History
             Index(e.Object, e.Id);
             Index(e.Other, e.Id);
             IndexPlace(in e);
+            IndexAt(in e);
             return e.Id;
         }
 
@@ -124,6 +128,16 @@ namespace TC2.Core.History
             if (!_byPlace.TryGetValue(e.Settlement, out var list)) { list = new LongList(); _byPlace[e.Settlement] = list; }
             list.Add(e.Id);
         }
+
+        void IndexAt(in HistoryEvent e)
+        {
+            if (e.Settlement <= 0) return;
+            if (!_atPlace.TryGetValue(e.Settlement, out var list)) { list = new LongList(); _atPlace[e.Settlement] = list; }
+            list.Add(e.Id);
+        }
+
+        /// <summary>(session 29) Every record kept that happened at a place, oldest first; null if none (the pages' "why?" and lives only).</summary>
+        public LongList RecordsAt(int sid) => _atPlace.TryGetValue(sid, out var l) ? l : null;
 
         /// <summary>A village's political events (its headmen risen, its splits), oldest first; null if none (pages only).</summary>
         public LongList PlaceEventsOf(int sid) => _byPlace.TryGetValue(sid, out var l) ? l : null;
@@ -313,13 +327,14 @@ namespace TC2.Core.History
 
         void RebuildIndex()
         {
-            _byEntity.Clear(); _byPlace.Clear();
+            _byEntity.Clear(); _byPlace.Clear(); _atPlace.Clear();
             for (int i = 0; i < _n; i++)
             {
                 Index(_ev[i].Subject, _ev[i].Id);
                 Index(_ev[i].Object, _ev[i].Id);
                 Index(_ev[i].Other, _ev[i].Id);
                 IndexPlace(in _ev[i]);
+                IndexAt(in _ev[i]);
             }
         }
 

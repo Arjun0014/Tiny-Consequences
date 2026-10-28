@@ -331,7 +331,7 @@ namespace TC2.Core.History
             }
             if (since < 0 && married != 0) since = married;
             if (since < 0) return;
-            var pev = w.History.PlaceEventsOf(home);
+            var pev = w.History.RecordsAt(home);
             if (pev == null) return;
             var found = new List<Entry>();
             string place = Place(w, home);

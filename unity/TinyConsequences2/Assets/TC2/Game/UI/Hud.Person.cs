@@ -283,6 +283,7 @@ namespace TC2.Game
                 int heir = Heir(w, pid);
                 if (heir != 0 && GUILayout.Button("Go on with " + Given(w, heir) + Kinship(w, pid, heir) + "  ›", _bkNav)) GoTo(heir);
                 GUILayout.Label("Their life is told under Life; their family under Family.", _pgSmall);
+                PersonWhys(w, pid, cw);
                 return;
             }
             // what they do and why, where, until when, what they carry
@@ -309,11 +310,22 @@ namespace TC2.Game
                 GUILayout.Label("born with it; the world's choices read it every day", _pgSmall);
                 foreach (var t in _pgTemper) GUILayout.Label("<color=#8c2614>" + t[0] + "</color>  -  " + t[1], _pgBody);
             }
+            PersonWhys(w, pid, cw);
             if (_pgLife != null && _pgLife.Count > 0)
             {
                 GUILayout.Label("Of late", _pgHead);
                 for (int i = Mathf.Max(0, _pgLife.Count - 3); i < _pgLife.Count; i++) LifeRow(w, _pgLife[i], cw);
             }
+        }
+
+        /// <summary>(session 29) The questions their state and records can answer - why they are first, sworn, sick, wounded, why they died - each opening
+        /// its story from the root.</summary>
+        void PersonWhys(TC2.Core.Simulation.World w, int pid, float cw)
+        {
+            var asks = Whys.OfPerson(w, pid);
+            if (asks.Count == 0) return;
+            GUILayout.Label("Why?", _pgHead);
+            foreach (var q in asks) WhyToggle(w, q.Question, q.Event, cw);
         }
 
         static string UntilWords(long now, long t)

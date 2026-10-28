@@ -309,7 +309,7 @@ namespace TC2.Game
         /// rubric, the rest as paragraphs, the first under a raised initial. Returns the section chosen; <paramref name="close"/> when it is shut.
         /// The words are Biography's and Gazetteer's (Core); nothing here writes the world.
         /// </summary>
-        int PaperPage(Rect r, string kicker, string title, string standing, string[] tabs, int tab, string text, out bool close)
+        int PaperPage(Rect r, string kicker, string title, string standing, string[] tabs, int tab, string text, out bool close, System.Action<float> custom = null)
         {
             BookStyles();
             close = false;
@@ -336,6 +336,7 @@ namespace TC2.Game
             GUILayout.EndHorizontal();
             Rule(0f, 1f);
             _pageScroll = GUILayout.BeginScrollView(_pageScroll, GUIStyle.none, GUI.skin.verticalScrollbar);
+            if (custom != null) { custom(r.width - 70f); GUILayout.EndScrollView(); GUILayout.EndArea(); return tab; }   // (session 29: a section drawn by its own hand - a place's Now, Why? and Realm)
             if (!ReferenceEquals(text, _pgFor)) { _pgFor = text; _pgLines = (text ?? "").Split('\n'); }
             bool first = true;
             for (int i = 0; i < _pgLines.Length; i++)

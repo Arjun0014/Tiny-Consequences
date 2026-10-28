@@ -24,6 +24,7 @@ namespace TC2.Game
         public static bool PointerOverUi;
         int _selected, _follow;   // the person inspected; the person the camera keeps with (0 none)
         int _building;            // the structure inspected (0 none: C1.1)
+        Vector2 _bScroll;         // (session 29: the building page scrolls - its story of why)
         GUIStyle _box, _label, _small, _title, _btn;
         float _scale = 1f;
         Rect _left, _right, _bottom, _toggles, _ticker;
@@ -34,7 +35,7 @@ namespace TC2.Game
         bool _personPage; int _pageTab, _pagePid = -1, _pageTabBuilt = -1; float _pageAt; string _pageText = "", _pageTitle = ""; Vector2 _pageScroll; Rect _pageRect;
         // the settlement page (C12.2): a place's founding, people, food, works, land and making, neighbours and history (Core/History/Gazetteer)
         int _placeSid, _placeTab, _placeBuilt = -1, _placeFor; float _placeAt; string _placeText = "", _placeTitle = "";
-        static readonly string[] PlaceTabs = { "Place", "Food", "Works", "Land", "Neighbours", "History" };
+        static readonly string[] PlaceTabs = { "Place", "Now", "Why?", "Realm", "Food", "Works", "Land", "Neighbours", "History" };   // (session 29: Now, Why? and Realm - Hud.Place.cs)
         // the History Book (session 25, HistoryBook: a book - its title page and preface, eight parts and their chapters on the left page,
         // a chapter on the right, a line's causes under it; each part written when it is first opened, the book rewritten in a new year)
         int _bookPart = -1, _bookChapter, _bookYear = -1, _openAt = -2;
@@ -662,7 +663,7 @@ namespace TC2.Game
             _pageRect = Rect.zero;
             float pageH = sh - 136f - topY;   // (ending above the power bar: its foot had run under it - s27web2)
             if (_book || lapse) { /* (the book holds the screen; the timelapse the picture) */ }
-            else if (_placeSid != 0 && w.Settlements.Exists(_placeSid)) { float pw = Mathf.Min(600, sw - 430); _pageRect = new Rect(Mathf.Max(10, sw - 410 - pw), topY - 2f, pw, pageH); PlacePage(_pageRect, w); }
+            else if (_placeSid != 0 && w.Settlements.Exists(_placeSid)) { float pw = Mathf.Min(760f, sw - 40f); _pageRect = new Rect(sw - 16f - pw, topY - 2f, pw, pageH); PlacePage(_pageRect, w); }
             else if (_personPage && _selected != 0 && w.People.Exists(_selected)) { float pw = Mathf.Min(820f, sw - 40f); _pageRect = new Rect(sw - 16f - pw, topY - 2f, pw, pageH); PersonSheet(_pageRect, w); }   // (session 29: Hud.Person.cs)
             else if (_building != 0 && w.Buildings.Exists(_building)) { showInsp = true; BuildingPage(insp, w); }
             _powersRect = Rect.zero;
@@ -731,7 +732,7 @@ namespace TC2.Game
                 GUI.color = new Color(e.c.r, e.c.g, e.c.b, 1f);
                 GUI.DrawTexture(sq, Texture2D.whiteTexture);
                 GUI.color = old;
-                GUILayout.Label(w.History.NameOf(EntityRef.Settlement(e.sid)) + " - " + e.villages + " villages, " + e.people + " people", _small);
+                if (GUILayout.Button(w.History.NameOf(EntityRef.Settlement(e.sid)) + " - " + e.villages + " villages, " + e.people + " people  <color=#f2c35f>›</color>", _lineStyle)) ShowPlace(e.sid, PlaceRealmTab);   // (session 29: the realm's page)
                 GUILayout.EndHorizontal();
             }
             if (legend.Count > shown) GUILayout.Label("and " + (legend.Count - shown) + " more", _small);
@@ -763,15 +764,18 @@ namespace TC2.Game
                 switch (_placeTab)
                 {
                     case 0: _placeText = Gazetteer.Overview(w, _placeSid) + "\n" + Gazetteer.Crafts(w, _placeSid); break;
-                    case 1: _placeText = Gazetteer.Food(w, _placeSid); break;
-                    case 2: _placeText = Gazetteer.Works(w, _placeSid); break;
-                    case 3: _placeText = Gazetteer.Materials(w, _placeSid); break;
-                    case 4: _placeText = Gazetteer.Neighbours(w, _placeSid); break;
+                    case PlaceNowTab: case PlaceWhyTab: case PlaceRealmTab: _placeText = ""; break;
+                    case 4: _placeText = Gazetteer.Food(w, _placeSid); break;
+                    case 5: _placeText = Gazetteer.Works(w, _placeSid); break;
+                    case 6: _placeText = Gazetteer.Materials(w, _placeSid); break;
+                    case 7: _placeText = Gazetteer.Neighbours(w, _placeSid); break;
                     default: _placeText = Gazetteer.Life(w, _placeSid, 80); break;
                 }
             }
             // (session 27) a leaf of the book
-            int tab = PaperPage(r, "A Place", _placeTitle, "", PlaceTabs, _placeTab, _placeText, out bool close);
+            int sidNow = _placeSid;
+            System.Action<float> custom = _placeTab == PlaceNowTab ? (cw => PlaceNow(w, sidNow, cw)) : _placeTab == PlaceWhyTab ? (cw => PlaceWhy(w, sidNow, cw)) : _placeTab == PlaceRealmTab ? (System.Action<float>)(cw => PlaceRealm(w, sidNow, cw)) : null;
+            int tab = PaperPage(r, "A Place", _placeTitle, "", PlaceTabs, _placeTab, _placeText, out bool close, custom);
             if (tab != _placeTab) { _placeTab = tab; _pageScroll = Vector2.zero; }
             if (close) _placeSid = 0;
         }
@@ -929,7 +933,7 @@ namespace TC2.Game
                       .Append(s.Stone.ToString("0", CultureInfo.InvariantCulture)).Append(" loads (it wants ").Append(s.StoneWant.ToString("0", CultureInfo.InvariantCulture)).Append(")\n");
                 if (b.Hours > 0) sb.Append("raised with ").Append(b.Hours.ToString("0", CultureInfo.InvariantCulture)).Append(" hours of work and ").Append(b.Wood.ToString("0", CultureInfo.InvariantCulture)).Append(" loads of wood").Append(b.Stone > 0 ? ", " + b.Stone.ToString("0", CultureInfo.InvariantCulture) + " of stone" : "").Append('\n');
                 if (b.Leader != 0) sb.Append("the first at the work: ").Append(w.History.NameOf(EntityRef.Person(b.Leader))).Append('\n');
-                if (b.Cause != 0 && w.History.TryGet(b.Cause, out var ce)) sb.Append("<b>why</b>: ").Append(HistoryText.Line(w, ce)).Append('\n');
+                if (b.Cause != 0 && w.History.TryGet(b.Cause, out var ce)) sb.Append("<b>why</b>: ").Append(HistoryText.Describe(w, ce)).Append('\n');
                 else if (b.Hours <= 0) sb.Append("standing when its people came\n");
             }
             var evs = w.History.EventsOf(new EntityRef(EntityKind.Building, _building));
@@ -937,10 +941,30 @@ namespace TC2.Game
             {
                 sb.Append("<b>history</b>\n");
                 for (int i = System.Math.Max(0, evs.Count - 6); i < evs.Count; i++)
-                    if (w.History.TryGet(evs[i], out var e)) sb.Append(HistoryText.Line(w, e)).Append('\n');
+                    if (w.History.TryGet(evs[i], out var e)) sb.Append(HistoryText.Dated(w, e)).Append('\n');
             }
             GUILayout.BeginArea(r, _box);
+            _bScroll = GUILayout.BeginScrollView(_bScroll, GUIStyle.none, GUI.skin.verticalScrollbar, GUILayout.Height(r.height - 46f));
             GUILayout.Label(sb.ToString(), _small);
+            // (session 29) why it was raised, told as a story from its root (Core/History/Whys)
+            if (b.Cause != 0 && w.History.TryGet(b.Cause, out _))
+            {
+                bool open = _whyOpen.Contains(b.Cause);
+                if (GUILayout.Button(open ? "Hide why it was raised" : "Why was it raised? The story", _btn)) { if (open) _whyOpen.Remove(b.Cause); else _whyOpen.Add(b.Cause); }
+                if (open)
+                {
+                    var story = Whys.Story(w, b.Cause);
+                    var ws = new StringBuilder();
+                    foreach (var st in story)
+                    {
+                        ws.Append(st.Side ? "    beside it: " : "").Append(st.Text).Append('\n');
+                        if (st.Link.Length > 0) ws.Append("    <color=#f2c35f>").Append(st.Link).Append("</color>\n");
+                    }
+                    ws.Append("    <color=#f2c35f>for which it was raised.</color>\n").Append(Whys.Began(w, story));
+                    GUILayout.Label(ws.ToString(), _small);
+                }
+            }
+            GUILayout.EndScrollView();
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Its village", _btn)) ShowPlace(b.Settlement);
             if (GUILayout.Button("Close", _btn)) _building = 0;
