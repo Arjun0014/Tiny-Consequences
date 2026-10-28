@@ -46,7 +46,7 @@ namespace TC2.Game
                 _titleBtn = new GUIStyle(_btn) { fontSize = 16, padding = new RectOffset(18, 18, 8, 8) };
             }
             var w = Host.World;
-            float bw = Mathf.Min(640f, sw - 40f), bh = _titleGuide ? Mathf.Min(600f, sh - 40f) : 268f;
+            float bw = Mathf.Min(640f, sw - 40f), bh = _titleGuide ? Mathf.Min(660f, sh - 40f) : 268f;   // (session 29: 600 -> 660, the guide says more)
             var r = new Rect((sw - bw) * 0.5f, (sh - bh) * 0.5f, bw, bh);
             GUILayout.BeginArea(r, _box);
             GUILayout.Label("Tiny Consequences", _titleBig, GUILayout.Height(74));
@@ -68,8 +68,8 @@ namespace TC2.Game
             if (_titleGuide)
             {
                 GUILayout.Space(10);
-                GUILayout.Label("<b>Look</b>: drag to turn the planet, the wheel to come down to a village or rise to the whole world. <b>Time</b>: 1-8 or the bar at the top set the speed; Space holds the world still; 9 lets it run as fast as it can. The world lives on while you are away and catches up when you come back.", _titleText);
-                GUILayout.Label("<b>Its people</b>: click a person or a house to see who they are and follow a life; a village's name opens its page. <b>B</b> opens the History Book - every line in it happened, and each tells what caused it. <b>R</b> shows the realms, <b>N</b> the names, <b>M</b> mutes the world's sound, <b>H</b> hides all of this.", _titleText);
+                GUILayout.Label("<b>Look</b>: drag to turn the planet, the wheel to come down to a village or rise to the whole world. <b>Time</b>: 1-8 or the bar at the top set the speed; Space holds the world still; 9 lets it run as fast as it can; Skip leaps years ahead, watched from above. The world lives on while you are away and catches up when you come back.", _titleText);
+                GUILayout.Label("<b>Its people</b>: point at anyone or anything - a person, a house, a work, a road, a ruin, a village from afar - to see what it is doing and why; click it for its page, its life and its Why?. A village's name opens its page. <b>B</b> opens the History Book - every line in it happened, and each tells what caused it; the History panel's lines and the news open theirs. <b>R</b> shows the realms, <b>N</b> the names, <b>M</b> mutes the world's sound, <b>H</b> hides all of this.", _titleText);   // (session 29: pointing reads the world; Skip)
                 GUILayout.Label("<b>Reach in</b>: the powers at the bottom - lightning, a storm, a quake, an eruption, a sickness, a blight, a drought, rain, warmth and cold, a stone from the sky, bounty, game, a vein of ore. Choose one, then click the ground; the right button stops. Each comes back in the world's time. The world does not exist to answer you: what follows is its own doing, and the book's last part, Your Actions, tells what came of yours.", _titleText);
             }
             GUILayout.EndArea();
