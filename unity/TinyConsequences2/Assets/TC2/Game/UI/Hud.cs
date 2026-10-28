@@ -768,7 +768,7 @@ namespace TC2.Game
             if (_book || lapse) { /* (the book holds the screen; the timelapse the picture) */ }
             else if (_placeSid != 0 && w.Settlements.Exists(_placeSid)) { float pw = Mathf.Min(760f, sw - 40f); _pageRect = new Rect(sw - 16f - pw, topY - 2f, pw, pageH); PlacePage(_pageRect, w); }
             else if (_personPage && _selected != 0 && w.People.Exists(_selected)) { float pw = Mathf.Min(820f, sw - 40f); _pageRect = new Rect(sw - 16f - pw, topY - 2f, pw, pageH); PersonSheet(_pageRect, w); }   // (session 29: Hud.Person.cs)
-            else if (_building != 0 && w.Buildings.Exists(_building)) { showInsp = true; BuildingPage(insp, w); }
+            else if (_building != 0 && w.Buildings.Exists(_building)) { showInsp = true; insp = new Rect(sw - 476f, card.y, 460f, Mathf.Min(430f, sh - card.y - 140f)); BuildingPage(insp, w); }   // (session 29: a leaf, larger)
             _powersRect = Rect.zero;
             if (!_book && !lapse) { PowerBar(w, sw, sh); DrawCastNote(sw); }   // (the god's powers: F9.1; the last cast's word: session 29)
             if (!_book && !lapse && _pageRect.width <= 0f) YourHand(w, sw, sh);   // (what came of your casts, live: session 27; not over a person's or a place's page - s27book5)
@@ -1046,31 +1046,49 @@ namespace TC2.Game
                 for (int i = System.Math.Max(0, evs.Count - 6); i < evs.Count; i++)
                     if (w.History.TryGet(evs[i], out var e)) sb.Append(HistoryText.Dated(w, e)).Append('\n');
             }
-            GUILayout.BeginArea(r, _box);
-            _bScroll = GUILayout.BeginScrollView(_bScroll, GUIStyle.none, GUI.skin.verticalScrollbar, GUILayout.Height(r.height - 46f));
-            GUILayout.Label(sb.ToString(), _small);
-            // (session 29) why it was raised, told as a story from its root (Core/History/Whys)
-            if (b.Cause != 0 && w.History.TryGet(b.Cause, out _))
+            // (session 29) a leaf of the book like the person's and the place's: its kind as a kicker, its name, its words; why it was raised as a story
+            PersonStyles();
+            if (Event.current.type == EventType.Repaint)
             {
-                bool open = _whyOpen.Contains(b.Cause);
-                if (GUILayout.Button(open ? "Hide why it was raised" : "Why was it raised? The story", _btn)) { if (open) _whyOpen.Remove(b.Cause); else _whyOpen.Add(b.Cause); }
-                if (open)
-                {
-                    var story = Whys.Story(w, b.Cause);
-                    var ws = new StringBuilder();
-                    foreach (var st in story)
-                    {
-                        ws.Append(st.Side ? "    beside it: " : "").Append(st.Text).Append('\n');
-                        if (st.Link.Length > 0) ws.Append("    <color=#f2c35f>").Append(st.Link).Append("</color>\n");
-                    }
-                    ws.Append("    <color=#f2c35f>for which it was raised.</color>\n").Append(Whys.Began(w, story));
-                    GUILayout.Label(ws.ToString(), _small);
-                }
+                GUI.DrawTexture(new Rect(r.x - 5f, r.y - 4f, r.width + 10f, r.height + 8f), _leather);
+                GUI.DrawTexture(r, _leaf);
             }
+            string all = sb.ToString();
+            int nl = all.IndexOf('\n');
+            string title = (nl > 0 ? all.Substring(0, nl) : all).Replace("<b>", "").Replace("</b>", "");
+            string body = nl > 0 ? all.Substring(nl + 1).Replace("<b>why</b>: ", "Why: ").Replace("<b>history</b>\n", "-- its history\n") : "";
+            GUILayout.BeginArea(new Rect(r.x + 16f, r.y + 10f, r.width - 28f, r.height - 16f));
+            GUILayout.BeginHorizontal();
+            Kicker(home ? "A Home" : Boats.IsBoat(b.Kind) ? "A Boat" : "A Work");
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("close  ×", _bkNav, GUILayout.Width(84))) _building = 0;
+            GUILayout.EndHorizontal();
+            GUILayout.Label(title, _pgBig);
+            _bScroll = GUILayout.BeginScrollView(_bScroll, GUIStyle.none, GUI.skin.verticalScrollbar);
+            foreach (string raw in body.Split('\n'))
+            {
+                string t = raw.Trim();
+                if (t.Length == 0) continue;
+                if (t.StartsWith("-- ", System.StringComparison.Ordinal)) { GUILayout.Label(Cap(t.Substring(3)), _pgHead); continue; }
+                int colon = t.IndexOf(": ", System.StringComparison.Ordinal);
+                if (t.StartsWith("Why: ", System.StringComparison.Ordinal)) t = "<color=#8c2614>Why</color>  " + t.Substring(5);
+                else if (t.StartsWith("Year ", System.StringComparison.Ordinal) && colon > 0 && colon < 30) t = "<color=#8c2614>" + t.Substring(5, colon - 5) + "</color>  " + t.Substring(colon + 2);
+                GUILayout.Label(t, _pgEntry);
+            }
+            // why it was raised, told as a story from its root (Core/History/Whys)
+            if (b.Cause != 0 && w.History.TryGet(b.Cause, out _)) WhyToggle(w, "Why was it raised? The story from its root", b.Cause, r.width - 60f);
             GUILayout.EndScrollView();
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Its village", _btn)) ShowPlace(b.Settlement);
-            if (GUILayout.Button("Close", _btn)) _building = 0;
+            if (GUILayout.Button("its village  ›", _bkNav)) ShowPlace(b.Settlement);
+            if (home && b.Household != 0 && w.Households.Exists(b.Household))
+            {
+                var mem = w.Members(b.Household);
+                int eldest = 0; double eldestAge = -1;
+                for (int i = 0; i < mem.Count; i++) { ref var q = ref w.People.Get(mem[i]); if (q.Alive && q.AgeYears(w.Now) > eldestAge) { eldestAge = q.AgeYears(w.Now); eldest = mem[i]; } }
+                if (eldest != 0 && GUILayout.Button("its household  ›", _bkNav)) { _building = 0; ShowPerson(eldest, 4); }
+            }
+            if (b.Leader != 0 && w.People.Exists(b.Leader) && GUILayout.Button("who led it  ›", _bkNav)) { _building = 0; ShowPerson(b.Leader, 5); }
+            GUILayout.FlexibleSpace();
             GUILayout.EndHorizontal();
             GUILayout.EndArea();
         }
