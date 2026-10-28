@@ -6495,5 +6495,13 @@ herds grazing on it. Then (b677e73) "it works 84 ha of the ..." ("sown" read wro
 stayed across the page the click opened: the pointer just left of it) - to the pointer's left, else none. Web `0_rn_web_s30j` (b677e73): `s30web6` 9/9;
 `s30book6` extra_field_page - "it works 84 ha of the 100 ha of arable within its reach - the rest lies fallow", the tag at the pointer's left, clear of
 Retistead's page. (10) **Tools**: bookshots' extras wait after each camera move until the ground the view asks for is built (`TerrainLod.Pending`, the
-bridge's `terrainPending`; 834b31b) - the building's page had been shot 3.5 s after a fly-in from 6 km and read as a bare village. **Pending**: Web
-`0_ro_web_s30k` (834b31b: `s30web7`; `s30book8` extra_building settled).
+bridge's `terrainPending`; 834b31b) - the building's page had been shot 3.5 s after a fly-in from 6 km and read as a bare village. Web `0_ro_web_s30k` (3d84aea): `s30web7` 9/9;
+`s30book8` extra_building settled (the village's ground and trees built before the shot). (11) **The powers as play, every one cast and read**
+(`s30pow1`, bookshots `--powers`: the thirteen powers the play shots had not covered, each cast at the fields by Skekdraistead at year 300 and eight
+hours lived): Your hand names each cast and what came of it - "one landfall" and the storm's thread; "one rain brought"; "one drought"; "one warm summer",
+"one cold summer"; "one quake, 35 deaths and eight stores spoiled" (its thread: the stores of Krendgernford); "one new vent, one eruption, five fires,
+one fall of ash and five fires put out"; "one new sickness and one village struck by sickness" (the cattle cough, the first to fall ill named); "eight
+villages' crops blighted"; "ten villages' fields renewed"; "one kind of beast culled", "brought"; "one vein laid bare". Fixed (87e7eec): "(1 days ago)" -
+"yesterday"; "burnt out after 0 hours" - "within the hour"; and the fields' tag near the screen's foot lay over the power bar (`s30book8`) - a hover tag
+keeps clear of every panel drawn: below-right of the pointer, else below-left, above-right, above-left, else none. **Pending**: Web `0_rp_web_s30l`
+(87e7eec: `s30web8`; `s30book9` extra_field_hover; `s30pow2` the eruption's thread, "yesterday").
