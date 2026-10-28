@@ -427,6 +427,53 @@ namespace TC2.Core.History
             return t;
         }
 
+        // ------------------------------------------------------------------ following (session 29)
+
+        /// <summary>
+        /// Their household among its village's households (C10.2's followings, read as the village's first is weighed - Society.Leaders): whom it follows and
+        /// why (kin; grain it owes them; they fed it in hard times) and who follows it, by the same three bonds. Lines of words; empty for no household.
+        /// </summary>
+        public static List<string> Following(World w, int pid)
+        {
+            var l = new List<string>();
+            if (Society.Leaders.Off || !w.People.Exists(pid)) return l;
+            ref var p = ref w.People.Get(pid);
+            int hid = p.Household;
+            if (hid == 0 || !w.Households.Exists(hid)) return l;
+            int sid = w.Households.Get(hid).Settlement;
+            if (!w.Settlements.Exists(sid)) return l;
+            var all = Society.Leaders.All(w, sid);
+            var kin = Holdings.KinMap(w, sid);
+            var hs = w.Holdings;
+            long since = w.Now - Society.Leaders.FollowYears * SimTime.Year;
+            ref var mine = ref w.Households.Get(hid);
+            int patron = mine.Patron; long patronAt = mine.PatronAt;
+            var follows = new List<string>();
+            foreach (var kv in all)
+            {
+                if (kv.Key == hid || !kv.Value.Contains(hid) || !w.Households.Exists(kv.Key)) continue;
+                var why = new List<string>();
+                if (kin.TryGetValue(kv.Key, out var kl) && kl.Contains(hid)) why.Add("kin");
+                for (int i = 0; i < hs.DebtCount; i++) { var d = hs.DebtAt(i); if (d.Debtor == hid && d.Creditor == kv.Key) { why.Add("owing them " + F(d.Fu) + " days' grain"); break; } }
+                if (patron == kv.Key && patronAt >= since) why.Add("fed by them in hard times");
+                follows.Add("the " + HistoryText.Plural(w.History.NameOf(EntityRef.Household(kv.Key))) + (why.Count > 0 ? " (" + string.Join(", ", why.ToArray()) + ")" : ""));
+            }
+            follows.Sort(string.CompareOrdinal);
+            if (follows.Count > 0) l.Add("Their household follows " + string.Join("; ", follows.ToArray()) + ".");
+            int n = Society.Leaders.Following(w, sid, hid, out int k, out int owing, out int fed);
+            if (n > 0)
+            {
+                var parts = new List<string>();
+                if (k > 0) parts.Add(k + " of kin");
+                if (owing > 0) parts.Add(owing + " owing it grain");
+                if (fed > 0) parts.Add(fed + " it fed in hard times");
+                l.Add(n + (n == 1 ? " household follows theirs" : " households follow theirs") + (parts.Count > 0 ? " - " + string.Join(", ", parts.ToArray()) : "") +
+                      (w.Settlements.Get(sid).HeadHh == hid ? ": the most of any, so theirs is the first household" : "") + ".");
+            }
+            else l.Add("No household follows theirs.");
+            return l;
+        }
+
         // ------------------------------------------------------------------ temperament
 
         /// <summary>

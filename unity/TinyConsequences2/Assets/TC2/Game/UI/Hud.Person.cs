@@ -24,6 +24,7 @@ namespace TC2.Game
         int _pgBuiltFor = -1; float _pgBuiltAt = -99f;
         List<Lives.Entry> _pgLife; Lives.Tree _pgTree; List<string[]> _pgTemper; List<Lives.Skill> _pgSkills;
         string _pgDeeds = "", _pgHome = "", _pgWorkText = "";
+        List<string> _pgFollow = new List<string>();   // (session 29: whom their household follows and who follows it)
         readonly List<int> _pgBack = new List<int>();          // (the people this page came from: "back to ...")
         long _pgWhy;                                            // (a Life record whose causes are open)
         GUIStyle _pgBadge, _pgBox, _pgBoxDead, _pgBoxMe, _pgSmall, _pgBig, _pgItal, _pgBarLabel, _pgEntry, _pgEntryBig, _pgEntrySmall, _pgAge;
@@ -87,6 +88,7 @@ namespace TC2.Game
                 _pgDeeds = Biography.Deeds(w, pid);
                 _pgHome = Biography.Home(w, pid);
                 _pgWorkText = Biography.Work(w, pid);
+                _pgFollow = Lives.Following(w, pid);
             }
             if (Event.current.type == EventType.Repaint)
             {
@@ -138,7 +140,7 @@ namespace TC2.Game
                 case 0: NowSection(w, pid, cw); break;
                 case 1: FamilySection(w, pid, cw); break;
                 case 2: WorkSection(w, pid, cw); break;
-                case 3: TextSection(_pgDeeds); break;
+                case 3: TextSection(_pgDeeds); if (_pgFollow.Count > 0) { GUILayout.Label("Among the households", _pgHead); foreach (var f in _pgFollow) GUILayout.Label(f, _pgBody); } break;
                 case 4: HouseholdSection(w, pid); break;
                 default: LifeSection(w, pid, cw); break;
             }

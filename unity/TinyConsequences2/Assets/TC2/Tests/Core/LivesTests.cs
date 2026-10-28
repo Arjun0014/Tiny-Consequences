@@ -87,6 +87,34 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void TheFirstsHouseholdIsFollowedAndReadingItChangesNothing()
+        {
+            var a = TestWorlds.Make(627); var b = TestWorlds.Make(627);
+            a.RequestResolution(Resolution.Coarse, SimTime.StartOfDay(a.Now) + SimTime.Day);
+            b.RequestResolution(Resolution.Coarse, SimTime.StartOfDay(b.Now) + SimTime.Day);
+            int told = 0;
+            for (int d = 0; d < 20 * 48; d++)
+            {
+                a.AdvanceTo(a.Now + SimTime.Day);
+                b.AdvanceTo(b.Now + SimTime.Day);
+                if (d % 12 != 0) continue;
+                for (int sid = b.Settlements.First(); sid != 0; sid = b.Settlements.Next(sid)) { int h = b.Settlements.Get(sid).Head; if (h != 0) told += Lives.Following(b, h).Count; }
+            }
+            Assert.AreEqual(a.StateHash(), b.StateHash(), "a world whose followings were read lives as the one never read");
+            Assert.Greater(told, 0);
+            bool firstSaid = false;
+            for (int sid = b.Settlements.First(); sid != 0; sid = b.Settlements.Next(sid))
+            {
+                int h = b.Settlements.Get(sid).Head;
+                if (h == 0) continue;
+                var l = Lives.Following(b, h);
+                foreach (var s in l) Console.WriteLine(Biography.Title(b, h) + ": " + s);
+                if (l.Exists(s => s.Contains("theirs is the first household"))) firstSaid = true;
+            }
+            Assert.IsTrue(firstSaid, "a first's household is told as followed the most");
+        }
+
+        [Test]
         public void ATemperamentIsToldOnlyWhereItIsMarked()
         {
             var p = new Person { Bold = 128, Social = 128, Diligence = 128, Chrono = 128, Pace = 128, Curious = 128 };
