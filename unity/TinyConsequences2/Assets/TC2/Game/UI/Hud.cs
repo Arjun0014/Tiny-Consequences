@@ -589,6 +589,13 @@ namespace TC2.Game
             float x = mp.x / _scale + 14f, y = (Screen.height - mp.y) / _scale + 10f;
             if (x + size.x > sw) x = sw - size.x - 4f;
             if (y + size.y > sh) y = sh - size.y - 4f;
+            // (session 30) never over an open page: to the pointer's left, else none - a click on fields opened their village's page under a tag that lay
+            // across it (s30book4 extra_field_page)
+            if (_pageRect.width > 0f && new Rect(x, y, size.x, size.y).Overlaps(_pageRect))
+            {
+                x = mp.x / _scale - 14f - size.x;
+                if (x < 4f || new Rect(x, y, size.x, size.y).Overlaps(_pageRect)) return;
+            }
             _tagRect = new Rect(x, y, size.x, size.y);
             GUI.Box(_tagRect, content, _mapTag);
         }

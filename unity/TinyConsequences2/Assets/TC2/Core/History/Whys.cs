@@ -345,7 +345,7 @@ namespace TC2.Core.History
                 default: l.Add("lying fallow"); break;
             }
             if (s.FieldHa > 0.0)
-                l.Add(s.FieldHa.ToString("0", iv) + " ha sown of the " + s.ArableHa.ToString("0", iv) + " ha of arable within its reach" +
+                l.Add("it works " + s.FieldHa.ToString("0", iv) + " ha of the " + s.ArableHa.ToString("0", iv) + " ha of arable within its reach" +   // ("84 ha sown" read wrong over stubble: s30book4)
                       (s.ArableHa > s.FieldHa * 1.15 ? " - the rest lies fallow" : ""));
             if (s.CropBurnt > 0.05 && (s.Crop == CropStage.Sown || s.Crop == CropStage.Growing || s.Crop == CropStage.Ripe))
                 l.Add((s.CropBurnt * 100.0).ToString("0", iv) + " % of its standing crop burned this season" +

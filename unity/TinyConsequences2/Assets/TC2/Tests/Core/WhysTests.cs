@@ -35,12 +35,12 @@ namespace TC2.Tests.Core
                 if (!s.Inhabited || s.FieldHa <= 0.0) continue;
                 var l = Whys.Fields(w, sid);
                 told++;
-                Assert.GreaterOrEqual(l.Count, 3, "name, stage, sown of arable");
+                Assert.GreaterOrEqual(l.Count, 3, "name, stage, worked of arable");
                 StringAssert.StartsWith("The fields of " + w.History.NameOf(EntityRef.Settlement(sid)), l[0]);
                 string stage = s.Crop == TC2.Core.Places.CropStage.Sown ? "sown" : s.Crop == TC2.Core.Places.CropStage.Growing ? "growing" :
                                s.Crop == TC2.Core.Places.CropStage.Ripe ? "ripe" : s.Crop == TC2.Core.Places.CropStage.Harvested ? "stubble" : "fallow";
                 StringAssert.Contains(stage, l[1]);
-                StringAssert.Contains(" ha sown of the ", l[2]);
+                StringAssert.StartsWith("it works ", l[2]);
                 foreach (var line in l) { StringAssert.DoesNotContain("NaN", line); StringAssert.DoesNotContain("cells", line); }
             }
             Assert.Greater(told, 0, "villages with fields to tell");
