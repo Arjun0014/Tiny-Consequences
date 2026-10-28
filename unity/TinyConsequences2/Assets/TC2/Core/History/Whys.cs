@@ -252,7 +252,7 @@ namespace TC2.Core.History
                 for (int i = 0; i < bl.Count; i++)
                 {
                     ref var b = ref w.Buildings.Get(bl[i]);
-                    if (Boats.IsBoat(b.Kind) || !Homes.Fallen(in b, w.Now) || Homes.RuinLeft(in b, w.Now) <= 0.03 || b.X * b.X + b.Y * b.Y > far * far * 0.36) continue;
+                    if (Boats.IsBoat(b.Kind) || !Homes.Fallen(in b, w.Now) || Homes.RuinLeft(in b, w.Now) <= 0.03 || (double)b.X * b.X + (double)b.Y * b.Y > far * far * 0.36) continue;   // (in double: floatcheck - session 30)
                     if (Structures.IsHome(b.Kind)) homes++; else works++;
                 }
                 l.Add("Its people live " + (far / 10.0).ToString("0", CultureInfo.InvariantCulture) + "0 m from its first square" + (homes + works > 0 ? ", where " +

@@ -25,6 +25,25 @@ namespace TC2.Tests.Core
         static void Years(World w, double y) => w.AdvanceTo(w.Now + SimTime.Years(y));
 
         [Test]
+        public void AFiresGroundIsToldInHectaresNotTheGridsCells()
+        {
+            // (session 30) "The fire near Feinhope burnt out after 17 hours (1 cells)" stood in the book (s30web1): a fire's ground is the land it burned, by
+            // the world's own measure (a cell's geo area), and an hour is one hour
+            var w = TestWorlds.Make(611);
+            int sid = w.Settlements.First();
+            int cell = w.Settlements.Get(sid).Cell;
+            double cellHa = w.Planet.GeoAreaHa(cell);
+            long one = w.Record(new HistoryEvent { Kind = HistoryKind.FireOut, Time = w.Now, Settlement = sid, Cell = cell, Subject = EntityRef.Settlement(sid), ArgA = 1, Magnitude = 1, RootKind = RootKind.Nature });
+            long many = w.Record(new HistoryEvent { Kind = HistoryKind.Wildfire, Time = w.Now, Settlement = sid, Cell = cell, Subject = EntityRef.Settlement(sid), ArgA = 17, Magnitude = 30, RootKind = RootKind.Nature });
+            Assert.IsTrue(w.History.TryGet(one, out var e1)); Assert.IsTrue(w.History.TryGet(many, out var e2));
+            string a = HistoryText.Describe(w, in e1), b = HistoryText.Describe(w, in e2);
+            StringAssert.DoesNotContain("cells", a); StringAssert.DoesNotContain("cells", b);
+            StringAssert.Contains("after 1 hour,", a);
+            StringAssert.Contains("about " + DMath.Max(1.0, DMath.RoundHalfUp(cellHa)).ToString("0", System.Globalization.CultureInfo.InvariantCulture) + " ha", a);
+            StringAssert.Contains(" ha burnt so far", b);
+        }
+
+        [Test]
         public void TheBookIsWrittenFromTheLedgerAndEveryLineStandsOnItsRecord()
         {
             var w = TestWorlds.Make(607);
