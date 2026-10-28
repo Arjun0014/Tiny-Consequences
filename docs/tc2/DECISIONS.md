@@ -6443,15 +6443,26 @@ season live and stood as gold blocks with a straight edge among brown (lapse_7).
 **The cast's word beside Your hand**: drawn after it, between what stands over the bar's ends (Your hand or the History panel on the left, a page's foot
 on the right), else above them; no map name under it (`Hud._noteRect`). (4) **Tools**: the camera view `fieldmeet` (`:low` 160 m, `:far` 900 m; 400 m) -
 two villages' fields meeting with the most unlike crops within 4 km of the framed village, over the edge between their cells - with its villages and
-stages in the log.
+stages in the log; `shore` (`:low` 110 m, `:far` 600 m; 250 m) - the coast nearest the framed village; `Look.SeaTrue` (0: the sea on its mesh, a
+shot's "before"). (5) **The sea on its true sphere** (f1a0323): the sea is a UV sphere of 384 x 192 faces (~100 m on the 6 km planet) whose faces lie
+up to ~0.4 m inside the true sphere between their corners, while the ground colours its shallows, wet sand and surf by the true radius - on a flat beach
+the water's edge stood tens of metres off them in the faces' pattern, a sawtooth of bare and covered triangles along the shore (`s29book8`
+page_place_1_1, Kaihope's shore). The water shader writes the depth of the view ray's own meeting with the true sphere (`_SeaSphere`, the sea's material
+only; lakes keep their meshes), so the ground is tested against the true sea surface; the depth texture stays off (D2-026). On the exact sphere the
+close view's edge was crisp and the ground's surf lay under the surface (the faces' sag had left the first ~0-0.4 m uncovered, unevenly): the sphere
+stands 0.25 m below the sea's level (b5789df), so the first quarter metre at the shore is the swash - wet sand and surf - as an even band.
 
 **Considered and left.** A boundary inside a furlong still follows the share's iso-line where the band crosses it (a curve within some furlongs), as
-the fields' edge against wild land does (D2-203 (11)) - whole furlongs would need the share at the furlong's centre. The coasts: at village distance the
-sea's surface meets coarse coastal triangles as a sawtooth of light and dark facets (`s29book8` page_place_1_1, Kaihope's shore) - the sea surface has one
-alpha and no depth (the depth texture is off: D2-026, D2-040); a fix needs the depth under the sea surface per patch (the sea drawn per terrain patch with
-the patch's own heights) - left for a look pass.
+the fields' edge against wild land does (D2-203 (11)) - whole furlongs would need the share at the furlong's centre. From orbit the coast's turquoise shelf steps along the cells (`s29book8` extra_far_hover) - left: it is the sea floor's
+own relief at the cells' scale, a few pixels from that far.
 
 **Evidence.** Unity shots `s30v1` (year 600: Dreford's green fields and Pemwick's sown ones), `s30v2` (year 300: Retistead's sown and Paitaimwick's
 green) at bdf3e41 - 0 shader errors, the integrated Radeon: the boundary along whole furlongs at 160, 400 and 900 m and blocky only at furlong scale from
-the region view; `s30v2`'s junction artifact fixed in bf5ca22. **Pending**: Web `0_rb_web_s30a` (bdf3e41: `s30web1`, `s30book1` play_meteor_land and
-extra_way_hover, `s30lapse1` lapse_7) and shots `0_rc_shots_s30v3` (bf5ca22: `s30v3`, `s30v4`).
+the region view; `s30v2`'s junction artifact fixed in bf5ca22. Web `0_rb_web_s30a` (bdf3e41): `s30web1` 9/9 (the browser =
+headless bit for bit; the new terrain shader's Web variants built, 0 shader errors - the build 14 min, its variants compiled anew); `s30book1`
+play_meteor_land - the gold word beside Your hand, nothing under it; `s30lapse1` lapse_7 (year 303, mid-summer) - no gold band, no straight edge, no
+block; lapse_8 (year 310) smooth. Shots `s30v3`/`s30v4` (693d915) and `s30v5`/`s30v6` (b5789df), 0 shader errors: the shores beside their before
+(`~SeaTrue=0`) - the faces' triangles along the water's edge gone (year 300's shallow inland water: the sawtooth on both edges), the edge the ground's own
+contour, the swash an even band close in; the surface's ripples now show over the shallowest water too. The year-300 junction's squeezed strips stayed
+after bf5ca22: they lie along a crest and run down its slope - a hillside seen obliquely, not two frames. **Pending**: Kaihope's shore in a Web build
+(the case that showed the faces).
