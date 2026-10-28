@@ -1081,6 +1081,14 @@ namespace TC2.Game
             if (home)
             {
                 if (b.Household != 0 && w.Households.Exists(b.Household)) sb.Append("home of the ").Append(TC2.Core.History.HistoryText.Plural(w.History.NameOf(EntityRef.Household(b.Household)))).Append(" (").Append(w.Members(b.Household).Count).Append(" people)\n");
+                else if (fallen)
+                {
+                    // (session 29) a ruin: who lived in it when it burned (the fire's record names them), else who lived in it last - not "standing empty"
+                    long fev2 = FellCached(w, _building);
+                    int lastHh = fev2 != 0 && w.History.TryGet(fev2, out var fe2) && fe2.Subject.Kind == EntityKind.Household ? fe2.Subject.Id : 0;
+                    if (lastHh != 0) sb.Append("the ").Append(TC2.Core.History.HistoryText.Plural(w.History.NameOf(EntityRef.Household(lastHh)))).Append(" lived in it when it burned\n");
+                    else if (b.Last != 0) sb.Append("the ").Append(TC2.Core.History.HistoryText.Plural(w.History.NameOf(EntityRef.Household(b.Last)))).Append(" lived in it last\n");
+                }
                 else sb.Append("standing empty").Append(b.Last != 0 ? "; the " + TC2.Core.History.HistoryText.Plural(w.History.NameOf(EntityRef.Household(b.Last))) + " lived in it last" : "").Append('\n');
                 if (b.Style != 0) sb.Append("raised by the ").Append(TC2.Core.History.HistoryText.Plural(w.History.NameOf(EntityRef.Household(b.Style)))).Append("\n");
                 if (Architecture.Has(b.Form) && b.Kind == Structures.House) sb.Append(Architecture.Describe(b.Form, true)).Append(" (").Append(Architecture.Why(b.Form, true)).Append(")\n");   // (how it was built: D2-114)
@@ -1232,7 +1240,7 @@ namespace TC2.Game
             string body = nl > 0 ? all.Substring(nl + 1).Replace("<b>why</b>: ", "Why: ").Replace("<b>history</b>\n", "-- its history\n") : "";
             GUILayout.BeginArea(new Rect(r.x + 16f, r.y + 10f, r.width - 28f, r.height - 16f));
             GUILayout.BeginHorizontal();
-            Kicker(home ? "A Home" : Boats.IsBoat(b.Kind) ? "A Boat" : "A Work");
+            Kicker(Homes.Fallen(in b, w.Now) ? "A Ruin" : home ? "A Home" : Boats.IsBoat(b.Kind) ? "A Boat" : "A Work");   // (session 29: a ruin is a ruin)
             GUILayout.FlexibleSpace();
             if (GUILayout.Button("close  ×", _bkNav, GUILayout.Width(84))) _building = 0;
             GUILayout.EndHorizontal();
