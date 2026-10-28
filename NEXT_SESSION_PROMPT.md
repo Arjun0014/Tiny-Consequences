@@ -53,6 +53,19 @@ process you did not start.
   lines (newest first) and the news opening the book, the ticker on a loaded world, no names under panels, the aim's words in a box, crafts and works in
   words, the book's words, a village's name where its people live and its page saying so, the title's guide.
 
+## LAST STATE (29 Oct 2026, ~02:00 IST) - read this first
+- **The full headless suite passed**: `0_qp_fullsuite_s29c2` on the branch at 0fe9093 - **TESTS: 523 passed, 0 failed, 0 skipped** (1,142 s;
+  `$N/fullsuite_s29c2.txt`, `$N/fs_s29c2_ok`; `N` = the queue's scratchpad, see `lib.sh`).
+- **The queue's runner is STOPPED**: Claude Code stopped the background runner (task `bp3fvcitn`) at ~02:00 because the machine was low on memory, while
+  `0_qq_web_s29g` was in its Unity Web build (started 01:59:38 at main 31a268a; two Unity.exe were still running at 02:00 - the build may finish on its
+  own, but the job's later steps did not survive: no webtest `s29web7`, no bookshots `s29book8`/`s29lapse6`, no ProjectSettings restore). Its script is
+  gone (the runner had taken it from `$Q/todo`); it was `$Q/done/0_qn_web_s29f.sh` with tags s29web7 / s29book8 (`--save s2_ac5/world_y600.tc2 --lat -51.4
+  --lon 44.1 --views "region:6000" --extras --pages "place:1:1,place:2:1" --book ""`) / s29lapse6 (`--lapse --skip 10` on y300) and the check
+  `merge-base --is-ancestor 0fe9093`. **Do not restart the runner on your own** (Claude Code's notice: memory may still be short) - check memory
+  (`source tc2/out/tools/s23/lib.sh; load`) and that no Unity.exe of the stopped job still runs; ask Arjun before restarting it if in doubt. Once Unity
+  has ended: `git -C "C:/Game Dev/tiny-consequences" checkout -- unity/TinyConsequences2/ProjectSettings/ProjectSettings.asset` (the build modifies it);
+  `unity/TinyConsequences2/Assets/Resources/` (untracked) appeared during the build - leave it unless it is clearly the build's own output.
+
 ## Do next, in order
 0. **At the handoff (~01:40)** `0_qn_web_s29f` and `0_qo_shots_s29v7` are DONE and judged (D2-203 (19)); `0_qp_fullsuite_s29c2` runs, `0_qq_web_s29g` is
    queued (verify the orbit recolour `s29lapse6`, Kaihope's burned-crop line `s29book8`). **Open first**: charred ruins still not dark in shots
