@@ -6487,5 +6487,5 @@ they are doing, from state (`Whys.Fields`, an observer): sown earth and the muck
 far its herds have grazed it; how much of its arable within reach it sows; a burned share and by whom. The village is the one the ground draws there
 (`TerrainLod.FieldOwnerAt`: the cells' shares read where a vertex reads them; none within 110 m of its square or where the field weight is under a half);
 a click opens its page at its Land. WhysTests.AVillagesFieldsAreToldAsTheGroundDrawsThem (4/4). Tools: bridge `field meet [ALT]`; bookshots --extras
-`extra_field_hover`, `extra_field_page`. **Pending**: the full suite `0_rl_fullsuite_s30` (f7de2f8, with the lint first); Web `0_rm_web_s30i` (10c8c60:
-`s30web5`, `s30book4`/`s30book5` extra_field_hover and extra_field_page).
+`extra_field_hover`, `extra_field_page`. The full suite `0_rl_fullsuite_s30` (f7de2f8, the lint first: "no float arithmetic in 98 files"): **TESTS: 524 passed, 0
+failed, 0 skipped**. **Pending**: Web `0_rm_web_s30i` (10c8c60: `s30web5`, `s30book4`/`s30book5` extra_field_hover and extra_field_page).
