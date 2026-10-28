@@ -74,7 +74,7 @@ namespace TC2.Headless
                     long fell = b.Left + TC2.Core.Foundation.DMath.ToLong(TC2.Core.Places.Homes.FallYears(in b) * TC2.Core.Foundation.SimTime.Year) + 1;
                     if (!at.Contains(fell)) continue;
                     charred++; if (TC2.Core.History.Whys.FellTo(w, in b) != 0) found++;
-                    if (fell >= since) charredBy[b.Settlement] = charredBy.TryGetValue(b.Settlement, out int n1) ? n1 + 1 : 1;
+                    if (fell >= since) { charredBy[b.Settlement] = charredBy.TryGetValue(b.Settlement, out int n1) ? n1 + 1 : 1; Console.WriteLine("  burned ruin #" + id + " of #" + b.Settlement + " at " + b.X.ToString("0", iv) + ", " + b.Y.ToString("0", iv) + " m (" + Math.Sqrt(b.X * b.X + b.Y * b.Y).ToString("0", iv) + " m out), fell " + ((w.Now - fell) / (double)TC2.Core.Foundation.SimTime.Year).ToString("0.0", iv) + " years ago, " + (TC2.Core.Places.Homes.RuinLeft(in b, w.Now) * 100).ToString("0", iv) + " % standing"); }
                 }
                 Console.WriteLine("ruins standing " + ruins + ", fallen to fire " + charred + " (their fire record found by Whys.FellTo: " + found + "); fallen to fire in the last " + a.Get("burned") + " years by place:");
                 foreach (var kv in charredBy) Console.WriteLine("  #" + kv.Key + " " + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(kv.Key)) + ": " + kv.Value);

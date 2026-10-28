@@ -1064,7 +1064,11 @@ namespace TC2.Game
             long fell = b.Left + DMath.ToLong(Homes.FallYears(in b) * SimTime.Year) + 1;
             if (!_burnAt.Contains(fell)) return ruin;
             float k = Mathf.Clamp01((float)((w.Now - fell) / (40.0 * SimTime.Year)));
-            return Color.Lerp(new Color(0.16f, 0.13f, 0.11f, 1f), ruin, k * k);
+            // (the soot in the colour's alpha too: the kit's stone, untinted, takes only the alpha as its shade - Instanced.shader; s29v6 drew Paitaimwick's
+            // burned homes as grey as the rest with the soot in the rgb alone)
+            Color c = Color.Lerp(new Color(0.16f, 0.13f, 0.11f, 1f), ruin, k * k);
+            c.a = Mathf.Lerp(0.24f, ruin.a, k * k);
+            return c;
         }
 
         /// <summary>
