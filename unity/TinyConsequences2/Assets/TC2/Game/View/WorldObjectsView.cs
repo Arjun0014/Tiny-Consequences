@@ -348,7 +348,7 @@ namespace TC2.Game
             if (_treeTimer <= 0) { _treeTimer = 1.5f; RebuildTrees(w); }
             RebuildFire(w);
             EmitWatch();
-            if ((Off & 2) == 0) RebuildPeople(w);
+            if ((Off & 2) == 0 && PeopleStale(w)) RebuildPeople(w);
             var cam = Rig != null ? Rig.Cam : Camera.main;
             if ((Off & 4) == 0)
             {
@@ -1866,6 +1866,27 @@ namespace TC2.Game
             float rr = (float)System.Math.Max(r, P.Radius + P.SeaLevel);
             return new Vector3((float)d.X * rr, (float)d.Y * rr, (float)d.Z * rr);
         }
+
+        /// <summary>(session 29, s27prof2) Whether the people must be placed and posed again this frame: always when the chosen or pointed ones change or
+        /// the world is another; never while the world's time and the camera are both still (paused and looking - the region view had spent 15 of its
+        /// 36 ms posing the same people again); from 2 km off, at most every third frame (a walker moves 13 cm between, under a pixel there).
+        /// Bridge `peoplestale off`: every frame, as before.</summary>
+        bool PeopleStale(TC2.Core.Simulation.World w)
+        {
+            if (!PeopleSkip || Rig == null || Rig.Cam == null) return true;
+            var ct = Rig.Cam.transform;
+            float camDist = Vector3.Distance(ct.position, Rig.FocusPoint);
+            int sel = Chosen * 31 + Pointed * 131 + ChosenHome * 1031 + PointedHome * 10007 + ShotChosen * 7 + Host.WorldVersion * 100003;
+            double t = Host.RenderTime;
+            bool camMoved = (ct.position - _poseCam).sqrMagnitude > (camDist * 0.002f) * (camDist * 0.002f) || Quaternion.Angle(ct.rotation, _poseRot) > 0.05f;
+            bool stale = sel != _poseSel || (t != _poseT || camMoved) && (camDist < FarRepose || Time.frameCount - _poseFrame >= 3);
+            if (!stale) return false;
+            _poseSel = sel; _poseT = t; _poseCam = ct.position; _poseRot = ct.rotation; _poseFrame = Time.frameCount;
+            return true;
+        }
+        public static bool PeopleSkip = true;
+        const float FarRepose = 2000f;
+        int _poseSel = -1, _poseFrame; double _poseT = double.NaN; Vector3 _poseCam; Quaternion _poseRot;
 
         void RebuildPeople(TC2.Core.Simulation.World w)
         {

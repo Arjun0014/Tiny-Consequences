@@ -1138,9 +1138,41 @@ namespace TC2.Game
         }
 
         /// <summary>How much of a point is road (metres to the nearest track, on the sphere's chord).</summary>
+        // (session 29, s27prof2_run: RoadAt still 4 ms of a running village view's 37 - every vertex of a recoloured patch scanned every stretch of its
+        // town's cell) each cell's stretches that come near the patch being coloured, filtered once a patch; bridge `roadfilter off`: every stretch
+        readonly System.Collections.Generic.Dictionary<int, System.Collections.Generic.List<Vector4>> _roadNear = new System.Collections.Generic.Dictionary<int, System.Collections.Generic.List<Vector4>>();
+        readonly System.Collections.Generic.List<System.Collections.Generic.List<Vector4>> _roadPool = new System.Collections.Generic.List<System.Collections.Generic.List<Vector4>>();
+        Vector3 _roadPc; float _roadMargin2; bool _roadFilter;
+        public static bool RoadFilter = true;
+
+        /// <summary>The patch about to be coloured: its middle (a unit direction) and how far from it (chord, on the unit sphere) a stretch may lie and still
+        /// colour one of its vertices.</summary>
+        void RoadPatch(Vector3 middle, float margin)
+        {
+            foreach (var l in _roadNear.Values) { l.Clear(); _roadPool.Add(l); }
+            _roadNear.Clear();
+            _roadPc = middle; _roadMargin2 = margin * margin; _roadFilter = RoadFilter;
+        }
+
         float RoadAt(PlanetState P, Vec3d d, int c, float quad)
         {
             if (!_roads.TryGetValue(c, out var list)) return 0f;
+            if (_roadFilter)
+            {
+                if (!_roadNear.TryGetValue(c, out var near))
+                {
+                    near = _roadPool.Count > 0 ? _roadPool[_roadPool.Count - 1] : new System.Collections.Generic.List<Vector4>();
+                    if (_roadPool.Count > 0) _roadPool.RemoveAt(_roadPool.Count - 1);
+                    for (int k = 0; k + 1 < list.Count; k += 2)
+                    {
+                        Vector3 a = list[k], ab = (Vector3)list[k + 1] - a;
+                        float t = Mathf.Clamp01(Vector3.Dot(_roadPc - a, ab) / Mathf.Max(1e-12f, ab.sqrMagnitude));
+                        if ((a + ab * t - _roadPc).sqrMagnitude < _roadMargin2) { near.Add(list[k]); near.Add(list[k + 1]); }
+                    }
+                    _roadNear[c] = near;
+                }
+                list = near;
+            }
             Vector3 p = PlanetGeo.ToVector(d);
             float most = 0f, R = (float)P.Radius, reach = Mathf.Max(1.2f + 2.0f, 0.8f * quad) * 1.4f / R, reach2 = reach * reach;   // (no road is drawn wider)
             for (int k = 0; k + 1 < list.Count; k += 2)
@@ -1336,6 +1368,8 @@ namespace TC2.Game
             // roads are a few metres wide: on patches whose vertices stand far apart they would alias into dashes
             float quad = (float)(DMath.HalfPi * P.Radius / (1 << p.Level) / N);
             float roadLod = Edge(48f, 20f, quad);
+            // (the stretches near this patch: its half-diagonal and the widest road's reach, with room to spare)
+            if (roadLod > 0f) RoadPatch(p.Dirs[cols.Length / 2], (float)(DMath.HalfPi / (1 << p.Level) * 0.85) + Mathf.Max(3.2f, 0.8f * quad) * 2.0f / (float)P.Radius);
             // villages near this patch
             _near.Clear();
             {
