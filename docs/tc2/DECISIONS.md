@@ -6355,16 +6355,37 @@ error" lines from shots and Web builds - the jobs had counted them in output tha
 0); bridge `way big [ALT] [AT]` (wayX/wayY/wayFront), `history on|off`, `feedline [N]`; bookshots `--extras` points at a road and a work and opens the
 History panel and a line, `--pre "C1;C2"`; headless `cells --load F [--sid N]` and `--meridian LON [--days D]`.
 
-**Considered and left.** The seat's standard is life-size by D2-152/C10.6 (realms read from afar through the map's flags and the realms layer): not
-enlarged. **Homes burned in raids** fall at once and are drawn as any old ruin (`Homes.Burnt` sets `Left` back past the fall): no state tells a burned
-ruin from an abandoned one, so drawing them charred needs a new saved field (a sim version and new saves) - left for a sim landing. **The straight
-seasonal edge from orbit** (`s29lapse2` lapse_7): not the hemispheres' season (along 131.5 E the yearly swing falls to 0.1 C at the equator and the soil's
-water varies cell by cell with no jump: `cells --meridian`), not the planet shell (the ground is all TerrainLod), not the staggered recolouring (every shown
-patch recolours together while the camera watches from orbit) - the Web job `s29lapse3` runs the timelapse with the clouds off to tell the ground's from
-the clouds' (the cover cubemap's faces).
+(8) **Burned homes charred, and a ruin says how it fell**: a home burned by a band or flattened by a stone from the sky falls at once - `Homes.Burnt`
+and the stone set `Left` back by exactly its fall time and a millisecond - so the record of that kind at that moment is its cause: the view matches each
+ruin's fall to the ledger's fire records (`WorldObjectsView.BurnTimes/Charred`: black with soot, weathering back to moss and stone over forty years - over
+fifteen, Paitaimwick's homes burned ten years before were already grey in `s29v5`) and `Whys.FellTo` finds the record: the pointer over a fallen home says
+"A ruin of X" with the band's burning and its year (it said "standing empty"), a fallen work's tag the same, the building page dates the fire and asks
+"How did it fall? The story from its root". No state added: the ledger says what burned. (9) **The aim's words in a box**: while a power is aimed its
+words are the only tag (a road's tag had been drawn over them), in a box sized to them and kept on the screen, and no name is set under it or the power's
+tooltip. (10) **A person's crafts by name** (`Tech.Law.Short`: Nets, The loom, Querns, Pottery, The ard, Copper, Iron, Plank boats - they were "Make...",
+"Weave...") and **a work led again and again told once** ("Led the raising of the charcoal hearth of Thindford four times (years 279, 285, 290 and
+298)"). (11) **The fields end furlong by furlong**: each furlong (150 m block of strips in the village's grid) is in or out by its own share of the land's
+field weight, so a village's fields stop at a ragged line of whole furlongs, not the cells' staircase; a land vertex next to the fields takes that village's
+field frame (`TerrainLod.FieldFrames`; it had been (0, 0): the edge's triangles drew the strips squeezed toward the square). (12) **The History panel
+judged** (`s29book4`): above the power bar (it ran under it; Your hand yields its place while the panel is open), its lines lit gold under the pointer
+and the realm rows' arrows "»" (the HUD's font has no "›"), a line opened in the book on the Preface given room for its story. (13) **The timelapse's
+straight seasonal edge found**: `s29lapse3` ran the timelapse with the clouds off (`--pre "setting clouds 0"`) - the edge stayed, and it shows at 1 day/s
+too: the seasonal tropics' straw ramped over moisture 0.50-0.62, about a degree and a half of latitude (~160 m on the 6 km planet), a hard line along a
+parallel from orbit, while the climate's moisture falls smoothly (`cells --meridian 131.5`: 0.78 at 10 N, 0.12 at 23 N); `TerrainLod.SeasonalTropic` now
+ramps over 0.44-0.72 and 15-21 C.
 
-**Evidence.** Shots `s29v3` (main 86f978e) and `s29v4` (main 7592a69), 0 shader errors in Unity's own logs, the integrated Radeon: Kaihope's fields
-charred strip by strip among the green from the region, village and close views, no dark staircase region, no moire. HistoryBookTests 7/7, PeaceTests
-3/3, LivesTests 4/4, WhysTests 3/3; `unity.mjs cc` clean at each commit. The year-300 book (headless): "In all 142 men swore to them"; "The people of
-Endstead were bound to make amends to Ithustead for a wounding ... but their store had no grain to spare"; "XI. Your Actions". **Pending**: the Web build
-of 5464411 (`s29web4`, `s29book4` - a road, a work, the History panel and a line opened; `s29lapse3` - the edge with the clouds off).
+**Considered and left.** The seat's standard is life-size by D2-152/C10.6 (realms read from afar through the map's flags and the realms layer): not
+enlarged. **Two villages' fields side by side at different stages** (one sown and brown, one growing and green) still meet along the cells' staircase
+(`s29book4` extra_way_hover, `s29v5` region): the crop's colour is a vertex's, one village's per vertex, so a triangle between two villages blends them -
+a boundary on furlongs would need both villages' colours at a pixel; left.
+
+**Evidence.** Shots `s29v3` (main 86f978e), `s29v4` (7592a69), `s29v5` (1b00063: Paitaimwick, two stone rings, its ruins as stone stumps and fallen
+beams), 0 shader errors in Unity's own logs, the integrated Radeon: Kaihope's fields charred strip by strip among the green from the region, village and
+close views, no dark staircase region, no moire. Web `s29web4` 9/9 (5464411) with `s29book4`: the road's tag ("The track between Vaindwick and Towick,
+walked about 6 times a year - a faint track; a path since year 276; nobody on it at this moment"), the work's ("The smithy of Skekdraistead - raised in
+year 217 - nobody at it now - why: The people of Skekdraistead now smelt and work copper (taught by Temund Kobo)"), the History panel and a line opened.
+`cells --burned`: year 600 - 63 fire records, 39 ruins standing fallen to fire, 39 found by `Whys.FellTo`; year 300 - 11 of 11. HistoryBookTests 7/7,
+PeaceTests 3/3, LivesTests 4/4, WhysTests 3/3, BiographyTests 4/4; `unity.mjs cc` clean at each commit. The year-300 book (headless): "In all 142 men
+swore to them"; "The people of Endstead were bound to make amends to Ithustead for a wounding ... but their store had no grain to spare"; "XI. Your
+Actions". **Pending**: the Web build of a453afe (`0_ql_web_s29e`: `s29web5`, `s29book5` - the aim's box, the panel above the bar, a person's crafts and
+works; `s29lapse4` - the seasonal edge softened) and shots of the forty-year soot (fec03b0).

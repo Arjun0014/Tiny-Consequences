@@ -456,6 +456,8 @@ its first repeated message and fix the cause, then delete the log.
 
 **Where we are (session 29, 28 Oct 2026, 22:23 - ~23:45 IST; context handoff with the queue running)**: on main (sim 108 unchanged) D2-199 the timelapse, D2-200 the person page, D2-201 Why?, D2-202 roads read / a village from afar / the world now / the building leaf / the book's order, Peoples, wars' leaders and lives linked / the powers' word and threads. Seen in Web builds: the timelapse, the person and place pages, Your Actions' thread; D2-202's pages are next to see. Then the visual world as evidence (the brief's section 7; shots `s29v1` queued). SESSION_HANDOFF "Session 29" has the exact state and the steps.
 
+**Where we are (session 29, second context, 29 Oct 2026, 00:00 - ~01:10 IST; context handoff with the queue running)**: on the branch `wip/s27-int` (main fast-forwarded by each job; sim 108 unchanged) D2-203 - the visual world judged as evidence in real shots and Web builds: a burned crop and burned homes drawn as fire left them (from state and the ledger), a ruin's tag and page saying how it fell, the rivers' far glint, the fields ending furlong by furlong, the timelapse's seasonal edge found and softened; works, roads and the History panel answering why; the aim's words, no names under panels; the book's and pages' words. SESSION_HANDOFF "Session 29, context 2" has the exact state and the steps.
+
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.
