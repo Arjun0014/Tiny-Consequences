@@ -1,5 +1,32 @@
 # TC2 Session handoff
 
+## Session 29, context 2 (29 Oct 2026, from 00:00 IST; Control Room run #86 session 2; Arjun AFK) - the visual world as evidence (D2-203)
+
+### Exact state (keep current)
+- **The machine**: never draw on the RX 5600M (gpusafe.mjs; Unity logs "AMD Radeon(TM) Graphics (ID=0x1636)"); silent runs; one heavy job at a time
+  (a Web build takes RAM to ~89 %: run nothing else beside it, not even `unity.mjs cc`).
+- **Code**: all on `wip/s27-int` (worktree `C:/Game Dev/tc-s27int`, every edit there); the queued jobs fast-forward main to it themselves
+  (`git merge --ff-only wip/s27-int` at their start). Sim **108** unchanged (presentation, observers and text only).
+- **The queue** (`Q` as in session 29's block below; runner task `bp3fvcitn` from context 1 still polling; follow with a Monitor on
+  `tail -n 0 -F $Q/runq.log | grep --line-buffered -E "^end |^start |runner"`). Done this context: `0_qf_shots_s29v2` (the dark zone with clouds/shadow
+  off), `0_qg_web_s29c` (Web c1fffc6: `s29web3` 9/9, `s29book2` 26 pictures, `s29book3` the year-600 book), `0_qh_shots_s29v3`, `0_qi_shots_s29v4` (the
+  burned strips). Queued at this writing: `0_qj_web_s29d` (Web of 5464411: `s29web4`, `s29book4` with the new extras, `s29lapse3` = the timelapse with
+  `--pre "setting clouds 0"`), then `0_qk_shots_s29v5` (Paitaimwick #51 at year 600: charred homes, 9678349).
+- **Built and committed this context** (D2-203): the burned crop as charred strips (`Terrain.shader` Farmland's `burnt`, `TerrainLod` RealmS.y), the
+  rivers' far glint (`River.shader`), works' tags with why (`Hud.WorkTag`), the History panel's lines opening the book and the ticker on a loaded world
+  (`SimHost.FeedIds/FeedTotal`), no name under a panel (`Hud._uiRects`), charred ruins from the ledger (`WorldObjectsView.BurnTimes/Charred`), the book's
+  words (`HistoryBook.Roman`, `Deeds`, `HistoryText` raids/amends); tools: `unity.mjs` forwards shader errors, bridge `way big`, `history`, `feedline`,
+  bookshots `--extras` (road, work, History panel, a line) and `--pre`, headless `cells` (`--sid`, `--meridian`, `--burned`).
+
+### Next, in order
+1. When `0_qj_web_s29d` ends: judge `s29web4` (9/9 expected), `tc2/out/webtest/s29book4/extra_way_hover.png`, `extra_work_hover.png`, `extra_history.png`,
+   `extra_feedline.png`, `book_7_0.png` (the men sworn counted), `book_2_0.png`; `s29lapse3/lapse_7_skip_orbit.png` - if the straight edge is gone with the
+   clouds off, it is the cloud cover's cube faces (CloudView eases one face a frame: in a skip the faces may hold different days) - fix there; if it stays,
+   it is the ground's colouring (look for a patch list or cell colour layer out of step). Fill D2-203's "Pending".
+2. When `0_qk_shots_s29v5` ends: judge `tc2/out/shots/s29v5` (charred homes at Paitaimwick read as burned, not as dark houses).
+3. Then by the brief: the visual world as evidence where the pictures show a gap (the region view's farmland edge still follows the cells; ruins of a
+   moved village; W-FOREST's sameness; the night sea's moon veil), and readability gaps (the realms legend in the leaf style).
+
 ## Session 29 (28 Oct 2026, 22:23 - ~23:45 IST; Control Room run #86 session 1; Arjun AFK overnight, "the jam must clearly read as a real simulation") - the timelapse, the person page, Why?, every level readable
 
 ### Exact state (keep current)
