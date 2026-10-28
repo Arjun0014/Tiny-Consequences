@@ -538,6 +538,44 @@ namespace TC2.Game
 
         static string Cap(string s) => string.IsNullOrEmpty(s) ? s : char.ToUpperInvariant(s[0]) + s.Substring(1);
 
+        // (session 29: the world now) read every five seconds: the age, the greatest realms, the troubles
+        float _worldAt = -99f; string _worldAge = "", _worldRealmLine = "", _worldTrouble = "";
+        readonly System.Collections.Generic.List<System.Collections.Generic.KeyValuePair<int, int>> _worldRealms = new System.Collections.Generic.List<System.Collections.Generic.KeyValuePair<int, int>>();
+
+        void WorldNow(TC2.Core.Simulation.World w)
+        {
+            if (Time.unscaledTime - _worldAt < 5f) return;
+            _worldAt = Time.unscaledTime;
+            var eras = Chronicle.Eras(w);
+            _worldAge = eras.Count > 0 ? "<i>" + eras[eras.Count - 1].Name + "</i> <size=11>(since year " + eras[eras.Count - 1].From + ")</size>" : "<i>its first years</i>";
+            var realms = new System.Collections.Generic.Dictionary<int, int>();
+            Headlines.Realms(w, realms);
+            _worldRealms.Clear();
+            foreach (var kv in realms) _worldRealms.Add(kv);
+            _worldRealms.Sort((a, b) => { int c = b.Value.CompareTo(a.Value); return c != 0 ? c : a.Key.CompareTo(b.Key); });
+            int alone = 0;
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid)) { ref var s = ref w.Settlements.Get(sid); if (s.Inhabited && s.Lord == 0 && !realms.ContainsKey(sid)) alone++; }
+            _worldRealmLine = realms.Count == 0 ? "no village pays another" : realms.Count + (realms.Count == 1 ? " realm" : " realms") + ", " + alone + (alone == 1 ? " village alone" : " villages alone") + (realms.Count > 3 ? "; the greatest:" : ":");
+            if (_worldRealms.Count > 3) _worldRealms.RemoveRange(3, _worldRealms.Count - 3);
+            int famine = 0, sick = 0, hungry = 0;
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                ref var s = ref w.Settlements.Get(sid);
+                if (!s.Inhabited) continue;
+                if (s.FamineAt != 0 && w.Now - s.FamineAt < 24 * SimTime.Day) famine++;
+                else if (s.HungerEvent != 0) hungry++;
+                if (s.Epidemic != 0) sick++;
+            }
+            var parts = new System.Collections.Generic.List<string>();
+            if (famine > 0) parts.Add(famine + (famine == 1 ? " village in famine" : " villages in famine"));
+            if (hungry > 0) parts.Add(hungry + " going hungry");
+            if (sick > 0) parts.Add(sick + (sick == 1 ? " with sickness" : " with sickness"));
+            int raids = 0; var an = w.Annals;   // (the annals' own counts: the realms layer counts its spears only while it is on)
+            for (int i = System.Math.Max(0, an.Count - 10); i < an.Count; i++) raids += an[i].Raids;
+            parts.Add(raids + (raids == 1 ? " raid" : " raids") + " in the last ten years");
+            _worldTrouble = "Now: " + string.Join(", ", parts.ToArray()) + ".";
+        }
+
         // (session 29: a village from afar) the inhabited village whose square is nearest the pointer on the screen, within 30 px, on the near side
         int _farTagFor; float _farTagAt = -99f; string _farTag = "";
 
@@ -697,9 +735,17 @@ namespace TC2.Game
             float ry = 56;
             if (_info)
             {
-                _right = new Rect(sw - 340, ry, 330, 130);
+                // (session 29: the world at the top of what can be read - world -> realm -> settlement -> household -> person) the age the world is in, its
+                // greatest realms (each opening its page), what troubles it now; the tool's numbers kept small below
+                WorldNow(w);
+                float wh = 130f + 22f * _worldRealms.Count + 44f;
+                _right = new Rect(sw - 380, ry, 370, wh);
                 GUILayout.BeginArea(_right, _box);
-                GUILayout.Label("<b>" + w.LivingPeople() + "</b> people in <b>" + w.InhabitedSettlements() + "</b> places   fires " + w.Fire.Active.Count, _label);
+                GUILayout.Label("<b>The world now</b>   " + _worldAge, _label);
+                GUILayout.Label("<b>" + w.LivingPeople().ToString("N0", CultureInfo.InvariantCulture) + "</b> people in <b>" + w.InhabitedSettlements() + "</b> places; " + _worldRealmLine, _small);
+                foreach (var kv in _worldRealms)
+                    if (GUILayout.Button("   " + w.History.NameOf(EntityRef.Settlement(kv.Key)) + "'s realm - " + kv.Value + " villages  <color=#f2c35f>›</color>", _lineStyle)) ShowPlace(kv.Key, PlaceRealmTab);
+                GUILayout.Label(_worldTrouble, _small);
                 var P = w.Planet;
                 string sea = (P.SeaLevelNow - P.SeaLevel0).ToString("+0.0;-0.0", CultureInfo.InvariantCulture);
                 GUILayout.Label("climate " + P.TGlobal.ToString("0.0", CultureInfo.InvariantCulture) + " °C   ice " + (P.IceVolume / 1e9).ToString("0.0", CultureInfo.InvariantCulture) + " km³   sea " + sea + " m   tilt " + (P.Tilt * 180 / System.Math.PI).ToString("0.0", CultureInfo.InvariantCulture) + "°" + (P.Glacial == 1 ? "   (an age of ice)" : ""), _small);
@@ -707,7 +753,7 @@ namespace TC2.Game
                 GUILayout.Label("events " + w.Metrics.Events.ToString("N0", CultureInfo.InvariantCulture) + "   history " + w.History.Count + "   drawn " + Objects.PeopleDrawn + " people, " + (Objects.TreesDrawn + TerrainLod.ForestDrawn) + " trees", _small);
                 GUILayout.Label("CO2 " + P.CO2.ToString("0", CultureInfo.InvariantCulture) + " ppm   volcanoes " + P.Vents.Count + "   storms " + P.Storms.Count + "   " + Wild(w), _small);
                 GUILayout.EndArea();
-                ry += 136;
+                ry += wh + 6f;
             }
             Rect worldRect = Rect.zero;
             if (_worldPanel)
