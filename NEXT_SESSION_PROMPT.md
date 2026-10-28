@@ -33,14 +33,16 @@ process you did not start.
 4. `git status`, `git log --oneline -20`, `git worktree list`, and the queue: `cat $Q/runq.log` (`Q` below) - which jobs ended, with what; `ls $Q/todo`.
 
 ## FIRST - the state at the end of session 29's first context (28 Oct 2026, ~23:45 IST)
-- **main = 92b75fd, BEHIND `wip/s27-int`** (worktree `C:/Game Dev/tc-s27int` - work there) because the Unity shots job held main's checkout at the handoff:
-  a background waiter (task `bvdt0x46v`) fast-forwards main the moment `0_qe_shots_s29v` ends - verify `git log -1 main` = `git log -1 wip/s27-int`, else
-  `git -C "C:/Game Dev/tiny-consequences" merge --ff-only wip/s27-int` (never while a Unity job holds main's checkout). After any Web build:
+- **main = `wip/s27-int`** (fast-forwarded to 0418f2f by the waiter at 23:41 when the shots job ended; this note's commit follows it - verify `git log -1
+  main` = `git log -1 wip/s27-int`, else `git -C "C:/Game Dev/tiny-consequences" merge --ff-only wip/s27-int`, never while a Unity job holds main's
+  checkout). Work in the worktree `C:/Game Dev/tc-s27int`. After any Web build:
   `git checkout -- unity/TinyConsequences2/ProjectSettings/ProjectSettings.asset` in main's checkout (the queued jobs do it).
 - **The queue runs** (`Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`,
   hard-coded in `tc2/out/tools/s23/runq.sh` and `lib.sh`; the runner was started in session 29 as background task `bp3fvcitn` and keeps polling `$Q/todo`;
   `touch $Q/stop` stops it after its job). At the handoff: `0_qd_web_s29b` done (the road cache x1.115 on a running village view, RoadAt 4.04 -> 0.43 ms);
-  `0_qe_shots_s29v` RUNNING from 23:39 (Unity shots `tc2/out/shots/s29v1`, seed 2 year 600; log `$Q/log/0_qe_shots_s29v.log`). Add a job by writing `$Q/todo/0_<name>.sh` (source `lib.sh`; `gate`, `low`).
+  `0_qe_shots_s29v` DONE (rc 0 at 23:41: 8 files in `tc2/out/shots/s29v1` - orbit, region, village, close, standardlow, town, townlow - **0 shader
+  errors**, drawn on "AMD Radeon(TM) Graphics (ID=0x1636)"; NOT YET JUDGED). The queue is now idle (empty `todo`). Add a job by writing
+  `$Q/todo/0_<name>.sh` (source `lib.sh`; `gate`, `low`).
 - **Verified in the Web build** (`s29web1`/`s29web2` 9/9, `s29lapse1`/`s29lapse2`, `s29book1`): the timelapse (1 day/s, skips, catch-up; exact return;
   no strobe; the death of the followed person told), the person page and card, the place's Now/Why?/Realm, Your Actions' thread. **Built, compiled and
   tested headless but not yet seen in a Web build**: roads read, the far village's tag and click, the world now, the building leaf, the book's new order and
@@ -48,8 +50,8 @@ process you did not start.
   followings, the family tree's layout fix.
 
 ## Do next, in order
-1. When `0_qe_shots_s29v` ends: fast-forward main; judge the shots `s29v1` (the visual world: political centres, ruins, walls, roads, war scars, the
-   orbit) - grep the job log for "Shader error" and the GPU line.
+1. Judge the shots `tc2/out/shots/s29v1/*.png` (seed 2 year 600, sim 108, main 92b75fd; 0 shader errors): the visual world as evidence - political
+   centres (the seat's standard in `standardlow`), ruins, walls, roads, war scars, the orbit's planet. Write what they show in D2-202 / a new decision.
 2. Queue a Web build of main's tip: webtest `s29web3` (9/9), `bookshots --extras --play --meteor-play --pages "card:0,person:3:head,place:0"
    --book "4:0,4:1,2:0,7:0,10:0"` (the new book parts: Peoples, a war, Lives, Your Actions). Judge every new page in its pictures; fix; commit; fill D2-202's
    "Pending".
