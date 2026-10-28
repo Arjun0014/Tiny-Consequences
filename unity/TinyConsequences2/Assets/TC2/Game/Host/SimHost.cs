@@ -55,7 +55,18 @@ namespace TC2.Game
 
         // the recent history feed (historical and local events)
         public readonly List<string> Feed = new List<string>();
+        /// <summary>(session 29) Each feed line's record, beside it (the History panel opens a line's why in the book).</summary>
+        public readonly List<long> FeedIds = new List<long>();
+        /// <summary>(session 29) Lines ever added to the feed - the ticker's news is a rise in this (the feed holds 60, so its count stops moving once
+        /// full: a loaded world's ticker had never shown a new line).</summary>
+        public long FeedTotal;
         long _feedCursor;
+
+        void FeedAdd(TC2.Core.Simulation.World w, in HistoryEvent e)
+        {
+            Feed.Add(HistoryText.Dated(w, e)); FeedIds.Add(e.Id); FeedTotal++;
+            if (Feed.Count > 60) { Feed.RemoveAt(0); FeedIds.RemoveAt(0); }
+        }
 
         double _carry;
         float _autosave;
@@ -161,14 +172,16 @@ namespace TC2.Game
             WorldVersion++;
             Ground.ScaleTo(w.Planet);
             _carry = 0;
-            Feed.Clear();
+            Feed.Clear(); FeedIds.Clear();
             _feedCursor = 0;
-            for (int i = 0; i < w.History.Count; i++)
+            // the last 60 historical records, oldest first (only those are put in words)
+            int first = w.History.Count;
+            for (int i = w.History.Count - 1, n = 0; i >= 0 && n < 60; i--) if (w.History.At(i).Tier >= Tier.Historical) { first = i; n++; }
+            for (int i = first; i < w.History.Count; i++)
             {
                 var e = w.History.At(i);
-                if (e.Tier >= Tier.Historical) Feed.Add(HistoryText.Dated(w, e));
+                if (e.Tier >= Tier.Historical) FeedAdd(w, in e);
             }
-            if (Feed.Count > 60) Feed.RemoveRange(0, Feed.Count - 60);
             _feedCursor = w.History.LastId;
         }
 
@@ -282,11 +295,7 @@ namespace TC2.Game
             for (int i = from; i < H.Count; i++)
             {
                 var e = H.At(i);
-                if (e.Tier >= Tier.Local || e.Kind == HistoryKind.JourneyInterrupted || e.RootKind == RootKind.You)
-                {
-                    Feed.Add(HistoryText.Dated(World, e));
-                    if (Feed.Count > 60) Feed.RemoveAt(0);
-                }
+                if (e.Tier >= Tier.Local || e.Kind == HistoryKind.JourneyInterrupted || e.RootKind == RootKind.You) FeedAdd(World, in e);
             }
             _feedCursor = H.LastId;
         }

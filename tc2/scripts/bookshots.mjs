@@ -211,6 +211,22 @@ try {
       await page.waitForTimeout(1800);
       await snap('extra_way_hover');
     } else console.log('no worn way of the greatest place in view');
+    // (session 29) a work pointed at (the greatest place's smithy at the screen's centre: when raised, who is at it now, why it was made)
+    await cmd('building big');
+    await page.waitForTimeout(3500);
+    await cmd('closepages');
+    await page.mouse.move(800, 450);
+    await page.waitForTimeout(1800);
+    await snap('extra_work_hover');
+    // (session 29) the History panel, and its latest line opened in the book (why it happened)
+    await page.mouse.move(1500, 120);
+    await cmd('history on');
+    await page.waitForTimeout(1500);
+    await snap('extra_history');
+    await cmd('feedline 0');
+    await page.waitForTimeout(2500);
+    await snap('extra_feedline');
+    await cmd('closebook'); await cmd('history off');
   }
   // (session 27) the person and place pages as leaves of the book: --pages "person:0,person:5,place:0,place:2" - the oldest living person's page and
   // the greatest place's at those sections (page_person_0.png ...)

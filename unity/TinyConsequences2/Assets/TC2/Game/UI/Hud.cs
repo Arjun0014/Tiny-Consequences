@@ -55,6 +55,13 @@ namespace TC2.Game
         public void CloseBook() { _book = false; }
         /// <summary>Closes the book and every page - a person's, a place's, a building's (the tests' way back to the open world).</summary>
         public void ClosePages() { _book = false; _personPage = false; _placeSid = 0; _building = 0; }
+        /// <summary>(session 29) Tests: the History panel shown or hidden, as its toggle; a feed line opened as a click on it does (0 the latest).</summary>
+        public void HistoryPanel(bool on) { _history = on; }
+        public void OpenFeedLine(int back)
+        {
+            int i = Host.FeedIds.Count - 1 - back;
+            if (i >= 0 && Host.World != null && Host.World.History.TryGet(Host.FeedIds[i], out _)) { _book = true; _line = Host.FeedIds[i]; _whyScroll = Vector2.zero; }
+        }
         int _openPart = NoRequest, _openChapter;
         const int NoRequest = -99;
         // the Timeline page (session 25): the world's years drawn once into a texture when the book is written (one draw a frame)
@@ -77,7 +84,7 @@ namespace TC2.Game
         readonly System.Collections.Generic.HashSet<int> _seats = new System.Collections.Generic.HashSet<int>();   // (places others pay and that pay nobody: realms' seats)
         float _byPeopleAt = -99f;
         int _hoverPid, _hoverBid; float _hoverAt;
-        string _news = ""; float _newsAge = 99f; int _newsCount;
+        string _news = ""; float _newsAge = 99f; long _newsTotal;
 
         void Update()
         {
@@ -94,7 +101,7 @@ namespace TC2.Game
             if (Input.GetKeyDown(KeyCode.H)) _hidden = !_hidden;
             if (Input.GetKeyDown(KeyCode.R)) RealmsView.On = !RealmsView.On;   // (the realms map layer, D2-167)
             if (Input.GetKeyDown(KeyCode.N)) Names = !Names;   // (places named on the map)
-            if (Host.Feed.Count != _newsCount) { _newsCount = Host.Feed.Count; _news = _newsCount > 0 ? Host.Feed[_newsCount - 1] : ""; _newsAge = 0f; }
+            if (Host.FeedTotal != _newsTotal) { _newsTotal = Host.FeedTotal; _news = Host.Feed.Count > 0 ? Host.Feed[Host.Feed.Count - 1] : ""; _newsAge = 0f; }   // (session 29: by the lines ever added - the full feed's count stands still)
             _newsAge += Time.unscaledDeltaTime;
             for (int i = 0; i < SimHost.Speeds.Length && i < 8; i++) if (Input.GetKeyDown(KeyCode.Alpha1 + i)) { Host.SpeedIndex = i; Host.MaxSpeed = false; }
             if (Input.GetKeyDown(KeyCode.Alpha9)) Host.MaxSpeed = !Host.MaxSpeed;
@@ -835,9 +842,19 @@ namespace TC2.Game
             {
                 _bottom = new Rect(10, sh - 250, 560, 240);
                 GUILayout.BeginArea(_bottom, _box);
-                GUILayout.Label("<b>Recent history</b>", _label);
-                int from = Mathf.Max(0, Host.Feed.Count - 11);
-                for (int i = from; i < Host.Feed.Count; i++) GUILayout.Label(Host.Feed[i], _small);
+                // (session 29: the History panel as the book's recent pages) a line opens the book on it - why it happened, back to its root, and the
+                // people and places it names; the book itself at the present age
+                GUILayout.BeginHorizontal();
+                GUILayout.Label("<b>Recent history</b>  <size=10><color=#9a9486>a line opens why it happened</color></size>", _label);
+                GUILayout.FlexibleSpace();
+                if (GUILayout.Button("the book  ›", _btn)) OpenBook(-1);
+                GUILayout.EndHorizontal();
+                int from = Mathf.Max(0, Host.Feed.Count - 10);
+                for (int i = from; i < Host.Feed.Count; i++)
+                {
+                    long id = i < Host.FeedIds.Count ? Host.FeedIds[i] : 0;
+                    if (GUILayout.Button("<color=#c9a25a>›</color> " + Host.Feed[i], _small) && id != 0 && w.History.TryGet(id, out _)) { _book = true; _line = id; _whyScroll = Vector2.zero; }
+                }
                 GUILayout.EndArea();
             }
             else if (_news.Length > 0 && _newsAge < 14f && !lapse)
