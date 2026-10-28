@@ -166,7 +166,7 @@ namespace TC2.Game
             for (int i = 0; i < w.History.Count; i++)
             {
                 var e = w.History.At(i);
-                if (e.Tier >= Tier.Historical) Feed.Add(HistoryText.Line(w, e));
+                if (e.Tier >= Tier.Historical) Feed.Add(HistoryText.Dated(w, e));
             }
             if (Feed.Count > 60) Feed.RemoveRange(0, Feed.Count - 60);
             _feedCursor = w.History.LastId;
@@ -284,7 +284,7 @@ namespace TC2.Game
                 var e = H.At(i);
                 if (e.Tier >= Tier.Local || e.Kind == HistoryKind.JourneyInterrupted || e.RootKind == RootKind.You)
                 {
-                    Feed.Add(HistoryText.Line(World, e));
+                    Feed.Add(HistoryText.Dated(World, e));
                     if (Feed.Count > 60) Feed.RemoveAt(0);
                 }
             }
@@ -300,7 +300,7 @@ namespace TC2.Game
                 var e = H.At(i);
                 if (e.Tier >= Tier.Historical || e.Kind == HistoryKind.HarvestFailed || e.Kind == HistoryKind.Hunger)
                 {
-                    CatchUpFeed.Add(HistoryText.Line(World, e));
+                    CatchUpFeed.Add(HistoryText.Dated(World, e));
                     if (CatchUpFeed.Count > 200) CatchUpFeed.RemoveAt(0);
                 }
             }
