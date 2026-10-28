@@ -25,7 +25,15 @@
   stand 250-400 m from its ruined first square); the news ticker opening its why. Tools: `unity.mjs` forwards shader errors; bridge `way big`, `history`, `feedline`; bookshots
   `--extras` (road, work, History panel, a line) and `--pre`; headless `cells` (`--sid`, `--meridian`, `--burned`).
 
-### Next, in order
+**At the handoff (~01:40 IST)**: `0_qp_fullsuite_s29c2` running (the full headless suite on the branch into `$N/bin_s29c2`; `$N/fs_s29c2_ok` when 0 failed,
+0 skipped - read `$N/fullsuite_s29c2.txt`), then `0_qq_web_s29g` (Web of 0fe9093+: `s29web7`, `s29book8` = year 600 extras and Kaihope's Now/Why? with the
+burned-crop line, `s29lapse6` = the skip after the orbit recolour). Everything since was judged: s29e (s29web5 9/9, s29book5, s29lapse4), s29f (s29web6 9/9,
+s29book6, s29book7, s29lapse5), s29v6/s29v7, s29n1 - D2-203 (19). **OPEN, first**: the charred ruins do not show dark in Unity shots (s29v6, s29v7) -
+D2-203 (19) "Open".
+
+### Next, in order (older steps below are done)
+0. Judge `0_qp_fullsuite_s29c2` and `0_qq_web_s29g`; fix the charred ruins (shoot Paitaimwick #51's burned homes at `--village 51 --views low` from over
+   their spot ~65 m east of the square, or add a shot that frames a building; check `Instancer.Add`'s colour path and the ruin model's vertex alphas).
 1. When `0_ql_web_s29e` ends: judge `s29web5` (9/9 expected); `tc2/out/webtest/s29book5`: play_aim / play_aimfar (the aim's words in a box, no road tag
    over them), extra_history (the panel above the bar), page_person_2 (crafts by name, "four times (years ...)"), book_7_0; `s29lapse4/lapse_3_orbit_later.png`
    and `lapse_7_skip_orbit.png` (the straw's edge soft, no straight line). Fill D2-203's "Pending".

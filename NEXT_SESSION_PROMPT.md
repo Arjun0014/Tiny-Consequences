@@ -54,7 +54,10 @@ process you did not start.
   words, the book's words, a village's name where its people live and its page saying so, the title's guide.
 
 ## Do next, in order
-1. When `0_qn_web_s29f` ends: judge `s29web6` (9/9); `tc2/out/webtest/s29book6/extra_ruin_page.png` and `extra_ruin_hover.png` (how it fell);
+0. **At the handoff (~01:40)** `0_qn_web_s29f` and `0_qo_shots_s29v7` are DONE and judged (D2-203 (19)); `0_qp_fullsuite_s29c2` runs, `0_qq_web_s29g` is
+   queued (verify the orbit recolour `s29lapse6`, Kaihope's burned-crop line `s29book8`). **Open first**: charred ruins still not dark in shots
+   (`s29v6`/`s29v7`) - see D2-203 (19) and SESSION_HANDOFF "Session 29, context 2" step 0.
+1. (done) When `0_qn_web_s29f` ends: judge `s29web6` (9/9); `tc2/out/webtest/s29book6/extra_ruin_page.png` and `extra_ruin_hover.png` (how it fell);
    `s29book7/village.png`, `region.png` ("Kaihope" over its lived homes), `page_place_1_1.png`/`page_place_2_1.png` ("Its people live 310 m from its first
    square ..." and its Why?); `s29lapse5/lapse_7_skip_orbit.png` and `lapse_8_skip_1.png` (no block out of step). Then `0_qo_shots_s29v7`
    (`tc2/out/shots/s29v7`: the burned homes black among grey ruins) and `0_qp_fullsuite_s29c2` (0 failed, 0 skipped). Fill D2-203's "Pending"; fix; commit.

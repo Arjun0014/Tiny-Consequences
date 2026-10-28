@@ -6385,7 +6385,15 @@ shown again with colours more than 20 world days stale is coloured as it comes i
 untinted parts by the colour's alpha alone - Paitaimwick's homes burned 5.1 years before were as grey as the rest (`s29v6`); the soot now darkens the
 alpha too. (18) **The title's guide** says to point at things (a person, a house, a work, a road, a ruin, a village from afar) for what it is doing and
 why, and that Skip leaps years watched from above. **The night** (`s29n1`, year 600 at 23:00): the night side dark with amber lights from orbit, Kaihope's
-moved homes a lit arc, no broad moon veil on the sea in these views.
+moved homes a lit arc, no broad moon veil on the sea in these views. (19) **Seen in Web `s29web6` 9/9 (5ad5c7f)**: the ruin last burned (Staimgendford's,
+by Brinddernwick's band, year 297) - its tag and page telling how it fell; then the page's kicker "A Ruin" and "the Skoskaises lived in it when it burned"
+(13d94e7; it had said "A Home ... standing empty; the Bondnouls lived in it last"); Kaihope at year 600 named at its lived homes from the region view, its
+Now ("Its people live 310 m from its first square, where 6 homes and 114 works lie fallen") and Why? ("Why do its people live away from its first
+square?"); a village's burned crop told and asked ("60 % of its standing crop burned this season, by a band driven off from its walls"; "Why did its crop
+burn?" - 7c49863). The skip from orbit (`s29lapse5`): the green block gone, year 310 smooth, but year 303 still a small rectangular step - from orbit a patch
+coming into view now takes this cycle's colours at once (0fe9093). **Open**: the charred ruins still do not show dark in Unity shots (`s29v6`, `s29v7` at
+13d94e7 with the soot in the alpha) though `cells --burned` finds Paitaimwick's two (70 m from its square, 99 % standing, 5.1 years) - next: shoot them from
+the low view over their spot, and check the ruin instancer's colour path (`Instancer.Add` linear conversion, the kit's ruin vertex alphas).
 
 **Considered and left.** The seat's standard is life-size by D2-152/C10.6 (realms read from afar through the map's flags and the realms layer): not
 enlarged. **Two villages' fields side by side at different stages** (one sown and brown, one growing and green) still meet along the cells' staircase
@@ -6402,4 +6410,5 @@ PeaceTests 3/3, LivesTests 4/4, WhysTests 3/3, BiographyTests 4/4; `unity.mjs cc
 swore to them"; "The people of Endstead were bound to make amends to Ithustead for a wounding ... but their store had no grain to spare"; "XI. Your
 Actions". **Pending**: the Web build of a453afe (`0_ql_web_s29e`: `s29web5`, `s29book5` - the aim's box, the panel above the bar, a person's crafts and
 works; `s29lapse4` - the seasonal edge softened) and `s29lapse4`'s judgement; shots of the forty-year soot (`0_qm_shots_s29v6`); Web `0_qn_web_s29f` (`s29web6`, the ruin's page and tag `s29book6`,
-Kaihope's name at year 600 `s29book7`, the skip from orbit with stale patches recoloured `s29lapse5`); shots `0_qo_shots_s29v7` (the soot in the alpha).
+Kaihope's name at year 600 `s29book7`, the skip from orbit with stale patches recoloured `s29lapse5` - seen, (19)); the full suite `0_qp_fullsuite_s29c2`
+(running at the handoff) and Web `0_qq_web_s29g` (queued: `s29web7`, `s29book8`, `s29lapse6`).
