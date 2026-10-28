@@ -144,7 +144,7 @@ try {
   const fed = ((await state()).feed || []).join(' | ');
   check('a power aimed and clicked is cast', casts1 > casts0, `casts ${casts0} -> ${casts1}; feed: ${fed.slice(-200)}`);
   await cmd('speed 6'); await page.waitForTimeout(3000); await cmd('speed 0');
-  await cmd('bookat 8 0'); await shot('5h_your_actions', 3000); await cmd('closebook');
+  await cmd('bookat 10 0'); await shot('5h_your_actions', 3000);   // (session 29: Your Actions is part XI; 8 had been Discoveries) await cmd('closebook');
 
   // save to IndexedDB, reload, the same world continues
   await cmd('speed 0'); await page.waitForTimeout(800);

@@ -36,7 +36,7 @@ namespace TC2.Tests.Core
             for (int i = 0; i < book.Parts.Count; i++) Assert.AreEqual(HistoryBook.PartTitles[i], book.Parts[i].Title, "the contents name the parts as written");
             Assert.Greater(book.Preface.Count, 0);
             Assert.Greater(book.Parts[0].Chapters.Count, 0, "the ages");
-            Assert.Greater(book.Parts[4].Chapters.Count, 0, "the places");
+            Assert.Greater(book.Parts[3].Chapters.Count, 0, "the places");
             int lines = 0;
             foreach (var p in book.Parts)
                 foreach (var ch in p.Chapters)
@@ -236,7 +236,7 @@ namespace TC2.Tests.Core
             Years(w, 12);
             long e6 = Rec(w, HistoryKind.Raid, a, b, argA: 10, argB: 103, cause: e5, at: b);
             Years(w, 1);
-            var threads = HistoryBook.Write(w).Parts[6];
+            var threads = HistoryBook.Write(w).Parts[8];
             foreach (var ch in threads.Chapters) Console.WriteLine(ch.Title + " - " + ch.Sub);
             BookChapter mine = null;
             foreach (var ch in threads.Chapters) foreach (var bl in ch.Blocks) if (bl.Event == e6) mine = ch;

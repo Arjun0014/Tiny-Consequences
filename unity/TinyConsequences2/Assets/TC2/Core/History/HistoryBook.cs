@@ -111,10 +111,12 @@ namespace TC2.Core.History
         static string House(World w, EntityRef household) => HistoryText.Plural(w.History.NameOf(household));
 
         /// <summary>Your Actions' part (F9.2; the last since session 27's Discoveries and Works).</summary>
-        public const int YourActionsPart = 9;
+        public const int YourActionsPart = 10;
 
         /// <summary>The parts' titles, in order (a reader's contents before any part is written).</summary>
-        public static readonly string[] PartTitles = { "The Ages of the World", "Realms and Rulers", "Wars and Feuds", "Famine, Plague and Disaster", "Places", "Lives", "Threads of Cause", "A Chronology", "Discoveries and Works", "Your Actions" };
+        // (session 29: the book in the order a reader looks for a world's history - its ages, its realms, its wars, its great places, its peoples, its
+        // calamities, its works, its lives, then the threads, the chronology and the player's own part; the timeline is its own page)
+        public static readonly string[] PartTitles = { "The Ages of the World", "Realms and Rulers", "Wars and Feuds", "Great Settlements", "Peoples and Their Ways", "Famine, Plague and Disaster", "Discoveries and Works", "Lives", "Threads of Cause", "A Chronology", "Your Actions" };
 
         /// <summary>Writes the whole book of the world as it stands.</summary>
         public static WorldBook Write(World w)
@@ -205,11 +207,12 @@ namespace TC2.Core.History
                     case 0: p = Ages(_c); break;
                     case 1: p = Realms(_c); break;
                     case 2: p = Wars(_c); break;
-                    case 3: p = Disasters(_c); break;
-                    case 4: p = Places(_c); break;
-                    case 5: p = Lives(_c); break;
-                    case 6: p = Threads(_c); break;
-                    case 8: p = Works(_c); break;         // (session 27)
+                    case 3: p = Places(_c); break;
+                    case 4: p = PeoplesPart(_c); break;   // (session 29)
+                    case 5: p = Disasters(_c); break;
+                    case 6: p = Works(_c); break;         // (session 27)
+                    case 7: p = Lives(_c); break;
+                    case 8: p = Threads(_c); break;
                     case YourActionsPart: p = YourActions(_c); break;   // (F9.2)
                     default: p = Chronology(_c); break;
                 }
@@ -1474,7 +1477,7 @@ namespace TC2.Core.History
         static BookPart Places(Ctx c)
         {
             var w = c.W;
-            var part = new BookPart { Title = "Places", Intro = "The villages and towns, the most storied first: when and from where they were founded, the houses that led them, whom they paid and who paid them, and what befell them." };
+            var part = new BookPart { Title = "Great Settlements", Intro = "The villages and towns, the most storied first: when and from where they were founded, the houses that led them, whom they paid and who paid them, and what befell them." };
             var weight = new Dictionary<int, double>();
             var sids = new List<int>();
             for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
@@ -1488,8 +1491,7 @@ namespace TC2.Core.History
                 weight[sid] = v;
             }
             sids.Sort((p, q) => { int k = weight[q].CompareTo(weight[p]); return k != 0 ? k : p.CompareTo(q); });
-            var peoples = Peoples(c);   // (C11.1: the peoples - the villages of one line, how they speak and build)
-            if (peoples != null) part.Chapters.Add(peoples);
+            // (C11.1: the peoples - since session 29 a part of their own, PeoplesPart)
             var rest = new List<int>();
             for (int k = 0; k < sids.Count; k++)
             {
@@ -1511,6 +1513,65 @@ namespace TC2.Core.History
         /// from when, the endings their tongue gives their places (each village's own, C11.1a) and the roofs they raise; its lines the foundings of its
         /// villages on record. Null when the world's names come from one speech (`--oldnames`) or no people has founded another village.
         /// </summary>
+        /// <summary>
+        /// (session 29) Peoples and Their Ways: the peoples told together (how many, how they name their places and roof their homes), then each people of more
+        /// than one village in its own chapter - its villages founding by founding, the living with their people and the abandoned, its greatest town
+        /// today, its lords. From the villages' traditions, tongues and records.
+        /// </summary>
+        static BookPart PeoplesPart(Ctx c)
+        {
+            var w = c.W;
+            var part = new BookPart { Title = "Peoples and Their Ways", Intro = "The villages that descend, founding by founding, from one of the first: their founders carried its way of building and its speech, each now and then a little changed." };
+            var all = Peoples(c);
+            if (all == null)
+            {
+                var none = new BookChapter { Title = "One People" };
+                none.Para("No line of villages has yet grown from another: the world's villages are each their own.");
+                part.Chapters.Add(none);
+                return part;
+            }
+            part.Chapters.Add(all);
+            var lines = new Dictionary<int, List<int>>(); var order = new List<int>();
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                int l = TC2.Core.Places.Architecture.Line(w.Settlements.Get(sid).Tradition);
+                if (!lines.TryGetValue(l, out var ll)) { lines[l] = ll = new List<int>(); order.Add(l); }
+                ll.Add(sid);
+            }
+            order.RemoveAll(l => lines[l].Count < 2);
+            order.Sort((a, b) => lines[b].Count != lines[a].Count ? lines[b].Count.CompareTo(lines[a].Count) : a.CompareTo(b));
+            for (int k = 0; k < order.Count && k < 12; k++)
+            {
+                int l = order[k];
+                var ll = lines[l];
+                ll.Sort((a, b) => { var sa = w.Settlements.Get(a); var sb = w.Settlements.Get(b); return sa.Founded != sb.Founded ? sa.Founded.CompareTo(sb.Founded) : a.CompareTo(b); });
+                var ch = new BookChapter { Title = "The People of " + Name(w, l), Settlement = l };
+                int living = 0, people = 0, great = 0, greatPop = -1, lords = 0;
+                foreach (int sid in ll)
+                {
+                    ref var s = ref w.Settlements.Get(sid);
+                    if (!s.Inhabited) continue;
+                    living++; people += s.Population;
+                    if (s.Population > greatPop) { greatPop = s.Population; great = sid; }
+                    if (w.Conflict.PolitySize(sid) > 0 && s.Lord == 0) lords++;
+                }
+                ch.Sub = Plural(ll.Count, "village", "villages") + ", " + Plural(living, "lived in", "lived in") + " today, " + F(people) + " people";
+                ch.Para("Its villages, founding by founding: " + string.Join("; ", ll.ConvertAll(sid =>
+                {
+                    ref var s = ref w.Settlements.Get(sid);
+                    return Name(w, sid) + " (" + YearOf(s.Founded) + (s.Inhabited ? ", " + F(s.Population) + " today" : ", abandoned" + (s.Abandoned != 0 ? " " + YearOf(s.Abandoned) : "")) + ")";
+                }).ToArray()) + ".", l);
+                if (great != 0) ch.Para("Its greatest place today is " + Name(w, great) + ", " + TC2.Core.History.Gazetteer.Word(in w.Settlements.Get(great)) + " of " + F(greatPop) + " people" +
+                                        (lords > 0 ? "; " + Plural(lords, "of its villages is a realm's seat", "of its villages are realms' seats") : "") + ".", great);
+                var evs = new List<HistoryEvent>();
+                foreach (int sid in ll) { ref var s = ref w.Settlements.Get(sid); if (s.FoundedEvent != 0 && w.History.TryGet(s.FoundedEvent, out var fe)) evs.Add(fe); }
+                evs.Sort((a, b) => a.Time != b.Time ? a.Time.CompareTo(b.Time) : a.Id.CompareTo(b.Id));
+                for (int i = 0; i < evs.Count && i < 10; i++) ch.Line(w, evs[i]);
+                part.Chapters.Add(ch);
+            }
+            return part;
+        }
+
         static BookChapter Peoples(Ctx c)
         {
             var w = c.W;
