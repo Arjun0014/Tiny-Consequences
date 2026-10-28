@@ -69,11 +69,16 @@ Shader "TC2/Terrain"
             float Hash21(float2 p) { p = frac(p * float2(123.34, 456.21)); p += dot(p, p + 45.32); return frac(p.x * p.y); }
 
             // farmland in the village grid: long staggered strips, furrows, hedges, fallow where the land rests
-            half3 Farmland(half3 crop, float4 farm, float dist, float px, half burnt)
+            half3 Farmland(half3 crop, float4 farm, float dist, float px, half burnt, half a, out half weight)
             {
                 float2 q = farm.xy;
                 // furlongs: blocks of strips, each lying its own way with its own strip size
                 float2 blk = floor(q / 150.0 + 0.5 * Hash21(floor(q / 150.0)));
+                // (session 29) the fields end furlong by furlong: each furlong is in or out by its own share of the land's weight (the cells' field
+                // owners, blended over about a cell), so a village's fields stop at a ragged line of whole furlongs, not along the cells' staircase;
+                // from where a furlong is a few pixels across, the weight as it is
+                half edgeAt = 0.2h + 0.6h * (half)Hash21(blk + 23.1);
+                weight = lerp(smoothstep(edgeAt - 0.04h, edgeAt + 0.04h, a), a, (half)smoothstep(30.0, 80.0, px));
                 float hb = Hash21(blk + 3.7);
                 float ang = hb < 0.45 ? 0.0 : (hb < 0.8 ? 1.5708 : (hb - 0.8) * 2.0 - 0.2);
                 float ca = cos(ang), sa = sin(ang);
@@ -229,7 +234,7 @@ Shader "TC2/Terrain"
                 }
                 half3 albedo = i.color.rgb;
                 float px = max(length(fwidth(i.farm.xy)), 1e-3);
-                if (i.color.a > 0.002h) albedo = lerp(albedo, Farmland(albedo, i.farm, dist, px, i.realmS.y), i.color.a);
+                if (i.color.a > 0.002h) { half fw; half3 fc = Farmland(albedo, i.farm, dist, px, i.realmS.y, i.color.a, fw); albedo = lerp(albedo, fc, fw); }
                 albedo *= (1.0h + d1 * 0.32h * (0.35h + 0.65h * near) + d2 * 0.30h * near + d3 * 0.26h);
                 // beaches (D2-081), per pixel from the ground's own height over the sea - a vertex colour would follow the triangles of
                 // coarse patches as a staircase along every coast: sand to 0.6 + 4.2 x the beach's width (TerrainLod.BeachAt), wet near the

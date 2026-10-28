@@ -1460,6 +1460,8 @@ namespace TC2.Game
                 float graveHere = 0f;   // (the burial ground's share here: no plots drawn - D2-154)
                 p.RealmSid[o] = 0; p.RealmW[o] = 0f;   // (the realms layer: no village's land in the sea)
                 p.RealmS[o].y = 0f;   // (the share of the crop burned here: none off a village's fields)
+                if (_fieldOf == null || _fieldOf.Length < cols.Length) _fieldOf = new int[cols.Length];
+                _fieldOf[o] = 0;   // (whose fields' frame this vertex is in: FieldFrames)
                 Vec3d dw = d; int cw = c;   // (where the cells' shares are read: WarpCells)
                 if (rel < 0)
                 {
@@ -1538,6 +1540,7 @@ namespace TC2.Game
                         ref var st = ref w.Settlements.Get(owner);
                         st.SphereToLocal(d, P.Radius, out double fx, out double fy);
                         p.Plots[o] = new Vector2((float)fx, (float)fy);
+                        _fieldOf[o] = owner;
                         farm *= Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(85f, 135f, Mathf.Sqrt((float)(fx * fx + fy * fy)))); // houses and yards
                         float used = st.ArableHa > 0 ? (float)System.Math.Min(1.0, st.FieldHa / st.ArableHa) : 1f;
                         p.Farm[o] = site > 0.4f ? Vector2.zero : new Vector2(used, (float)st.Crop + (float)System.Math.Min(0.99, st.CropGrowth));   // (no plots on a quarry's ground)
@@ -1669,8 +1672,47 @@ namespace TC2.Game
                 cols[o] = lin;
             }
             if (roadFill) p.RoadVer = _roadsVersion;
+            FieldFrames(w, p);
             FillRealm(p);
         }
+
+        int[] _fieldOf;
+
+        /// <summary>(session 29) A land vertex next to a village's fields but off them takes that village's field frame (its Plots; its weight stays
+        /// nothing), two vertices out, so the strips and furlongs keep their grid across the triangles at the fields' edge, where the shader now ends
+        /// the fields furlong by furlong - its frame had been (0, 0), and the edge's triangles had drawn the strips squeezed toward the village's
+        /// square. The skirts take their edge vertex's.</summary>
+        void FieldFrames(TC2.Core.Simulation.World w, Patch p)
+        {
+            int V = N + 1;
+            double R = w.Planet.Radius;
+            for (int pass = 0; pass < 2; pass++)
+            {
+                int mark = -1 - pass;   // (this pass's new frames are not read by itself: one ring of vertices a pass)
+                for (int j = 0; j < V; j++)
+                    for (int i = 0; i < V; i++)
+                    {
+                        int o = j * V + i;
+                        if (_fieldOf[o] != 0 || p.Rel[o] < 0) continue;
+                        int nb = 0;
+                        if (i > 0 && _fieldOf[o - 1] > 0) nb = _fieldOf[o - 1];
+                        else if (i < N && _fieldOf[o + 1] > 0) nb = _fieldOf[o + 1];
+                        else if (j > 0 && _fieldOf[o - V] > 0) nb = _fieldOf[o - V];
+                        else if (j < N && _fieldOf[o + V] > 0) nb = _fieldOf[o + V];
+                        if (nb == 0 || !w.Settlements.Exists(nb)) continue;
+                        Vector3 dv = p.Dirs[o];
+                        w.Settlements.Get(nb).SphereToLocal(new Vec3d(dv.x, dv.y, dv.z), R, out double fx, out double fy);
+                        p.Plots[o] = new Vector2((float)fx, (float)fy);
+                        _fieldOf[o] = mark;
+                        _frameOf[o] = nb;
+                    }
+                // the new ring counts as fields' frame for the next pass
+                for (int o = 0; o < V * V; o++) if (_fieldOf[o] == mark) _fieldOf[o] = _frameOf[o];
+            }
+            for (int e = 0; e < 4; e++)
+                for (int k = 0; k < V; k++) p.Plots[V * V + e * V + k] = p.Plots[EdgeIndex(e, k)];
+        }
+        int[] _frameOf = new int[(N + 1) * (N + 1)];
 
         /// <summary>
         /// The realms map layer's wash on a patch (D2-167): each vertex's village (its fields, else its built ground, as `Colourise` found it) in its
