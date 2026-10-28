@@ -98,7 +98,7 @@ namespace TC2.Game
             _newsAge += Time.unscaledDeltaTime;
             for (int i = 0; i < SimHost.Speeds.Length && i < 8; i++) if (Input.GetKeyDown(KeyCode.Alpha1 + i)) { Host.SpeedIndex = i; Host.MaxSpeed = false; }
             if (Input.GetKeyDown(KeyCode.Alpha9)) Host.MaxSpeed = !Host.MaxSpeed;
-            if (!PowersInput() && Input.GetMouseButtonUp(0) && !PointerOverUi) Pick();   // (a click while aiming a power casts it: F9.1)
+            if (!PowersInput() && Input.GetMouseButtonUp(0) && !PointerOverUi && ((Vector2)Input.mousePosition - _downAt).sqrMagnitude <= 64f) Pick();   // (a click while aiming a power casts it: F9.1; a drag of the camera picks nothing - session 29)
             // following: the camera keeps over the person as they go about their day (its height as the player left it)
             var fw = Host.World;
             if (_follow != 0 && fw != null && !Rig.LapseFlies)   // (while the camera flies a timelapse it keeps the person's place: Hud.Lapse.cs)
@@ -118,6 +118,9 @@ namespace TC2.Game
             var cam = Rig.Cam;
             Vector2 mp = Input.mousePosition;
             double t = Host.RenderTime;
+            // (session 29: world -> realm -> settlement) from afar a click on a village opens its page - before, nothing answered a click above 1.3 km
+            float altPick = cam.transform.position.magnitude - (float)w.Planet.Radius;
+            if (altPick > 1300f) { int far = PlaceUnder(w, mp); if (far != 0) ShowPlace(far, PlaceNowTab); return; }
             float best = 28f * _scale; int bestId = 0;
             for (int id = w.People.First(); id != 0; id = w.People.Next(id))
             {
@@ -431,7 +434,21 @@ namespace TC2.Game
             if (Rig == null || Rig.Cam == null || PointerOverUi) return;
             var cam = Rig.Cam;
             float alt = cam.transform.position.magnitude - (float)w.Planet.Radius;
-            if (alt > 1300f) { _hoverPid = 0; _hoverBid = 0; return; }   // (nobody under the pointer from afar: no ring left where it last was)
+            if (alt > 1300f)
+            {
+                _hoverPid = 0; _hoverBid = 0;   // (nobody under the pointer from afar: no ring left where it last was)
+                // (session 29) from afar, the village under the pointer: what it is, who leads it, what it faces - a click opens its page
+                int sid = PlaceUnder(w, Input.mousePosition);
+                if (sid == 0) return;
+                if (_farTagFor != sid || Time.unscaledTime - _farTagAt > 1f) { _farTagFor = sid; _farTagAt = Time.unscaledTime; _farTag = FarTag(w, sid); }
+                var fc = new GUIContent(_farTag);
+                Vector2 fs = _mapTag.CalcSize(fc);
+                float fx = Input.mousePosition.x / _scale + 14f, fy = (Screen.height - Input.mousePosition.y) / _scale + 10f;
+                if (fx + fs.x > sw) fx = sw - fs.x - 4f;
+                if (fy + fs.y > sh) fy = sh - fs.y - 4f;
+                GUI.Box(new Rect(fx, fy, fs.x, fs.y), fc, _mapTag);
+                return;
+            }
             Vector2 mp = Input.mousePosition;
             if (Time.unscaledTime - _hoverAt > 0.12f)
             {
@@ -520,6 +537,50 @@ namespace TC2.Game
         }
 
         static string Cap(string s) => string.IsNullOrEmpty(s) ? s : char.ToUpperInvariant(s[0]) + s.Substring(1);
+
+        // (session 29: a village from afar) the inhabited village whose square is nearest the pointer on the screen, within 30 px, on the near side
+        int _farTagFor; float _farTagAt = -99f; string _farTag = "";
+
+        int PlaceUnder(TC2.Core.Simulation.World w, Vector2 mp)
+        {
+            var cam = Rig.Cam; Vector3 camPos = cam.transform.position;
+            float best = 30f * _scale; int found = 0;
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                ref var s = ref w.Settlements.Get(sid);
+                if (!s.Inhabited) continue;
+                Vector3 at = PlanetGeo.Surface(w.Planet, s.Anchor);
+                if (Vector3.Dot(at.normalized, (camPos - at).normalized) < 0.10f) continue;   // (over the horizon)
+                Vector3 sp = cam.WorldToScreenPoint(at);
+                if (sp.z <= 0f) continue;
+                float d = Vector2.Distance(mp, sp);
+                if (d < best) { best = d; found = sid; }
+            }
+            return found;
+        }
+
+        /// <summary>A village read from afar in four lines: its name and size, its bond and its first, what its people are doing, what it faces.</summary>
+        string FarTag(TC2.Core.Simulation.World w, int sid)
+        {
+            ref var s = ref w.Settlements.Get(sid);
+            string name = w.History.NameOf(EntityRef.Settlement(sid));
+            int paying = 0;
+            for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o)) { ref var os = ref w.Settlements.Get(o); if (os.Lord == sid && os.Inhabited) paying++; }
+            string bond = s.Lord != 0 && w.Settlements.Exists(s.Lord) ? "pays " + w.History.NameOf(EntityRef.Settlement(s.Lord)) : paying > 0 ? "lord of " + paying + (paying == 1 ? " village" : " villages") : "pays no lord";
+            string first = s.Head != 0 && w.People.Exists(s.Head) ? "; first: " + w.History.NameOf(EntityRef.Person(s.Head)) : "";
+            // what its people are doing now, the three largest groups
+            var counts = new System.Collections.Generic.Dictionary<string, int>();
+            var res = w.Residents(sid);
+            for (int i = 0; i < res.Count; i++) { ref var p = ref w.People.Get(res[i]); if (!p.Alive) continue; string k = DoingWord(p.Act); counts.TryGetValue(k, out int n); counts[k] = n + 1; }
+            var top = new System.Collections.Generic.List<System.Collections.Generic.KeyValuePair<string, int>>(counts);
+            top.Sort((a, b) => b.Value.CompareTo(a.Value));
+            var doing = new System.Collections.Generic.List<string>();
+            for (int i = 0; i < top.Count && i < 3; i++) doing.Add(top[i].Value + " " + top[i].Key);
+            var now = Whys.Now(w, sid);
+            return "<b>" + name + "</b>  " + Gazetteer.Word(in s).Substring(2) + " of " + s.Population.ToString("N0", CultureInfo.InvariantCulture) +
+                   "\n<color=#f2c35f>" + bond + first + "</color>" + (doing.Count > 0 ? "\nnow: " + string.Join(", ", doing.ToArray()) : "") +
+                   (now.Count > 0 ? "\n<color=#e6b8a0>" + now[0] + "</color>" : "") + "\n<size=10><color=#9a9486>click for its page</color></size>";
+        }
 
         // (session 29: roads read) the worn way under the pointer: the ways as they stand (collected every two seconds), each by its route's line
         int _hoverWayA, _hoverWayB; float _waysAt = -99f, _wayTextAt = -99f; long _wayTextFor; string _wayText = "";
