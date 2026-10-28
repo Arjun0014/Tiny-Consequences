@@ -175,7 +175,7 @@ namespace TC2.Game
             if (what == "recolour") { TerrainLod.RecolourOff = !on; return; }   // (session 27: the ground's colours refreshed as the world changes)
             if (what == "surfacecache") { Ground.SurfaceCacheOff = !on; return; }   // (session 27, context 4: the ground remembered for the day under what stands on it)
             if (what == "terrainbranch") { Shader.SetGlobalFloat("_TC2Unbranched", on ? 0f : 1f); return; }   // (session 27: off runs every block of Terrain.shader everywhere, as before its branches)
-            if (what == "roadfilter") { TerrainLod.RoadFilter = on; return; }   // (session 29: each cell's road stretches filtered once a patch)
+            if (what == "roadcache") { TerrainLod.RoadCache = on; return; }   // (session 29: each patch keeps its vertices' roads until the roads change)
             if (what == "peoplestale") { WorldObjectsView.PeopleSkip = on; return; }   // (session 29: people posed again only when time or the camera moved; every third frame from 2 km)
             if (what == "peoplecull") { WorldObjectsView.PeopleCull = on; return; }   // (people beyond the limb and outside the view left unposed: 14 §7)
             if (what == "placescull") { WorldObjectsView.PlacesCull = on; return; }   // (villages beyond the limb left unbuilt: 14 §7)

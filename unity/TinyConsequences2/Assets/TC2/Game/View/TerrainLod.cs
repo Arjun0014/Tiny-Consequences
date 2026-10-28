@@ -49,6 +49,7 @@ namespace TC2.Game
             public Matrix4x4[] Trees; public byte[] TreeKind; public ushort[] TreeGroup; public int TreeCount;   // the woods' trees (finest level)
             public Matrix4x4[] Tufts; public byte[] TuftKind, TuftGroup; public int TuftCount; // ground cover (finest level)
             public int ColourCycle;
+            public float[] RoadV; public int RoadVer = int.MinValue;   // (session 29: the roads under each vertex, kept until the roads change - RoadsVersion)
             public long PlacedDay = long.MinValue;   // the world day its trees and cover were last placed (D2-081: once a day at most)
         }
 
@@ -222,7 +223,7 @@ namespace TC2.Game
                 for (int f = 0; f < 6; f++) Build(w, Get(f, 0, 0, 0)); // roots now: never a hole
             }
             _roadTimer -= Time.unscaledDeltaTime;
-            if (_roadTimer <= 0 || _roadWorld != Host.WorldVersion) { _roadTimer = 10f; _roadWorld = Host.WorldVersion; BuildRoads(w); }
+            if (_roadTimer <= 0 || _roadWorld != Host.WorldVersion) { _roadTimer = 10f; _roadWorld = Host.WorldVersion; BuildRoads(w); RoadsLaid(); }
             VolcanoShape.SetTime(w.Now); // cone ages (the cones change only with the relief)
             Shader.SetGlobalFloat(YearId, (float)System.Math.Floor(w.Now / (double)SimTime.Year));   // (which strips rest: Terrain.shader)
             Select(w);
@@ -1139,40 +1140,35 @@ namespace TC2.Game
 
         /// <summary>How much of a point is road (metres to the nearest track, on the sphere's chord).</summary>
         // (session 29, s27prof2_run: RoadAt still 4 ms of a running village view's 37 - every vertex of a recoloured patch scanned every stretch of its
-        // town's cell) each cell's stretches that come near the patch being coloured, filtered once a patch; bridge `roadfilter off`: every stretch
-        readonly System.Collections.Generic.Dictionary<int, System.Collections.Generic.List<Vector4>> _roadNear = new System.Collections.Generic.Dictionary<int, System.Collections.Generic.List<Vector4>>();
-        readonly System.Collections.Generic.List<System.Collections.Generic.List<Vector4>> _roadPool = new System.Collections.Generic.List<System.Collections.Generic.List<Vector4>>();
-        Vector3 _roadPc; float _roadMargin2; bool _roadFilter;
-        public static bool RoadFilter = true;
+        // town's cell; a filter by the patch did nothing at the village view, where a patch is about a cell) each patch keeps its vertices' road values
+        // until the roads themselves change: the table is laid again every 10 s, mostly the same - its content's signature moves RoadsVersion only when
+        // it differs. Bridge `roadcache off`: looked up again at every colouring, as before
+        int _roadsVersion; ulong _roadsSig;
+        public static bool RoadCache = true;
 
-        /// <summary>The patch about to be coloured: its middle (a unit direction) and how far from it (chord, on the unit sphere) a stretch may lie and still
-        /// colour one of its vertices.</summary>
-        void RoadPatch(Vector3 middle, float margin)
+        void RoadsLaid()
         {
-            foreach (var l in _roadNear.Values) { l.Clear(); _roadPool.Add(l); }
-            _roadNear.Clear();
-            _roadPc = middle; _roadMargin2 = margin * margin; _roadFilter = RoadFilter;
+            ulong sig = 1469598103934665603UL;
+            foreach (var kv in _roads)
+            {
+                ulong h = (ulong)(uint)kv.Key * 0x9E3779B97F4A7C15UL;
+                var l = kv.Value;
+                for (int i = 0; i < l.Count; i++)
+                {
+                    var v = l[i];
+                    h = (h ^ (ulong)(uint)System.BitConverter.SingleToInt32Bits(v.x)) * 1099511628211UL;
+                    h = (h ^ (ulong)(uint)System.BitConverter.SingleToInt32Bits(v.y)) * 1099511628211UL;
+                    h = (h ^ (ulong)(uint)System.BitConverter.SingleToInt32Bits(v.z)) * 1099511628211UL;
+                    h = (h ^ (ulong)(uint)System.BitConverter.SingleToInt32Bits(v.w)) * 1099511628211UL;
+                }
+                sig += h;   // (order-free over the cells)
+            }
+            if (sig != _roadsSig) { _roadsSig = sig; _roadsVersion++; }
         }
 
         float RoadAt(PlanetState P, Vec3d d, int c, float quad)
         {
             if (!_roads.TryGetValue(c, out var list)) return 0f;
-            if (_roadFilter)
-            {
-                if (!_roadNear.TryGetValue(c, out var near))
-                {
-                    near = _roadPool.Count > 0 ? _roadPool[_roadPool.Count - 1] : new System.Collections.Generic.List<Vector4>();
-                    if (_roadPool.Count > 0) _roadPool.RemoveAt(_roadPool.Count - 1);
-                    for (int k = 0; k + 1 < list.Count; k += 2)
-                    {
-                        Vector3 a = list[k], ab = (Vector3)list[k + 1] - a;
-                        float t = Mathf.Clamp01(Vector3.Dot(_roadPc - a, ab) / Mathf.Max(1e-12f, ab.sqrMagnitude));
-                        if ((a + ab * t - _roadPc).sqrMagnitude < _roadMargin2) { near.Add(list[k]); near.Add(list[k + 1]); }
-                    }
-                    _roadNear[c] = near;
-                }
-                list = near;
-            }
             Vector3 p = PlanetGeo.ToVector(d);
             float most = 0f, R = (float)P.Radius, reach = Mathf.Max(1.2f + 2.0f, 0.8f * quad) * 1.4f / R, reach2 = reach * reach;   // (no road is drawn wider)
             for (int k = 0; k + 1 < list.Count; k += 2)
@@ -1368,8 +1364,9 @@ namespace TC2.Game
             // roads are a few metres wide: on patches whose vertices stand far apart they would alias into dashes
             float quad = (float)(DMath.HalfPi * P.Radius / (1 << p.Level) / N);
             float roadLod = Edge(48f, 20f, quad);
-            // (the stretches near this patch: its half-diagonal and the widest road's reach, with room to spare)
-            if (roadLod > 0f) RoadPatch(p.Dirs[cols.Length / 2], (float)(DMath.HalfPi / (1 << p.Level) * 0.85) + Mathf.Max(3.2f, 0.8f * quad) * 2.0f / (float)P.Radius);
+            // (the roads under the vertices as this patch last read them, while the roads have not changed: RoadsLaid)
+            bool roadFill = roadLod > 0f && (!RoadCache || p.RoadVer != _roadsVersion || p.RoadV == null || p.RoadV.Length != cols.Length);
+            if (roadFill && (p.RoadV == null || p.RoadV.Length != cols.Length)) p.RoadV = new float[cols.Length];
             // villages near this patch
             _near.Clear();
             {
@@ -1558,7 +1555,7 @@ namespace TC2.Game
                     }
                     if (beaten > 0f) { col = Color.Lerp(col, Beaten, beaten * 0.85f); bare = Mathf.Max(bare, beaten); clear = Mathf.Max(clear, beaten); }
                     if (grave > 0f) { col = Color.Lerp(col, Sward, grave * 0.8f); bare *= 1f - grave; clear = Mathf.Max(clear, grave); }
-                    float road = roadLod > 0f ? RoadAt(P, d, c, quad) * roadLod : 0f;   // (none drawn on a coarse patch: not looked for - s27prof1_run)
+                    float road = roadLod > 0f ? (roadFill ? (p.RoadV[o] = RoadAt(P, d, c, quad)) : p.RoadV[o]) * roadLod : 0f;   // (none drawn on a coarse patch: not looked for - s27prof1_run; kept per patch - RoadsLaid)
                     bare = Mathf.Max(bare, road);
                     if (road > 0) col = Color.Lerp(col, Road, road * 0.85f);
                     // the river's corridor (D2-084): wet earth at the water's edge and a strip of lusher green along the banks, wider by a
@@ -1660,6 +1657,7 @@ namespace TC2.Game
                 lin.a = rel < 0 || p.Farm[o].x <= 0 ? 0f : Mathf.Clamp01(FarmWeight(P, dw, cw) * CoreMask(p.Plots[o]) * (1f - graveHere));
                 cols[o] = lin;
             }
+            if (roadFill) p.RoadVer = _roadsVersion;
             FillRealm(p);
         }
 

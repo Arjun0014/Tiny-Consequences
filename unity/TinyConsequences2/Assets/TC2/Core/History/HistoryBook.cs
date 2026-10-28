@@ -1939,6 +1939,27 @@ namespace TC2.Core.History
                 for (int j = 0; j < best.Count; j++) ch.Line(w, w.History.At(best[j]));
                 if (foldDead) ch.Note(TheDead(w, dead), ce.Settlement);
                 if (told > best.Count) ch.Fact("... and " + Plural(told - best.Count, "record", "records") + " more.");
+                // (session 29) its longest thread: the record furthest down a single line of causes from the cast, told link by link - what the cast still
+                // shapes years on ("because of it, this mine, this famine, this bow")
+                int deep = -1, depth = 0;
+                foreach (int j in fol)
+                {
+                    int d = 0; long cur = w.History.At(j).Cause1;
+                    while (cur != 0 && cur != ce.Id && d < 24 && w.History.TryGet(cur, out var up)) { cur = up.Cause1; d++; }
+                    if (cur != ce.Id) continue;
+                    if (d + 1 > depth || (d + 1 == depth && j > deep)) { depth = d + 1; deep = j; }
+                }
+                if (deep >= 0 && depth >= 2)
+                {
+                    var thread = new List<HistoryEvent>();
+                    long cur = w.History.At(deep).Id;
+                    while (cur != 0 && cur != ce.Id && w.History.TryGet(cur, out var te)) { thread.Add(te); cur = te.Cause1; }
+                    thread.Reverse();
+                    int years = YearOf(thread[thread.Count - 1].Time) - YearOf(ce.Time);
+                    ch.Heading("Its longest thread" + (years > 0 ? ", " + Plural(years, "year", "years") + " on" : ""));
+                    ch.Note("Each record follows from the one before; the first from your hand.", ce.Settlement);
+                    foreach (var te in thread) ch.Line(w, in te);
+                }
                 part.Chapters.Add(ch);
             }
             return part;

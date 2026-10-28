@@ -201,6 +201,8 @@ namespace TC2.Game
                     if (ch.Settlement > 0 && w.Settlements.Exists(ch.Settlement))
                     {
                         GUILayout.FlexibleSpace();
+                        // (session 29) a place's chapter opens its live page - its history, a realm's chapter its realm
+                        if (GUILayout.Button(ch.MapSeat > 0 ? "its realm now  ›" : "its page  ›", _bkNav, GUILayout.ExpandWidth(false))) { ShowPlace(ch.Settlement, ch.MapSeat > 0 ? PlaceRealmTab : 0); }
                         if (GUILayout.Button("go there", _bkNav, GUILayout.Width(90))) { var a = w.Settlements.Get(ch.Settlement).Anchor; Rig.Lat = a.Latitude; Rig.Lon = a.Longitude; }
                     }
                     GUILayout.EndHorizontal();
@@ -234,6 +236,7 @@ namespace TC2.Game
                 if (Place(w, chosen, out double lat, out double lon) && GUILayout.Button("go there", _bkNav, GUILayout.Width(90))) { Rig.Lat = lat; Rig.Lon = lon; }
                 GUILayout.EndHorizontal();
                 GUILayout.Label("each cause is a record of its own; the chain's root is " + (chosen.RootKind == RootKind.You ? "your hand" : chosen.RootKind == RootKind.Nature ? "nature" : "people's choices"), _bkTally);
+                BookLinks(w, in chosen);   // (session 29: the people and places it names, each to its page)
                 _whyScroll = GUILayout.BeginScrollView(_whyScroll, GUIStyle.none, GUI.skin.verticalScrollbar);
                 int n = w.History.CausalChain(_line, _chain);
                 for (int i = 0; i < n; i++)
@@ -258,6 +261,26 @@ namespace TC2.Game
         }
 
         void Kicker(string text) => GUILayout.Label(text.ToUpperInvariant(), _bkKicker);
+
+        /// <summary>(session 29) The people and places a record names, as links to their pages (the book closes for them).</summary>
+        void BookLinks(TC2.Core.Simulation.World w, in HistoryEvent e)
+        {
+            var people = new System.Collections.Generic.List<int>(); var places = new System.Collections.Generic.List<int>();
+            void Add(EntityRef r)
+            {
+                if (r.Kind == EntityKind.Person && w.People.Exists(r.Id) && !people.Contains(r.Id)) people.Add(r.Id);
+                else if (r.Kind == EntityKind.Settlement && w.Settlements.Exists(r.Id) && !places.Contains(r.Id)) places.Add(r.Id);
+            }
+            Add(e.Subject); Add(e.Object); Add(e.Other);
+            if (e.Settlement > 0 && w.Settlements.Exists(e.Settlement) && !places.Contains(e.Settlement)) places.Add(e.Settlement);
+            if (people.Count + places.Count == 0) return;
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("open:", _bkTally, GUILayout.ExpandWidth(false));
+            foreach (int pid in people) if (GUILayout.Button(w.History.NameOf(EntityRef.Person(pid)) + "  ›", _bkNav, GUILayout.ExpandWidth(false))) { ShowPerson(pid, 5); GUILayout.EndHorizontal(); return; }
+            foreach (int sid in places) if (GUILayout.Button(w.History.NameOf(EntityRef.Settlement(sid)) + "  ›", _bkNav, GUILayout.ExpandWidth(false))) { ShowPlace(sid, 8); GUILayout.EndHorizontal(); return; }
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+        }
 
         /// <summary>A thin rule of the page's red ink, from a share of the leaf's width to another.</summary>
         void Rule(float from, float to)
