@@ -34,48 +34,29 @@ process you did not start.
    world now, the building leaf, the book's order/Peoples/links, the powers' word); `docs/tc2/PROGRESS.md` CURRENT STATE; `25_CIVILISATION_ROADMAP.md` §8.
 4. `git status`, `git log --oneline -20`, `git worktree list`, and the queue: `cat $Q/runq.log` (`Q` below) - which jobs ended, with what; `ls $Q/todo`.
 
-## FIRST - the state at the end of session 29's second context (29 Oct 2026, ~01:30 IST)
-- **The branch `wip/s27-int` is the work** (worktree `C:/Game Dev/tc-s27int`, every edit there; tip = this note's commit). **Each queued job fast-forwards
-  main to it at its start** (`git merge --ff-only wip/s27-int`); when the queue is idle and main is behind, fast-forward it yourself:
+## FIRST - the state in session 30 (29 Oct 2026, from ~02:00 IST; Control Room run #86 session 3)
+- **The branch `wip/s27-int` is the work** (worktree `C:/Game Dev/tc-s27int`, every edit there). **Each queued Web/shots job fast-forwards main to it at
+  its start** (`git merge --ff-only wip/s27-int`); when the queue is idle and main is behind, fast-forward it yourself:
   `git -C "C:/Game Dev/tiny-consequences" merge --ff-only wip/s27-int` - never while a Unity job holds main's checkout. After any Web build:
-  `git checkout -- unity/TinyConsequences2/ProjectSettings/ProjectSettings.asset` in main's checkout (the jobs do it). Sim **108** unchanged all session.
+  `git checkout -- unity/TinyConsequences2/ProjectSettings/ProjectSettings.asset` in main's checkout (the jobs do it). Sim **108** unchanged.
 - **The queue** (`Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`,
-  hard-coded in `tc2/out/tools/s23/runq.sh` and `lib.sh`; the runner (task `bp3fvcitn`, started in session 29's first context) keeps polling `$Q/todo`;
-  `touch $Q/stop` stops it after its job; jobs run in name order). **At this handoff**: `0_qn_web_s29f` running (started 01:13: Web of 5ad5c7f -
-  `s29web6`, `s29book6` (extras with the ruin last burned), `s29book7` (Kaihope at year 600 with names, its Now/Why? pages), `s29lapse5` (the skip from
-  orbit after the stale-patch fix)); then `0_qo_shots_s29v7` (Paitaimwick's burned homes, the soot in the alpha) and `0_qp_fullsuite_s29c2` (the full
-  headless suite on the branch, into `$N/bin_s29c2`; `$N/fs_s29c2_ok` when it passes). Add a job by writing `$Q/todo/0_<name>.sh` (source `lib.sh`;
-  `gate`, `low`; `$Q/done/0_qm_shots_s29v6.sh` for a shots job, `0_qn_web_s29f.sh` for a Web job).
-- **Done in session 29's second context** (DECISIONS **D2-203** (1)-(18); SESSION_HANDOFF "Session 29, context 2"): D2-202's pages seen in Web builds
-  (`s29web3`-`s29web5` 9/9); the visual world judged in Unity shots `s29v1`-`s29v6`, `s29n1` (0 shader errors, read from Unity's own logs) and fixed: burned
-  crops and burned homes drawn as fire left them, a ruin saying how it fell, the rivers' far glint, the fields ending furlong by furlong, the timelapse's
-  straight seasonal edge (a steep colour ramp) and its out-of-step block (stale cached patches); readability: works' tags with why, the History panel's
-  lines (newest first) and the news opening the book, the ticker on a loaded world, no names under panels, the aim's words in a box, crafts and works in
-  words, the book's words, a village's name where its people live and its page saying so, the title's guide.
-
-## LAST STATE (29 Oct 2026, ~02:00 IST) - read this first
-- **The full headless suite passed**: `0_qp_fullsuite_s29c2` on the branch at 0fe9093 - **TESTS: 523 passed, 0 failed, 0 skipped** (1,142 s;
-  `$N/fullsuite_s29c2.txt`, `$N/fs_s29c2_ok`; `N` = the queue's scratchpad, see `lib.sh`).
-- **The queue's runner is STOPPED**: Claude Code stopped the background runner (task `bp3fvcitn`) at ~02:00 because the machine was low on memory, while
-  `0_qq_web_s29g` was in its Unity Web build (started 01:59:38 at main 31a268a; two Unity.exe were still running at 02:00 - the build may finish on its
-  own, but the job's later steps did not survive: no webtest `s29web7`, no bookshots `s29book8`/`s29lapse6`, no ProjectSettings restore). Its script is
-  gone (the runner had taken it from `$Q/todo`); it was `$Q/done/0_qn_web_s29f.sh` with tags s29web7 / s29book8 (`--save s2_ac5/world_y600.tc2 --lat -51.4
-  --lon 44.1 --views "region:6000" --extras --pages "place:1:1,place:2:1" --book ""`) / s29lapse6 (`--lapse --skip 10` on y300) and the check
-  `merge-base --is-ancestor 0fe9093`. **Do not restart the runner on your own** (Claude Code's notice: memory may still be short) - check memory
-  (`source tc2/out/tools/s23/lib.sh; load`) and that no Unity.exe of the stopped job still runs; ask Arjun before restarting it if in doubt. Once Unity
-  has ended: `git -C "C:/Game Dev/tiny-consequences" checkout -- unity/TinyConsequences2/ProjectSettings/ProjectSettings.asset` (the build modifies it);
-  `unity/TinyConsequences2/Assets/Resources/` (untracked) appeared during the build - leave it unless it is clearly the build's own output.
+  hard-coded in `tc2/out/tools/s23/runq.sh` and `lib.sh`). **Its runner (`runq.sh`, a bash process started 28 Oct 22:24) was never stopped**: at the end of
+  session 29 Claude Code only dropped its task entry; the process and its job ran on (`0_qq_web_s29g` ended rc 0 at 02:15) and it has run every job of
+  session 30. Add a job by writing `$Q/todo/0_<name>.sh` (source `lib.sh`; `gate`, `low`; `$Q/done/0_rf_web_s30c.sh` for a Web job,
+  `$Q/done/0_rd_shots_s30v5.sh` for shots, `$Q/done/0_rg_book_s30d.sh` for bookshots on the last build); hold one in `$Q/hold/` until you can judge
+  what runs before it (the runner starts the next job the moment one ends). `touch $Q/stop` stops it after its job.
+- **Done in session 30** (DECISIONS **D2-204** (1)-(6); SESSION_HANDOFF "Session 30"): D2-203 closed (full suite 523/0/0; `s29web7` 9/9; the charred ruins
+  measured dark in `s29v7`); two villages' fields meet furlong by furlong; a cycle's colours of one moment (the skip's gold blocks); the sea on its true
+  sphere a quarter metre down (the shore's faces); the cast's word beside Your hand; no map name under the lapse's cards; the years' leaf beside a page;
+  the ticker on one line; a fire's ground in hectares. Seen: Web `s30web1`, `s30web2` 9/9, `s30book1`-`s30book3`, `s30lapse1`; shots `s30v1`-`s30v6`.
 
 ## Do next, in order
-0. **At the handoff (~01:40)** `0_qn_web_s29f` and `0_qo_shots_s29v7` are DONE and judged (D2-203 (19)); `0_qp_fullsuite_s29c2` runs, `0_qq_web_s29g` is
-   queued (verify the orbit recolour `s29lapse6`, Kaihope's burned-crop line `s29book8`). **Open first**: charred ruins still not dark in shots
-   (`s29v6`/`s29v7`) - see D2-203 (19) and SESSION_HANDOFF "Session 29, context 2" step 0.
-1. (done) When `0_qn_web_s29f` ends: judge `s29web6` (9/9); `tc2/out/webtest/s29book6/extra_ruin_page.png` and `extra_ruin_hover.png` (how it fell);
-   `s29book7/village.png`, `region.png` ("Kaihope" over its lived homes), `page_place_1_1.png`/`page_place_2_1.png` ("Its people live 310 m from its first
-   square ..." and its Why?); `s29lapse5/lapse_7_skip_orbit.png` and `lapse_8_skip_1.png` (no block out of step). Then `0_qo_shots_s29v7`
-   (`tc2/out/shots/s29v7`: the burned homes black among grey ruins) and `0_qp_fullsuite_s29c2` (0 failed, 0 skipped). Fill D2-203's "Pending"; fix; commit.
-2. Then the brief's open looks and readability: two villages' fields meeting along the cells (D2-203 "left"), W-FOREST's sameness (a dedicated art pass),
-   any gap the pictures show (validate: compile -> focused tests -> real Web play/shots -> fix -> commit; no seed batteries for UI).
+1. Judge Web `0_rf_web_s30c` (6b0896a; `tc2/out/webtest/s30web3`: 7_after_a_century - no name under the headline cards; 9_person_life - the years' leaf
+   not over the page; the ticker one line; 5h_your_actions - "having burned about N ha"), then `0_rg_book_s30d` (`s30cloud0` vs `s30cloud1` village.png:
+   year 300's tan veil with a straight edge and vertical streaks at the left of the village view - is it the clouds?). Fix what they show; commit.
+2. Then the brief's open looks (W-FOREST's sameness is a dedicated art pass awaiting Arjun's judgement - `18` W-FOREST) and readability gaps the pictures
+   show (validate: compile -> focused tests -> real Web play/shots -> fix -> commit; no seed batteries for UI). Keep D2-204, PROGRESS, SESSION_HANDOFF and
+   this note current.
 
 ## Rules that bite
 - **After a sim version change, rebuild main's headless (`tc2/headless/app`) before a webtest**: its determinism check compares the browser with

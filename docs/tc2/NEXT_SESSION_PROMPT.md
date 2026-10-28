@@ -461,3 +461,5 @@ its first repeated message and fix the cause, then delete the log.
 **Rules**: commit prefix `[tc2]`; never commit Library/Temp/Logs/builds/secrets; never damage the legacy
 project; record decisions (D2-NNN) and measurements; update PROGRESS, SESSION_HANDOFF and this prompt at
 milestones. After a context compaction: stop, re-read the files above, reconstruct state, continue.
+
+**Where we are (session 30, 29 Oct 2026, from ~02:00 IST; Control Room run #86 session 3)**: on the branch `wip/s27-int` (main fast-forwarded by each job; sim 108 unchanged) D2-204 - two villages' fields at different stages meet furlong by furlong (both villages in a vertex, `TerrainLod.Slots`; the shader chooses per furlong); every patch coloured in a cycle shows the cycle's world (the skip's gold blocks gone); the sea drawn on its true sphere a quarter metre down (the shore's faces gone, an even swash); the cast's word beside Your hand; no map name under the lapse's cards; the years' leaf beside a page; the ticker on one line; a fire's ground in hectares. Tools: camera views `fieldmeet`, `shore`; `Look.SeaTrue`. SESSION_HANDOFF "Session 30" has the exact state and the steps.
