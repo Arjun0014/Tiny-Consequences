@@ -128,7 +128,7 @@ switch (cmd) {
     if (opt('--jobs')) extra.push('-tc2Jobs', opt('--jobs'));   // (IL2CPP jobs: fewer on a shared machine)
     if (flag('--symbols')) extra.push('-tc2Symbols');   // (session 27: the functions' names beside the build, for realmsperf --profile)
     status = run(extra);
-    tail(log, /error CS|\[TC2\]|Build Finished|Exception|Error building/);
+    tail(log, /error CS|\[TC2\]|Build Finished|Exception|Error building|Shader error/);   // (session 29: shader errors told - the jobs counted them in this output, where they never came)
     break;
   }
   case 'build-win': {
@@ -144,7 +144,7 @@ switch (cmd) {
     if (args.includes('--ground')) extra.push('-tc2ground', '1');   // (C13.3: the simulation's ground under each home)
     if (args.includes('--realms')) extra.push('-tc2realms', '1');   // (D2-167: the realms map layer on)
     status = run(extra, { quit: false });
-    tail(log, /error CS|\[TC2\]|Exception/);
+    tail(log, /error CS|\[TC2\]|Exception|Shader error/);   // (session 29: shader errors told, as build-web)
     console.log('shots in ' + dir);
     break;
   }
