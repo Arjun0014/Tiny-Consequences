@@ -17,8 +17,8 @@ readability with progressive disclosure world -> realm -> settlement -> househol
 "Why?" from the ledger - DONE (D2-201); (5) the History Book as the world's memory - its sections, links and Your Actions' threads DONE (D2-201, D2-202);
 (6) the powers as play - their word and live threads DONE (D2-202), the aim's words in a box (D2-203), keep polishing; (7) the visual world where it is
 evidence of the simulation (orbit, clouds, region edges, W-FOREST, settlements, people, important buildings, roads, political centres, war scars, ruins) -
-IN PROGRESS (D2-203: war scars - burned crops and homes, ruins that say how they fell; the fields' edges; the rivers' glint; the timelapse's seasonal edge),
-judged in real shots.
+IN PROGRESS (D2-203: war scars - burned crops and homes, ruins that say how they fell; the fields' edges; the rivers' glint; the timelapse's seasonal edge;
+D2-204: two villages' fields furlong by furlong, a skip's colours of one moment, the sea's true edge, the HUD's overlaps), judged in real shots.
 Validation for presentation: compile -> focused tests -> real Web play/shots -> fix -> commit; no seed batteries or 1,000-year runs for UI.
 Arjun is AFK: make normal design decisions; never ask "should I continue".
 
