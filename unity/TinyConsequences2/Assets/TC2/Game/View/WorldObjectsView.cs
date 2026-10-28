@@ -1055,7 +1055,7 @@ namespace TC2.Game
         }
 
         /// <summary>(session 29: war scars) A ruin that fell to fire - burned by a band, or flattened and fired by a stone from the sky - drawn black with soot,
-        /// weathering back to a ruin's moss and stone over fifteen years; a ruin that fell of age or to the sea as it was. A building that fell at once fell at
+        /// weathering back to a ruin's moss and stone over forty years (s29v5: over fifteen, homes burned ten years before were already grey); a ruin that fell of age or to the sea as it was. A building that fell at once fell at
         /// the moment `Homes.Burnt`/the stone set: its `Left` back by exactly its fall time and a millisecond - matched to a fire's record at that moment (no
         /// state of the world says "burned": the ledger does).</summary>
         Color Charred(TC2.Core.Simulation.World w, in Building b, Color ruin)
@@ -1063,7 +1063,7 @@ namespace TC2.Game
             if (_burnAt.Count == 0 || b.Left == 0) return ruin;
             long fell = b.Left + DMath.ToLong(Homes.FallYears(in b) * SimTime.Year) + 1;
             if (!_burnAt.Contains(fell)) return ruin;
-            float k = Mathf.Clamp01((float)((w.Now - fell) / (15.0 * SimTime.Year)));
+            float k = Mathf.Clamp01((float)((w.Now - fell) / (40.0 * SimTime.Year)));
             return Color.Lerp(new Color(0.16f, 0.13f, 0.11f, 1f), ruin, k * k);
         }
 
