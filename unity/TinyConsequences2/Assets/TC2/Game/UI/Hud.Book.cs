@@ -182,7 +182,8 @@ namespace TC2.Game
                 GUILayout.Label("Preface", _bkTitle);
                 GUILayout.Label("the world in year " + _writer.Book.Year, _bkSub);
                 Rule(0.0f, 1f);
-                _bookScroll = GUILayout.BeginScrollView(_bookScroll, GUIStyle.none, GUI.skin.verticalScrollbar, GUILayout.Height(Mathf.Max(120f, right.height - 200f)));
+                // (session 29: room for a chosen line's why under it - a line opened from the History panel lands here and its story had a sliver at the foot)
+                _bookScroll = GUILayout.BeginScrollView(_bookScroll, GUIStyle.none, GUI.skin.verticalScrollbar, GUILayout.Height(Mathf.Max(120f, right.height - 200f) * (_line != 0 ? 0.4f : 1f)));
                 bool first = true;
                 foreach (var para in _writer.Book.Preface) { GUILayout.Label(first ? Initial(para) : para, _bkBody); first = false; }
                 GUILayout.EndScrollView();

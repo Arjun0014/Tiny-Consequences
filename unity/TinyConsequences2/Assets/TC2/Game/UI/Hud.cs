@@ -80,6 +80,7 @@ namespace TC2.Game
         // the translucent hover tag, Your hand and the power bar, over their words)
         readonly System.Collections.Generic.List<Rect> _uiRects = new System.Collections.Generic.List<Rect>();
         Rect _handRect, _tagRect;
+        GUIStyle _feedLine;   // (session 29: a History panel line, lit under the pointer)
         readonly System.Collections.Generic.List<int> _byPeople = new System.Collections.Generic.List<int>();
         readonly System.Collections.Generic.Dictionary<int, string> _placeLine = new System.Collections.Generic.Dictionary<int, string>();
         string _pageStanding = "";   // (session 27: the person page's standing line)
@@ -833,7 +834,7 @@ namespace TC2.Game
                 GUILayout.Label("<b>The world now</b>   " + _worldAge, _label);
                 GUILayout.Label("<b>" + w.LivingPeople().ToString("N0", CultureInfo.InvariantCulture) + "</b> people in <b>" + w.InhabitedSettlements() + "</b> places; " + _worldRealmLine, _small);
                 foreach (var kv in _worldRealms)
-                    if (GUILayout.Button("   " + w.History.NameOf(EntityRef.Settlement(kv.Key)) + "'s realm - " + kv.Value + " villages  <color=#f2c35f>›</color>", _lineStyle)) ShowPlace(kv.Key, PlaceRealmTab);
+                    if (GUILayout.Button("   " + w.History.NameOf(EntityRef.Settlement(kv.Key)) + "'s realm - " + kv.Value + " villages  <color=#f2c35f>»</color>", _lineStyle)) ShowPlace(kv.Key, PlaceRealmTab);
                 GUILayout.Label(_worldTrouble, _small);
                 var P = w.Planet;
                 string sea = (P.SeaLevelNow - P.SeaLevel0).ToString("+0.0;-0.0", CultureInfo.InvariantCulture);
@@ -869,20 +870,23 @@ namespace TC2.Game
             _bottom = Rect.zero; _ticker = Rect.zero;
             if (_history)
             {
-                _bottom = new Rect(10, sh - 250, 560, 240);
+                // (above the power bar - last frame's, set again later in this one: the panel had run under the bar, s29book4)
+                float hTop = _powersRect.width > 0f ? Mathf.Min(sh - 250f, _powersRect.y - 8f - 240f) : sh - 250f;
+                _bottom = new Rect(10, Mathf.Max(60f, hTop), 560, 240);
+                if (_feedLine == null) { _feedLine = new GUIStyle(_small) { wordWrap = true, richText = true }; _feedLine.hover.textColor = new Color(1f, 0.86f, 0.45f); }
                 GUILayout.BeginArea(_bottom, _box);
                 // (session 29: the History panel as the book's recent pages) a line opens the book on it - why it happened, back to its root, and the
                 // people and places it names; the book itself at the present age
                 GUILayout.BeginHorizontal();
                 GUILayout.Label("<b>Recent history</b>  <size=10><color=#9a9486>a line opens why it happened</color></size>", _label);
                 GUILayout.FlexibleSpace();
-                if (GUILayout.Button("the book  ›", _btn)) OpenBook(-1);
+                if (GUILayout.Button("the book", _btn)) OpenBook(-1);
                 GUILayout.EndHorizontal();
                 int from = Mathf.Max(0, Host.Feed.Count - 10);
                 for (int i = from; i < Host.Feed.Count; i++)
                 {
                     long id = i < Host.FeedIds.Count ? Host.FeedIds[i] : 0;
-                    if (GUILayout.Button("<color=#c9a25a>›</color> " + Host.Feed[i], _small) && id != 0 && w.History.TryGet(id, out _)) { _book = true; _line = id; _whyScroll = Vector2.zero; }
+                    if (GUILayout.Button(Host.Feed[i], _feedLine) && id != 0 && w.History.TryGet(id, out _)) { _book = true; _line = id; _whyScroll = Vector2.zero; }   // (lit gold under the pointer: the HUD's font has no "›")
                 }
                 GUILayout.EndArea();
             }
@@ -917,7 +921,7 @@ namespace TC2.Game
             _powersRect = Rect.zero; _aimRect = Rect.zero;
             if (!_book && !lapse) { PowerBar(w, sw, sh); DrawCastNote(sw); }   // (the god's powers: F9.1; the last cast's word: session 29)
             _handRect = Rect.zero;
-            if (!_book && !lapse && _pageRect.width <= 0f) YourHand(w, sw, sh);   // (what came of your casts, live: session 27; not over a person's or a place's page - s27book5)
+            if (!_book && !lapse && _pageRect.width <= 0f && !_history) YourHand(w, sw, sh);   // (session 29: the History panel holds its place while open)   // (what came of your casts, live: session 27; not over a person's or a place's page - s27book5)
             if (!_book && !lapse) LapseSummaryLeaf(w, sw, sh); else _summaryRect = Rect.zero;   // (what the years did: Hud.Lapse.cs)
             if (!_book) DrawTip(); else _tip = null;
             _settingsRect = Rect.zero;
@@ -986,7 +990,7 @@ namespace TC2.Game
                 GUI.color = new Color(e.c.r, e.c.g, e.c.b, 1f);
                 GUI.DrawTexture(sq, Texture2D.whiteTexture);
                 GUI.color = old;
-                if (GUILayout.Button(w.History.NameOf(EntityRef.Settlement(e.sid)) + " - " + e.villages + " villages, " + e.people + " people  <color=#f2c35f>›</color>", _lineStyle)) ShowPlace(e.sid, PlaceRealmTab);   // (session 29: the realm's page)
+                if (GUILayout.Button(w.History.NameOf(EntityRef.Settlement(e.sid)) + " - " + e.villages + " villages, " + e.people + " people  <color=#f2c35f>»</color>", _lineStyle)) ShowPlace(e.sid, PlaceRealmTab);   // (session 29: the realm's page)
                 GUILayout.EndHorizontal();
             }
             if (legend.Count > shown) GUILayout.Label("and " + (legend.Count - shown) + " more", _small);
