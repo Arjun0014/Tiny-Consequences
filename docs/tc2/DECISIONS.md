@@ -6470,6 +6470,14 @@ and village views (`s30book2`, `s30book3`) - the villages' parcels meeting along
 name under the catch-up's years or headline cards (the overlay returned before the HUD's rects were set; its own were never among them); the years' leaf
 stops short of an open page (at 1280 wide it lay over a person's portrait and tabs) or waits; the news ticker one line, cut at a word ("..."; its second
 line ran off a 720-high screen); a fire's burned ground in hectares by the world's own measure ("burnt out after 17 hours (1 cells)" - now "..., having
-burned about 5 ha"). HistoryBookTests 7/7, WhysTests 3/3, Lives 23/23, BiographyTests 4/4, Chronicle 4/4 (this branch, headless). **Pending**: Web
-`0_rf_web_s30c` (`s30web3`: 7_after_a_century, 9_person_life, the ticker, 5h_your_actions); `0_rg_book_s30d` (year 300's village view with the clouds off
-and on: a tan veil with a straight edge and vertical streaks over the fields at its left in `s29lapse6`/`s30book3` - which layer draws it).
+burned about 5 ha"). HistoryBookTests 7/7, WhysTests 3/3, Lives 23/23, BiographyTests 4/4, Chronicle 4/4 (this branch, headless). Web `0_rf_web_s30c`
+(6b0896a): `s30web3` 9/9 - no name under the catch-up's cards, the years' leaf beside the person's page, the ticker one line (its lightning started no
+fire, so the hectares are pinned by HistoryBookTests.AFiresGroundIsToldInHectaresNotTheGridsCells, 8/8). (7) **The air near the ground** (fbd708a):
+year 300's village view (9.6 N 131.5 E) had a warm tan veil with a straight edge and streaks over high fields at its left - found by elimination in
+bookshots on one build: not the clouds (`s30cloud0`), not the sea (`s30wedge_sea`), gone with the air's shell off (`s30wedge_air`), at 1,100 and 1,400 m
+but not from 1,800 m up (`s30wedge1100`, `s30wedge1800`, `s30wedge`). The shell takes the ground for the sea's sphere, and a ray passing over it without
+meeting it took the limb's whole grazing way - though from low down such a ray may end on high land beyond the sphere's horizon (its edge). With the
+camera under 2.5-5 km a ray grazing the sphere within 150-600 m now ends where it passes closest and is veiled as the ground is; the region view and orbit
+keep the limb's whole way. (8) **floatcheck** had failed on the branch (Whys.Now's ruin distance in float, session 29 - the full-suite jobs never run the
+lint): now in double (b49bbe3). **Pending**: Web `0_rk_web_s30h` (fbd708a: `s30web4`; `s30air` v1100/v1400/v1800 - no veil, region and orbit - the limb as
+before).
