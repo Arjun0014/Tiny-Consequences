@@ -479,11 +479,12 @@ namespace TC2.Game
             if (_hoverPid != 0 && w.People.Exists(_hoverPid))
             {
                 ref var p = ref w.People.Get(_hoverPid);
-                string doing = HistoryText.Doing(w, in p);
-                int cut = doing.IndexOf(':'); if (cut > 0) doing = doing.Substring(0, cut);
+                string doing = HistoryText.Doing(w, in p), why = "";
+                int cut = doing.IndexOf(": ", System.StringComparison.Ordinal); if (cut > 0) { why = doing.Substring(cut + 2); doing = doing.Substring(0, cut); }
                 if (doing.Length > 70) doing = doing.Substring(0, 67) + "...";
+                if (why.Length > 76) why = why.Substring(0, 73) + "...";   // (session 29: the why under the what - read from the same choice)
                 string standing = Biography.Standing(w, _hoverPid);   // (session 27: the first, a lord, the sworn, the first's household)
-                text = "<b>" + Biography.Title(w, _hoverPid) + "</b>" + (standing.Length > 0 ? "\n<color=#f2c35f>" + standing + "</color>" : "") + "\n" + doing;
+                text = "<b>" + Biography.Title(w, _hoverPid) + "</b>" + (standing.Length > 0 ? "\n<color=#f2c35f>" + standing + "</color>" : "") + "\n" + doing + (why.Length > 0 ? "\n<i><color=#c9c3b4>why: " + why + "</color></i>" : "") + "\n<size=10><color=#9a9486>click for them</color></size>";
             }
             else if (_hoverBid != 0 && w.Buildings.Exists(_hoverBid))
             {
@@ -667,7 +668,7 @@ namespace TC2.Game
             else if (_personPage && _selected != 0 && w.People.Exists(_selected)) { float pw = Mathf.Min(820f, sw - 40f); _pageRect = new Rect(sw - 16f - pw, topY - 2f, pw, pageH); PersonSheet(_pageRect, w); }   // (session 29: Hud.Person.cs)
             else if (_building != 0 && w.Buildings.Exists(_building)) { showInsp = true; BuildingPage(insp, w); }
             _powersRect = Rect.zero;
-            if (!_book && !lapse) PowerBar(w, sw, sh);   // (the god's powers: F9.1)
+            if (!_book && !lapse) { PowerBar(w, sw, sh); DrawCastNote(sw); }   // (the god's powers: F9.1; the last cast's word: session 29)
             if (!_book && !lapse && _pageRect.width <= 0f) YourHand(w, sw, sh);   // (what came of your casts, live: session 27; not over a person's or a place's page - s27book5)
             if (!_book && !lapse) LapseSummaryLeaf(w, sw, sh); else _summaryRect = Rect.zero;   // (what the years did: Hud.Lapse.cs)
             if (!_book) DrawTip(); else _tip = null;

@@ -101,10 +101,13 @@ namespace TC2.Game
         {
             var w = Host.World;
             if (_aim < 0 || w == null) return;
-            if (Recharging(w, _aim) > 0) { _aim = -1; return; }
-            if (!GroundUnder(Input.mousePosition, out _, out int cell)) return;
+            // (session 29) no uncertainty whether a click worked: a cast refused says why, a cast made says what and where
+            long back = Recharging(w, _aim);
+            if (back > 0) { CastNote(Powers[_aim].Name + " is not back yet - in " + Wait(back), false); _aim = -1; return; }
+            if (!GroundUnder(Input.mousePosition, out _, out int cell)) { CastNote("Aim at the ground - the sky has nothing to strike", false); return; }
             var pw = Powers[_aim];
             w.Issue(new Command { Time = w.Now, Kind = pw.Kind, Cell = cell, Arg = pw.Arg });
+            CastNote(pw.Doing + " " + TC2.Core.History.HistoryText.At(w.PlaceName(cell)) + " - what comes of it shows in Your hand, and in the book's last part", true);
             // (session 27: the powers as play) the hand seen: a burst where it fell, the ground shaken by the heaviest
             // (the meteor: the stone seen falling to where the world strikes - the cell's heart, where its fires and its scar will be - and the burst and the
             // shaking when it lands)
@@ -113,6 +116,22 @@ namespace TC2.Game
             if (meteor) { AimView.Cast(w.Planet.Grid.Center[cell], pw.Reach, pw.Col, shake, true); AudioView.MeteorFall(AimView.FallTime); }
             else if (GroundUnder(Input.mousePosition, out var at, out _)) AimView.Cast(at, pw.Reach, pw.Col, shake);
             _aim = -1;
+        }
+
+        string _castNote; float _castNoteAt = -99f; bool _castOk;
+        void CastNote(string text, bool ok) { _castNote = text; _castNoteAt = Time.unscaledTime; _castOk = ok; }
+
+        /// <summary>(session 29) The last cast's word over the bar: made (gold) or refused (pale), fading after four seconds.</summary>
+        void DrawCastNote(float sw)
+        {
+            if (_castNote == null || Time.unscaledTime - _castNoteAt > 4f || _powersRect.width <= 0f) return;
+            float a = Mathf.Clamp01((4f - (Time.unscaledTime - _castNoteAt)) / 1.2f);
+            if (_tipStyle == null) _tipStyle = new GUIStyle(_mapTag) { wordWrap = true, padding = new RectOffset(9, 9, 6, 7) };
+            var c = new GUIContent((_castOk ? "<color=#f2c35f><b>" : "<color=#d8d4c8><b>") + _castNote + "</b></color>");
+            float tw = Mathf.Min(560f, sw - 20f), th = _tipStyle.CalcHeight(c, tw);
+            GUI.color = new Color(1f, 1f, 1f, a);
+            GUI.Box(new Rect(sw * 0.5f - tw * 0.5f, _powersRect.y - th - 6f, tw, th), c, _tipStyle);
+            GUI.color = Color.white;
         }
 
         /// <summary>Input for the powers (the HUD's Update): a click casts while aiming (not a drag), Escape or the right button stops aiming.
@@ -132,6 +151,7 @@ namespace TC2.Game
 
         // (session 27: the powers as play) your hand: the last casts and what has come of each so far, read from the ledger once a second
         readonly System.Collections.Generic.List<(long id, string what, long time, string came, int n)> _hand = new System.Collections.Generic.List<(long, string, long, string, int)>();
+        readonly System.Collections.Generic.List<string> _handThread = new System.Collections.Generic.List<string>();   // (session 29: each cast's longest thread so far)
         float _handAt;
         GUIStyle _handLine, _tipStyle;
         string[] _handText = new string[3];
@@ -146,7 +166,7 @@ namespace TC2.Game
             if (Time.unscaledTime - _handAt > 1f)
             {
                 _handAt = Time.unscaledTime;
-                _hand.Clear();
+                _hand.Clear(); _handThread.Clear();
                 var h = w.History;
                 for (int i = h.Count - 1, seen = 0; i >= 0 && seen < 40000 && _hand.Count < 3; i--, seen++)
                 {
@@ -157,6 +177,9 @@ namespace TC2.Game
                     if (what.StartsWith("You ", StringComparison.Ordinal)) what = char.ToUpperInvariant(what[4]) + what.Substring(5);
                     string came = TC2.Core.History.HistoryBook.CameOf(w, e.Id, out int n);
                     _hand.Add((e.Id, what, e.Time, came, n));
+                    string thread = TC2.Core.History.HistoryBook.Thread(w, e.Id, out int ty, out int depth);
+                    if (thread.Length > 150) thread = thread.Substring(0, 147) + "...";
+                    _handThread.Add(thread.Length > 0 ? "<size=11><color=#f2c35f>its longest thread, " + depth + " links" + (ty > 0 ? ", " + ty + (ty == 1 ? " year" : " years") + " on" : "") + ":</color> " + thread + "</size>" : "");
                 }
             }
             if (_hand.Count == 0) return;
@@ -171,7 +194,7 @@ namespace TC2.Game
                 var x = _hand[k];
                 long ago = w.Now - x.time;
                 string when = ago < SimTime.Day ? "today" : ago < SimTime.Year ? (ago / SimTime.Day) + " days ago" : (ago / (double)SimTime.Year).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + " years ago";
-                _handText[k] = "<b>" + x.what + "</b> <size=11>(" + when + ")</size>\n" + (x.came.Length > 0 ? x.came : "<i>nothing yet that the world remembers</i>");
+                _handText[k] = "<b>" + x.what + "</b> <size=11>(" + when + ")</size>\n" + (x.came.Length > 0 ? x.came : "<i>nothing yet that the world remembers</i>") + (k < _handThread.Count && _handThread[k].Length > 0 ? "\n" + _handThread[k] : "");
                 hh += _handLine.CalcHeight(new GUIContent(_handText[k]), inner) + _handLine.margin.vertical;
             }
             var r = new Rect(_powersRect.x, _powersRect.y - 10f - hh, hw, hh);

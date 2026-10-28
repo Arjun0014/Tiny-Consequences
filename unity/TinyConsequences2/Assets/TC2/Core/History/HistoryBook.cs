@@ -2032,6 +2032,34 @@ namespace TC2.Core.History
             return parts.Count > 0 ? Join(parts) : count > 0 ? Plural(count, "record", "records") : "";
         }
 
+        /// <summary>
+        /// (session 29) A cast's longest thread so far: the record furthest down one line of first causes from it (its words, its year), and how many years on
+        /// from the cast - what the cast still shapes. For the HUD's "your hand", read once a second (the last 4,000 records rooted in it at most); "" when
+        /// nothing has followed beyond its first step.
+        /// </summary>
+        public static string Thread(World w, long castId, out int years, out int depth)
+        {
+            years = 0; depth = 0;
+            var h = w.History;
+            if (!h.TryGet(castId, out var cast)) return "";
+            int lo = 0, hi = h.Count;
+            while (lo < hi) { int mid = (lo + hi) >> 1; if (h.At(mid).Time < cast.Time) lo = mid + 1; else hi = mid; }
+            int seen = 0; long best = 0;
+            for (int i = h.Count - 1; i >= lo && seen < 4000; i--)
+            {
+                var e = h.At(i);
+                if (e.RootKind != RootKind.You || e.Root != castId || e.Id == castId) continue;
+                seen++;
+                int d = 1; long cur = e.Cause1;
+                while (cur != 0 && cur != castId && d < 24 && h.TryGet(cur, out var up)) { cur = up.Cause1; d++; }
+                if (cur != castId) continue;
+                if (d > depth) { depth = d; best = e.Id; }
+            }
+            if (best == 0 || depth < 2 || !h.TryGet(best, out var last)) return "";
+            years = YearOf(last.Time) - YearOf(cast.Time);
+            return HistoryText.Describe(w, last);
+        }
+
         /// <summary>What a kind of record is, counted, in "What came of it" (null: not told by count).</summary>
         static string Followed(HistoryKind k, int n)
         {
@@ -2073,6 +2101,19 @@ namespace TC2.Core.History
                 case HistoryKind.PartySetOut: return Plural(n, "party setting out", "parties setting out");
                 case HistoryKind.HouseholdMoved: return Plural(n, "household leaving", "households leaving");
                 case HistoryKind.SettlementFounded: return Plural(n, "village founded", "villages founded");
+                // (session 29: what a cast shapes long after - the ore seen and worked, works raised, crafts found, bows and raids)
+                case HistoryKind.OreFound: return Plural(n, "village that found the ore", "villages that found the ore");
+                case HistoryKind.OreTaken: return Plural(n, "load dug at another's works", "loads dug at another's works");
+                case HistoryKind.WorkBegun: return Plural(n, "work begun", "works begun");
+                case HistoryKind.WorkBuilt: return Plural(n, "work raised", "works raised");
+                case HistoryKind.TechniqueFound: return Plural(n, "craft found", "crafts found");
+                case HistoryKind.TechniqueKnown: return Plural(n, "village that learned a craft", "villages that learned a craft");
+                case HistoryKind.ArmsMade: return Plural(n, "smithy forging arms", "smithies forging arms");
+                case HistoryKind.TributeAgreed: return Plural(n, "bow to a lord", "bows to a lord");
+                case HistoryKind.Raid: return Plural(n, "raid", "raids");
+                case HistoryKind.BandRaised: return Plural(n, "band raised", "bands raised");
+                case HistoryKind.ReliefSent: return Plural(n, "gift of grain", "gifts of grain");
+                case HistoryKind.Rationing: return Plural(n, "village rationing", "villages rationing");
                 default: return null;
             }
         }
