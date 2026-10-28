@@ -67,7 +67,9 @@ namespace TC2.Game
                 var ar = _air.AddComponent<MeshRenderer>(); ar.sharedMaterial = _atmo; ar.shadowCastingMode = ShadowCastingMode.Off;
             }
             _sea.transform.localScale = Vector3.one * (float)(P.Radius + Ground.WaterHeight(P, P.SeaLevel));
+            _water.SetFloat(SeaSphere, (float)(P.Radius + Ground.WaterHeight(P, P.SeaLevel)));   // (session 30: drawn where the true sphere is - Water.shader)
         }
+        static readonly int SeaSphere = Shader.PropertyToID("_SeaSphere");
 
         void Build()
         {

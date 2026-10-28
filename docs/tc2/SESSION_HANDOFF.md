@@ -1,5 +1,24 @@
 # TC2 Session handoff
 
+## Session 30 (29 Oct 2026, from ~02:00 IST; Control Room run #86 session 3; Arjun AFK) - fields between villages, a skip's colours of one moment, the sea's edge (D2-204)
+
+### Exact state (keep current)
+- **The machine**: never draw on the RX 5600M (gpusafe.mjs; Unity logs "AMD Radeon(TM) Graphics (ID=0x1636)"); silent runs; one heavy job at a time
+  (a Web build takes RAM to ~77-90 %: gate `load` < 86 before even `unity.mjs cc`).
+- **The queue's runner was never stopped**: Claude Code dropped its task `bp3fvcitn` from its list at ~02:00, but `runq.sh` (bash, started 22:24) and the
+  job it was running kept going - `0_qq_web_s29g` ended rc 0 at 02:15 and the runner took the next job at once. Follow it with
+  `tail -n 0 -F $Q/runq.log`; `touch $Q/stop` stops it after its job.
+- **Code**: on `wip/s27-int` (worktree `C:/Game Dev/tc-s27int`); every queued job fast-forwards main to it. Sim **108** unchanged (presentation only).
+- **Done this session**: D2-203's pending closed (full suite 523/0/0; `s29web7` 9/9; Kaihope's burned crop told; the charred ruins WERE dark in `s29v7` -
+  measured); D2-204 (1) two villages' fields meet furlong by furlong (bdf3e41, bf5ca22; shots `s30v1`, `s30v2`); (2) a cycle's colours of one moment (the
+  skip's gold blocks); (3) the cast's word beside Your hand; (4) camera views `fieldmeet`, `shore`.
+
+### Next, in order
+0. Judge Web `0_rb_web_s30a` (bdf3e41): `s30web1` 9/9; `tc2/out/webtest/s30book1/play_meteor_land.png` (the gold word beside Your hand, not under it),
+   `extra_way_hover.png` (Vaindwick's and Towick's fields along furlongs); `s30lapse1/lapse_7_skip_orbit.png` (year 303: no gold blocks, no straight edge).
+   Then shots `0_rc_shots_s30v3` (`s30v3`, `s30v4`: no squeezed strips where three villages meet; `shore*`: the sea's edge on the true sphere).
+1. Then the brief's open looks: W-FOREST's sameness; the coast's stepped shelf from orbit; readability gaps the pictures show.
+
 ## Session 29, context 2 (29 Oct 2026, 00:00 - ~01:10 IST; Control Room run #86 session 2; Arjun AFK) - the visual world as evidence (D2-203)
 
 ### Exact state (keep current)

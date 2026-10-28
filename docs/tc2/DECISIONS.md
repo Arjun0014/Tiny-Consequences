@@ -6412,3 +6412,46 @@ Actions". **Pending**: the Web build of a453afe (`0_ql_web_s29e`: `s29web5`, `s2
 works; `s29lapse4` - the seasonal edge softened) and `s29lapse4`'s judgement; shots of the forty-year soot (`0_qm_shots_s29v6`); Web `0_qn_web_s29f` (`s29web6`, the ruin's page and tag `s29book6`,
 Kaihope's name at year 600 `s29book7`, the skip from orbit with stale patches recoloured `s29lapse5` - seen, (19)); the full suite `0_qp_fullsuite_s29c2`
 (running at the handoff) and Web `0_qq_web_s29g` (queued: `s29web7`, `s29book8`, `s29lapse6`).
+**Closed in session 30** (29 Oct, ~02:00-): the full suite `0_qp_fullsuite_s29c2` passed (523/0/0 at 0fe9093); Web `0_qq_web_s29g` (31a268a) -
+`s29web7` 9/9, `s29book8` (Kaihope's Now: "60 % of its standing crop burned this season, by a band driven off from its walls"), `s29lapse6` (year 309 smooth,
+but year 303 a gold band with a straight edge and stepped top - D2-204 (2)); **the charred ruins were dark in `s29v7` after all** (3b66e4c): the burned
+home's pixels average (51, 49, 40) against (93, 86, 75) for the same pixels in `s29v6`, the unburned ruins pale grey - (19)'s "Open" was judged on the whole
+frame, where a ruin is a few pixels.
+
+## D2-204 — 2026-10-29 — Two villages' fields meet furlong by furlong; a cycle's colours of one moment; the cast's word beside Your hand (presentation; session 30)
+
+**Context.** D2-203 left two villages' fields at different stages (one sown and brown, one green) meeting along a sawtooth of the terrain's
+triangles with a blur of both villages' strip frames along it (`s29book4` extra_way_hover, `s29v5` region): a vertex carried one village's frame and
+crop, so a triangle between two villages interpolated two frames hundreds of metres apart. The skip from orbit (`s29lapse6` lapse_7, year 303) showed a
+gold band with a straight lower edge and a stepped top among brown land. The power's cast word (gold, over the bar) ran under Your hand (`s29book5`
+play_meteor_land).
+
+**Decision.** (1) **Both villages in the vertex** (`TerrainLod.Slots`; `Patch.Farm2` as uv7, `Patch.Slot` as the tangent): where the cells round a
+vertex hold two villages' fields, the vertex carries both - the lower id first (its frame in uv0, share worked and crop stage in uv1, share burned in
+uv6.y), the other in uv7 (frame, share worked, stage) and the tangent (share burned, both crops' colours packed sRGB six bits a channel, the second's
+share of the fields here, from the cells' kernel weights summed by village). The vertex's owner is now the village with the largest summed share (it was
+the single cell weighing most). The terrain shader gives each furlong of the first village whole to one or the other by the second's share against the
+furlong's own mark (0.15-0.85; far off 0.5), takes that village's frame, stage, share worked, share burned and crop colour (the vertex colour's blend of
+the two crops replaced by the chosen one, in linear light), so the boundary runs furlong by furlong across the band, about a cell wide, where both share
+the land. A slot whose frame changes across a triangle far faster than the ground (`px > 3 pxw + 1`: its vertices hold other villages) is not used; the
+other, or the first village's frame as before. Where three villages meet a vertex holding one pair beside a vertex holding another keeps its own village
+alone (bf5ca22: `s30v2` had strips squeezed along a sawtooth there); the fields' edge ring carries its village alone. (2) **A cycle's colours of one
+moment**: `RefreshCellColours` now reads, with the cells' colours, the time (`_colourNow`: the season, the leaves, the snow), the soil's water
+(`_soilSnap`) and each village's crop (`_crops`: colour, share worked, stage, share burned), and every patch coloured in that cycle - built, recoloured,
+or shown again part-way through it - takes them. In a skip from orbit a cycle is 25 days; patches built as the camera rose had taken the crops and the
+season live and stood as gold blocks with a straight edge among brown (lapse_7). The state is the world's; only when the view reads it changed. (3)
+**The cast's word beside Your hand**: drawn after it, between what stands over the bar's ends (Your hand or the History panel on the left, a page's foot
+on the right), else above them; no map name under it (`Hud._noteRect`). (4) **Tools**: the camera view `fieldmeet` (`:low` 160 m, `:far` 900 m; 400 m) -
+two villages' fields meeting with the most unlike crops within 4 km of the framed village, over the edge between their cells - with its villages and
+stages in the log.
+
+**Considered and left.** A boundary inside a furlong still follows the share's iso-line where the band crosses it (a curve within some furlongs), as
+the fields' edge against wild land does (D2-203 (11)) - whole furlongs would need the share at the furlong's centre. The coasts: at village distance the
+sea's surface meets coarse coastal triangles as a sawtooth of light and dark facets (`s29book8` page_place_1_1, Kaihope's shore) - the sea surface has one
+alpha and no depth (the depth texture is off: D2-026, D2-040); a fix needs the depth under the sea surface per patch (the sea drawn per terrain patch with
+the patch's own heights) - left for a look pass.
+
+**Evidence.** Unity shots `s30v1` (year 600: Dreford's green fields and Pemwick's sown ones), `s30v2` (year 300: Retistead's sown and Paitaimwick's
+green) at bdf3e41 - 0 shader errors, the integrated Radeon: the boundary along whole furlongs at 160, 400 and 900 m and blocky only at furlong scale from
+the region view; `s30v2`'s junction artifact fixed in bf5ca22. **Pending**: Web `0_rb_web_s30a` (bdf3e41: `s30web1`, `s30book1` play_meteor_land and
+extra_way_hover, `s30lapse1` lapse_7) and shots `0_rc_shots_s30v3` (bf5ca22: `s30v3`, `s30v4`).

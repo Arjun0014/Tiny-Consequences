@@ -10,6 +10,7 @@ Shader "TC2/Water"
         _Sky ("Sky", Color) = (0.58, 0.72, 0.90, 1)
         _Alpha ("Alpha", Range(0, 1)) = 0.62
         _DepthScale ("Depth scale (m)", Float) = 14
+        _SeaSphere ("The sea's true radius (0: the mesh as it is)", Float) = 0
     }
     SubShader
     {
@@ -30,7 +31,7 @@ Shader "TC2/Water"
             #include "TC2CloudForm.hlsl"
 
             CBUFFER_START(UnityPerMaterial)
-                half4 _Deep; half4 _Shallow; half4 _Sky; half _Alpha; float _DepthScale;
+                half4 _Deep; half4 _Shallow; half4 _Sky; half _Alpha; float _DepthScale; float _SeaSphere;
             CBUFFER_END
             TEXTURE2D(_TC2Detail); SAMPLER(sampler_TC2Detail);
             float4 _TC2FogColor;
@@ -53,8 +54,27 @@ Shader "TC2/Water"
 
             half Noise2(float2 uv) { return SAMPLE_TEXTURE2D(_TC2Detail, sampler_TC2Detail, uv).r; }
 
-            half4 frag(Varyings i) : SV_Target
+            half4 frag(Varyings i, out float depthOut : SV_Depth) : SV_Target
             {
+                // (session 30) the sea where the true sphere is, not its mesh: the mesh's faces (~100 m) lie up to ~0.4 m inside the sphere between
+                // their corners, and the ground colours its shallows, wet sand and surf by the true radius (_TC2SeaRadius) - on a flat beach the water's
+                // edge stood tens of metres off them in the faces' pattern, a sawtooth of bare and covered triangles along the shore (s29book8, Kaihope's
+                // shore). The view ray's own meeting with the sphere gives the depth the ground is tested against; lakes keep their meshes (_SeaSphere 0).
+                depthOut = i.positionCS.z;
+                if (_SeaSphere > 0.0)
+                {
+                    float3 ro = _WorldSpaceCameraPos, rd = normalize(i.positionWS - ro);
+                    float b = dot(ro, rd), cc = dot(ro, ro) - _SeaSphere * _SeaSphere, disc = b * b - cc;
+                    if (cc > 0.0 && disc > 0.0)
+                    {
+                        float4 cp = TransformWorldToHClip(ro + rd * (-b - sqrt(disc)));
+                        float z = cp.z / cp.w;
+                        #if !UNITY_REVERSED_Z
+                        if (UNITY_NEAR_CLIP_VALUE < 0.0) z = z * 0.5 + 0.5;   // (OpenGL's -1..1 to the window's 0..1)
+                        #endif
+                        depthOut = z;
+                    }
+                }
                 float3 up = normalize(i.positionWS);
                 float t = _Time.y;
                 float3 camRel = i.positionWS - _WorldSpaceCameraPos;
