@@ -39,6 +39,12 @@ namespace TC2.Game
         /// <summary>Chooses a person as a click does - their card (the bridge's way in: tests).</summary>
         public void Select(int pid) { _book = false; _personPage = false; _placeSid = 0; _selected = pid; _building = 0; }
 
+        /// <summary>(session 29) The world now panel on or off (the bridge's way in: tests).</summary>
+        public void Info(bool on) { _info = on; }
+
+        /// <summary>(session 29) Opens a building's page as a click on it does (tests).</summary>
+        public void ShowBuilding(int bid) { _book = false; _personPage = false; _placeSid = 0; _selected = 0; _building = bid; }
+
         /// <summary>Follows a person as their card's Follow does (the bridge's way in: tests).</summary>
         public void Follow(int pid) { _book = false; _selected = pid; _follow = pid; _building = 0; }
 

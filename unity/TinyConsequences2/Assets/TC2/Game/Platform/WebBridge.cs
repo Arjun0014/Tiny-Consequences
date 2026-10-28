@@ -83,6 +83,27 @@ namespace TC2.Game
                 case "aim": { var hud = Object.FindFirstObjectByType<Hud>(); if (hud != null) hud.Aim(int.Parse(a[1], inv)); break; }   // tests: aim a power as its button does (F9.1)
                 case "closebook": { var hud = Object.FindFirstObjectByType<Hud>(); if (hud != null) hud.CloseBook(); break; }
                 case "closepages": { var hud = Object.FindFirstObjectByType<Hud>(); if (hud != null) hud.ClosePages(); break; }   // (the book and every page closed)
+                case "info": { var hud = Object.FindFirstObjectByType<Hud>(); if (hud != null) hud.Info(a.Length < 2 || a[1] == "on"); break; }   // (session 29) the world now
+                case "building":
+                    {
+                        // (session 29) tests: "building SID|big [KIND]" - a work of a place (its smithy, else its first granary, else its first home) as a click on it opens it
+                        var hud = Object.FindFirstObjectByType<Hud>(); var w = Host.World; int sid = 0;
+                        if (a.Length > 1 && a[1] != "big") sid = int.Parse(a[1], inv);
+                        else { int most = -1; for (int id = w.Settlements.First(); id != 0; id = w.Settlements.Next(id)) { ref var s = ref w.Settlements.Get(id); if (s.Inhabited && s.Population > most) { most = s.Population; sid = id; } } }
+                        if (sid == 0 || hud == null) break;
+                        int want = a.Length > 2 ? int.Parse(a[2], inv) : TC2.Core.Places.Structures.Smithy, pick = 0;
+                        var bl = w.BuildingsOf(sid);
+                        for (int pass = 0; pass < 3 && pick == 0; pass++)
+                            for (int i = 0; i < bl.Count && pick == 0; i++)
+                            {
+                                ref var b = ref w.Buildings.Get(bl[i]);
+                                if (pass == 0 && b.Kind == want && b.Done != 0) pick = bl[i];
+                                else if (pass == 1 && b.Kind == TC2.Core.Places.Structures.Granary && b.Done != 0) pick = bl[i];
+                                else if (pass == 2 && TC2.Core.Places.Structures.IsHome(b.Kind) && b.Household != 0) pick = bl[i];
+                            }
+                        if (pick != 0) { hud.ShowBuilding(pick); ref var pb = ref w.Buildings.Get(pick); ref var ps = ref w.Settlements.Get(sid); Rig.LookAt(ps.LocalToSphere(pb.X, pb.Y, w.Planet.Radius), 140); }
+                        break;
+                    }
                 case "names": Hud.Names = a.Length < 2 || a[1] == "on"; break;   // (session 25) places named on the map
                 case "setting":   // (F11.2) tests: a setting changed as the panel changes it, and kept
                     {
@@ -228,6 +249,17 @@ namespace TC2.Game
             sb.Append(",\"catchingUp\":").Append(Host.CatchingUp ? "true" : "false");
             sb.Append(",\"catchUpTarget\":").Append(Host.CatchUpTarget);
             sb.Append(",\"skipping\":").Append(Host.Skipping ? "true" : "false");
+            if (w != null && Rig != null && Rig.Cam != null)
+            {
+                // (session 29) tests: the most peopled place's square on the screen (px from the top left), to point at it from afar
+                int big = 0, most = -1;
+                for (int id = w.Settlements.First(); id != 0; id = w.Settlements.Next(id)) { ref var s = ref w.Settlements.Get(id); if (s.Inhabited && s.Population > most) { most = s.Population; big = id; } }
+                if (big != 0)
+                {
+                    Vector3 sp = Rig.Cam.WorldToScreenPoint(PlanetGeo.Surface(w.Planet, w.Settlements.Get(big).Anchor));
+                    sb.Append(",\"bigX\":").Append(sp.x.ToString("0", inv)).Append(",\"bigY\":").Append((Screen.height - sp.y).ToString("0", inv)).Append(",\"bigFront\":").Append(sp.z > 0 ? "true" : "false");
+                }
+            }
             if (Rig != null) sb.Append(",\"lapse\":\"").Append(Rig.Lapse).Append("\",\"lapseLight\":").Append(Rig.LapseLight.ToString("0.###", inv)).Append(",\"camAlt\":").Append((Rig.Distance - (w != null ? w.Planet.Radius : 0)).ToString("0", inv));   // (session 29: the timelapse)
             sb.Append(",\"saveBytes\":").Append(Host.LastSaveBytes);
             sb.Append(",\"saveOk\":").Append(Host.LastSaveOk ? "true" : "false");

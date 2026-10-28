@@ -6,6 +6,7 @@
 //        [--book "-1,0:0,1:0,2:0,3:0,4:0,5:0,6:0,7:0"] [--tag NAME] [--webgl2] [--play] [--pages "person:0,place:0"]
 // --play (session 27): the pointer over a home, a lightning aimed, cast and its "Your hand", a storm aimed from afar (play_*.png);
 // with --meteor-play also a meteor thrown near that home: its fall, its landing and what it left (play_meteor_*.png).
+// --extras (session 29): the world now panel, a building's leaf, the greatest place pointed at and clicked from the region view (extra_*.png).
 // --lapse (session 29): the timelapse - the oldest person followed at the village view, 1 day/s (the camera rises, watches from orbit), 1 min/s (it
 // comes back to them), then a skip of --skip YEARS (default 2) watched from orbit to its end and the leaf of what the years did (lapse_*.png, the
 // camera's state at each in report.json `lapse`); --flash N: N frames 120 ms apart at 10 days/s from orbit (lapse_flash_*.png) to measure flicker.
@@ -173,6 +174,31 @@ try {
     }
     await page.waitForTimeout(1500);
     await snap('lapse_9_skip_back');
+  }
+  if (flag('--extras')) {
+    // (session 29) the world now (Info), a building's leaf (the greatest place's smithy), and from the region view the greatest place pointed at (its tag)
+    // and clicked (its page at Now)
+    const snap = async (name) => { const f = path.join(outDir, `${name}.png`); await page.screenshot({ path: f }); report.shots.push(f); console.log('shot ' + name); };
+    await cmd('closepages'); await cmd('info on'); await cmd(`look ${lat} ${lon} 6000`);
+    await page.waitForTimeout(6000);
+    await snap('extra_world_now');
+    await cmd('info off');
+    await cmd('building big');
+    await page.waitForTimeout(3500);
+    await snap('extra_building');
+    await cmd('closepages');
+    await cmd(`look ${lat} ${lon} 6000`);
+    await page.waitForTimeout(3000);
+    const st = await page.evaluate(() => window.__TC2);
+    if (st.bigFront && st.bigX > 0 && st.bigY > 0) {
+      await page.mouse.move(st.bigX, st.bigY);
+      await page.waitForTimeout(1500);
+      await snap('extra_far_hover');
+      await page.mouse.down(); await page.waitForTimeout(80); await page.mouse.up();
+      await page.waitForTimeout(2500);
+      await snap('extra_far_click');
+      await cmd('closepages');
+    } else console.log('the greatest place is not in view from the region view');
   }
   // (session 27) the person and place pages as leaves of the book: --pages "person:0,person:5,place:0,place:2" - the oldest living person's page and
   // the greatest place's at those sections (page_person_0.png ...)
