@@ -474,8 +474,22 @@ namespace TC2.Game
                         }
                     }
                 }
+                // (session 29: roads read) nobody and nothing built under the pointer: the worn way under it, if one passes within a few metres
+                _hoverWayA = _hoverWayB = 0;
+                if (_hoverPid == 0 && _hoverBid == 0) HoverWay(w, under, alt);
             }
             string text = null;
+            if (_hoverPid == 0 && _hoverBid == 0 && _hoverWayA != 0 && w.Settlements.Exists(_hoverWayA) && w.Settlements.Exists(_hoverWayB))
+            {
+                if (Time.unscaledTime - _wayTextAt > 0.5f || _wayTextFor != _hoverWayA * 100003L + _hoverWayB)
+                {
+                    _wayTextAt = Time.unscaledTime; _wayTextFor = _hoverWayA * 100003L + _hoverWayB;
+                    var lines = Whys.Way(w, _hoverWayA, _hoverWayB);
+                    _wayText = lines.Count > 0 ? "<b>" + lines[0] + "</b>" : "";
+                    for (int i = 1; i < lines.Count; i++) _wayText += "\n" + (i == 1 ? lines[i] : "<color=#e6dfcf>" + lines[i] + "</color>");
+                }
+                text = _wayText;
+            }
             if (_hoverPid != 0 && w.People.Exists(_hoverPid))
             {
                 ref var p = ref w.People.Get(_hoverPid);
@@ -506,6 +520,33 @@ namespace TC2.Game
         }
 
         static string Cap(string s) => string.IsNullOrEmpty(s) ? s : char.ToUpperInvariant(s[0]) + s.Substring(1);
+
+        // (session 29: roads read) the worn way under the pointer: the ways as they stand (collected every two seconds), each by its route's line
+        int _hoverWayA, _hoverWayB; float _waysAt = -99f, _wayTextAt = -99f; long _wayTextFor; string _wayText = "";
+        readonly System.Collections.Generic.List<TC2.Core.Agents.Way> _hoverWays = new System.Collections.Generic.List<TC2.Core.Agents.Way>();
+
+        void HoverWay(TC2.Core.Simulation.World w, Vec3d under, float alt)
+        {
+            if (Time.unscaledTime - _waysAt > 2f) { _waysAt = Time.unscaledTime; w.Ways.Collect(w.Now, _hoverWays); }
+            double R = w.Planet.Radius, near = System.Math.Max(6.0, alt * 0.012), best = near;
+            for (int i = 0; i < _hoverWays.Count; i++)
+            {
+                var way = _hoverWays[i];
+                if (!w.Settlements.Exists(way.A) || !w.Settlements.Exists(way.B)) continue;
+                Vec3d a = w.Settlements.Get(way.A).Anchor, b = w.Settlements.Get(way.B).Anchor;
+                double ab = Vec3d.ArcDistance(a, b, R);
+                if (Vec3d.ArcDistance(under, a, R) + Vec3d.ArcDistance(under, b, R) > ab * 1.6 + 400.0) continue;   // (far from its ends: not this way)
+                var route = w.Routes.Get(w, way.A, way.B);
+                if (route == null || route.Pts == null) continue;
+                for (int k = 0; k + 1 < route.Pts.Length; k++)
+                {
+                    Vec3d p0 = route.Pts[k], p1 = route.Pts[k + 1], d = p1 - p0;
+                    double len2 = Vec3d.Dot(d, d), t = len2 > 1e-18 ? System.Math.Max(0.0, System.Math.Min(1.0, Vec3d.Dot(under - p0, d) / len2)) : 0.0;
+                    double m = (p0 + d * t - under).Length * R;
+                    if (m < best) { best = m; _hoverWayA = way.A; _hoverWayB = way.B; }
+                }
+            }
+        }
 
         static Texture2D Solid(Color c) { var t = new Texture2D(1, 1); t.SetPixel(0, 0, c); t.Apply(); return t; }
 

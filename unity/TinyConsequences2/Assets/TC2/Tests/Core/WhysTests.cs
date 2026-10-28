@@ -54,6 +54,28 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void AWayIsReadFromItsWearAndWhoIsOnItNow()
+        {
+            var w = Lived(635, 30);
+            var ways = new List<TC2.Core.Agents.Way>();
+            w.Ways.Collect(w.Now, ways);
+            Assert.Greater(ways.Count, 0, "the villages' people have worn ways between them");
+            var top = ways[0];
+            foreach (var way in ways) if (way.Use > top.Use) top = way;
+            var lines = Whys.Way(w, top.A, top.B);
+            foreach (var l in lines) Console.WriteLine(l);
+            Assert.That(lines[0], Does.StartWith("The ").And.Contain(" between "));
+            Assert.That(lines[1], Does.StartWith("walked about " + (w.Ways.UseOf(w.Now, top.A, top.B) * 0.69).ToString("0", System.Globalization.CultureInfo.InvariantCulture) + " times a year"));
+            int on = 0;
+            for (int id = w.People.First(); id != 0; id = w.People.Next(id))
+            {
+                ref var p = ref w.People.Get(id);
+                if (p.Alive && p.Step == TC2.Core.Agents.StepKind.Travel && p.Act != TC2.Core.Agents.ActivityKind.Voyage && ((p.RouteA == top.A && p.RouteB == top.B) || (p.RouteA == top.B && p.RouteB == top.A))) on++;
+            }
+            Assert.IsTrue(on == 0 ? lines.Contains("nobody on it at this moment") : lines.Exists(l => l.StartsWith("on it now: ")), "who is on it now, from the people on its route");
+        }
+
+        [Test]
         public void APlacesTrendCountsItsOwnRecords()
         {
             var w = Lived(633, 25);

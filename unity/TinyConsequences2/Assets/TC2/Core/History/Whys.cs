@@ -232,6 +232,80 @@ namespace TC2.Core.History
             return l;
         }
 
+        /// <summary>
+        /// (session 29: roads read) A way between two villages as it is: a track, a path or a road by how often it is walked now (its wear halves each year
+        /// it is not renewed: about 0.7 of it is the walks of a year), when it was first worn into a path or beaten into a road, what is on it at this moment
+        /// and why - traders and their loads, carriers of a lord's tenth, gifts of grain, bands, households moving, kin visiting - and the bond between its two
+        /// villages (tribute, one realm, a wrong held). The first line is its name. Every word from state and records.
+        /// </summary>
+        public static List<string> Way(World w, int a, int b)
+        {
+            var l = new List<string>();
+            if (!w.Settlements.Exists(a) || !w.Settlements.Exists(b)) return l;
+            double use = w.Ways.UseOf(w.Now, a, b);
+            byte st = TC2.Core.Agents.Ways.StateOf(use);
+            string na = Name(w, a), nb = Name(w, b);
+            l.Add((st == 3 ? "The road" : st == 2 ? "The path" : st == 1 ? "The track" : "The old way") + " between " + na + " and " + nb);
+            l.Add("walked about " + (use * 0.69).ToString("0", CultureInfo.InvariantCulture) + " times a year - " + (st == 3 ? "beaten broad by its walkers" : st == 2 ? "worn into a path by its walkers" : st == 1 ? "a faint track" : "greening over"));
+            // when it was worn and beaten (the ledger tells each the first time)
+            var evs = w.History.EventsOf(EntityRef.Settlement(a));
+            string firsts = "";
+            if (evs != null)
+                for (int i = 0; i < evs.Count; i++)
+                    if (w.History.TryGet(evs[i], out var e) && e.Kind == HistoryKind.WayWorn && ((e.Subject.Id == a && e.Object.Id == b) || (e.Subject.Id == b && e.Object.Id == a)))
+                        firsts += (firsts.Length > 0 ? "; " : "") + (e.ArgA >= 3 ? "a road since year " : "a path since year ") + SimTime.YearOf(e.Time);
+            if (firsts.Length > 0) l.Add(firsts);
+            // on it now, and why
+            var why = new Dictionary<string, int>();
+            for (int id = w.People.First(); id != 0; id = w.People.Next(id))
+            {
+                ref var p = ref w.People.Get(id);
+                if (!p.Alive || p.Step != StepKind.Travel || p.Act == ActivityKind.Voyage) continue;
+                if (!((p.RouteA == a && p.RouteB == b) || (p.RouteA == b && p.RouteB == a))) continue;
+                string k = OnTheRoad(w, in p);
+                why.TryGetValue(k, out int n); why[k] = n + 1;
+            }
+            if (why.Count == 0) l.Add("nobody on it at this moment");
+            else
+            {
+                var parts = new List<KeyValuePair<string, int>>(why);
+                parts.Sort((x, y) => { int c = y.Value.CompareTo(x.Value); return c != 0 ? c : string.CompareOrdinal(x.Key, y.Key); });
+                var said = new List<string>();
+                foreach (var kv in parts) said.Add(kv.Value + " " + kv.Key);
+                l.Add("on it now: " + string.Join(", ", said));
+            }
+            // the bond between its ends
+            ref var sa = ref w.Settlements.Get(a); ref var sb = ref w.Settlements.Get(b);
+            if (sa.Lord == b) l.Add(na + " pays " + nb + " a tenth of its harvest");
+            else if (sb.Lord == a) l.Add(nb + " pays " + na + " a tenth of its harvest");
+            else if (w.Conflict.Root(a) == w.Conflict.Root(b) && w.Conflict.PolitySize(w.Conflict.Root(a)) > 0) l.Add("both of " + Name(w, w.Conflict.Root(a)) + "'s realm");
+            if (sa.Foe == b) l.Add(na + " holds a wrong against " + nb);
+            if (sb.Foe == a) l.Add(nb + " holds a wrong against " + na);
+            return l;
+        }
+
+        /// <summary>Why someone is on a road, in the words a list can carry (their decision's own reason and their load).</summary>
+        static string OnTheRoad(World w, in Person p)
+        {
+            string load = p.CargoQty > 0f ? (p.Cargo == Trade.Grain ? " grain" : p.Cargo == Trade.Metal ? " copper" : p.Cargo == Trade.Iron ? " iron" : p.Cargo == Trade.Fibre ? " fibre" : p.Cargo == Trade.Wares ? " wares" : p.Cargo == Trade.Pots ? " pots" : " hides") : "";
+            if (p.CargoTo == Trade.ToLord || p.CargoTo == Trade.ToTenth || p.CargoTo == Trade.TenthAboard || p.Why == WhyCode.Tribute) return "carrying the lord's tenth";
+            if (p.CargoTo == Trade.AsGift) return "carrying grain to a famine";
+            if (p.CargoTo == Trade.AsReturn) return "giving back grain once given";
+            switch (p.Why)
+            {
+                case WhyCode.Trade: return load.Length > 0 ? "trading" + load : "going to trade";
+                case WhyCode.Raid: return "in a band";
+                case WhyCode.Take: return "going to take grain in the dark";
+                case WhyCode.Claim: return "asking amends";
+                case WhyCode.VisitKin: return "visiting kin";
+                case WhyCode.VisitFriend: return "visiting";
+                case WhyCode.NewHome: return "moving to a new home";
+                case WhyCode.LookForLand: return "looking at the land beyond";
+                case WhyCode.GoingHome: return "going home";
+                default: return load.Length > 0 ? "carrying" + load : "on errands";
+            }
+        }
+
         /// <summary>A realm as it stands (session 29, the place page's Realm): its seat and ruler, every village under it with its depth and its own lord,
         /// its people and the men sworn to its firsts, the tribute the seat took in the last year, its raids with villages outside it in the last ten years,
         /// and the bonds made and broken among its villages (newest first) - from state and records only.</summary>
