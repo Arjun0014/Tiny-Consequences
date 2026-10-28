@@ -47,7 +47,7 @@ Shader "TC2/Terrain"
             float _TC2Unbranched;   // (session 27, tools: 1 runs every branch below as if taken - the frame's cost of the branches measured; 0 in the game)
 
             struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; half4 color : COLOR; float2 uv0 : TEXCOORD0; float2 uv1 : TEXCOORD1; float4 uv2 : TEXCOORD2; float4 uv3 : TEXCOORD3; float3 uv4 : TEXCOORD4; float4 uv5 : TEXCOORD5; float2 uv6 : TEXCOORD6; };
-            struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; float3 normalWS : TEXCOORD1; half4 color : COLOR; float4 farm : TEXCOORD2; half4 wood : TEXCOORD3; half4 land : TEXCOORD4; half3 kind : TEXCOORD5; half4 realm : TEXCOORD6; half realmS : TEXCOORD7; };
+            struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; float3 normalWS : TEXCOORD1; half4 color : COLOR; float4 farm : TEXCOORD2; half4 wood : TEXCOORD3; half4 land : TEXCOORD4; half3 kind : TEXCOORD5; half4 realm : TEXCOORD6; half2 realmS : TEXCOORD7; };
 
             Varyings vert(Attributes v)
             {
@@ -62,14 +62,14 @@ Shader "TC2/Terrain"
                 o.land = v.uv3;
                 o.kind = v.uv4;   // (W-FOREST: x how tropical, y how seasonally dry, z how waterlogged the wood's ground - its pools)
                 o.realm = v.uv5;  // (D2-167: the realms layer's map colour premultiplied by the land's weight - rgb x w, w; zero when it is off)
-                o.realmS = v.uv6.x;   // (and the fill's strength, premultiplied alike: the seat's stronger)
+                o.realmS = v.uv6.xy;   // (and the fill's strength, premultiplied alike: the seat's stronger; y the share of the crop burned here - session 29)
                 return o;
             }
 
             float Hash21(float2 p) { p = frac(p * float2(123.34, 456.21)); p += dot(p, p + 45.32); return frac(p.x * p.y); }
 
             // farmland in the village grid: long staggered strips, furrows, hedges, fallow where the land rests
-            half3 Farmland(half3 crop, float4 farm, float dist, float px)
+            half3 Farmland(half3 crop, float4 farm, float dist, float px, half burnt)
             {
                 float2 q = farm.xy;
                 // furlongs: blocks of strips, each lying its own way with its own strip size
@@ -97,9 +97,14 @@ Shader "TC2/Terrain"
                 half ploughed = (stage > 1.5h && stage < 2.5h && Hash21(cell + 41.7 + _TC2Year) < 0.35) ? 1.0h : 0.0h;
                 fallow = lerp(fallow, half3(0.30h, 0.22h, 0.13h), ploughed * 0.85h);
                 half3 plot = lerp(fallow, crop * (0.84h + 0.30h * h) * (1.0h - 0.16h * furAmp + 0.16h * furAmp * fur), worked);
+                // (session 29) the crop burned this season (Settlement.CropBurnt: a band's torches, a wildfire) - that share of the sown strips charred
+                // whole, furlong by furlong as a fire runs on from strip to strip: black stubble streaked with grey ash, the spared strips standing
+                half3 ash = lerp(half3(0.022h, 0.019h, 0.016h), half3(0.17h, 0.16h, 0.15h), saturate(fur * 0.55h + h * 0.35h - 0.25h));
+                half charred = worked * ((burnt > 0.01h && Hash21(blk + 5.3) * 0.6 + h * 0.4 < burnt) ? 1.0h : 0.0h);
+                plot = lerp(plot, ash, charred);
                 plot = lerp(plot, half3(0.045h, 0.085h, 0.025h), hedge * 0.85h);
                 // a pixel wider than a strip sees the field's average, not a moire of strips (px: metres per pixel)
-                half3 mean = lerp(fallow, crop * 0.99h, saturate(farm.z));
+                half3 mean = lerp(fallow, lerp(crop * 0.99h, half3(0.06h, 0.055h, 0.05h), burnt), saturate(farm.z));
                 return lerp(plot, mean, smoothstep(0.18, 0.45, px / sz.x));
             }
 
@@ -222,7 +227,7 @@ Shader "TC2/Terrain"
                 }
                 half3 albedo = i.color.rgb;
                 float px = max(length(fwidth(i.farm.xy)), 1e-3);
-                if (i.color.a > 0.002h) albedo = lerp(albedo, Farmland(albedo, i.farm, dist, px), i.color.a);
+                if (i.color.a > 0.002h) albedo = lerp(albedo, Farmland(albedo, i.farm, dist, px, i.realmS.y), i.color.a);
                 albedo *= (1.0h + d1 * 0.32h * (0.35h + 0.65h * near) + d2 * 0.30h * near + d3 * 0.26h);
                 // beaches (D2-081), per pixel from the ground's own height over the sea - a vertex colour would follow the triangles of
                 // coarse patches as a staircase along every coast: sand to 0.6 + 4.2 x the beach's width (TerrainLod.BeachAt), wet near the
@@ -421,7 +426,7 @@ Shader "TC2/Terrain"
                 {
                     half rw = saturate(i.realm.a);
                     half3 tint = i.realm.rgb / max(rw, 0.001h);
-                    half strength = saturate(i.realmS / max(rw, 0.001h));
+                    half strength = saturate(i.realmS.x / max(rw, 0.001h));
                     half vis = smoothstep(450.0h, 1300.0h, (half)dist);
                     half lum = dot(albedo, half3(0.2126h, 0.7152h, 0.0722h));
                     albedo = lerp(albedo, tint * (0.62h + 0.55h * lum), rw * strength * 0.72h * vis);

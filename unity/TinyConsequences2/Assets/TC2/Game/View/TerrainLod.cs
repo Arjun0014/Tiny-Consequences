@@ -42,7 +42,7 @@ namespace TC2.Game
             public Vector4[] Land;    // the land's own (D2-081): x dryness of the climate, y meadow (grass where no wood), z bare earth or rock, w beach
             public float[] Fell;      // the woods' felled share not grown back (W-FELL: where their stumps stand; read by the trees' placing only)
             public Vector4[] Realm;   // the realms map layer (D2-167, RealmsView): the realm's map colour premultiplied by how much of the land here is its village's (rgb x w, w); zero off
-            public Vector2[] RealmS;  // and how strongly it fills (the seat 1, a tributary less), premultiplied alike (x: strength x w)
+            public Vector2[] RealmS;  // and how strongly it fills (the seat 1, a tributary less), premultiplied alike (x: strength x w); y the share of the crop burned on the fields here (session 29)
             public int[] RealmSid; public float[] RealmW;   // the village whose land this is (its fields, else its built ground) and how much - the wash's source
             public int RealmVersion = int.MinValue;          // the RealmsView.Version the wash was last filled for
             public Vector3[] Pos, Nrm; // the vertices as drawn and their normals (where the woods' trees and the ground cover stand)
@@ -1459,6 +1459,7 @@ namespace TC2.Game
                                   // stands, they would have stood in the water)
                 float graveHere = 0f;   // (the burial ground's share here: no plots drawn - D2-154)
                 p.RealmSid[o] = 0; p.RealmW[o] = 0f;   // (the realms layer: no village's land in the sea)
+                p.RealmS[o].y = 0f;   // (the share of the crop burned here: none off a village's fields)
                 Vec3d dw = d; int cw = c;   // (where the cells' shares are read: WarpCells)
                 if (rel < 0)
                 {
@@ -1544,6 +1545,10 @@ namespace TC2.Game
                         col = Color.Lerp(col, crop, Mathf.SmoothStep(0f, 1f, farm));
                         // (the realms layer: the fields this village works are its land - D2-167)
                         p.RealmSid[o] = owner; p.RealmW[o] = Mathf.SmoothStep(0f, 1f, farm);
+                        // (session 29) the share of its standing crop burned this season (a band's torches, a wildfire: Settlement.CropBurnt) - the shader
+                        // chars that share of its sown strips, in patches (it had darkened the whole of a village's fields by it: a dark green
+                        // country with the cells' staircase for an edge, never read as fire - s29v1, Kaihope's crop burned by Vaindwick's band)
+                        p.RealmS[o].y = (float)st.CropBurnt;
                     }
                     float bare = 0f;   // (packed earth: the square, yards, paths and roads)
                     for (int q = 0; q < _near.Count; q++)
@@ -1680,17 +1685,18 @@ namespace TC2.Game
             for (int o = 0; o < r.Length; o++)
             {
                 int sid = rs[o];
-                if (sid == 0 || rw[o] <= 0f) { r[o] = Vector4.zero; st[o] = Vector2.zero; continue; }
+                // (st[o].y is the crop burned there - Colourise's, kept)
+                if (sid == 0 || rw[o] <= 0f) { r[o] = Vector4.zero; st[o].x = 0f; continue; }
                 if (sid != last)
                 {
                     last = sid;
                     has = RealmsView.WashOf(sid, out Color c);
                     if (has) { Color lin = c.linear; lc = new Vector4(lin.r, lin.g, lin.b, c.a); }
                 }
-                if (!has) { r[o] = Vector4.zero; st[o] = Vector2.zero; continue; }
+                if (!has) { r[o] = Vector4.zero; st[o].x = 0f; continue; }
                 float wt = rw[o];
                 r[o] = new Vector4(lc.x * wt, lc.y * wt, lc.z * wt, wt);
-                st[o] = new Vector2(lc.w * wt, 0f);
+                st[o].x = lc.w * wt;
             }
             p.RealmVersion = RealmsView.Version;
         }
@@ -1820,8 +1826,7 @@ namespace TC2.Game
                     }
                 default: c = new Color(0.55f, 0.58f, 0.36f); break;
             }
-            if (s.CropBurnt > 0.2) c = Color.Lerp(c, new Color(0.14f, 0.12f, 0.10f), (float)s.CropBurnt);
-            return c;
+            return c;   // (a burned crop is charred strip by strip in the shader, from RealmS.y - session 29)
         }
 
         /// <summary>A cell's colour: biome, vegetation density, fields, fire and scars (sRGB).</summary>

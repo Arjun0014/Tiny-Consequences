@@ -67,6 +67,8 @@ namespace TC2.Headless
                         return Commands.Planet(args);
                     case "climate":
                         return Commands.ClimateRun(args);
+                    case "cells":
+                        return Commands.Cells(args);   // (session 29) the ground's cells along lines out of a place
                     default:
                         Console.WriteLine("tc2 headless: test [--filter S] [--category C] [--explicit] [--v] | run [--seed N] [--years Y] [--out DIR] | bench [--name B] | hash [--seed N] [--days D] | inspect --save FILE | planet [--seed N] [--years Y] [--every D] [--map DIR] [--nopeople]");
                         return cmd == "help" ? 0 : 2;
