@@ -97,6 +97,8 @@ namespace TC2.Core.History
             if (s.HungerEvent != 0) Q("Why is " + n + " hungry now?", s.HungerEvent);
             if (s.Epidemic != 0) Q("Why is there sickness in " + n + "?", s.Epidemic);
             if (s.TilthEvent != 0) Q("Why does " + n + " work its fields harder than before?", s.TilthEvent);
+            if (s.CropBurnt > 0.05 && s.CropCause != 0 && w.History.TryGet(s.CropCause, out var cc) && (cc.Kind == HistoryKind.FieldsBurned || cc.Kind == HistoryKind.FieldsHarried))
+                Q("Why did its crop burn?", s.CropCause);   // (session 29)
             if (s.RestEvent != 0) Q("Why does " + n + " rest a share of its fields?", s.RestEvent);
             if (s.WatchEvent != 0) Q("Why does " + n + " keep a watch at its store?", s.WatchEvent);
             Q("Why was " + n + " founded here?", s.FoundedEvent);
@@ -234,6 +236,10 @@ namespace TC2.Core.History
             if (s.ColdEvent != 0) l.Add("Its homes are cold.");
             if (s.Foe != 0 && w.Settlements.Exists(s.Foe)) l.Add("It holds a wrong against " + Name(w, s.Foe) + ".");
             if (s.TilthEvent != 0) l.Add("Its land within reach no longer feeds its people at the old work: it ploughs and hoes harder.");
+            // (session 29: war scars) a share of its standing crop burned this season - the fields drawn charred strip by strip say the same
+            if (s.CropBurnt > 0.05 && (s.Crop == CropStage.Sown || s.Crop == CropStage.Growing || s.Crop == CropStage.Ripe))
+                l.Add((s.CropBurnt * 100.0).ToString("0", CultureInfo.InvariantCulture) + " % of its standing crop burned this season" +
+                      (s.CropCause != 0 && w.History.TryGet(s.CropCause, out var ce) && ce.Kind == HistoryKind.FieldsHarried ? ", by a band driven off from its walls." : "."));
             if (s.Wall == 1) l.Add("Building a palisade.");
             byte next = Construction.NextWork(in s);
             if (next != 0 && s.Wall != 1) l.Add("Building: " + Structures.Name(next) + ".");
