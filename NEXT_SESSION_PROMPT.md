@@ -59,6 +59,9 @@ process you did not start.
    this note current.
 
 ## Rules that bite
+- **Run `node tc2/scripts/headless.mjs floatcheck` (from the worktree) after any change to `Assets/TC2/Core`**: the queue's full-suite jobs call the test
+  binary directly and never run the lint (session 29 left float arithmetic in `Whys.cs` through a 523/0/0 suite; fixed in b49bbe3). Focused tests:
+  build `tc2/headless/app` with `$DN build -c Release -o DIR`, then `$DN DIR/tc2.dll test --filter NAME` (a substring of Fixture.Method).
 - **After a sim version change, rebuild main's headless (`tc2/headless/app`) before a webtest**: its determinism check compares the browser with
   `tc2/headless/app/bin/Release/net8.0/tc2.dll` (s27web5 failed against a stale sim-107 binary while the browser matched sim 108 bit for bit).
 - **Never retag job files with a broad `sed`** (session 26: `s/_sw1"/_stw1"/` also renamed a build job's binary dir, so its tests ran a missing binary and the
