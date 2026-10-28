@@ -1024,10 +1024,16 @@ namespace TC2.Game
             for (int c = 0; c < P.Cells; c++) _cellColour[c] = CellColour(w, c);
         }
 
+        /// <summary>(session 29) Set by the camera while it watches a timelapse from orbit: a cycle recolours every shown patch at once.</summary>
+        public static bool RecolourTogether;
+
         void RecolourSome(TC2.Core.Simulation.World w)
         {
             if (_shownLast.Count == 0) return;
             int n = Mathf.Max(1, Mathf.CeilToInt(_shownLast.Count / (RecolourSeconds * 60f)));
+            // (session 29: the timelapse) from orbit, while seasons pass in seconds, every shown patch in the same frame of its cycle - spread over 2.5 s,
+            // neighbouring patches had shown different seasons as hard-edged blocks (s29lapse1); from orbit the patches are few and coarse
+            if (RecolourTogether) n = _shownLast.Count;
             for (int k = 0; k < n; k++)
             {
                 _recolourIndex = (_recolourIndex + 1) % _shownLast.Count;

@@ -78,7 +78,7 @@ namespace TC2.Game
             switch (Lapse)
             {
                 case LapseState.Off:
-                    if (!go) { Host.FrameBudgetOverride = -1f; return; }
+                    if (!go) { Host.FrameBudgetOverride = -1f; TerrainLod.RecolourTogether = false; return; }
                     ContextLat = Lat; ContextLon = Lon; ContextDistance = Distance;
                     BeginRise(R);
                     LapseBegan?.Invoke();
@@ -136,13 +136,14 @@ namespace TC2.Game
                 if (_lapseT >= 1f)
                 {
                     Lapse = LapseState.Off; _lightK = 0f;
-                    Host.FrameBudgetOverride = -1f;
+                    Host.FrameBudgetOverride = -1f; TerrainLod.RecolourTogether = false;
                     LapseEnded?.Invoke(_lapseCam);
                     return;
                 }
             }
             // the world's share of each frame: little while the camera flies (smooth frames), more while it watches from orbit, where the picture is cheap
             Host.FrameBudgetOverride = Lapse == LapseState.Orbit ? (Host.CatchingUp ? OrbitCatchUpMs : OrbitWatchMs) : FlightMs;
+            TerrainLod.RecolourTogether = Lapse == LapseState.Orbit && _lapseCam;   // (the ground's seasons in step across the planet)
         }
 
         /// <summary>The world's ms of a frame while the camera flies up or down, while a catch-up or skip is watched from orbit, and while a speed is.</summary>
