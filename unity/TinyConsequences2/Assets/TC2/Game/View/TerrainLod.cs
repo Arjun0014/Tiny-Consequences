@@ -392,7 +392,7 @@ namespace TC2.Game
                 var p = _draw[k];
                 if (!p.Go.activeSelf)
                 {
-                    if (p.Built && p.ColourCycle != _cycle && System.Math.Abs(w.Now - p.ColourNow) > StaleShow) Recolour(w, p);
+                    if (p.Built && p.ColourCycle != _cycle && (RecolourTogether || System.Math.Abs(w.Now - p.ColourNow) > StaleShow)) Recolour(w, p);   // (from orbit in a lapse, of this cycle at once: s29lapse5 lapse_7 still had a block out of step within a cycle)
                     p.Go.SetActive(true); _shownVersion++;
                 }
                 _shownLast.Add(p);
