@@ -15,8 +15,10 @@ history. Never fabricate an explanation: read the real state and the causal ledg
 brief: (0) the held perf check - DONE; (1) the long skip as an orbital timelapse - DONE (D2-199); (2) the person page as a person - DONE (D2-200); (3)
 readability with progressive disclosure world -> realm -> settlement -> household -> person -> life/causes - DONE in large part (D2-201, D2-202); (4)
 "Why?" from the ledger - DONE (D2-201); (5) the History Book as the world's memory - its sections, links and Your Actions' threads DONE (D2-201, D2-202);
-(6) the powers as play - their word and live threads DONE (D2-202), keep polishing; (7) the visual world where it is evidence of the simulation (orbit,
-clouds, region edges, W-FOREST, settlements, people, important buildings, roads, political centres, war scars, ruins) - NEXT, judged in real shots.
+(6) the powers as play - their word and live threads DONE (D2-202), the aim's words in a box (D2-203), keep polishing; (7) the visual world where it is
+evidence of the simulation (orbit, clouds, region edges, W-FOREST, settlements, people, important buildings, roads, political centres, war scars, ruins) -
+IN PROGRESS (D2-203: war scars - burned crops and homes, ruins that say how they fell; the fields' edges; the rivers' glint; the timelapse's seasonal edge),
+judged in real shots.
 Validation for presentation: compile -> focused tests -> real Web play/shots -> fix -> commit; no seed batteries or 1,000-year runs for UI.
 Arjun is AFK: make normal design decisions; never ask "should I continue".
 
@@ -32,31 +34,31 @@ process you did not start.
    world now, the building leaf, the book's order/Peoples/links, the powers' word); `docs/tc2/PROGRESS.md` CURRENT STATE; `25_CIVILISATION_ROADMAP.md` §8.
 4. `git status`, `git log --oneline -20`, `git worktree list`, and the queue: `cat $Q/runq.log` (`Q` below) - which jobs ended, with what; `ls $Q/todo`.
 
-## FIRST - the state at the end of session 29's first context (28 Oct 2026, ~23:45 IST)
-- **main = `wip/s27-int`** (fast-forwarded to 0418f2f by the waiter at 23:41 when the shots job ended; this note's commit follows it - verify `git log -1
-  main` = `git log -1 wip/s27-int`, else `git -C "C:/Game Dev/tiny-consequences" merge --ff-only wip/s27-int`, never while a Unity job holds main's
-  checkout). Work in the worktree `C:/Game Dev/tc-s27int`. After any Web build:
-  `git checkout -- unity/TinyConsequences2/ProjectSettings/ProjectSettings.asset` in main's checkout (the queued jobs do it).
-- **The queue runs** (`Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`,
-  hard-coded in `tc2/out/tools/s23/runq.sh` and `lib.sh`; the runner was started in session 29 as background task `bp3fvcitn` and keeps polling `$Q/todo`;
-  `touch $Q/stop` stops it after its job). At the handoff: `0_qd_web_s29b` done (the road cache x1.115 on a running village view, RoadAt 4.04 -> 0.43 ms);
-  `0_qe_shots_s29v` DONE (rc 0 at 23:41: 8 files in `tc2/out/shots/s29v1` - orbit, region, village, close, standardlow, town, townlow - **0 shader
-  errors**, drawn on "AMD Radeon(TM) Graphics (ID=0x1636)"; NOT YET JUDGED). The queue is now idle (empty `todo`). Add a job by writing
-  `$Q/todo/0_<name>.sh` (source `lib.sh`; `gate`, `low`).
-- **Verified in the Web build** (`s29web1`/`s29web2` 9/9, `s29lapse1`/`s29lapse2`, `s29book1`): the timelapse (1 day/s, skips, catch-up; exact return;
-  no strobe; the death of the followed person told), the person page and card, the place's Now/Why?/Realm, Your Actions' thread. **Built, compiled and
-  tested headless but not yet seen in a Web build**: roads read, the far village's tag and click, the world now, the building leaf, the book's new order and
-  Peoples part, wars' leaders and costs, lives linked, the cast's word and Your hand's live thread, the hover's why, the feed in the book's words, the
-  followings, the family tree's layout fix.
+## FIRST - the state at the end of session 29's second context (29 Oct 2026, ~01:10 IST)
+- **The branch `wip/s27-int` is the work** (worktree `C:/Game Dev/tc-s27int`, every edit there; tip = this note's commit). **Each queued job fast-forwards
+  main to it at its start** (`git merge --ff-only wip/s27-int`); when the queue is idle and main is behind, fast-forward it yourself:
+  `git -C "C:/Game Dev/tiny-consequences" merge --ff-only wip/s27-int` - never while a Unity job holds main's checkout. After any Web build:
+  `git checkout -- unity/TinyConsequences2/ProjectSettings/ProjectSettings.asset` in main's checkout (the jobs do it). Sim **108** unchanged all session.
+- **The queue** (`Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`,
+  hard-coded in `tc2/out/tools/s23/runq.sh` and `lib.sh`; the runner (task `bp3fvcitn`, started in session 29's first context) keeps polling `$Q/todo`;
+  `touch $Q/stop` stops it after its job). **Running at this handoff**: `0_ql_web_s29e` (started 00:52: the Web build of a453afe, then webtest `s29web5`,
+  bookshots `s29book5` (--play --meteor-play --extras --pages person:2 --book 7:0) and `s29lapse4` (the timelapse, the seasonal ramp softened)). Add a
+  job by writing `$Q/todo/0_<name>.sh` (source `lib.sh`; `gate`, `low`; see `$Q/done/0_qk_shots_s29v5.sh` for a shots job, `0_ql_web_s29e.sh` for a Web job).
+- **Done in session 29's second context** (DECISIONS **D2-203**; SESSION_HANDOFF "Session 29, context 2"): D2-202's pages seen in Web builds (`s29web3`,
+  `s29web4` 9/9; `s29book2`, `s29book4`); the visual world judged in Unity shots `s29v1`-`s29v5` (0 shader errors, read from Unity's own logs) and fixed:
+  burned crops and burned homes drawn as fire left them, a ruin saying how it fell, the rivers' far glint, the fields ending furlong by furlong, the
+  timelapse's straight seasonal edge (found: a steep colour ramp of the seasonal tropics, not the clouds or the recolouring); readability: works' tags
+  with why, the History panel's lines opening the book, the ticker on a loaded world, no names under panels, the aim's words in a box, crafts and works
+  in words, the book's words.
 
 ## Do next, in order
-1. Judge the shots `tc2/out/shots/s29v1/*.png` (seed 2 year 600, sim 108, main 92b75fd; 0 shader errors): the visual world as evidence - political
-   centres (the seat's standard in `standardlow`), ruins, walls, roads, war scars, the orbit's planet. Write what they show in D2-202 / a new decision.
-2. Queue a Web build of main's tip: webtest `s29web3` (9/9), `bookshots --extras --play --meteor-play --pages "card:0,person:3:head,place:0"
-   --book "4:0,4:1,2:0,7:0,10:0"` (the new book parts: Peoples, a war, Lives, Your Actions). Judge every new page in its pictures; fix; commit; fill D2-202's
-   "Pending".
-3. Open looks: one straight seasonal edge still crosses the land from orbit during a skip (`s29lapse2` lapse_7); the region view's jagged region edges; the
-   night sea's broad moon veil; W-FOREST. Then section 7 of the brief by the shots, and any readability gap the pictures show.
+1. When `0_ql_web_s29e` ends (the Monitor above, or `tail $Q/runq.log`): judge `s29web5` (9/9) and the pictures listed in SESSION_HANDOFF "Session 29,
+   context 2" step 1 (the aim's box, the History panel above the bar, the person page's crafts and works, the timelapse's soft seasonal edge); fill
+   D2-203's "Pending"; fix what the pictures show; commit.
+2. Shots of the forty-year soot (fec03b0): a job like `$Q/done/0_qk_shots_s29v5.sh` with `--views "close,low"`, tag `s29v6`.
+3. Then the brief's open looks and readability: two villages' fields meeting along the cells (D2-203 "left": needs both villages' crop colours at a
+   pixel), W-FOREST's sameness, the night sea's moon veil; any gap the pictures show (validate: compile -> focused tests -> real Web play/shots -> fix ->
+   commit; no seed batteries for UI).
 
 ## Rules that bite
 - **After a sim version change, rebuild main's headless (`tc2/headless/app`) before a webtest**: its determinism check compares the browser with
