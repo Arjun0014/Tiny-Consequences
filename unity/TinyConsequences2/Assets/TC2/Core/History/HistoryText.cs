@@ -202,6 +202,10 @@ namespace TC2.Core.History
                                        : subj + ", caught at the store of " + place + " in the night, " + (e.Magnitude >= 0.6f ? "struck down " : "struck ") + obj + ".";
                 case HistoryKind.WatchSet: return "The people of " + subj + " began to keep a watch at their store at night: grain has been taken from it.";
                 case HistoryKind.AmendsMade:
+                    // (session 29) bound by a lord's judgment to pay as far as their store could spare, and it spared nothing: said so ("(0 days' grain)" had stood)
+                    if (e.Magnitude < 0.5f && e.ArgB != 0)
+                        return "The people of " + subj + " were bound to make amends to " + obj + " for " + (e.ArgA == 5 ? "a death" : "a wounding") + (e.Other.IsNone ? "" : ", asked by " + other) +
+                               ", at the judgment of " + w.History.NameOf(EntityRef.Settlement(e.ArgB)) + ", lord over them both, but their store had no grain to spare.";
                     return "The people of " + subj + " made amends to " + obj + " for " + (e.ArgA == 5 ? "a death" : "a wounding") + " (" + F(e.Magnitude, "0") + " days' grain)" +
                            (e.Other.IsNone ? "" : ", asked by " + other) + (e.ArgB != 0 ? ", at the judgment of " + w.History.NameOf(EntityRef.Settlement(e.ArgB)) + ", lord over them both" : "") + ".";
                 case HistoryKind.ClaimRefused:
@@ -214,8 +218,10 @@ namespace TC2.Core.History
                     {
                         int outcome = e.ArgB / 100, blows = e.ArgB % 100;
                         string band = "A band of " + e.ArgA + " from " + subj + (e.Other.IsNone ? "" : ", led by " + other + ",") + " fell on the store of " + obj + " in the night";
-                        if (outcome == 0) return band + " and carried off " + F(e.Magnitude, "0") + " days' grain unseen.";
-                        if (outcome == 1) return band + ", fought off its people (" + blows + (blows == 1 ? " blow" : " blows") + ") and carried off " + F(e.Magnitude, "0") + " days' grain.";
+                        // (session 29: an empty store said as such - "carried off 0 days' grain" had stood in the book)
+                        bool none = e.Magnitude < 0.5f;
+                        if (outcome == 0) return band + (none ? " unseen, but found nothing in it to carry off." : " and carried off " + F(e.Magnitude, "0") + " days' grain unseen.");
+                        if (outcome == 1) return band + ", fought off its people (" + blows + (blows == 1 ? " blow" : " blows") + ")" + (none ? " but found nothing in it to carry off." : " and carried off " + F(e.Magnitude, "0") + " days' grain.");
                         return band + " but was driven off (" + blows + (blows == 1 ? " blow" : " blows") + ").";
                     }
                 case HistoryKind.WallPlanned:

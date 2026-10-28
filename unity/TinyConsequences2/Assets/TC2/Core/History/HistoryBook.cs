@@ -1286,7 +1286,7 @@ namespace TC2.Core.History
                 int raids = x.RaidsA + x.RaidsB;
                 sb.Append(Cap(Plural(raids, "raid", "raids"))).Append(" in ").Append(x.To - x.From + 1 == 1 ? "one year" : F(x.To - x.From + 1) + " years");
                 if (x.RaidsA > 0 && x.RaidsB > 0) sb.Append(" - ").Append(Num(x.RaidsA)).Append(" by ").Append(a).Append(", ").Append(Num(x.RaidsB)).Append(" by ").Append(b);
-                sb.Append(": ").Append(Plural(x.DrivenOff, "band was", "bands were")).Append(" driven off, ").Append(Plural(x.Blows, "blow was", "blows were")).Append(" struck, and ").Append(F(x.Loot)).Append(" days' grain carried off.");
+                sb.Append(": ").Append(Plural(x.DrivenOff, "band was", "bands were")).Append(" driven off, ").Append(Plural(x.Blows, "blow was", "blows were")).Append(" struck, and ").Append(x.Loot >= 0.5 ? F(x.Loot) + " days' grain carried off." : "no grain carried off.");
                 if (x.Events.Count > 0)
                 {
                     sb.Append(" It began when ").Append(Lower(HistoryText.Describe(w, x.Events[0])));
@@ -1830,10 +1830,21 @@ namespace TC2.Core.History
         {
             var w = c.W;
             var evs = new List<HistoryEvent>();
-            var l = w.History.EventsOf(EntityRef.Person(pid));
-            if (l != null) for (int i = 0; i < l.Count; i++) if (w.History.TryGet(l[i], out var e) && e.Kind != HistoryKind.PersonBorn && e.Kind != HistoryKind.Marriage) evs.Add(e);
+            var me = EntityRef.Person(pid);
+            var l = w.History.EventsOf(me);
+            // (session 29) the men sworn to them told once - the first of them as a line, the rest as a count: a ruler's deeds had been four men swearing
+            // to them one by one (s29book2, Lives: Rulers)
+            int swornTo = 0;
+            if (l != null)
+                for (int i = 0; i < l.Count; i++)
+                {
+                    if (!w.History.TryGet(l[i], out var e) || e.Kind == HistoryKind.PersonBorn || e.Kind == HistoryKind.Marriage) continue;
+                    if (e.Kind == HistoryKind.Sworn && e.Object.Kind == me.Kind && e.Object.Id == pid && ++swornTo > 1) continue;
+                    evs.Add(e);
+                }
             Best(evs, n);
             foreach (var e in evs) ch.Line(w, e);
+            if (swornTo > 1) ch.Note("In all " + F(swornTo) + " men swore to them.");
         }
 
         // ================================================================== VII. threads of cause
@@ -2445,6 +2456,7 @@ namespace TC2.Core.History
             return sb.ToString();
         }
 
-        public static string Roman(int n) => n >= 1 && n <= 10 ? new[] { "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X" }[n - 1] : n.ToString(CultureInfo.InvariantCulture);
+        /// <summary>A part's number as the book writes it (I to XX; session 29: XI Your Actions had been written "11").</summary>
+        public static string Roman(int n) => n >= 1 && n <= 20 ? new[] { "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX" }[n - 1] : n.ToString(CultureInfo.InvariantCulture);
     }
 }
