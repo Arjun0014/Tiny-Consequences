@@ -198,6 +198,7 @@ namespace TC2.Game
                 hh += _handLine.CalcHeight(new GUIContent(_handText[k]), inner) + _handLine.margin.vertical;
             }
             var r = new Rect(_powersRect.x, _powersRect.y - 10f - hh, hw, hh);
+            _handRect = r;   // (no name drawn under it: session 29)
             GUILayout.BeginArea(r, _box);
             GUILayout.Label(head, _small);
             for (int k = 0; k < _hand.Count; k++)
