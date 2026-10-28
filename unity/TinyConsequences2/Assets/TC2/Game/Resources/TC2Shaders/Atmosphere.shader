@@ -64,6 +64,18 @@ Shader "TC2/Atmosphere"
                 float2 tg = Sphere(ro, rd, Rg);
                 bool ground = tg.y >= tg.x && tg.x > 0.0;
                 if (ground) t1 = min(t1, tg.x);
+                // (session 30) a ray that passes over the ground's sphere without meeting it may still end on high land beyond the sphere's horizon - nothing
+                // here tells land from sky (no depth) - and it took the limb's whole grazing way: from 1,100-1,400 m a warm veil with a straight edge (the
+                // sphere's horizon) lay over high fields at dawn (s30wedge_air: gone with the air off). Close to the ground a ray grazing the sphere within
+                // the land's height ends where it passes closest and is veiled as the ground is; from the region view and orbit the limb keeps its whole way.
+                float graze = 0.0;
+                if (!ground)
+                {
+                    float tc = -dot(ro, rd);
+                    float hc = length(ro + rd * tc) - Rg;
+                    graze = (1.0 - smoothstep(150.0, 600.0, hc)) * (1.0 - smoothstep(2500.0, 5000.0, length(ro) - Rg));
+                    if (graze > 0.0 && tc > t0) t1 = lerp(t1, min(t1, tc), graze);
+                }
                 Light sun = GetMainLight();
                 float3 L = sun.direction;
                 float3 bR = _TC2AtmoBeta.rgb;
@@ -106,7 +118,8 @@ Shader "TC2/Atmosphere"
                 float3 T = exp(-(bR * odR + bM * 1.1 * odM));
                 half tr = (half)dot(T, float3(0.30, 0.45, 0.25));
                 // over the ground the veil may be lighter than the air's own (Look.AtmoGround); the limb keeps all of it
-                if (ground) { col *= _TC2AtmoOverGround; tr = lerp(1.0h, tr, (half)_TC2AtmoOverGround); }
+                float gk = ground ? 1.0 : graze;   // (session 30: a grazing ray near the ground veiled as the ground, by how far it grazes)
+                if (gk > 0.0) { col *= lerp(1.0, _TC2AtmoOverGround, gk); tr = lerp(tr, lerp(1.0h, tr, (half)_TC2AtmoOverGround), (half)gk); }
                 col *= _TC2AtmoFade;
                 tr = lerp(1.0h, tr, (half)_TC2AtmoFade);
                 return half4(col, tr);
