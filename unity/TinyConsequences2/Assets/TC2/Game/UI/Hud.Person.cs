@@ -400,10 +400,11 @@ namespace TC2.Game
             float h = row * 3f + (kidsTotal > 0 ? row * kidRows : 0f) + 40f;
             Rect area = GUILayoutUtility.GetRect(cw, h);
             float x0 = area.x, y0 = area.y, mid = area.x + cw * 0.5f;
-            // grandparents over each parent
-            Rect mo = new Rect(mid - bw - gap * 3f, y0 + row, bw, bh), fa = new Rect(mid + gap * 3f, y0 + row, bw, bh);
-            Rect mm = new Rect(mo.x - bw * 0.5f - gap, y0, bw, bh * 0.82f), mf = new Rect(mo.x + bw * 0.5f + gap, y0, bw, bh * 0.82f);
-            Rect fm = new Rect(fa.x - bw * 0.5f - gap, y0, bw, bh * 0.82f), ff = new Rect(fa.x + bw * 0.5f + gap, y0, bw, bh * 0.82f);
+            // grandparents in four even slots, each parent under its own pair (session 29, s29book1: the inner two had overlapped)
+            float slot = bw + gap, g0 = mid - 2f * slot + gap * 0.5f;
+            Rect mm = new Rect(g0, y0, bw, bh * 0.82f), mf = new Rect(g0 + slot, y0, bw, bh * 0.82f);
+            Rect fm = new Rect(g0 + 2f * slot, y0, bw, bh * 0.82f), ff = new Rect(g0 + 3f * slot, y0, bw, bh * 0.82f);
+            Rect mo = new Rect((mm.x + mf.x) * 0.5f, y0 + row, bw, bh), fa = new Rect((fm.x + ff.x) * 0.5f, y0 + row, bw, bh);
             Rect me = new Rect(mid - bw * 0.5f, y0 + row * 2f, bw, bh);
             if (t.Mother != 0) { if (t.MotherMother != 0) Line(mm, mo, _dot); if (t.MotherFather != 0) Line(mf, mo, _dot); }
             if (t.Father != 0) { if (t.FatherMother != 0) Line(fm, fa, _dot); if (t.FatherFather != 0) Line(ff, fa, _dot); }
@@ -426,7 +427,7 @@ namespace TC2.Game
                 KinBox(w, sr, t.Siblings[i], (t.Half[i] ? "half-" : "") + (girl ? "sister" : "brother"));
                 sx -= bw + gap;
             }
-            if (t.Siblings.Count > 3) GUI.Label(new Rect(x0, me.yMax + 2f, me.x - x0, 18f), "and " + (t.Siblings.Count - 3) + " more brothers and sisters", _pgSmall);
+            if (t.Siblings.Count > 3) GUI.Label(new Rect(x0, me.y - 18f, Mathf.Max(80f, me.x - x0 - 2f * slot), 18f), "and " + (t.Siblings.Count - 3) + " more brothers and sisters", _pgSmall);   // (above their row, clear of the lines - it had sat on one)
             var partnerBox = new List<Rect>();
             float px = me.xMax + gap;
             for (int i = 0; i < t.Partners.Count; i++)
