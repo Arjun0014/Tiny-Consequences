@@ -6492,5 +6492,8 @@ failed, 0 skipped**. Web `0_rm_web_s30i` (10c8c60): `s30web5` 9/9; `s30book4` ex
 "The fields of Retistead - harvested: stubble - 84 ha sown of the 100 ha of arable within its reach - the rest lies fallow" over its straw-coloured
 stubble beside a neighbour's dark sown earth, and the click opened its page at Land; `s30book5` the same over Skekdraistead's stubble (year 600), its
 herds grazing on it. Then (b677e73) "it works 84 ha of the ..." ("sown" read wrong over stubble), and no hover tag lies across an open page (the tag had
-stayed across the page the click opened: the pointer just left of it) - to the pointer's left, else none. **Pending**: Web `0_rn_web_s30j` (b677e73:
-`s30web6`, `s30book6`/`s30book7`).
+stayed across the page the click opened: the pointer just left of it) - to the pointer's left, else none. Web `0_rn_web_s30j` (b677e73): `s30web6` 9/9;
+`s30book6` extra_field_page - "it works 84 ha of the 100 ha of arable within its reach - the rest lies fallow", the tag at the pointer's left, clear of
+Retistead's page. (10) **Tools**: bookshots' extras wait after each camera move until the ground the view asks for is built (`TerrainLod.Pending`, the
+bridge's `terrainPending`; 834b31b) - the building's page had been shot 3.5 s after a fly-in from 6 km and read as a bare village. **Pending**: Web
+`0_ro_web_s30k` (834b31b: `s30web7`; `s30book8` extra_building settled).
