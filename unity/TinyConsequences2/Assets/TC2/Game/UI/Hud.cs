@@ -931,9 +931,10 @@ namespace TC2.Game
             else if (_personPage && _selected != 0 && w.People.Exists(_selected)) { float pw = Mathf.Min(820f, sw - 40f); _pageRect = new Rect(sw - 16f - pw, topY - 2f, pw, pageH); PersonSheet(_pageRect, w); }   // (session 29: Hud.Person.cs)
             else if (_building != 0 && w.Buildings.Exists(_building)) { showInsp = true; insp = new Rect(sw - 476f, card.y, 460f, Mathf.Min(430f, sh - card.y - 140f)); BuildingPage(insp, w); }   // (session 29: a leaf, larger)
             _powersRect = Rect.zero; _aimRect = Rect.zero;
-            if (!_book && !lapse) { PowerBar(w, sw, sh); DrawCastNote(sw); }   // (the god's powers: F9.1; the last cast's word: session 29)
-            _handRect = Rect.zero;
+            if (!_book && !lapse) PowerBar(w, sw, sh);   // (the god's powers: F9.1)
+            _handRect = Rect.zero; _noteRect = Rect.zero;
             if (!_book && !lapse && _pageRect.width <= 0f && !_history) YourHand(w, sw, sh);   // (session 29: the History panel holds its place while open)   // (what came of your casts, live: session 27; not over a person's or a place's page - s27book5)
+            if (!_book && !lapse) DrawCastNote(sw);   // (the last cast's word, beside Your hand: session 29)
             if (!_book && !lapse) LapseSummaryLeaf(w, sw, sh); else _summaryRect = Rect.zero;   // (what the years did: Hud.Lapse.cs)
             if (!_book) DrawTip(); else _tip = null;
             _settingsRect = Rect.zero;
@@ -946,7 +947,7 @@ namespace TC2.Game
             _uiRects.Clear();
             _uiRects.Add(_left); _uiRects.Add(_toggles); _uiRects.Add(_right); _uiRects.Add(worldRect); _uiRects.Add(realmsRect); _uiRects.Add(_bottom); _uiRects.Add(_ticker);
             _uiRects.Add(_powersRect); _uiRects.Add(_handRect); _uiRects.Add(_summaryRect); _uiRects.Add(_settingsRect); _uiRects.Add(_pageRect); _uiRects.Add(_tagRect);
-            _uiRects.Add(_aimRect); _uiRects.Add(_tipShown);
+            _uiRects.Add(_aimRect); _uiRects.Add(_tipShown); _uiRects.Add(_noteRect);
             if (showInsp) _uiRects.Add(_building != 0 ? insp : card);
             // (session 27) who is ringed on the ground: the person whose page is open, the one under the pointer, the chosen home's household
             WorldObjectsView.Chosen = _personPage ? _selected : 0;

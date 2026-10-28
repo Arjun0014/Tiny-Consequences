@@ -121,16 +121,24 @@ namespace TC2.Game
         string _castNote; float _castNoteAt = -99f; bool _castOk;
         void CastNote(string text, bool ok) { _castNote = text; _castNoteAt = Time.unscaledTime; _castOk = ok; }
 
-        /// <summary>(session 29) The last cast's word over the bar: made (gold) or refused (pale), fading after four seconds.</summary>
+        /// <summary>(session 29) The last cast's word over the bar: made (gold) or refused (pale), fading after four seconds. Drawn after Your hand,
+        /// between what stands over the bar's ends - Your hand or the History panel on its left, a page's foot on its right - else above them (s29book5:
+        /// centred over the bar, it ran under Your hand, drawn after it).</summary>
         void DrawCastNote(float sw)
         {
+            _noteRect = Rect.zero;
             if (_castNote == null || Time.unscaledTime - _castNoteAt > 4f || _powersRect.width <= 0f) return;
             float a = Mathf.Clamp01((4f - (Time.unscaledTime - _castNoteAt)) / 1.2f);
             if (_tipStyle == null) _tipStyle = new GUIStyle(_mapTag) { wordWrap = true, padding = new RectOffset(9, 9, 6, 7) };
             var c = new GUIContent((_castOk ? "<color=#f2c35f><b>" : "<color=#d8d4c8><b>") + _castNote + "</b></color>");
-            float tw = Mathf.Min(560f, sw - 20f), th = _tipStyle.CalcHeight(c, tw);
+            float left = Mathf.Max(4f, Mathf.Max(_handRect.xMax, _bottom.xMax) + 8f), right = (_pageRect.width > 0f ? _pageRect.x : sw) - 8f;
+            float tw = Mathf.Min(560f, sw - 20f), x = sw * 0.5f - tw * 0.5f, floor = _powersRect.y;
+            if (right - left >= Mathf.Min(tw, 320f)) { tw = Mathf.Min(tw, right - left); x = Mathf.Clamp(x, left, right - tw); }
+            else floor = Mathf.Min(floor, Mathf.Min(_handRect.width > 0f ? _handRect.y : floor, _bottom.width > 0f ? _bottom.y : floor));   // (no room beside them)
+            float th = _tipStyle.CalcHeight(c, tw);
+            _noteRect = new Rect(x, floor - th - 6f, tw, th);
             GUI.color = new Color(1f, 1f, 1f, a);
-            GUI.Box(new Rect(sw * 0.5f - tw * 0.5f, _powersRect.y - th - 6f, tw, th), c, _tipStyle);
+            GUI.Box(_noteRect, c, _tipStyle);
             GUI.color = Color.white;
         }
 
@@ -156,7 +164,7 @@ namespace TC2.Game
         GUIStyle _handLine, _tipStyle;
         string[] _handText = new string[3];
         GUIContent _tip;
-        Rect _tipRect, _tipShown, _aimRect;   // (session 29: the tip and the aim's words as drawn this frame - no map name under them)
+        Rect _tipRect, _tipShown, _aimRect, _noteRect;   // (session 29: the tip, the aim's words and the cast's word as drawn this frame - no map name under them)
         GUIStyle _aimBox;
 
         /// <summary>The pending tooltip of the power under the pointer, drawn over everything else at the end of the HUD's frame.</summary>

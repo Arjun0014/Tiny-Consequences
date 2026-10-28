@@ -37,6 +37,10 @@ namespace TC2.Game
             public Color[] Colours;
             public Vector2[] Plots;   // field plot coordinates in the owning village's frame (m)
             public Vector2[] Farm;    // x: share of the land the village works, y: crop stage
+            // (session 30) where two villages' fields meet, both are in the vertex - the lower id first (Plots, Farm, RealmS.y), the other here - so
+            // each furlong of the first goes whole to one or the other (Terrain.shader): Farm2 the second's frame (xy), share worked and crop stage;
+            // Slot x the share of its crop burned, y and z both villages' crop colours (sRGB, 6 bits a channel), w the second's share of the fields here
+            public Vector4[] Farm2, Slot;
             public Vector4[] Wood;    // the woods here (D2-079): x forest share, y conifers' share, z the leaves' season, w snow
             public Vector3[] Kind;    // the kind of wood (W-FOREST): x how tropical (warmth), y how seasonally dry among the tropical, z how waterlogged its ground (session 27: pools)
             public Vector4[] Land;    // the land's own (D2-081): x dryness of the climate, y meadow (grass where no wood), z bare earth or rock, w beach
@@ -482,7 +486,7 @@ namespace TC2.Game
             int count = V * V + 4 * V;
             var pos = new Vector3[count];
             var nrm = new Vector3[count];
-            if (p.Dirs == null || p.Dirs.Length != count) { p.Dirs = new Vector3[count]; p.Cells = new int[count]; p.Rel = new float[count]; p.Slope = new float[count]; p.Colours = new Color[count]; p.Plots = new Vector2[count]; p.Farm = new Vector2[count]; p.Wood = new Vector4[count]; p.Kind = new Vector3[count]; p.Land = new Vector4[count]; p.Fell = new float[count]; p.Realm = new Vector4[count]; p.RealmS = new Vector2[count]; p.RealmSid = new int[count]; p.RealmW = new float[count]; }
+            if (p.Dirs == null || p.Dirs.Length != count) { p.Dirs = new Vector3[count]; p.Cells = new int[count]; p.Rel = new float[count]; p.Slope = new float[count]; p.Colours = new Color[count]; p.Plots = new Vector2[count]; p.Farm = new Vector2[count]; p.Farm2 = new Vector4[count]; p.Slot = new Vector4[count]; p.Wood = new Vector4[count]; p.Kind = new Vector3[count]; p.Land = new Vector4[count]; p.Fell = new float[count]; p.Realm = new Vector4[count]; p.RealmS = new Vector2[count]; p.RealmSid = new int[count]; p.RealmW = new float[count]; }
             for (int j = 0; j < V; j++)
                 for (int i = 0; i < V; i++)
                 {
@@ -534,6 +538,8 @@ namespace TC2.Game
             m.SetUVs(4, p.Kind);
             m.SetUVs(5, p.Realm);
             m.SetUVs(6, p.RealmS);
+            m.SetUVs(7, p.Farm2);
+            m.SetTangents(p.Slot);
             m.triangles = FixWinding(p.Face, pos, nrm);
             m.RecalculateBounds();
             p.Built = true;
@@ -1032,7 +1038,40 @@ namespace TC2.Game
             var P = w.Planet;
             if (_cellColour.Length != P.Cells) _cellColour = new Color[P.Cells];
             for (int c = 0; c < P.Cells; c++) _cellColour[c] = CellColour(w, c);
+            // (session 30) the rest of what changes with the seasons, read at the same moment: every patch coloured in this cycle - built, or shown
+            // again, part-way through it - shows the world of the cycle's start, as the cells' colours do (s29lapse6 lapse_7: in a skip from orbit, 25
+            // days a cycle, patches built while the camera rose took their villages' crops and the season live and stood as gold blocks with a
+            // straight edge among brown ones)
+            _colourNow = w.Now;
+            if (_soilSnap.Length != P.Cells) _soilSnap = new float[P.Cells];
+            System.Array.Copy(P.SoilWater, _soilSnap, P.Cells);
+            _crops.Clear();
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid)) _crops[sid] = CropOf(in w.Settlements.Get(sid));
         }
+
+        /// <summary>(session 30) A village's fields as a cycle colours them: its crop's colour (sRGB), the share of its arable it works, the crop's stage
+        /// (CropStage + growth) and the share of its standing crop burned.</summary>
+        struct FieldCrop { public Color Colour; public float Used, Stage, Burnt; }
+        readonly Dictionary<int, FieldCrop> _crops = new Dictionary<int, FieldCrop>();
+        float[] _soilSnap = new float[0];
+        long _colourNow;   // (the world's time this cycle's colours were read at)
+
+        static FieldCrop CropOf(in TC2.Core.Places.Settlement st) => new FieldCrop
+        {
+            Colour = CropColour(st),
+            Used = st.ArableHa > 0 ? (float)System.Math.Min(1.0, st.FieldHa / st.ArableHa) : 1f,
+            Stage = (float)st.Crop + (float)System.Math.Min(0.99, st.CropGrowth),
+            Burnt = (float)st.CropBurnt,
+        };
+
+        FieldCrop CropNow(TC2.Core.Simulation.World w, int sid)
+        {
+            if (!_crops.TryGetValue(sid, out var f)) { f = CropOf(in w.Settlements.Get(sid)); _crops[sid] = f; }   // (a village founded since the cycle began)
+            return f;
+        }
+
+        /// <summary>(session 30) A crop's colour for the shader: sRGB, six bits a channel in one float - exact through a triangle whose vertices agree.</summary>
+        static float PackCrop(Color c) => Mathf.Round(Mathf.Clamp01(c.r) * 63f) * 4096f + Mathf.Round(Mathf.Clamp01(c.g) * 63f) * 64f + Mathf.Round(Mathf.Clamp01(c.b) * 63f);
 
         /// <summary>(session 29) Set by the camera while it watches a timelapse from orbit: a cycle recolours every shown patch at once.</summary>
         public static bool RecolourTogether;
@@ -1066,6 +1105,8 @@ namespace TC2.Game
             p.Mesh.SetUVs(4, p.Kind);
             p.Mesh.SetUVs(5, p.Realm);
             p.Mesh.SetUVs(6, p.RealmS);
+            p.Mesh.SetUVs(7, p.Farm2);
+            p.Mesh.SetTangents(p.Slot);
             long today = SimTime.FloorDiv(w.Now, SimTime.Day);
             if (p.Level >= MaxLevel && p.Pos != null && p.Nrm != null && p.PlacedDay != today)
             {
@@ -1381,8 +1422,9 @@ namespace TC2.Game
             var P = w.Planet;
             if (_cellColour.Length != P.Cells) RefreshCellColours(w);
             double sea = P.SeaLevel;
-            double season = DMath.Sin(DMath.TwoPi * (SimTime.YearFraction(w.Now) - 0.25));
-            float yearNorth = (float)SimTime.YearFraction(w.Now);
+            // (session 30: the season, the soil's water and the villages' crops as this cycle read them - RefreshCellColours)
+            double season = DMath.Sin(DMath.TwoPi * (SimTime.YearFraction(_colourNow) - 0.25));
+            float yearNorth = (float)SimTime.YearFraction(_colourNow);
             var cols = p.Colours;
             // roads are a few metres wide: on patches whose vertices stand far apart they would alias into dashes
             float quad = (float)(DMath.HalfPi * P.Radius / (1 << p.Level) / N);
@@ -1475,10 +1517,13 @@ namespace TC2.Game
                 p.Fell[o] = 0f;   // (W-FELL: none in the sea - a pooled patch kept its last land's stumps, and since the stumps are placed where no wood
                                   // stands, they would have stood in the water)
                 float graveHere = 0f;   // (the burial ground's share here: no plots drawn - D2-154)
+                Vector2 ownFrame = Vector2.zero; float ownUsed = 0f;   // (the frame and worked share of the village whose fields these are: its core kept clear)
                 p.RealmSid[o] = 0; p.RealmW[o] = 0f;   // (the realms layer: no village's land in the sea)
                 p.RealmS[o].y = 0f;   // (the share of the crop burned here: none off a village's fields)
-                if (_fieldOf == null || _fieldOf.Length < cols.Length) _fieldOf = new int[cols.Length];
+                p.Farm2[o] = Vector4.zero; p.Slot[o] = new Vector4(0f, 0f, 0f, 1f);   // (session 30: no second village's fields here)
+                if (_fieldOf == null || _fieldOf.Length < cols.Length) { _fieldOf = new int[cols.Length]; _slot1 = new int[cols.Length]; _slot2 = new int[cols.Length]; }
                 _fieldOf[o] = 0;   // (whose fields' frame this vertex is in: FieldFrames)
+                _slot1[o] = 0; _slot2[o] = 0;
                 Vec3d dw = d; int cw = c;   // (where the cells' shares are read: WarpCells)
                 if (rel < 0)
                 {
@@ -1491,7 +1536,7 @@ namespace TC2.Game
                     if (lattice && o < (N + 1) * (N + 1)) WarpTo(P, d, LatticeOffset(o), c, ref dw, ref cw); else WarpCells(P, d, c, ref dw, ref cw);
                     int n = Ground.ColourWeights(P, dw, cw, _wc, _ww);
                     col = new Color(0, 0, 0, 1);
-                    float farm = 0; int owner = 0; float ow = 0;
+                    float farm = 0; int owner = 0; float ow = 0; int owners = 0;
                     float forest = 0, clear = 0, felled = 0;   // (the woods' share here, how much of it is cleared ground, its felled share: W-FELL)
                     float moist = 0, grass = 0;    // (the climate's moisture, the grass)
                     float relief = 0;              // (valley floor -1 .. ridge +1: Ground.Relief)
@@ -1504,8 +1549,20 @@ namespace TC2.Game
                         moist += P.Moist[cq] * ww; grass += P.Grass[cq] * ww;
                         if (w.Fire.Intensity[cq] > 0) clear += ww * Mathf.Clamp01(w.Fire.Intensity[cq] * 2f);
                         int fo = P.FieldOwner[cq];
-                        if (fo != 0) { farm += ww; if (ww > ow) { ow = ww; owner = fo; } }
+                        if (fo != 0)
+                        {
+                            // (session 30) each village's share of the fields here, summed over its cells: the largest owns the vertex, the next is the
+                            // second village where two meet (it had been the one cell weighing most)
+                            farm += ww;
+                            int k = 0;
+                            while (k < owners && _ownId[k] != fo) k++;
+                            if (k == owners) { _ownId[k] = fo; _ownW[k] = 0f; owners++; }
+                            _ownW[k] += ww;
+                        }
                     }
+                    int other = 0; float otw = 0f;
+                    for (int k = 0; k < owners; k++) if (_ownW[k] > ow) { ow = _ownW[k]; owner = _ownId[k]; }
+                    for (int k = 0; k < owners; k++) if (_ownId[k] != owner && _ownW[k] > otw) { otw = _ownW[k]; other = _ownId[k]; }
                     // a quarry's ground (C1.3): cut rock and spoil within ~20 m of the face - never a field or a wood over it
                     float site = 0f;
                     for (int q = 0; q < _sites.Count; q++)
@@ -1556,19 +1613,23 @@ namespace TC2.Game
                     {
                         ref var st = ref w.Settlements.Get(owner);
                         st.SphereToLocal(d, P.Radius, out double fx, out double fy);
-                        p.Plots[o] = new Vector2((float)fx, (float)fy);
+                        ownFrame = new Vector2((float)fx, (float)fy);
                         _fieldOf[o] = owner;
                         farm *= Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(85f, 135f, Mathf.Sqrt((float)(fx * fx + fy * fy)))); // houses and yards
-                        float used = st.ArableHa > 0 ? (float)System.Math.Min(1.0, st.FieldHa / st.ArableHa) : 1f;
-                        p.Farm[o] = site > 0.4f ? Vector2.zero : new Vector2(used, (float)st.Crop + (float)System.Math.Min(0.99, st.CropGrowth));   // (no plots on a quarry's ground)
-                        Color crop = CropColour(st);
-                        col = Color.Lerp(col, crop, Mathf.SmoothStep(0f, 1f, farm));
+                        bool quarry = site > 0.4f;   // (no plots on a quarry's ground)
+                        // (session 30) where two villages' fields meet, both go in the vertex - the lower id first - with the second's share of the fields
+                        // here: the shader gives each furlong of the first whole to one or the other by that share, so their boundary runs furlong by
+                        // furlong (it had followed the triangles where the owner changed: a sawtooth, a blur of both frames along it - s29book4)
+                        int s1 = owner, s2 = owner; float w2 = 1f;
+                        if (other != 0 && w.Settlements.Exists(other)) { s1 = System.Math.Min(owner, other); s2 = System.Math.Max(owner, other); w2 = (s2 == owner ? ow : otw) / (ow + otw); }
+                        // (session 29) with them the share of each one's standing crop burned this season (a band's torches, a wildfire: Settlement.CropBurnt)
+                        // - the shader chars that share of its sown strips, in patches (it had darkened the whole of a village's fields by it: a dark green
+                        // country with the cells' staircase for an edge, never read as fire - s29v1, Kaihope's crop burned by Vaindwick's band)
+                        Slots(w, p, o, d, s1, s2, w2, !quarry);
+                        ownUsed = quarry ? 0f : CropNow(w, owner).Used;
+                        col = Color.Lerp(col, Color.Lerp(CropNow(w, s1).Colour, CropNow(w, s2).Colour, w2), Mathf.SmoothStep(0f, 1f, farm));
                         // (the realms layer: the fields this village works are its land - D2-167)
                         p.RealmSid[o] = owner; p.RealmW[o] = Mathf.SmoothStep(0f, 1f, farm);
-                        // (session 29) the share of its standing crop burned this season (a band's torches, a wildfire: Settlement.CropBurnt) - the shader
-                        // chars that share of its sown strips, in patches (it had darkened the whole of a village's fields by it: a dark green
-                        // country with the cells' staircase for an edge, never read as fire - s29v1, Kaihope's crop burned by Vaindwick's band)
-                        p.RealmS[o].y = (float)st.CropBurnt;
                     }
                     float bare = 0f;   // (packed earth: the square, yards, paths and roads)
                     for (int q = 0; q < _near.Count; q++)
@@ -1668,7 +1729,7 @@ namespace TC2.Game
                         float dryWood = SeasonalTropic(tm, moist);
                         if (dryWood > 0.01f)
                         {
-                            float ds = 1f - Edge(0.06f, 0.26f, P.SoilWater[c]);
+                            float ds = 1f - Edge(0.06f, 0.26f, _soilSnap[c]);   // (as this cycle read it: session 30)
                             leaves = Mathf.Max(leaves, dryWood * ds * 0.97f);
                         }
                         p.Wood[o] = new Vector4(wood, con, leaves, snow);
@@ -1685,11 +1746,11 @@ namespace TC2.Game
                     p.Land[o] = new Vector4(Mathf.Clamp01((0.45f - moist) / 0.30f), riverNear, Mathf.Max(bare, rock), P.Ice[c] < 1f ? beachWidth : 0f);
                 }
                 var lin = col.linear;
-                lin.a = rel < 0 || p.Farm[o].x <= 0 ? 0f : Mathf.Clamp01(FarmWeight(P, dw, cw) * CoreMask(p.Plots[o]) * (1f - graveHere));
+                lin.a = rel < 0 || ownUsed <= 0 ? 0f : Mathf.Clamp01(FarmWeight(P, dw, cw) * CoreMask(ownFrame) * (1f - graveHere));
                 cols[o] = lin;
             }
             if (roadFill) p.RoadVer = _roadsVersion;
-            p.ColourNow = w.Now;
+            p.ColourNow = _colourNow;
             FieldFrames(w, p);
             FillRealm(p);
         }
@@ -1703,7 +1764,34 @@ namespace TC2.Game
         void FieldFrames(TC2.Core.Simulation.World w, Patch p)
         {
             int V = N + 1;
-            double R = w.Planet.Radius;
+            // (session 30) a vertex of one village's fields beside a vertex where two villages' fields meet takes the same two villages, in the same
+            // order, with all of its share in its own: their triangles then carry both villages alike, and the shader's choice of furlong holds across
+            // them (else it fell back to the first village's frame there)
+            // (the vertices that take another's pair found first, then given it: one ring only, never passed on along a row)
+            for (int j = 0; j < V; j++)
+                for (int i = 0; i < V; i++)
+                {
+                    int o = j * V + i, own = _slot1[o];
+                    _frameOf[o] = 0;
+                    if (own == 0 || own != _slot2[o] || p.Farm[o].x <= 0f) continue;
+                    for (int dj = -1; dj <= 1 && _frameOf[o] == 0; dj++)
+                        for (int di = -1; di <= 1; di++)
+                        {
+                            int ni = i + di, nj = j + dj;
+                            if (ni < 0 || ni > N || nj < 0 || nj > N) continue;
+                            int n = nj * V + ni, a = _slot1[n], b = _slot2[n];
+                            if (a == b || (a != own && b != own) || _fieldOf[n] <= 0) continue;
+                            _frameOf[o] = n + 1;
+                            break;
+                        }
+                }
+            for (int o = 0; o < V * V; o++)
+            {
+                if (_frameOf[o] == 0) continue;
+                int n = _frameOf[o] - 1, own = _slot1[o];
+                Vector3 dv = p.Dirs[o];
+                Slots(w, p, o, new Vec3d(dv.x, dv.y, dv.z), _slot1[n], _slot2[n], _slot2[n] == own ? 1f : 0f, true);
+            }
             for (int pass = 0; pass < 2; pass++)
             {
                 int mark = -1 - pass;   // (this pass's new frames are not read by itself: one ring of vertices a pass)
@@ -1712,15 +1800,17 @@ namespace TC2.Game
                     {
                         int o = j * V + i;
                         if (_fieldOf[o] != 0 || p.Rel[o] < 0) continue;
-                        int nb = 0;
-                        if (i > 0 && _fieldOf[o - 1] > 0) nb = _fieldOf[o - 1];
-                        else if (i < N && _fieldOf[o + 1] > 0) nb = _fieldOf[o + 1];
-                        else if (j > 0 && _fieldOf[o - V] > 0) nb = _fieldOf[o - V];
-                        else if (j < N && _fieldOf[o + V] > 0) nb = _fieldOf[o + V];
-                        if (nb == 0 || !w.Settlements.Exists(nb)) continue;
+                        int no = -1;
+                        if (i > 0 && _fieldOf[o - 1] > 0) no = o - 1;
+                        else if (i < N && _fieldOf[o + 1] > 0) no = o + 1;
+                        else if (j > 0 && _fieldOf[o - V] > 0) no = o - V;
+                        else if (j < N && _fieldOf[o + V] > 0) no = o + V;
+                        if (no < 0) continue;
+                        int nb = _fieldOf[no], a = _slot1[no] != 0 ? _slot1[no] : nb, b = _slot2[no] != 0 ? _slot2[no] : nb;
+                        if (!w.Settlements.Exists(a) || !w.Settlements.Exists(b)) continue;
+                        // (its neighbour's villages, their frames here, nothing worked: session 30)
                         Vector3 dv = p.Dirs[o];
-                        w.Settlements.Get(nb).SphereToLocal(new Vec3d(dv.x, dv.y, dv.z), R, out double fx, out double fy);
-                        p.Plots[o] = new Vector2((float)fx, (float)fy);
+                        Slots(w, p, o, new Vec3d(dv.x, dv.y, dv.z), a, b, p.Slot[no].w, false);
                         _fieldOf[o] = mark;
                         _frameOf[o] = nb;
                     }
@@ -1728,9 +1818,36 @@ namespace TC2.Game
                 for (int o = 0; o < V * V; o++) if (_fieldOf[o] == mark) _fieldOf[o] = _frameOf[o];
             }
             for (int e = 0; e < 4; e++)
-                for (int k = 0; k < V; k++) p.Plots[V * V + e * V + k] = p.Plots[EdgeIndex(e, k)];
+                for (int k = 0; k < V; k++)
+                {
+                    int s = EdgeIndex(e, k), o = V * V + e * V + k;
+                    p.Plots[o] = p.Plots[s]; p.Farm[o] = p.Farm[s]; p.Farm2[o] = p.Farm2[s]; p.Slot[o] = p.Slot[s]; p.RealmS[o].y = p.RealmS[s].y;
+                }
         }
         int[] _frameOf = new int[(N + 1) * (N + 1)];
+        int[] _slot1, _slot2;   // (session 30: each vertex's two villages - Slots)
+        readonly int[] _ownId = new int[9]; readonly float[] _ownW = new float[9];   // (the villages whose fields a vertex's cells hold, and their shares)
+
+        static Vector2 FrameOf(TC2.Core.Simulation.World w, int sid, Vec3d d, double R)
+        {
+            w.Settlements.Get(sid).SphereToLocal(d, R, out double fx, out double fy);
+            return new Vector2((float)fx, (float)fy);
+        }
+
+        /// <summary>(session 30) A vertex's two field slots (Patch.Farm2, Patch.Slot): the villages s1 &lt;= s2 (the same one where its fields are alone),
+        /// their frames here and - on worked ground - their worked shares, crops' stages and shares burned; their crops' colours; the second's share w2.</summary>
+        void Slots(TC2.Core.Simulation.World w, Patch p, int o, Vec3d d, int s1, int s2, float w2, bool worked)
+        {
+            var c1 = CropNow(w, s1); var c2 = s2 == s1 ? c1 : CropNow(w, s2);
+            double R = w.Planet.Radius;
+            Vector2 f1 = FrameOf(w, s1, d, R), f2 = s2 == s1 ? f1 : FrameOf(w, s2, d, R);
+            p.Plots[o] = f1;
+            p.Farm[o] = worked ? new Vector2(c1.Used, c1.Stage) : Vector2.zero;
+            p.Farm2[o] = new Vector4(f2.x, f2.y, worked ? c2.Used : 0f, worked ? c2.Stage : 0f);
+            p.RealmS[o].y = worked ? c1.Burnt : 0f;
+            p.Slot[o] = new Vector4(worked ? c2.Burnt : 0f, PackCrop(c1.Colour), PackCrop(c2.Colour), w2);
+            _slot1[o] = s1; _slot2[o] = s2;
+        }
 
         /// <summary>
         /// The realms map layer's wash on a patch (D2-167): each vertex's village (its fields, else its built ground, as `Colourise` found it) in its

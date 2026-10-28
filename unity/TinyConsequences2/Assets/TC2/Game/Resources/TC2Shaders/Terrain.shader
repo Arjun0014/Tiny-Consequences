@@ -46,8 +46,8 @@ Shader "TC2/Terrain"
             float _TC2SeaRadius;
             float _TC2Unbranched;   // (session 27, tools: 1 runs every branch below as if taken - the frame's cost of the branches measured; 0 in the game)
 
-            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; half4 color : COLOR; float2 uv0 : TEXCOORD0; float2 uv1 : TEXCOORD1; float4 uv2 : TEXCOORD2; float4 uv3 : TEXCOORD3; float3 uv4 : TEXCOORD4; float4 uv5 : TEXCOORD5; float2 uv6 : TEXCOORD6; };
-            struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; float3 normalWS : TEXCOORD1; half4 color : COLOR; float4 farm : TEXCOORD2; half4 wood : TEXCOORD3; half4 land : TEXCOORD4; half3 kind : TEXCOORD5; half4 realm : TEXCOORD6; half2 realmS : TEXCOORD7; };
+            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; half4 color : COLOR; float2 uv0 : TEXCOORD0; float2 uv1 : TEXCOORD1; float4 uv2 : TEXCOORD2; float4 uv3 : TEXCOORD3; float3 uv4 : TEXCOORD4; float4 uv5 : TEXCOORD5; float2 uv6 : TEXCOORD6; float4 uv7 : TEXCOORD7; float4 tangentOS : TANGENT; };
+            struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; float3 normalWS : TEXCOORD1; half4 color : COLOR; float4 farm : TEXCOORD2; half4 wood : TEXCOORD3; half4 land : TEXCOORD4; half3 kind : TEXCOORD5; half4 realm : TEXCOORD6; half2 realmS : TEXCOORD7; float4 farm2 : TEXCOORD8; float4 slot : TEXCOORD9; };
 
             Varyings vert(Attributes v)
             {
@@ -63,10 +63,21 @@ Shader "TC2/Terrain"
                 o.kind = v.uv4;   // (W-FOREST: x how tropical, y how seasonally dry, z how waterlogged the wood's ground - its pools)
                 o.realm = v.uv5;  // (D2-167: the realms layer's map colour premultiplied by the land's weight - rgb x w, w; zero when it is off)
                 o.realmS = v.uv6.xy;   // (and the fill's strength, premultiplied alike: the seat's stronger; y the share of the crop burned here - session 29)
+                o.farm2 = v.uv7;       // (session 30: where two villages' fields meet, the second's frame, share worked and crop stage - TerrainLod.Slots)
+                o.slot = v.tangentOS;  // (and its share of the crop burned, both villages' crops' colours packed, the second's share of the fields here)
                 return o;
             }
 
             float Hash21(float2 p) { p = frac(p * float2(123.34, 456.21)); p += dot(p, p + 45.32); return frac(p.x * p.y); }
+
+            // (session 30) a crop's colour as TerrainLod.PackCrop packs it (sRGB, six bits a channel), and sRGB to the linear values the ground is lit in
+            half3 CropSrgb(float v)
+            {
+                v = round(v);
+                float r = floor(v / 4096.0), g = floor((v - r * 4096.0) / 64.0), b = v - r * 4096.0 - g * 64.0;
+                return (half3)(float3(r, g, b) / 63.0);
+            }
+            half3 SrgbLin(half3 c) { return lerp(c / 12.92h, pow(max((c + 0.055h) / 1.055h, 0.0h), 2.4h), step(0.04045h, c)); }
 
             // farmland in the village grid: long staggered strips, furrows, hedges, fallow where the land rests
             half3 Farmland(half3 crop, float4 farm, float dist, float px, half burnt, half a, out half weight)
@@ -233,8 +244,29 @@ Shader "TC2/Terrain"
                     if (dist < 400.0 || every) d3 = (TriG(i.positionWS, bw, 1.0 / 0.9, dpx, dpy) - 0.5h) * saturate(1.0 - dist / 400.0);
                 }
                 half3 albedo = i.color.rgb;
-                float px = max(length(fwidth(i.farm.xy)), 1e-3);
-                if (i.color.a > 0.002h) { half fw; half3 fc = Farmland(albedo, i.farm, dist, px, i.realmS.y, i.color.a, fw); albedo = lerp(albedo, fc, fw); }
+                float px = max(length(fwidth(i.farm.xy)), 1e-3), px2 = max(length(fwidth(i.farm2.xy)), 1e-3);
+                float pk = fwidth(i.slot.y) + fwidth(i.slot.z);   // (the crops' colours packed: 0 where the triangle's vertices hold the same villages)
+                if (i.color.a > 0.002h)
+                {
+                    // (session 30) two villages' fields meeting: each furlong of the first village goes whole to the second where the second's share
+                    // of the fields here passes the furlong's own mark, so the boundary runs furlong by furlong across the band where both share the
+                    // land; far off, where the share is the mark. A slot whose frame jumps across the triangle (its vertices holding other villages:
+                    // its frame changes far faster than the ground) is not used - the first village's, as before. Its crop's colour replaces the
+                    // vertex's blend of the two.
+                    float2 q1 = i.farm.xy;
+                    float2 b1 = floor(q1 / 150.0 + 0.5 * Hash21(floor(q1 / 150.0)));
+                    half mark = lerp(0.15h + 0.7h * (half)Hash21(b1 + 61.7), 0.5h, (half)smoothstep(30.0, 80.0, px));
+                    bool ok1 = px < 3.0 * pxw + 1.0, ok2 = px2 < 3.0 * pxw + 1.0;
+                    bool two = ok2 && ((half)i.slot.w > mark || !ok1);
+                    half3 crop = albedo;
+                    if (pk < 0.5)
+                    {
+                        half3 c1 = CropSrgb(i.slot.y), c2 = CropSrgb(i.slot.z);
+                        crop = max(crop + SrgbLin(two ? c2 : c1) - SrgbLin(lerp(c1, c2, (half)i.slot.w)), 0.0h);
+                    }
+                    half fw; half3 fc = Farmland(crop, two ? i.farm2 : i.farm, dist, two ? px2 : px, two ? (half)i.slot.x : i.realmS.y, i.color.a, fw);
+                    albedo = lerp(albedo, fc, fw);
+                }
                 albedo *= (1.0h + d1 * 0.32h * (0.35h + 0.65h * near) + d2 * 0.30h * near + d3 * 0.26h);
                 // beaches (D2-081), per pixel from the ground's own height over the sea - a vertex colour would follow the triangles of
                 // coarse patches as a staircase along every coast: sand to 0.6 + 4.2 x the beach's width (TerrainLod.BeachAt), wet near the

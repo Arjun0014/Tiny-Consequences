@@ -175,6 +175,36 @@ namespace TC2.Game
                 LookAt(d, view == "mouthfar" ? 900 : 350);
                 return;
             }
+            if (view.StartsWith("fieldmeet"))
+            {
+                // (session 30 tools) where two villages' fields meet with their crops most unlike (one sown, one green or gold) within 4 km of the framed
+                // village, over the edge between their cells: "fieldmeet" 400 m up, "fieldmeet:low" 160 m, "fieldmeet:far" 900 m
+                var P = w.Planet;
+                int best = -1, bestNb = -1; float bestDiff = -1f;
+                for (int c = 0; c < P.Cells; c++)
+                {
+                    int a = P.FieldOwner[c];
+                    if (a == 0 || !w.Settlements.Exists(a) || Vec3d.ArcDistance(P.Grid.Center[c], d, P.Radius) > 4000) continue;
+                    for (int k = 0; k < 8; k++)
+                    {
+                        int nb = P.Grid.Nbr8[c * 8 + k], b = P.FieldOwner[nb];
+                        if (b <= a || !w.Settlements.Exists(b)) continue;
+                        Color ca = TerrainLod.CropColour(w.Settlements.Get(a)), cb = TerrainLod.CropColour(w.Settlements.Get(b));
+                        float diff = Mathf.Abs(ca.r - cb.r) + Mathf.Abs(ca.g - cb.g) + Mathf.Abs(ca.b - cb.b);
+                        if (diff > bestDiff) { bestDiff = diff; best = c; bestNb = nb; }
+                    }
+                }
+                if (best >= 0)
+                {
+                    Vec3d ca = P.Grid.Center[best], cb = P.Grid.Center[bestNb];
+                    d = new Vec3d(ca.X + cb.X, ca.Y + cb.Y, ca.Z + cb.Z).Normalized;
+                    Debug.Log("[TC2] fields meeting: " + w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(P.FieldOwner[best])) + " (" + w.Settlements.Get(P.FieldOwner[best]).Crop + ") and " +
+                              w.History.NameOf(TC2.Core.Foundation.EntityRef.Settlement(P.FieldOwner[bestNb])) + " (" + w.Settlements.Get(P.FieldOwner[bestNb]).Crop + "), colours apart " + bestDiff.ToString("0.00"));
+                }
+                else Debug.Log("[TC2] no two villages' fields meet within 4 km");
+                LookAt(d, view.EndsWith(":low") ? 160 : view.EndsWith(":far") ? 900 : 400);
+                return;
+            }
             if (view.StartsWith("act:"))
             {
                 // the busiest spot of an activity anywhere in the world now (tools: "act:Muck", "act:Thresh:low"): the person drawn at it with the most
