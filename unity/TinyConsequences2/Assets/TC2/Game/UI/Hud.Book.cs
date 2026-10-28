@@ -216,7 +216,17 @@ namespace TC2.Game
                     {
                         switch (b.Kind)
                         {
-                            case BookKind.Heading: GUILayout.Label(b.Text, _bkHead); break;
+                            case BookKind.Heading:
+                                // (session 29) a life's heading opens that person's page, the living or the dead
+                                if (b.Person != 0 && w.People.Exists(b.Person))
+                                {
+                                    GUILayout.BeginHorizontal(); GUILayout.Label(b.Text, _bkHead, GUILayout.ExpandWidth(false)); GUILayout.FlexibleSpace();
+                                    bool open = GUILayout.Button("their life  ›", _bkNav, GUILayout.ExpandWidth(false));
+                                    GUILayout.EndHorizontal();
+                                    if (open) ShowPerson(b.Person, 5);
+                                }
+                                else GUILayout.Label(b.Text, _bkHead);
+                                break;
                             case BookKind.Fact: Rule(0.0f, 0.3f); GUILayout.Label(b.Text, _bkTally); break;
                             case BookKind.Note: GUILayout.Label("–  " + b.Text, _bkNote); break;
                             case BookKind.Line: Entry(in b); break;

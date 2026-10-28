@@ -21,6 +21,7 @@ namespace TC2.Core.History
         public long Event;
         public int Settlement;
         public byte Weight;
+        public int Person;   // (session 29) the person a heading names - the reader opens their life (0 none)
     }
 
     public sealed class BookChapter
@@ -32,7 +33,7 @@ namespace TC2.Core.History
         internal void Para(string t, int sid = 0) { if (!string.IsNullOrEmpty(t)) Blocks.Add(new BookBlock { Kind = BookKind.Para, Text = t, Settlement = sid }); }
         internal void Fact(string t) { if (!string.IsNullOrEmpty(t)) Blocks.Add(new BookBlock { Kind = BookKind.Fact, Text = t }); }
         internal void Note(string t, int sid = 0) { if (!string.IsNullOrEmpty(t)) Blocks.Add(new BookBlock { Kind = BookKind.Note, Text = t, Settlement = sid }); }
-        internal void Heading(string t, int sid = 0) { Blocks.Add(new BookBlock { Kind = BookKind.Heading, Text = t, Settlement = sid }); }
+        internal void Heading(string t, int sid = 0, int pid = 0) { Blocks.Add(new BookBlock { Kind = BookKind.Heading, Text = t, Settlement = sid, Person = pid }); }
         internal void Line(World w, in HistoryEvent e)
         {
             byte wt = HistoryBook.Weigh(w, in e);
@@ -1292,6 +1293,19 @@ namespace TC2.Core.History
                 if (x.Peace != 0 && w.History.TryGet(x.Peace, out var pe)) sb.Append(" It ended in year ").Append(YearOf(pe.Time)).Append(" when ").Append(w.History.NameOf(pe.Subject)).Append(" bowed to ").Append(w.History.NameOf(pe.Object)).Append('.');
                 else sb.Append(" It ended with no bow: ").Append(x.To >= c.Now - WarGap ? "it may not be over." : "the raids stopped.");
                 ch.Para(sb.ToString(), x.A);
+                // (session 29) who led its bands, and what it cost each side - from the raids' records and each village's own records in its years
+                var leaders = new Dictionary<int, int>(); var order = new List<int>();
+                foreach (var e in x.Events)
+                    if (e.Kind == HistoryKind.Raid && e.Other.Kind == EntityKind.Person && e.Other.Id != 0) { if (!leaders.TryGetValue(e.Other.Id, out int m)) order.Add(e.Other.Id); leaders[e.Other.Id] = m + 1; }
+                if (order.Count > 0)
+                {
+                    order.Sort((p, q) => { int k = leaders[q].CompareTo(leaders[p]); return k != 0 ? k : p.CompareTo(q); });
+                    var said = new List<string>();
+                    for (int i = 0; i < order.Count && i < 4; i++) said.Add(w.History.NameOf(EntityRef.Person(order[i])) + (leaders[order[i]] > 1 ? " (" + Num(leaders[order[i]]) + " raids)" : ""));
+                    ch.Para("Its bands were led by " + (order.Count > 4 ? string.Join(", ", said.ToArray()) + " and " + Plural(order.Count - 4, "other", "others") : Join(said)) + ".", x.A);
+                }
+                string cost = WarCost(w, x.A, x.From, x.To), costB = WarCost(w, x.B, x.From, x.To);
+                if (cost.Length + costB.Length > 0) ch.Para("What it cost: " + (cost.Length > 0 ? a + " " + cost : "") + (cost.Length > 0 && costB.Length > 0 ? "; " : "") + (costB.Length > 0 ? b + " " + costB : "") + ".", x.A);
                 var evs = new List<HistoryEvent>(x.Events);
                 if (x.Peace != 0 && w.History.TryGet(x.Peace, out var pe2)) evs.Add(pe2);
                 Best(evs, 12);
@@ -1306,6 +1320,26 @@ namespace TC2.Core.History
                 part.Chapters.Add(ch);
             }
             return part;
+        }
+
+        /// <summary>(session 29) What a war's years cost a village, from its own records: its dead of wounds and its homes burned in them ("" if nothing).</summary>
+        static string WarCost(World w, int sid, int from, int to)
+        {
+            var at = w.History.RecordsAt(sid);
+            if (at == null) return "";
+            long t0 = (long)from * SimTime.Year, t1 = (long)(to + 1) * SimTime.Year;
+            int dead = 0, burnt = 0;
+            for (int i = 0; i < at.Count; i++)
+            {
+                if (!w.History.TryGet(at[i], out var e) || e.Time < t0) continue;
+                if (e.Time >= t1) break;
+                if (e.Kind == HistoryKind.PersonDied && e.ArgA == 11) dead++;
+                else if (e.Kind == HistoryKind.BuildingBurned && e.RootKind == RootKind.People) burnt++;
+            }
+            var parts = new List<string>();
+            if (dead > 0) parts.Add(Plural(dead, "dead of wounds", "dead of wounds"));
+            if (burnt > 0) parts.Add(Plural(burnt, "home burned", "homes burned"));
+            return parts.Count == 0 ? "" : Join(parts);
         }
 
         // ================================================================== IV. famine, plague and disaster
@@ -1648,7 +1682,7 @@ namespace TC2.Core.History
                     if (!listed.Add(pid)) continue;
                     shown++;
                     int y = YearOf(e.Time), until = best + 1 < l.Count ? YearOf(l[best + 1].Time) : c.Now;
-                    ch.Heading(w.History.NameOf(e.Subject), seat);
+                    ch.Heading(w.History.NameOf(e.Subject), seat, pid);
                     ch.Para(Who(c, pid) + " First among the people of " + Name(w, seat) + " for " + F(until - y) + " years (" + Years(y, until) + "), while " + Plural(r.SizeAt(y), "village", "villages") + " paid it when it began and " +
                             Plural(r.SizeAt(until), "village", "villages") + " when it ended.", seat);
                     Deeds(c, ch, pid, 4);
@@ -1666,7 +1700,7 @@ namespace TC2.Core.History
                     var e = evs[i];
                     if (!listed.Add(e.Subject.Id)) continue;
                     shown++;
-                    ch.Heading(w.History.NameOf(e.Subject), e.Settlement);
+                    ch.Heading(w.History.NameOf(e.Subject), e.Settlement, e.Subject.Id);
                     ch.Para(Who(c, e.Subject.Id) + " In year " + YearOf(e.Time) + " they led " + Plural(e.ArgB, "person", "people") + " of " + Name(w, e.Settlement) + " away to make a village of their own.", e.Settlement);
                     Deeds(c, ch, e.Subject.Id, 4);
                 }
@@ -1690,7 +1724,7 @@ namespace TC2.Core.History
                     int pid = ids[i];
                     if (!listed.Add(pid)) continue;
                     shown++;
-                    ch.Heading(w.History.NameOf(EntityRef.Person(pid)));
+                    ch.Heading(w.History.NameOf(EntityRef.Person(pid)), 0, pid);
                     ch.Para(Who(c, pid) + " They raised " + Plural(count[pid], "band", "bands") + ".");
                     Deeds(c, ch, pid, 4);
                 }
@@ -1706,7 +1740,7 @@ namespace TC2.Core.History
                     if (e.Kind != HistoryKind.TechniqueFound || e.Subject.Kind != EntityKind.Person || !seen.Add(e.ArgA)) continue;
                     if (!listed.Add(e.Subject.Id)) continue;
                     shown++;
-                    ch.Heading(w.History.NameOf(e.Subject), e.Settlement);
+                    ch.Heading(w.History.NameOf(e.Subject), e.Settlement, e.Subject.Id);
                     ch.Para(Who(c, e.Subject.Id), e.Settlement);
                     ch.Line(w, e);
                 }
