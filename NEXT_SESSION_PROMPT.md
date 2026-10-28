@@ -45,15 +45,17 @@ process you did not start.
   session 30. Add a job by writing `$Q/todo/0_<name>.sh` (source `lib.sh`; `gate`, `low`; `$Q/done/0_rf_web_s30c.sh` for a Web job,
   `$Q/done/0_rd_shots_s30v5.sh` for shots, `$Q/done/0_rg_book_s30d.sh` for bookshots on the last build); hold one in `$Q/hold/` until you can judge
   what runs before it (the runner starts the next job the moment one ends). `touch $Q/stop` stops it after its job.
-- **Done in session 30** (DECISIONS **D2-204** (1)-(6); SESSION_HANDOFF "Session 30"): D2-203 closed (full suite 523/0/0; `s29web7` 9/9; the charred ruins
+- **Done in session 30** (DECISIONS **D2-204** (1)-(9); SESSION_HANDOFF "Session 30"): D2-203 closed (full suite 523/0/0; `s29web7` 9/9; the charred ruins
   measured dark in `s29v7`); two villages' fields meet furlong by furlong; a cycle's colours of one moment (the skip's gold blocks); the sea on its true
   sphere a quarter metre down (the shore's faces); the cast's word beside Your hand; no map name under the lapse's cards; the years' leaf beside a page;
-  the ticker on one line; a fire's ground in hectares. Seen: Web `s30web1`, `s30web2` 9/9, `s30book1`-`s30book3`, `s30lapse1`; shots `s30v1`-`s30v6`.
+  the ticker on one line; a fire's ground in hectares; the air near the ground (a warm veil over high fields from 1.1-1.4 km); the fields read (the
+  pointer over a village's fields, a click to its land); floatcheck clean again. Seen: Web `s30web1`-`s30web4` 9/9, `s30book1`-`s30book3`, `s30lapse1`,
+  `s30air`; shots `s30v1`-`s30v6`.
 
 ## Do next, in order
-1. Judge Web `0_rf_web_s30c` (6b0896a; `tc2/out/webtest/s30web3`: 7_after_a_century - no name under the headline cards; 9_person_life - the years' leaf
-   not over the page; the ticker one line; 5h_your_actions - "having burned about N ha"), then `0_rg_book_s30d` (`s30cloud0` vs `s30cloud1` village.png:
-   year 300's tan veil with a straight edge and vertical streaks at the left of the village view - is it the clouds?). Fix what they show; commit.
+1. Judge the full suite `0_rl_fullsuite_s30` (the lint first; `$N/fullsuite_s30.txt`, `$N/fs_s30_ok`) and Web `0_rm_web_s30i` (10c8c60: `s30web5` 9/9;
+   `tc2/out/webtest/s30book4/extra_field_hover.png`, `extra_field_page.png` and the same in `s30book5`). Fix what they show; commit; fast-forward main
+   when the queue is idle.
 2. Then the brief's open looks (W-FOREST's sameness is a dedicated art pass awaiting Arjun's judgement - `18` W-FOREST) and readability gaps the pictures
    show (validate: compile -> focused tests -> real Web play/shots -> fix -> commit; no seed batteries for UI). Keep D2-204, PROGRESS, SESSION_HANDOFF and
    this note current.
