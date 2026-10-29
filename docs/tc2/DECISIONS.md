@@ -6505,5 +6505,8 @@ villages' crops blighted"; "ten villages' fields renewed"; "one kind of beast cu
 "yesterday"; "burnt out after 0 hours" - "within the hour"; and the fields' tag near the screen's foot lay over the power bar (`s30book8`) - a hover tag
 keeps clear of every panel drawn: below-right of the pointer, else below-left, above-right, above-left, else none. Web `0_rp_web_s30l` (87e7eec, 0 shader
 errors): `s30web8` 9/9; `s30book9` - the fields' tag ("it works 220 ha of the 262 ha ...") and no stray tag over the bar; `s30pow2` - the eruption's thread
-"The fire near Skekdraistead burnt out within the hour, having burned about 5 ha", and the eruption cast a day before the warmth "(yesterday)". Nothing
-pending.
+"The fire near Skekdraistead burnt out within the hour, having burned about 5 ha", and the eruption cast a day before the warmth "(yesterday)". (12) **The
+sea's depth measured**: writing its depth (5) turns off the early depth test for the whole sea sphere (its hidden parts under the land shaded before
+being discarded) - paired frame counts in one page on the integrated Radeon (Web ba6db3f, `realmsperf --layer seatrue`, the bridge's new `on|off seatrue`;
+Kaihope's coast at year 600, five pairs a view): region x1.013, village x1.006, close x0.988 - within the pairs' own spread (x0.97-1.04); the frame is the
+CPU's (D2-197). `s30web9` 9/9. Nothing pending.
