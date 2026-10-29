@@ -6503,5 +6503,7 @@ hours lived): Your hand names each cast and what came of it - "one landfall" and
 one fall of ash and five fires put out"; "one new sickness and one village struck by sickness" (the cattle cough, the first to fall ill named); "eight
 villages' crops blighted"; "ten villages' fields renewed"; "one kind of beast culled", "brought"; "one vein laid bare". Fixed (87e7eec): "(1 days ago)" -
 "yesterday"; "burnt out after 0 hours" - "within the hour"; and the fields' tag near the screen's foot lay over the power bar (`s30book8`) - a hover tag
-keeps clear of every panel drawn: below-right of the pointer, else below-left, above-right, above-left, else none. **Pending**: Web `0_rp_web_s30l`
-(87e7eec: `s30web8`; `s30book9` extra_field_hover; `s30pow2` the eruption's thread, "yesterday").
+keeps clear of every panel drawn: below-right of the pointer, else below-left, above-right, above-left, else none. Web `0_rp_web_s30l` (87e7eec, 0 shader
+errors): `s30web8` 9/9; `s30book9` - the fields' tag ("it works 220 ha of the 262 ha ...") and no stray tag over the bar; `s30pow2` - the eruption's thread
+"The fire near Skekdraistead burnt out within the hour, having burned about 5 ha", and the eruption cast a day before the warmth "(yesterday)". Nothing
+pending.

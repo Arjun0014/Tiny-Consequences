@@ -53,9 +53,8 @@ process you did not start.
   `s30air`; shots `s30v1`-`s30v6`.
 
 ## Do next, in order
-1. (done: the full suite 524/0/0 with the lint; `s30web5`-`s30web7` 9/9; the fields' tag; every power cast and read in `s30pow1`.) Judge Web
-   `0_rp_web_s30l` (87e7eec: `s30web8` 9/9; `s30book9/extra_field_hover.png` clear of the bar; `s30pow2/power_7.png`, `power_4.png`). Fix what it shows;
-   commit; fast-forward main when the queue is idle.
+1. (done) The full suite 524/0/0 with the lint; Web `s30web1`-`s30web8` 9/9; the fields' tag; every power cast and read (`s30pow1`, `s30pow2`); D2-204
+   (1)-(11) closed, nothing pending. The queue is idle and main = the branch at the end of session 30.
 2. Then the brief's open looks (W-FOREST's sameness is a dedicated art pass awaiting Arjun's judgement - `18` W-FOREST) and readability gaps the pictures
    show (validate: compile -> focused tests -> real Web play/shots -> fix -> commit; no seed batteries for UI). Keep D2-204, PROGRESS, SESSION_HANDOFF and
    this note current.
