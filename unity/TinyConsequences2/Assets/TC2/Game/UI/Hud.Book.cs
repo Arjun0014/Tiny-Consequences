@@ -135,8 +135,8 @@ namespace TC2.Game
             BookStyles();
             if (Event.current.type == EventType.Repaint)
             {
-                GUI.DrawTexture(new Rect(r.x - 9f, r.y - 7f, r.width + 18f, r.height + 14f), _leather);
-                GUI.color = new Color(0f, 0f, 0f, 0.35f); GUI.DrawTexture(new Rect(r.x - 9f, r.yMax + 7f, r.width + 18f, 5f), _dot); GUI.color = Color.white;
+                GUI.color = new Color(0f, 0f, 0f, 0.35f); GUI.DrawTexture(new Rect(r.x - 9f, r.yMax + 9f, r.width + 18f, 5f), _dot); GUI.color = Color.white;
+                Binding(new Rect(r.x - 11f, r.y - 9f, r.width + 22f, r.height + 18f));
             }
             float lw = Mathf.Round(r.width * 0.36f);
             Rect left = new Rect(r.x, r.y, lw, r.height), right = new Rect(r.x + lw, r.y, r.width - lw, r.height);
@@ -204,7 +204,7 @@ namespace TC2.Game
                         GUILayout.FlexibleSpace();
                         // (session 29) a place's chapter opens its live page - its history, a realm's chapter its realm
                         if (GUILayout.Button(ch.MapSeat > 0 ? "its realm now  ›" : "its page  ›", _bkNav, GUILayout.ExpandWidth(false))) { ShowPlace(ch.Settlement, ch.MapSeat > 0 ? PlaceRealmTab : 0); }
-                        if (GUILayout.Button("go there", _bkNav, GUILayout.Width(90))) { var a = PlaceCentres.Of(w, ch.Settlement, Host.WorldVersion); Rig.Lat = a.Latitude; Rig.Lon = a.Longitude; }
+                        if (GUILayout.Button("go there", _bkNav, GUILayout.Width(90))) { var a = PlaceCentres.Of(w, ch.Settlement, Host.WorldVersion); Rig.FlyTo(a.Latitude, a.Longitude); _book = false; }
                     }
                     GUILayout.EndHorizontal();
                     if (!string.IsNullOrEmpty(ch.Sub)) GUILayout.Label(ch.Sub, _bkSub);
@@ -244,7 +244,7 @@ namespace TC2.Game
                 GUILayout.BeginHorizontal();
                 GUILayout.Label("Why it happened", _bkHead);
                 GUILayout.FlexibleSpace();
-                if (Place(w, chosen, out double lat, out double lon) && GUILayout.Button("go there", _bkNav, GUILayout.Width(90))) { Rig.Lat = lat; Rig.Lon = lon; }
+                if (Place(w, chosen, out double lat, out double lon) && GUILayout.Button("go there", _bkNav, GUILayout.Width(90))) { Rig.FlyTo(lat, lon); _book = false; }
                 GUILayout.EndHorizontal();
                 GUILayout.Label("each cause is a record of its own; the chain's root is " + (chosen.RootKind == RootKind.You ? "your hand" : chosen.RootKind == RootKind.Nature ? "nature" : "people's choices"), _bkTally);
                 BookLinks(w, in chosen);   // (session 29: the people and places it names, each to its page)
@@ -349,7 +349,7 @@ namespace TC2.Game
             close = false;
             if (Event.current.type == EventType.Repaint)
             {
-                GUI.DrawTexture(new Rect(r.x - 6f, r.y - 5f, r.width + 12f, r.height + 10f), _leather);
+                Binding(new Rect(r.x - 8f, r.y - 7f, r.width + 16f, r.height + 14f));
                 GUI.DrawTexture(r, _leaf);
             }
             GUILayout.BeginArea(new Rect(r.x + 26f, r.y + 16f, r.width - 44f, r.height - 26f));
@@ -364,7 +364,8 @@ namespace TC2.Game
             for (int i = 0; i < tabs.Length; i++)
             {
                 if (i > 0) GUILayout.Label("·", _pgDot);
-                if (GUILayout.Button(tabs[i], i == tab ? _pgTabSel : _pgTab)) tab = i;
+                if (GUILayout.Button(tabs[i], i == tab ? _pgTabSel : _pgTab)) { tab = i; AudioView.Ui("leaf"); }
+                if (tabs[i] == "Why?" && Event.current.type == EventType.Repaint) { var wr = GUILayoutUtility.GetLastRect(); _whyTabRect = new Rect(r.x + 26f + wr.x, r.y + 16f + wr.y, wr.width, wr.height); }
             }
             GUILayout.FlexibleSpace();
             GUILayout.EndHorizontal();

@@ -16,6 +16,14 @@ namespace TC2.Game
         public static float Clouds = 1f;
         /// <summary>The picture's render scale (1 full; lower is lighter for slow machines). Applied in players only: the editor keeps its asset.</summary>
         public static float Detail = 1f;
+        /// <summary>(session 31) x the camera's turning by a drag.</summary>
+        public static float CamSpeed = 1f;
+        /// <summary>(session 31) x the camera's shaking (0 none).</summary>
+        public static float Shake = 1f;
+        /// <summary>(session 31) x the interface's size.</summary>
+        public static float UiScale = 1f;
+        /// <summary>(session 31) Whether the guide has been walked or skipped.</summary>
+        public static bool GuideSeen;
         public static bool Loaded { get; private set; }
 
         const string Prefix = "tc2.";
@@ -30,6 +38,11 @@ namespace TC2.Game
                 Clouds = Mathf.Clamp(PlayerPrefs.GetFloat(Prefix + "clouds", Clouds), 0f, 1.5f);
                 Sky.ShadowLite = PlayerPrefs.GetInt(Prefix + "lightshadows", Sky.ShadowLite ? 1 : 0) == 1;
                 Detail = Mathf.Clamp(PlayerPrefs.GetFloat(Prefix + "detail", Detail), 0.5f, 1f);
+                CamSpeed = Mathf.Clamp(PlayerPrefs.GetFloat(Prefix + "camspeed", CamSpeed), 0.5f, 2f);
+                Shake = Mathf.Clamp01(PlayerPrefs.GetFloat(Prefix + "shake", Shake));
+                UiScale = Mathf.Clamp(PlayerPrefs.GetFloat(Prefix + "uiscale", UiScale), 1f, 1.3f);
+                GuideSeen = PlayerPrefs.GetInt(Prefix + "guide", 0) == 1;
+                Hud.Names = PlayerPrefs.GetInt(Prefix + "names", 1) == 1;
             }
             catch (System.Exception) { }
             Loaded = true;
@@ -46,10 +59,29 @@ namespace TC2.Game
                 PlayerPrefs.SetFloat(Prefix + "clouds", Clouds);
                 PlayerPrefs.SetInt(Prefix + "lightshadows", Sky.ShadowLite ? 1 : 0);
                 PlayerPrefs.SetFloat(Prefix + "detail", Detail);
+                PlayerPrefs.SetFloat(Prefix + "camspeed", CamSpeed);
+                PlayerPrefs.SetFloat(Prefix + "shake", Shake);
+                PlayerPrefs.SetFloat(Prefix + "uiscale", UiScale);
+                PlayerPrefs.SetInt(Prefix + "guide", GuideSeen ? 1 : 0);
+                PlayerPrefs.SetInt(Prefix + "names", Hud.Names ? 1 : 0);
                 PlayerPrefs.Save();
             }
             catch (System.Exception) { }
         }
+
+        /// <summary>(session 31) The worlds kept: three copies in the browser's store, each with the line the menu shows.</summary>
+        public const int KeptSlots = 3;
+        public static string KeptLabel(int i) { try { return PlayerPrefs.GetString(Prefix + "kept" + i, ""); } catch (System.Exception) { return ""; } }
+        public static void SetKept(int i, string label) { try { PlayerPrefs.SetString(Prefix + "kept" + i, label); PlayerPrefs.Save(); } catch (System.Exception) { } }
+        public static bool AnyKept() { for (int i = 0; i < KeptSlots; i++) if (KeptLabel(i).Length > 0) return true; return false; }
+
+        // (session 31) the small hints, each said once
+        static readonly System.Collections.Generic.HashSet<string> Said = new System.Collections.Generic.HashSet<string>();
+        static bool _saidRead;
+        static void ReadSaid() { if (_saidRead) return; _saidRead = true; try { foreach (var k in PlayerPrefs.GetString(Prefix + "hints", "").Split(',')) if (k.Length > 0) Said.Add(k); } catch (System.Exception) { } }
+        public static bool HintSaid(string key) { ReadSaid(); return Said.Contains(key); }
+        public static void SayHint(string key) { ReadSaid(); Said.Add(key); try { PlayerPrefs.SetString(Prefix + "hints", string.Join(",", Said)); PlayerPrefs.Save(); } catch (System.Exception) { } }
+        public static void ClearHints() { Said.Clear(); _saidRead = true; try { PlayerPrefs.DeleteKey(Prefix + "hints"); } catch (System.Exception) { } }
 
         /// <summary>What the view reads directly is set here; the clouds' thickness is read by <see cref="CloudView"/> each frame.</summary>
         public static void Apply()

@@ -19,11 +19,15 @@ namespace TC2.Game
         public CameraRig Rig;
         public static bool Muted;
         public static float Volume = 0.8f;
+        /// <summary>(session 31) x the world's beds while something else holds the player's attention (the book open, the menu); eased.</summary>
+        public static float Duck = 1f;
+        float _duckNow = 1f;
+        CameraRig.LapseState _lapseWas;
 
         static readonly string[] Beds = { "amb_wind_high", "amb_wind_winter", "amb_forest_day", "amb_forest_night", "amb_coast", "amb_river", "amb_rain", "amb_storm",
-                                          "amb_village_day", "amb_village_night", "amb_fire", "amb_wildfire", "amb_volcano", "amb_sea_open", "amb_herd" };
+                                          "amb_village_day", "amb_village_night", "amb_fire", "amb_wildfire", "amb_volcano", "amb_sea_open", "amb_herd", "amb_stillness" };
         const int WindHigh = 0, WindCold = 1, ForestDay = 2, ForestNight = 3, Coast = 4, River = 5, Rain = 6, Storm = 7, VillageDay = 8, VillageNight = 9,
-                  Fire = 10, Wildfire = 11, Volcano = 12, SeaOpen = 13, Herd = 14;
+                  Fire = 10, Wildfire = 11, Volcano = 12, SeaOpen = 13, Herd = 14, Stillness = 15;
         AudioSource[] _bed;
         readonly float[] _want = new float[Beds.Length];
         readonly Dictionary<string, AudioClip[]> _clips = new Dictionary<string, AudioClip[]>();
@@ -37,6 +41,10 @@ namespace TC2.Game
         AudioClip _fall;
         struct Later { public string Name; public float Volume, At; public int Pick; }
         readonly List<Later> _later = new List<Later>();
+
+        // (session 31: the interface heard) a short sound for a click, a pointer over a word, a leaf turned, a chosen person; quiet, and never when muted
+        static readonly List<string> _uiAsked = new List<string>();
+        public static void Ui(string what) { if (!Muted && _uiAsked.Count < 8) _uiAsked.Add(what); }
 
         /// <summary>A stone thrown from the sky (the meteor's cast): heard falling for <paramref name="seconds"/>, its landing heard then.</summary>
         public static void MeteorFall(float seconds) { _fallAt = Time.unscaledTime; _landAt = Time.unscaledTime + seconds; }
@@ -55,6 +63,7 @@ namespace TC2.Game
             for (int i = 0; i < _shot.Length; i++) { _shot[i] = gameObject.AddComponent<AudioSource>(); _shot[i].playOnAwake = false; _shot[i].spatialBlend = 0f; }
             foreach (var n in new[] { "thunder", "quake", "house_fall", "wolf_howl", "dog_bark", "shout" }) Load(n, 3);
             foreach (var n in new[] { "ui_power", "ui_story", "ui_you", "ui_click" }) Load(n, 1);
+            foreach (var n in SpotNames) Load(n, 3);
             _fall = MakeFall(AimView.FallTime);
         }
 
@@ -86,6 +95,35 @@ namespace TC2.Game
             return c;
         }
 
+        void PlayUi()
+        {
+            for (int i = 0; i < _uiAsked.Count; i++)
+            {
+                switch (_uiAsked[i])
+                {
+                    case "click": PlayOne("ui_click", 0.30f); break;
+                    case "tick": PlayOne("ui_tick", 0.16f); break;
+                    case "select": PlayOne("ui_select", 0.32f); break;
+                    case "page": PlayOne("ui_page", 0.42f); break;
+                    case "leaf": PlayOne("ui_leaf", 0.34f); break;
+                    case "cast": PlayOne("ui_cast", 0.40f); break;
+                    case "enter": PlayOne("ui_enter", 0.48f); break;
+                    case "chime": PlayOne("ui_chime", 0.30f); break;
+                }
+            }
+            _uiAsked.Clear();
+        }
+
+        void PlayOne(string name, float volume)
+        {
+            if (_shot == null) return;
+            if (!_uiClips.TryGetValue(name, out var c)) { c = Resources.Load<AudioClip>("Audio/" + name); _uiClips[name] = c; }
+            if (c == null) return;
+            var src = _shot[_nextShot]; _nextShot = (_nextShot + 1) % _shot.Length;
+            src.clip = c; src.volume = Mathf.Clamp01(volume) * Volume; src.panStereo = 0f; src.pitch = 1f; src.Play();
+        }
+        readonly Dictionary<string, AudioClip> _uiClips = new Dictionary<string, AudioClip>();
+
         void Load(string name, int takes)
         {
             var l = new List<AudioClip>();
@@ -101,6 +139,7 @@ namespace TC2.Game
             var src = _shot[_nextShot]; _nextShot = (_nextShot + 1) % _shot.Length;
             src.clip = a[(pick & 0x7fffffff) % a.Length];
             src.volume = Mathf.Clamp01(volume) * Volume;
+            src.panStereo = 0f; src.pitch = 1f;
             src.Play();
         }
 
@@ -113,20 +152,36 @@ namespace TC2.Game
         void Update()
         {
             if (Input.GetKeyDown(KeyCode.M)) Muted = !Muted;
+            PlayUi();
             var w = Host != null ? Host.World : null;
-            bool quiet = w == null || Host.CatchingUp || Muted || Rig == null;
+            bool quiet = w == null || Muted || Rig == null;
             for (int i = 0; i < _want.Length; i++) _want[i] = 0f;
-            if (!quiet) Listen(w);
+            // (session 31) the planet's quiet on the title and while the years pass from orbit; the ground's own sounds near it
+            bool still = !quiet && (Rig.InTitle || Host.CatchingUp || Rig.LapseFlies);
+            if (still) { _want[Stillness] = Rig.InTitle ? 0.46f : 0.40f; _want[WindHigh] = 0.20f; }
+            else if (!quiet) Listen(w);
+            if (!quiet && Rig != null)
+            {
+                // the camera's flight up to orbit and down heard as wind opening and closing
+                var ls = Rig.Lapse;
+                if (ls != _lapseWas)
+                {
+                    if (ls == CameraRig.LapseState.Rising && _lapseWas != CameraRig.LapseState.Orbit) PlayOne("lapse_rise", 0.42f);
+                    else if (ls == CameraRig.LapseState.Returning) PlayOne("lapse_fall", 0.42f);
+                    _lapseWas = ls;
+                }
+            }
+            _duckNow = Mathf.MoveTowards(_duckNow, Duck, Time.unscaledDeltaTime * 1.6f);
             float k = 1f - Mathf.Exp(-Time.unscaledDeltaTime * 1.5f);   // (beds drift to their mix over a second or two)
             for (int i = 0; i < _bed.Length; i++)
             {
                 var src = _bed[i];
                 if (src.clip == null) continue;
-                src.volume = Mathf.Lerp(src.volume, _want[i] * Volume, k);
+                src.volume = Mathf.Lerp(src.volume, _want[i] * Volume * _duckNow, k);
                 if (src.volume > 0.005f && !src.isPlaying) { src.time = Random.Range(0f, Mathf.Max(0.01f, src.clip.length - 0.1f)); src.Play(); }
                 else if (src.volume <= 0.005f && src.isPlaying && _want[i] == 0f) src.Pause();
             }
-            if (quiet) { if (w != null) _seenId = w.History.LastId; _fallAt = -1f; _later.Clear(); return; }
+            if (quiet || still) { if (w != null) _seenId = w.History.LastId; _fallAt = -1f; _later.Clear(); return; }
             if (_fallAt >= 0f && _fall != null)
             {
                 var src = _shot[_nextShot]; _nextShot = (_nextShot + 1) % _shot.Length;
@@ -136,6 +191,87 @@ namespace TC2.Game
             for (int i = _later.Count - 1; i >= 0; i--)
                 if (_later[i].At <= Time.unscaledTime) { Play(_later[i].Name, _later[i].Volume, _later[i].Pick); _later.RemoveAt(i); }
             Happenings(w);
+            Spots(w);
+        }
+
+        // (session 31: a place heard as lived) near the ground, now and then, one of the people near where the camera looks is heard at what they are doing this moment -
+        // the smith's hammer, an axe in the woods, a hoe, a pick, oars - quiet, panned by where they stand on the screen, never the same kind twice running
+        static readonly string[] SpotNames = { "anvil", "axe_chop", "hammer", "hoe", "pick_stone", "scythe", "oars", "baby_cry", "steps_grass" };
+        float _spotNext; int _spotLast = -1;
+        readonly float[] _spotCool = new float[SpotNames.Length];
+
+        static int SpotOf(TC2.Core.Agents.ActivityKind a, TC2.Core.Agents.WhyCode why)
+        {
+            switch (a)
+            {
+                case TC2.Core.Agents.ActivityKind.Smith: return 0;
+                case TC2.Core.Agents.ActivityKind.Wood: case TC2.Core.Agents.ActivityKind.Burn: return 1;
+                case TC2.Core.Agents.ActivityKind.Build: return 2;
+                case TC2.Core.Agents.ActivityKind.Fields: return why == TC2.Core.Agents.WhyCode.Harvest ? 5 : 3;
+                case TC2.Core.Agents.ActivityKind.Garden: return 3;
+                case TC2.Core.Agents.ActivityKind.Quarry: case TC2.Core.Agents.ActivityKind.Mine: return 4;
+                case TC2.Core.Agents.ActivityKind.Sail: case TC2.Core.Agents.ActivityKind.Voyage: return 6;
+                case TC2.Core.Agents.ActivityKind.Infant: return 7;
+                default: return -1;
+            }
+        }
+
+        void Spots(TC2.Core.Simulation.World w)
+        {
+            if (Time.unscaledTime < _spotNext || Rig.Cam == null) return;
+            float alt = Mathf.Max(0f, (float)(Rig.Distance - w.Planet.Radius));
+            if (alt > 520f || Host.SpeedIndex > 4 || Host.SpeedIndex == 0 || Host.MaxSpeed) { _spotNext = Time.unscaledTime + 0.5f; return; }
+            _spotNext = Time.unscaledTime + Random.Range(0.45f, 1.3f);
+            var P = w.Planet;
+            Vector3 f = Rig.FocusPoint;
+            Vec3d dir = new Vec3d(f.x, f.y, f.z).Normalized;
+            int near = 0; double best = 900.0;
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                ref var s = ref w.Settlements.Get(sid);
+                if (!s.Inhabited) continue;
+                double d = Vec3d.ArcDistance(dir, s.Anchor, P.Radius);
+                if (d < best) { best = d; near = sid; }
+            }
+            if (near == 0) return;
+            var res = w.Residents(near);
+            if (res.Count == 0) return;
+            double t = Host.RenderTime;
+            Vector3 cam = Rig.Cam.transform.position;
+            for (int tries = 0; tries < 10; tries++)
+            {
+                int id = res[Random.Range(0, res.Count)];
+                ref var p = ref w.People.Get(id);
+                if (!p.Alive) continue;
+                int kind = SpotOf(p.Act, p.Why);
+                if (kind < 0 || kind == _spotLast || Time.unscaledTime < _spotCool[kind]) continue;
+                bool crying = kind == 7;
+                if (crying && Random.value > 0.08f) continue;   // (a baby is rarely heard)
+                if (!TC2.Core.Agents.Presence.Of(w, in p, t, out var at, out _, out _, out _) && !crying) continue;
+                Vector3 pos = crying ? (Vector3)f : PlanetGeo.Surface(P, at);
+                float dist = Vector3.Distance(cam, pos);
+                float reach = Mathf.Max(260f, alt * 1.6f);
+                float v = Mathf.Clamp01(1f - dist / reach);
+                if (v <= 0.05f) continue;
+                Vector3 sp = Rig.Cam.WorldToViewportPoint(pos);
+                float pan = sp.z > 0f ? Mathf.Clamp((sp.x - 0.5f) * 1.5f, -0.8f, 0.8f) : 0f;
+                _spotLast = kind;
+                _spotCool[kind] = Time.unscaledTime + Random.Range(2.5f, 6f);
+                PlayPanned(SpotNames[kind], (crying ? 0.14f : 0.42f) * v * v, id, pan);
+                return;
+            }
+            _spotLast = -1;
+        }
+
+        void PlayPanned(string name, float volume, int pick, float pan)
+        {
+            if (volume < 0.015f || !_clips.TryGetValue(name, out var a) || a.Length == 0) return;
+            var src = _shot[_nextShot]; _nextShot = (_nextShot + 1) % _shot.Length;
+            src.clip = a[(pick & 0x7fffffff) % a.Length];
+            src.volume = Mathf.Clamp01(volume) * Volume;
+            src.panStereo = pan;
+            src.pitch = Random.Range(0.94f, 1.06f);
+            src.Play();
         }
 
         /// <summary>A single sound now, or - a meteor's landing while its stone is still seen falling - when it lands.</summary>
@@ -193,6 +329,7 @@ namespace TC2.Game
             }
             bool storm = P.Storms.Count > 0 && rain > 0.5f;
             _want[WindHigh] = 0.15f + 0.55f * high;
+            _want[Stillness] = 0.30f * high;
             _want[WindCold] = cold * (0.25f + 0.35f * near);
             _want[ForestDay] = near * wood * day * 0.7f;
             _want[ForestNight] = near * wood * (1f - day) * 0.6f;

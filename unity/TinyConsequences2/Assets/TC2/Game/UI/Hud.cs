@@ -108,13 +108,29 @@ namespace TC2.Game
             _frames++; _fpsT += Time.unscaledDeltaTime;
             if (_fpsT > 0.5f) { _fps = _frames / _fpsT; _frames = 0; _fpsT = 0; }
             var w = Host.World;
+            MenuHold();   // (session 31: the menu holds the world still)
             LapseHook();   // (session 29: the timelapse - Hud.Lapse.cs)
             if (w != null && Rig != null && Rig.LapseActive) PollHeadlines(w);
             if (w == null || Host.CatchingUp) return;
             if (_titleOn) return;   // (the title holds the world still: F11.1)
             if (!_bookAsked) { _bookAsked = true; if (Browser.Param("book") != null) OpenBook(-1); }   // (?book=1: open at the present age)
-            if (Input.GetKeyDown(KeyCode.B)) _book = !_book;
-            if (Input.GetKeyDown(KeyCode.Space)) Host.SpeedIndex = Host.SpeedIndex == 0 ? 3 : 0;
+            GuideTick(w); HintsTick(w);   // (session 31: the first minutes)
+            // (session 31) Esc takes back what is open, one thing at a time, then opens the menu
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                if (_menuOn) { if (_menuPage != MenuMain) _menuPage = MenuMain; else _menuOn = false; }
+                else if (_aim >= 0) { /* (PowersInput stops the aim) */ }
+                else if (_book) _book = false;
+                else if (_personPage) { _personPage = false; _pgBack.Clear(); }
+                else if (_placeSid != 0) _placeSid = 0;
+                else if (_building != 0) _building = 0;
+                else if (_selected != 0) _selected = 0;
+                else if (_skipMenu) _skipMenu = false;
+                else { _menuOn = true; _menuPage = MenuMain; }
+            }
+            if (_menuOn) return;   // (the world waits behind it, and the keys and clicks are the menu's)
+            if (Input.GetKeyDown(KeyCode.B)) { _book = !_book; AudioView.Ui(_book ? "page" : "click"); }
+            if (Input.GetKeyDown(KeyCode.Space)) { if (Host.SpeedIndex != 0) _resumeSpeed = Host.SpeedIndex; Host.SpeedIndex = Host.SpeedIndex == 0 ? _resumeSpeed : 0; Host.MaxSpeed = false; }
             if (Input.GetKeyDown(KeyCode.H)) _hidden = !_hidden;
             if (Input.GetKeyDown(KeyCode.R)) RealmsView.On = !RealmsView.On;   // (the realms map layer, D2-167)
             if (Input.GetKeyDown(KeyCode.N)) Names = !Names;   // (places named on the map)
@@ -131,7 +147,7 @@ namespace TC2.Game
                 else
                 {
                     Presence.Of(fw, in fw.People.Get(_follow), Host.RenderTime, out var d, out _, out _, out _);   // (where they are drawn)
-                    Rig.Lat = d.Latitude; Rig.Lon = d.Longitude;
+                    if (Rig.Flying) Rig.FlyRetarget(d.Latitude, d.Longitude); else { Rig.Lat = d.Latitude; Rig.Lon = d.Longitude; }
                 }
             }
         }
@@ -144,7 +160,7 @@ namespace TC2.Game
             double t = Host.RenderTime;
             // (session 29: world -> realm -> settlement) from afar a click on a village opens its page - before, nothing answered a click above 1.3 km
             float altPick = cam.transform.position.magnitude - (float)w.Planet.Radius;
-            if (altPick > 1300f) { int far = PlaceUnder(w, mp); if (far != 0) ShowPlace(far, PlaceNowTab); return; }
+            if (altPick > 1300f) { int far = PlaceUnder(w, mp); if (far != 0) { ShowPlace(far, PlaceNowTab); AudioView.Ui("select"); } return; }
             float best = 28f * _scale; int bestId = 0;
             for (int id = w.People.First(); id != 0; id = w.People.Next(id))
             {
@@ -156,7 +172,7 @@ namespace TC2.Game
                 float d = Vector2.Distance(mp, sp);
                 if (d < best) { best = d; bestId = id; }
             }
-            if (bestId != 0) { _selected = bestId; _building = 0; return; }
+            if (bestId != 0) { _selected = bestId; _building = 0; AudioView.Ui("select"); return; }
             // no one there: the structure under the pointer (C1.1) - a home, a well, a granary
             var P = w.Planet;
             float bestB = 30f * _scale; int bestBid = 0;
@@ -176,14 +192,14 @@ namespace TC2.Game
                     if (d < bestB) { bestB = d; bestBid = bl[i]; }
                 }
             }
-            if (bestBid != 0) { _building = bestBid; _selected = 0; return; }
+            if (bestBid != 0) { _building = bestBid; _selected = 0; AudioView.Ui("select"); return; }
             // (session 30) nothing built there either: on a village's fields, its page at its land (the fields the tag under the pointer named)
-            if (_hoverField != 0 && w.Settlements.Exists(_hoverField)) ShowPlace(_hoverField, PlaceLandTab);
+            if (_hoverField != 0 && w.Settlements.Exists(_hoverField)) { ShowPlace(_hoverField, PlaceLandTab); AudioView.Ui("select"); }
         }
 
         void Styles()
         {
-            _scale = Mathf.Max(1f, Screen.height / 900f);
+            _scale = Mathf.Max(1f, Screen.height / 900f) * Settings.UiScale;   // (session 31: the player's interface size)
             if (_box != null) return;
             _box = new GUIStyle(GUI.skin.box) { alignment = TextAnchor.UpperLeft, padding = new RectOffset(10, 10, 8, 8), border = new RectOffset(8, 8, 8, 8) };
             // (session 27: the HUD as a game's) panels of dark glass with a thin gold edge, rounded
@@ -253,6 +269,7 @@ namespace TC2.Game
             _mapTag.normal.textColor = new Color(0.96f, 0.95f, 0.92f);
             _mapTag.normal.background = Solid(new Color(0.05f, 0.06f, 0.08f, 0.72f));
             _dot = Solid(Color.white);
+            SkinStyles();   // (session 31: the interface in one hand - Hud.Skin.cs)
         }
 
         /// <summary>A word drawn with a dark edge (four diagonal shadows, then the letters; the HUD draws its labels twice a frame, so it is kept cheap).</summary>
@@ -619,7 +636,7 @@ namespace TC2.Game
             if (Time.unscaledTime - _worldAt < 5f) return;
             _worldAt = Time.unscaledTime;
             var eras = Chronicle.Eras(w);
-            _worldAge = eras.Count > 0 ? "<i>" + eras[eras.Count - 1].Name + "</i> <size=11>(since year " + eras[eras.Count - 1].From + ")</size>" : "<i>its first years</i>";
+            _worldAge = eras.Count > 0 ? "<i>" + eras[eras.Count - 1].Name + "</i>, since year " + eras[eras.Count - 1].From : "<i>its first years</i>";
             var realms = new System.Collections.Generic.Dictionary<int, int>();
             Headlines.Realms(w, realms);
             _worldRealms.Clear();
@@ -816,7 +833,7 @@ namespace TC2.Game
             GUI.matrix = Matrix4x4.Scale(new Vector3(_scale, _scale, 1));
             float sw = Screen.width / _scale, sh = Screen.height / _scale;
             var w = Host.World;
-            if (w == null) { GUI.Label(new Rect(20, 20, 600, 40), Host.StatusLine, _title); return; }
+            if (w == null) { BootScreen(sw, sh); return; }
             // (session 29) a catch-up or a skip is watched from orbit, the years in large type and the headlines as they come (Hud.Lapse.cs)
             if (Host.CatchingUp) { LapseOverlay(w, sw, sh, 16f); _uiRects.Clear(); LapseRects(); return; }   // (only the overlay is drawn: its rects alone keep names off it)
             if (Title(sw, sh)) return;   // (the opening: F11.1)
@@ -825,96 +842,45 @@ namespace TC2.Game
             // (the names take no input: laid out and drawn on the repaint only - session 27, context 4: every IMGUI event had placed and measured them all
             // again, the map's names 3.6 ms of the region view's frame in s27prof1)
             if (!_book && Event.current.type == EventType.Repaint) { MapNames(w, sw, sh); WorkNames(w, sw, sh); PeopleNames(w, sw, sh); }
-            // top-left: a slim bar - the date and the speeds, measured from their words (the date's widest form); on a narrow screen the speeds under the
-            // date, so the bar never runs under the panels' toggles at the right (it did at 1280 px: "10 days/s" under Info)
-            if (_dateW == 0f)
-            {
-                _dateW = _title.CalcSize(new GUIContent("Year 0000 · Early Autumn · Day 48 · 00:00")).x + 10f;
-                foreach (string s in SimHost.SpeedNames) _speedsW += _btn.CalcSize(new GUIContent(s)).x + _btn.margin.horizontal;
-                _speedsW += _btn.CalcSize(new GUIContent("Max")).x + _btn.margin.horizontal;
-                _speedsW += _btn.CalcSize(new GUIContent("Skip...")).x + _btn.margin.horizontal + 6f;   // (session 29: the skip ahead)
-                _togglesW = 24f;
-                foreach (string s in new[] { "Info", "History", "Book", "World", "Realms", "Sound", "Settings" }) _togglesW += _btn.CalcSize(new GUIContent(s)).x + _btn.margin.horizontal;
-            }
-            float pad = _box.padding.horizontal + 4f;
-            bool twoRows = 10f + _dateW + _speedsW + pad + 10f > sw - _togglesW - 10f;
-            _left = twoRows ? new Rect(10, 10, Mathf.Max(_dateW, _speedsW) + pad, 70) : new Rect(10, 10, _dateW + _speedsW + pad, 40);
-            GUILayout.BeginArea(_left, _box);
-            if (!twoRows) GUILayout.BeginHorizontal();
-            GUILayout.Label(SimTime.Format(w.Now), _title, GUILayout.Width(_dateW));
-            if (twoRows) GUILayout.BeginHorizontal();
-            for (int i = 0; i < SimHost.Speeds.Length; i++)
-            {
-                bool on = !Host.MaxSpeed && Host.SpeedIndex == i;
-                if (GUILayout.Toggle(on, SimHost.SpeedNames[i], _btn) && !on) { Host.SpeedIndex = i; Host.MaxSpeed = false; }
-            }
-            if (GUILayout.Toggle(Host.MaxSpeed, "Max", _btn) != Host.MaxSpeed) Host.MaxSpeed = !Host.MaxSpeed;
-            GUILayout.Space(6);
-            _skipMenu = GUILayout.Toggle(_skipMenu, "Skip...", _btn);
-            GUILayout.EndHorizontal();
-            GUILayout.EndArea();
+            // (session 31) the bars over the world: the time at the top left, the seals at the top right (Hud.Bars.cs)
+            TimeBar(w, sw);
             _skipRect = Rect.zero;
             SkipMenu(sw);
             // (session 29) a speed too fast to watch from the ground: the camera watches from orbit - the HUD's pages and powers wait, the headlines come
             bool lapse = Rig != null && Rig.LapseActive;
             if (lapse) LapseOverlay(w, sw, sh, _left.yMax + 10f);
-
-            // top-right: toggles for the panels
-            _toggles = new Rect(sw - _togglesW - 10f, 10, _togglesW, 40);
-            GUILayout.BeginArea(_toggles, _box);
-            GUILayout.BeginHorizontal();
-            _info = GUILayout.Toggle(_info, "Info", _btn);
-            _history = GUILayout.Toggle(_history, "History", _btn);
-            _book = GUILayout.Toggle(_book, "Book", _btn);
-            _worldPanel = GUILayout.Toggle(_worldPanel, "World", _btn);
-            RealmsView.On = GUILayout.Toggle(RealmsView.On, "Realms", _btn);
-            AudioView.Muted = !GUILayout.Toggle(!AudioView.Muted, "Sound", _btn);   // (the world's sound: F10.1; M)
-            _settings = GUILayout.Toggle(_settings, "Settings", _btn);   // (F11.2)
-            GUILayout.EndHorizontal();
-            GUILayout.EndArea();
+            SealBar(sw);
 
             _right = Rect.zero;
-            float ry = 56;
+            float ry = 72;
             if (_info)
             {
                 // (session 29: the world at the top of what can be read - world -> realm -> settlement -> household -> person) the age the world is in, its
                 // greatest realms (each opening its page), what troubles it now; the tool's numbers kept small below
                 WorldNow(w);
-                float wh = 130f + 22f * _worldRealms.Count + 44f;
-                _right = new Rect(sw - 380, ry, 370, wh);
+                bool devLines = Browser.Param("dev") == "1";
+                float wh = 132f + 24f * _worldRealms.Count + (devLines ? 96f : 0f);
+                _right = new Rect(sw - 392f, ry, 380f, wh);
                 GUILayout.BeginArea(_right, _box);
-                GUILayout.Label("<b>The world now</b>   " + _worldAge, _label);
+                GUILayout.Label("<b>The world now</b>  " + _worldAge, _label);
                 GUILayout.Label("<b>" + w.LivingPeople().ToString("N0", CultureInfo.InvariantCulture) + "</b> people in <b>" + w.InhabitedSettlements() + "</b> places; " + _worldRealmLine, _small);
                 foreach (var kv in _worldRealms)
                     if (GUILayout.Button("   " + w.History.NameOf(EntityRef.Settlement(kv.Key)) + "'s realm - " + kv.Value + " villages  <color=#f2c35f>»</color>", _lineStyle)) ShowPlace(kv.Key, PlaceRealmTab);
                 GUILayout.Label(_worldTrouble, _small);
                 var P = w.Planet;
                 string sea = (P.SeaLevelNow - P.SeaLevel0).ToString("+0.0;-0.0", CultureInfo.InvariantCulture);
-                GUILayout.Label("climate " + P.TGlobal.ToString("0.0", CultureInfo.InvariantCulture) + " °C   ice " + (P.IceVolume / 1e9).ToString("0.0", CultureInfo.InvariantCulture) + " km³   sea " + sea + " m   tilt " + (P.Tilt * 180 / System.Math.PI).ToString("0.0", CultureInfo.InvariantCulture) + "°" + (P.Glacial == 1 ? "   (an age of ice)" : ""), _small);
-                GUILayout.Label("achieved " + FormatSpeed(Host.AchievedSpeed) + "   sim " + Host.LastSimMs.ToString("0.0", CultureInfo.InvariantCulture) + " ms   " + _fps.ToString("0", CultureInfo.InvariantCulture) + " fps   " + SystemInfo.graphicsDeviceType, _small);
-                GUILayout.Label("events " + w.Metrics.Events.ToString("N0", CultureInfo.InvariantCulture) + "   history " + w.History.Count + "   drawn " + Objects.PeopleDrawn + " people, " + (Objects.TreesDrawn + TerrainLod.ForestDrawn) + " trees", _small);
-                GUILayout.Label("CO2 " + P.CO2.ToString("0", CultureInfo.InvariantCulture) + " ppm   volcanoes " + P.Vents.Count + "   storms " + P.Storms.Count + "   " + Wild(w), _small);
+                GUILayout.Label("The air " + P.TGlobal.ToString("0.0", CultureInfo.InvariantCulture) + " °C, the sea " + sea + " m" + (P.Glacial == 1 ? "; an age of ice" : ""), _small);
+                if (devLines)
+                {
+                    // (the tools' own numbers: only with ?dev=1)
+                    GUILayout.Label("achieved " + FormatSpeed(Host.AchievedSpeed) + "   sim " + Host.LastSimMs.ToString("0.0", CultureInfo.InvariantCulture) + " ms   " + _fps.ToString("0", CultureInfo.InvariantCulture) + " fps   " + SystemInfo.graphicsDeviceType, _small);
+                    GUILayout.Label("events " + w.Metrics.Events.ToString("N0", CultureInfo.InvariantCulture) + "   history " + w.History.Count + "   drawn " + Objects.PeopleDrawn + " people, " + (Objects.TreesDrawn + TerrainLod.ForestDrawn) + " trees", _small);
+                    GUILayout.Label("CO2 " + P.CO2.ToString("0", CultureInfo.InvariantCulture) + " ppm   volcanoes " + P.Vents.Count + "   storms " + P.Storms.Count + "   " + Wild(w), _small);
+                }
                 GUILayout.EndArea();
                 ry += wh + 6f;
             }
             Rect worldRect = Rect.zero;
-            if (_worldPanel)
-            {
-                worldRect = new Rect(sw - 340, ry, 330, 96);
-                GUILayout.BeginArea(worldRect, _box);
-                GUILayout.Label("save " + (Host.LastSaveBytes / 1024f).ToString("0", CultureInfo.InvariantCulture) + " KB in " + Host.LastSaveMs.ToString("0", CultureInfo.InvariantCulture) + " ms (" + (Host.LastSaveOk ? "ok" : "-") + ")  offline: " + Host.Offline, _small);
-                GUILayout.BeginHorizontal();
-                if (GUILayout.Button("Save", _btn)) Host.SaveNow();
-                if (GUILayout.Button("Away 1 h", _btn)) Host.ReloadAsIfAway(3600000L);
-                if (GUILayout.Button("Away 1 day", _btn)) Host.ReloadAsIfAway(86400000L);
-                GUILayout.EndHorizontal();
-                GUILayout.BeginHorizontal();
-                if (GUILayout.Button("New world", _btn)) Host.NewWorld(w.Seed + 1);
-                if (GUILayout.Button("Offline: " + Host.Offline, _btn)) Host.Offline = (OfflineMode)(((int)Host.Offline + 1) % 3);
-                GUILayout.EndHorizontal();
-                GUILayout.EndArea();
-                ry += 102;
-            }
             Rect realmsRect = Rect.zero;
             if (RealmsView.On) realmsRect = RealmsLegend(sw, ry, w);
 
@@ -924,13 +890,13 @@ namespace TC2.Game
             {
                 // (above the power bar - last frame's, set again later in this one: the panel had run under the bar, s29book4)
                 float hTop = _powersRect.width > 0f ? Mathf.Min(sh - 250f, _powersRect.y - 8f - 240f) : sh - 250f;
-                _bottom = new Rect(10, Mathf.Max(60f, hTop), 560, 240);
+                _bottom = new Rect(10, Mathf.Max(_left.yMax + 8f, hTop), Mathf.Min(520f, sw * 0.42f), 240);
                 if (_feedLine == null) { _feedLine = new GUIStyle(_small) { wordWrap = true, richText = true }; _feedLine.hover.textColor = new Color(1f, 0.86f, 0.45f); }
                 GUILayout.BeginArea(_bottom, _box);
                 // (session 29: the History panel as the book's recent pages) a line opens the book on it - why it happened, back to its root, and the
                 // people and places it names; the book itself at the present age
                 GUILayout.BeginHorizontal();
-                GUILayout.Label("<b>Recent history</b>  <size=10><color=#9a9486>a line opens why it happened</color></size>", _label);
+                GUILayout.Label("<b>Recent history</b>  <size=12><i><color=#b5ad9b>a line opens why it happened</color></i></size>", _label);
                 GUILayout.FlexibleSpace();
                 if (GUILayout.Button("the book", _btn)) OpenBook(-1);
                 GUILayout.EndHorizontal();
@@ -944,27 +910,10 @@ namespace TC2.Game
                 }
                 GUILayout.EndArea();
             }
-            else if (_news.Length > 0 && _newsAge < 14f && !lapse)
-            {
-                var old = GUI.color;
-                GUI.color = new Color(1, 1, 1, Mathf.Clamp01(1.5f - _newsAge / 10f));
-                _ticker = new Rect(sw * 0.5f - 330, sh - 46, 660, 34);
-                GUILayout.BeginArea(_ticker, _box);
-                if (_feedLine == null) { _feedLine = new GUIStyle(_small) { wordWrap = true, richText = true }; _feedLine.hover.textColor = new Color(1f, 0.86f, 0.45f); }
-                if (_tickLine == null) { _tickLine = new GUIStyle(_feedLine) { wordWrap = false, clipping = TextClipping.Clip }; }
-                // (session 30) one line, cut at a word with "..." - a second line had run off the foot of a 720-high screen (s30web1); the whole story opens
-                // in the book on a click
-                float tickW = _ticker.width - _box.padding.horizontal - 6f;
-                if (!ReferenceEquals(_tickFor, _news) || _tickW != tickW) { _tickFor = _news; _tickW = tickW; _tickText = OneLine(_news, _tickLine, tickW); }
-                // (session 29) the news opens its why in the book, as a line of the History panel does
-                if (GUILayout.Button(_tickText, _tickLine) && _newsId != 0 && w.History.TryGet(_newsId, out _)) { _book = true; _line = _newsId; _whyScroll = Vector2.zero; }
-                GUILayout.EndArea();
-                GUI.color = old;
-            }
 
             // the History Book
             _bookRect = Rect.zero;
-            float topY = Mathf.Max(62f, _left.yMax + 8f);   // (below the top bar, two rows of it on a narrow screen)
+            float topY = Mathf.Max(72f, _left.yMax + 8f);   // (below the top bar)
             if (_book) { float bw = Mathf.Min(1280f, sw - 60f); _bookRect = new Rect(sw * 0.5f - bw * 0.5f, topY, bw, sh - 50f - topY); Book(_bookRect, w); }
 
             // inspector (session 27, context 4: not over the open book - s27book6 had the chosen person's card over its right-hand page; the book holds
@@ -974,7 +923,7 @@ namespace TC2.Game
             bool showInsp = !_book && !lapse && !_personPage && _selected != 0 && w.People.Exists(_selected);   // (session 29: the page holds all the card held)
             if (showInsp) PersonCard(card, w);
             _pageRect = Rect.zero;
-            float pageH = sh - 136f - topY;   // (ending above the power bar: its foot had run under it - s27web2)
+            float pageH = sh - 96f - topY;   // (ending above the power bar: its foot had run under it - s27web2)
             if (_book || lapse) { /* (the book holds the screen; the timelapse the picture) */ }
             else if (_placeSid != 0 && w.Settlements.Exists(_placeSid)) { float pw = Mathf.Min(760f, sw - 40f); _pageRect = new Rect(sw - 16f - pw, topY - 2f, pw, pageH); PlacePage(_pageRect, w); }
             else if (_personPage && _selected != 0 && w.People.Exists(_selected)) { float pw = Mathf.Min(820f, sw - 40f); _pageRect = new Rect(sw - 16f - pw, topY - 2f, pw, pageH); PersonSheet(_pageRect, w); }   // (session 29: Hud.Person.cs)
@@ -983,24 +932,28 @@ namespace TC2.Game
             if (!_book && !lapse) PowerBar(w, sw, sh);   // (the god's powers: F9.1)
             _handRect = Rect.zero; _noteRect = Rect.zero;
             if (!_book && !lapse && _pageRect.width <= 0f && !_history) YourHand(w, sw, sh);   // (session 29: the History panel holds its place while open)   // (what came of your casts, live: session 27; not over a person's or a place's page - s27book5)
+            NewsLine(w, sw, sh, lapse);   // (session 31: a line over the bar, no box)
             if (!_book && !lapse) DrawCastNote(sw);   // (the last cast's word, beside Your hand: session 29)
             if (!_book && !lapse) LapseSummaryLeaf(w, sw, sh); else _summaryRect = Rect.zero;   // (what the years did: Hud.Lapse.cs)
-            if (!_book) DrawTip(); else _tip = null;
+            GuideDraw(w, sw, sh);   // (session 31: the first minutes - Hud.Guide.cs)
+            HintDraw(sw, sh);
             _settingsRect = Rect.zero;
-            if (_settings) SettingsPanel(sw);
+            if (_menuOn) GameMenu(w, sw, sh);   // (session 31: the menu - Hud.Menu.cs)
+            DrawTip();
             KeepSettings();
+            AudioView.Duck = _menuOn ? 0.55f : _book ? 0.5f : 1f;   // (session 31: the world quieter behind the book and the menu)
             Vector2 m = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y) / _scale;
             bool overLapse = lapse && PointerOverUi;   // (the overlay's own rects, set as it drew)
-            PointerOverUi = overLapse || _skipRect.Contains(m) || _summaryRect.Contains(m) || _settingsRect.Contains(m) || _powersRect.Contains(m) || _left.Contains(m) || _toggles.Contains(m) || _right.Contains(m) || worldRect.Contains(m) || realmsRect.Contains(m) || _bottom.Contains(m) || _ticker.Contains(m) || (showInsp && (_building != 0 ? insp.Contains(m) : card.Contains(m))) || (_book && _bookRect.Contains(m)) || _pageRect.Contains(m);
-            if (!_book) HoverTag(w, sw, sh);
+            PointerOverUi = _menuOn || _guideCard.Contains(m) || overLapse || _skipRect.Contains(m) || _summaryRect.Contains(m) || _settingsRect.Contains(m) || _powersRect.Contains(m) || _left.Contains(m) || _toggles.Contains(m) || _right.Contains(m) || worldRect.Contains(m) || realmsRect.Contains(m) || _bottom.Contains(m) || _ticker.Contains(m) || (showInsp && (_building != 0 ? insp.Contains(m) : card.Contains(m))) || (_book && _bookRect.Contains(m)) || _pageRect.Contains(m);
+            if (!_book && !_menuOn) HoverTag(w, sw, sh);
             _uiRects.Clear();
             _uiRects.Add(_left); _uiRects.Add(_toggles); _uiRects.Add(_right); _uiRects.Add(worldRect); _uiRects.Add(realmsRect); _uiRects.Add(_bottom); _uiRects.Add(_ticker);
             _uiRects.Add(_powersRect); _uiRects.Add(_handRect); _uiRects.Add(_summaryRect); _uiRects.Add(_settingsRect); _uiRects.Add(_pageRect); _uiRects.Add(_tagRect);
-            _uiRects.Add(_aimRect); _uiRects.Add(_tipShown); _uiRects.Add(_noteRect);
+            _uiRects.Add(_aimRect); _uiRects.Add(_tipShown); _uiRects.Add(_noteRect); _uiRects.Add(_guideCard);
             if (lapse) LapseRects();
             if (showInsp) _uiRects.Add(_building != 0 ? insp : card);
             // (session 27) who is ringed on the ground: the person whose page is open, the one under the pointer, the chosen home's household
-            WorldObjectsView.Chosen = _personPage ? _selected : 0;
+            WorldObjectsView.Chosen = _selected != 0 ? _selected : _guidePid;   // (session 31: the card's person ringed as the page's; the one the guide points at)
             WorldObjectsView.Pointed = !_book && !PointerOverUi ? _hoverPid : 0;
             WorldObjectsView.ChosenHome = _building;
             // (session 27) the building under the pointer and the one chosen marked on the ground round their footprint, a home in its household's colour
@@ -1282,7 +1235,7 @@ namespace TC2.Game
             PersonStyles();
             if (Event.current.type == EventType.Repaint)
             {
-                GUI.DrawTexture(new Rect(r.x - 5f, r.y - 4f, r.width + 10f, r.height + 8f), _leather);
+                Binding(new Rect(r.x - 7f, r.y - 6f, r.width + 14f, r.height + 12f));
                 GUI.DrawTexture(r, _leaf);
             }
             string all = sb.ToString();
@@ -1602,6 +1555,7 @@ namespace TC2.Game
         void Turn(int d)
         {
             _line = 0; _bookScroll = Vector2.zero;
+            AudioView.Ui("page");
             if (_bookPart == -1) { if (d > 0) _bookPart = TimelinePart; return; }
             if (_bookPart == TimelinePart) { if (d > 0) { Part(0); _bookPart = 0; _bookChapter = 0; } else _bookPart = -1; return; }
             int k = _bookChapter + d;
@@ -1659,31 +1613,6 @@ namespace TC2.Game
             if (s >= SimTime.Day) return (s / SimTime.Day).ToString("0.0", CultureInfo.InvariantCulture) + " days/s";
             if (s >= SimTime.Hour) return (s / SimTime.Hour).ToString("0.0", CultureInfo.InvariantCulture) + " h/s";
             return s.ToString("0", CultureInfo.InvariantCulture) + "x";
-        }
-
-        /// <summary>(F11.2) The player's settings: the sound and its loudness, the clouds, lighter shadows from high up, the picture's detail - kept
-        /// for the next visit. Drawn over the panels at the top right.</summary>
-        void SettingsPanel(float sw)
-        {
-            _settingsRect = new Rect(sw - 350, 56, 340, 226);
-            GUILayout.BeginArea(_settingsRect, _box);
-            GUILayout.Label("<b>Settings</b>   kept for your next visit", _label);
-            bool muted = AudioView.Muted, lite = Sky.ShadowLite; float vol = AudioView.Volume, clouds = Settings.Clouds, detail = Settings.Detail;
-            GUILayout.BeginHorizontal();
-            AudioView.Muted = !GUILayout.Toggle(!AudioView.Muted, "Sound", _btn, GUILayout.Width(72));
-            GUILayout.BeginVertical(); GUILayout.Space(10); AudioView.Volume = GUILayout.HorizontalSlider(AudioView.Volume, 0f, 1f); GUILayout.EndVertical();
-            GUILayout.EndHorizontal();
-            GUILayout.Label("Clouds: " + (Settings.Clouds < 0.05f ? "none" : Settings.Clouds < 0.75f ? "thin" : Settings.Clouds > 1.2f ? "thick" : "as the weather makes them"), _small);
-            Settings.Clouds = GUILayout.HorizontalSlider(Settings.Clouds, 0f, 1.5f);
-            Sky.ShadowLite = GUILayout.Toggle(Sky.ShadowLite, "Lighter shadows from high up (faster)", _btn);
-            GUILayout.Label("Picture detail: " + (Settings.Detail * 100f).ToString("0", CultureInfo.InvariantCulture) + " %" + (Application.isEditor ? " (in the built game)" : ""), _small);
-            Settings.Detail = GUILayout.HorizontalSlider(Settings.Detail, 0.5f, 1f);
-            GUILayout.EndArea();
-            if (muted != AudioView.Muted || lite != Sky.ShadowLite || vol != AudioView.Volume || clouds != Settings.Clouds || detail != Settings.Detail)
-            {
-                Settings.Apply();
-                _settingsDirty = Time.unscaledTime;
-            }
         }
 
         /// <summary>(F11.2) Keeps the settings half a second after they last changed (a slider is not written every frame); the Sound toggle and

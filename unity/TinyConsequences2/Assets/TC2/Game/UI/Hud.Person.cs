@@ -92,7 +92,7 @@ namespace TC2.Game
             }
             if (Event.current.type == EventType.Repaint)
             {
-                GUI.DrawTexture(new Rect(r.x - 6f, r.y - 5f, r.width + 12f, r.height + 10f), _leather);
+                Binding(new Rect(r.x - 8f, r.y - 7f, r.width + 16f, r.height + 14f));
                 GUI.DrawTexture(r, _leaf);
             }
             GUILayout.BeginArea(new Rect(r.x + 24f, r.y + 14f, r.width - 40f, r.height - 22f));
@@ -128,7 +128,7 @@ namespace TC2.Game
             for (int i = 0; i < PersonTabs.Length; i++)
             {
                 if (i > 0) GUILayout.Label("·", _pgDot);
-                if (GUILayout.Button(PersonTabs[i], i == _pageTab ? _pgTabSel : _pgTab)) { _pageTab = i; _pageScroll = Vector2.zero; _pgWhy = 0; }
+                if (GUILayout.Button(PersonTabs[i], i == _pageTab ? _pgTabSel : _pgTab)) { _pageTab = i; _pageScroll = Vector2.zero; _pgWhy = 0; AudioView.Ui("leaf"); }
             }
             GUILayout.FlexibleSpace();
             GUILayout.EndHorizontal();
@@ -166,7 +166,7 @@ namespace TC2.Game
             }
             if (Event.current.type == EventType.Repaint)
             {
-                GUI.DrawTexture(new Rect(r.x - 5f, r.y - 4f, r.width + 10f, r.height + 8f), _leather);
+                Binding(new Rect(r.x - 7f, r.y - 6f, r.width + 14f, r.height + 12f));
                 GUI.DrawTexture(r, _leaf);
             }
             GUILayout.BeginArea(new Rect(r.x + 14f, r.y + 10f, r.width - 26f, r.height - 16f));
@@ -195,7 +195,8 @@ namespace TC2.Game
             GUILayout.FlexibleSpace();
             GUILayout.BeginHorizontal();
             if (p.Alive && GUILayout.Button(_follow == pid ? "stop following" : "follow", _bkNav)) _follow = _follow == pid ? 0 : pid;
-            if (GUILayout.Button("their life  ›", _bkNav)) { _personPage = true; _pageTab = 0; _pgBack.Clear(); _placeSid = 0; }
+            if (GUILayout.Button("their life  ›", _bkNav)) { _personPage = true; _pageTab = 0; _pgBack.Clear(); _placeSid = 0; AudioView.Ui("page"); }
+            if (Event.current.type == EventType.Repaint) { var lb = GUILayoutUtility.GetLastRect(); _lifeBtnRect = new Rect(r.x + 14f + lb.x, r.y + 10f + lb.y, lb.width, lb.height); }
             if (p.Home != 0 && GUILayout.Button("their village  ›", _bkNav)) ShowPlace(p.Home);
             GUILayout.FlexibleSpace();
             if (GUILayout.Button("×", _bkNav, GUILayout.Width(26))) { _selected = 0; if (_follow == pid) { } }
@@ -545,7 +546,7 @@ namespace TC2.Game
             GUILayout.EndHorizontal();
             ref var hh = ref w.Households.Get(p.Household);
             GUILayout.BeginHorizontal();
-            if (hh.Building != 0 && w.Buildings.Exists(hh.Building) && GUILayout.Button("their home  ›", _bkNav)) { _building = hh.Building; _personPage = false; var b = w.Buildings.Get(hh.Building); if (w.Settlements.Exists(b.Settlement)) { var at = w.Settlements.Get(b.Settlement).LocalToSphere(b.X, b.Y, w.Planet.Radius); Rig.Lat = at.Latitude; Rig.Lon = at.Longitude; } }
+            if (hh.Building != 0 && w.Buildings.Exists(hh.Building) && GUILayout.Button("their home  ›", _bkNav)) { _building = hh.Building; _personPage = false; var b = w.Buildings.Get(hh.Building); if (w.Settlements.Exists(b.Settlement)) { var at = w.Settlements.Get(b.Settlement).LocalToSphere(b.X, b.Y, w.Planet.Radius); Rig.FlyTo(at, System.Math.Min(Rig.Distance - w.Planet.Radius, 260.0)); } }
             if (p.Home != 0 && GUILayout.Button("their village  ›", _bkNav)) ShowPlace(p.Home);
             GUILayout.FlexibleSpace();
             GUILayout.EndHorizontal();

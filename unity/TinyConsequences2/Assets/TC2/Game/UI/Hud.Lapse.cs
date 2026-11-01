@@ -24,7 +24,7 @@ namespace TC2.Game
         readonly List<Headlines.Item> _headShown = new List<Headlines.Item>();
         readonly List<float> _headShownAt = new List<float>();
         readonly List<Headlines.Item> _headAll = new List<Headlines.Item>();   // (every headline of the span, for its summary)
-        float _headNext;
+        float _headNext, _chimeAt = -99f;
         bool _lapseHooked, _skipMenu;
         // what the years did, shown when the camera is back (null: nothing to show)
         List<string> _lapseSummary; string _lapseTitle = ""; float _lapseSummaryAt; Rect _summaryRect; Vector2 _summaryScroll;
@@ -34,7 +34,7 @@ namespace TC2.Game
         GUIStyle _lpDate, _lpSub, _lpKick, _lpText, _lpCard;
 
         static readonly long[] SkipSeconds = { 12 * SimTime.Day, SimTime.Year, 10 * SimTime.Year, 100 * SimTime.Year };
-        static readonly string[] SkipNames = { "a season", "a year", "ten years", "a century" };
+        static readonly string[] SkipNames = { "A season", "A year", "Ten years", "A century" };
 
         /// <summary>Chooses a person as a click does - their card (the bridge's way in: tests).</summary>
         public void Select(int pid) { _book = false; _personPage = false; _placeSid = 0; _selected = pid; _building = 0; }
@@ -174,6 +174,7 @@ namespace TC2.Game
                 int pick = 0;
                 for (int i = 1; i < _headQueue.Count; i++) if (_headQueue[i].Rank > _headQueue[pick].Rank) pick = i;
                 _headShown.Add(_headQueue[pick]); _headShownAt.Add(now);
+                if (_headQueue[pick].Rank >= 3 && now - _chimeAt > 7f) { _chimeAt = now; AudioView.Ui("chime"); }   // (session 31: a great thing heard, far off)
                 _headQueue.RemoveAt(pick); _headQueuedAt.RemoveAt(pick);
                 _headNext = now + 1.6f;
             }
@@ -281,7 +282,7 @@ namespace TC2.Game
             _summaryRect = r;
             if (Event.current.type == EventType.Repaint)
             {
-                GUI.DrawTexture(new Rect(r.x - 5f, r.y - 4f, r.width + 10f, r.height + 8f), _leather);
+                Binding(new Rect(r.x - 7f, r.y - 6f, r.width + 14f, r.height + 12f));
                 GUI.DrawTexture(r, _leaf);
             }
             GUILayout.BeginArea(new Rect(r.x + 20f, r.y + 12f, r.width - 34f, r.height - 18f));
@@ -351,10 +352,11 @@ namespace TC2.Game
         void SkipMenu(float sw)
         {
             if (!_skipMenu) return;
-            var r = new Rect(_left.xMax - 170f, _left.yMax + 4f, 170f, 30f + 28f * SkipNames.Length);
+            var r = new Rect(_skipBtn.xMax - 250f, _left.yMax + 4f, 250f, 58f + 34f * SkipNames.Length);
             GUILayout.BeginArea(r, _box);
-            GUILayout.Label("Skip ahead, watched from orbit", _small);
-            for (int i = 0; i < SkipNames.Length; i++) if (GUILayout.Button(SkipNames[i], _btn)) { _skipMenu = false; Host.BeginSkip(SkipSeconds[i]); }
+            GUILayout.Label("<b>Skip ahead</b>  <size=13><i>watched from orbit</i></size>", _label);
+            for (int i = 0; i < SkipNames.Length; i++)
+                if (GUILayout.Button(SkipNames[i], _btn, GUILayout.Height(30f))) { _skipMenu = false; AudioView.Ui("click"); Host.BeginSkip(SkipSeconds[i]); }
             GUILayout.EndArea();
             _skipRect = r;
         }

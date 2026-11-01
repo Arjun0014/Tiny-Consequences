@@ -4,15 +4,20 @@ using UnityEngine;
 namespace TC2.Game
 {
     /// <summary>
-    /// (F11.1) The opening: a title over the world when a player opens the game (a plain address - the tools' and tests' parameters skip it), the world
-    /// held still beneath it until they go in; continue the world (or begin it), begin a new world (asked twice: it replaces the one kept), and how to watch
-    /// and reach in. The view writes nothing: the speed is the host's, a new world the host's own.
+    /// (F11.1; session 31: rebuilt as the game's opening) The title over the living planet: the camera holds the world turning slowly at the right of the screen under a
+    /// composed light (CameraRig.Title), a shade at the left, the logotype and the line that says what this is, and a column of words - Continue or Begin, a new world,
+    /// worlds kept, how to play, settings, credits - in the book's display type, lit under the pointer. The world is held still until the player goes in; nothing here
+    /// writes it (the speed is the host's, a new world the host's own). A plain address opens here; the tools' and tests' parameters skip it, `?menu=1` asks for it.
     /// </summary>
     public sealed partial class Hud
     {
-        bool _titleAsked, _titleOn, _titleGuide, _titleNew;
+        bool _titleAsked, _titleOn;
         int _titleSpeed = 3;
-        GUIStyle _titleBig, _titleSubtitle, _titleText, _titleBtn, _titleWorld;
+        float _titleBorn, _titleLeft = -1f;
+        GUIStyle _titleTag, _titleWorld, _menuWord, _menuWordOn, _menuSub, _pageTitle2, _mnText, _mnTextDim, _pageCap, _busyWord;
+        int _titleHover = -1;
+        readonly float[] _titleLit = new float[8];
+        bool _newWorldBusy; int _newWorldFrames; ulong _newWorldSeed;
 
         static readonly string[] Skips = { "speed", "fresh", "seed", "absence", "view", "book", "test", "menu" };
 
@@ -25,56 +30,179 @@ namespace TC2.Game
             return true;
         }
 
+        /// <summary>Back to the title from the game's menu.</summary>
+        void TitleEnter()
+        {
+            _titleOn = true; _titleBorn = Time.unscaledTime; _titleLeft = -1f; _menuOn = false; _menuPage = MenuMain;
+            _titleSpeed = Host.SpeedIndex == 0 ? (_resumeSpeed > 0 ? _resumeSpeed : 3) : Host.SpeedIndex;
+            Host.SpeedIndex = 0; Host.MaxSpeed = false;
+            if (Rig != null) Rig.TitleBegin();
+        }
+
+        /// <summary>Into the world: the speed the player had, the camera freed from the title's composition; the guide for one who has not seen it.</summary>
+        void TitleLeave()
+        {
+            _titleOn = false; _menuPage = MenuMain; _titleLeft = Time.unscaledTime;
+            Host.SpeedIndex = _titleSpeed;
+            AudioView.Ui("enter");
+            if (Rig != null) Rig.TitleEnd();
+            if (!Settings.GuideSeen && Browser.Param("menu") != "1") GuideStart();
+        }
+
+        void TitleStyles()
+        {
+            if (_menuWord != null) return;
+            GUIStyle L(Font f, int size, Color c, FontStyle fs = FontStyle.Normal, TextAnchor a = TextAnchor.UpperLeft, bool wrap = true)
+            {
+                var st = new GUIStyle(GUI.skin.label) { font = f, fontSize = size, fontStyle = fs, alignment = a, wordWrap = wrap, richText = true, padding = new RectOffset(0, 0, 0, 0), margin = new RectOffset(0, 0, 0, 0) };
+                st.normal.textColor = c;
+                return st;
+            }
+            _titleTag = L(_serif, 21, new Color(0.95f, 0.92f, 0.84f), FontStyle.Italic);
+            _titleWorld = L(_serif, 15, new Color(0.82f, 0.80f, 0.74f), FontStyle.Italic);
+            _menuWord = L(_display, 31, new Color(0.93f, 0.90f, 0.82f), a: TextAnchor.MiddleLeft, wrap: false);
+            _menuWordOn = L(_display, 31, new Color(1f, 0.87f, 0.58f), a: TextAnchor.MiddleLeft, wrap: false);
+            _menuSub = L(_serif, 15, new Color(0.80f, 0.77f, 0.70f), FontStyle.Italic, a: TextAnchor.MiddleLeft, wrap: false);
+            _pageTitle2 = L(_display, 30, new Color(1f, 0.87f, 0.58f));
+            _mnText = L(_serif, 17, new Color(0.94f, 0.91f, 0.84f));
+            _mnTextDim = L(_serif, 15, new Color(0.78f, 0.75f, 0.68f), FontStyle.Italic);
+            _pageCap = L(_display, 18, new Color(0.97f, 0.82f, 0.50f));
+            _busyWord = new GUIStyle(_menuWordOn) { alignment = TextAnchor.MiddleCenter };
+        }
+
+        /// <summary>A word of a menu: lit, with a lozenge and a small step to the right, under the pointer; a line under it if given. True when clicked.</summary>
+        bool MenuWord(Rect r, int id, string word, string sub = null)
+        {
+            var e = Event.current;
+            bool over = r.Contains(e.mousePosition) && GUI.enabled;
+            if (e.type == EventType.Repaint)
+            {
+                if (id >= 0 && id < _titleLit.Length) _titleLit[id] = Mathf.MoveTowards(_titleLit[id], over ? 1f : 0f, Time.unscaledDeltaTime * 7f);
+                float lit = id >= 0 && id < _titleLit.Length ? _titleLit[id] : (over ? 1f : 0f);
+                float dx = 18f * lit;
+                if (lit > 0.01f)
+                {
+                    var old = GUI.color;
+                    GUI.color = new Color(1f, 0.82f, 0.45f, lit * old.a * 0.9f);
+                    float cy = r.y + (sub != null ? 19f : r.height * 0.5f);
+                    GUI.DrawTexture(new Rect(r.x - 2f, cy - 7f, 14f, 14f), Ui("thumb"));
+                    GUI.color = old;
+                }
+                var st = over ? _menuWordOn : _menuWord;
+                Edged(new Rect(r.x + dx, r.y, r.width - dx, sub != null ? 38f : r.height), word, st);
+                if (sub != null) Edged(new Rect(r.x + dx + 1f, r.y + 36f, r.width - dx, 20f), sub, _menuSub);
+            }
+            if (id != _titleHover && over && id >= 0) { _titleHover = id; AudioView.Ui("tick"); }
+            else if (_titleHover == id && !over) _titleHover = -1;
+            bool click = GUI.Button(r, GUIContent.none, GUIStyle.none);
+            if (click) AudioView.Ui("click");
+            return click;
+        }
+
         /// <summary>The title (the HUD's OnGUI, after the catch-up screen): true while it covers the world.</summary>
         bool Title(float sw, float sh)
         {
-            if (!_titleAsked) { _titleAsked = true; _titleOn = WantsTitle(); if (_titleOn) { _titleSpeed = Host.SpeedIndex == 0 ? 3 : Host.SpeedIndex; Host.SpeedIndex = 0; } }
-            if (!_titleOn) return false;
-            if (_titleBig == null)
+            if (!_titleAsked)
             {
-                // (session 27) the title in the book's display type, warm gold; the line under it in its text type - the opening and the book one hand
-                var display = Resources.Load<Font>("Fonts/IMFellEnglish"); var serif = Resources.Load<Font>("Fonts/EBGaramond");
-                _titleBig = new GUIStyle(_label) { fontSize = 56, fontStyle = FontStyle.Normal, alignment = TextAnchor.MiddleCenter, wordWrap = false };
-                if (display != null) _titleBig.font = display; else _titleBig.fontStyle = FontStyle.Bold;
-                _titleBig.normal.textColor = new Color(0.98f, 0.88f, 0.62f);
-                _titleSubtitle = new GUIStyle(_label) { fontSize = 18, alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Italic };
-                if (serif != null) _titleSubtitle.font = serif;
-                _titleSubtitle.normal.textColor = new Color(0.90f, 0.88f, 0.84f);
-                _titleWorld = new GUIStyle(_label) { fontSize = 14, alignment = TextAnchor.MiddleCenter };   // (the world's date and numbers in the UI type)
-                _titleWorld.normal.textColor = new Color(0.80f, 0.84f, 0.90f);
-                _titleText = new GUIStyle(_label) { fontSize = 14 };
-                _titleBtn = new GUIStyle(_btn) { fontSize = 16, padding = new RectOffset(18, 18, 8, 8) };
+                _titleAsked = true;
+                if (WantsTitle()) { _titleSpeed = Host.SpeedIndex == 0 ? 3 : Host.SpeedIndex; _titleOn = true; _titleBorn = Time.unscaledTime; Host.SpeedIndex = 0; if (Rig != null) Rig.TitleBegin(); }
             }
+            if (!_titleOn)
+            {
+                // (the shade lifting as the world comes in)
+                if (_titleLeft >= 0f)
+                {
+                    float k = (Time.unscaledTime - _titleLeft) / 1.1f;
+                    if (k >= 1f) _titleLeft = -1f;
+                    else if (Event.current.type == EventType.Repaint) { var o = GUI.color; GUI.color = new Color(1f, 1f, 1f, (1f - k) * (1f - k)); GUI.DrawTexture(new Rect(0, 0, sw * 0.8f, sh), Ui("shade_left"), ScaleMode.StretchToFill, true); GUI.color = o; }
+                }
+                return false;
+            }
+            TitleStyles();
             var w = Host.World;
-            float bw = Mathf.Min(640f, sw - 40f), bh = _titleGuide ? Mathf.Min(660f, sh - 40f) : 268f;   // (session 29: 600 -> 660, the guide says more)
-            var r = new Rect((sw - bw) * 0.5f, (sh - bh) * 0.5f, bw, bh);
-            GUILayout.BeginArea(r, _box);
-            GUILayout.Label("Tiny Consequences", _titleBig, GUILayout.Height(74));
-            Rect rule = GUILayoutUtility.GetRect(10f, 8f, GUILayout.ExpandWidth(true));
-            if (Event.current.type == EventType.Repaint) { GUI.color = new Color(0.86f, 0.70f, 0.38f, 0.6f); GUI.DrawTexture(new Rect(rule.x + rule.width * 0.25f, rule.y + 3f, rule.width * 0.5f, 1f), _dot); GUI.color = Color.white; }
-            GUILayout.Label("A living miniature world. Its people farm, build, trade, fight and remember on their own; you may watch, read its history, or reach in.", _titleSubtitle);
-            GUILayout.Space(8);
-            if (w != null)
-                GUILayout.Label((Host.Continued ? "Your world, " : "A new world, ") + SimTime.Format(w.Now) + ": " + w.LivingPeople() + " people in " + w.InhabitedSettlements() + " places.", _titleWorld);
-            GUILayout.Space(14);
-            GUILayout.BeginHorizontal();
-            GUILayout.FlexibleSpace();
-            if (GUILayout.Button(Host.Continued ? "Continue" : "Begin", _titleBtn)) { _titleOn = false; Host.SpeedIndex = _titleSpeed; }
-            if (!_titleNew) { if (GUILayout.Button("A new world", _titleBtn)) _titleNew = true; }
-            else if (GUILayout.Button("Yes - the world kept now will be lost", _titleBtn)) { _titleNew = false; Host.NewWorld(w != null ? w.Seed + 1 : 42UL); Host.Continued = false; }
-            if (GUILayout.Button(_titleGuide ? "Hide the guide" : "How to watch", _titleBtn)) _titleGuide = !_titleGuide;
-            GUILayout.FlexibleSpace();
-            GUILayout.EndHorizontal();
-            if (_titleGuide)
+            float t = Time.unscaledTime - _titleBorn;
+            float a = Mathf.Clamp01((t - 0.15f) / 1.3f);
+            // the new world asked for: the words stand for a frame or two before the generator holds the frame
+            if (_newWorldBusy && ++_newWorldFrames > 6 && Event.current.type == EventType.Repaint)
             {
-                GUILayout.Space(10);
-                GUILayout.Label("<b>Look</b>: drag to turn the planet, the wheel to come down to a village or rise to the whole world. <b>Time</b>: 1-8 or the bar at the top set the speed; Space holds the world still; 9 lets it run as fast as it can; Skip leaps years ahead, watched from above. The world lives on while you are away and catches up when you come back.", _titleText);
-                GUILayout.Label("<b>Its people</b>: point at anyone or anything - a person, a house, a work, a road, a ruin, a village from afar - to see what it is doing and why; click it for its page, its life and its Why?. A village's name opens its page. <b>B</b> opens the History Book - every line in it happened, and each tells what caused it; the History panel's lines and the news open theirs. <b>R</b> shows the realms, <b>N</b> the names, <b>M</b> mutes the world's sound, <b>H</b> hides all of this.", _titleText);   // (session 29: pointing reads the world; Skip)
-                GUILayout.Label("<b>Reach in</b>: the powers at the bottom - lightning, a storm, a quake, an eruption, a sickness, a blight, a drought, rain, warmth and cold, a stone from the sky, bounty, game, a vein of ore. Choose one, then click the ground; the right button stops. Each comes back in the world's time. The world does not exist to answer you: what follows is its own doing, and the book's last part, Your Actions, tells what came of yours.", _titleText);
+                _newWorldBusy = false;
+                Host.NewWorld(_newWorldSeed);
+                Host.Continued = false;
+                _seedText = null;
+                TitleLeave();
+                return true;
             }
-            GUILayout.EndArea();
+            if (Event.current.type == EventType.Repaint)
+            {
+                GUI.DrawTexture(new Rect(0, 0, sw * 0.8f, sh), Ui("shade_left"), ScaleMode.StretchToFill, true);
+                var o = GUI.color; GUI.color = new Color(1f, 1f, 1f, 0.55f); GUI.DrawTexture(new Rect(0, sh - 120f, sw, 120f), Ui("shade_foot"), ScaleMode.StretchToFill, true); GUI.color = o;
+            }
+            var old = GUI.color;
+            GUI.color = new Color(1f, 1f, 1f, a);
+            // the logotype, the rule, the line that says what this is
+            float colX = Mathf.Max(36f, sw * 0.06f), colW = Mathf.Min(620f, Mathf.Max(380f, sw * 0.44f));
+            var logo = Ui("logo");
+            float lh = colW * logo.height / Mathf.Max(1f, logo.width);
+            float y = Mathf.Max(24f, sh * 0.095f);
+            if (Event.current.type == EventType.Repaint) GUI.DrawTexture(new Rect(colX, y, colW, lh), logo, ScaleMode.ScaleToFit, true);
+            y += lh + 2f;
+            Ornament(new Rect(colX, y, colW * 0.82f, 26f));
+            y += 34f;
+            Edged(new Rect(colX + 2f, y, colW, 58f), "A tiny living world that lives and ages without you.\nYou may watch it, read its history - and reach in.", _titleTag);
+            y += 74f;
+            // the words
+            float itemW = Mathf.Min(colW, 420f), itemH = 44f;
+            string worldLine = w != null ? (Host.Continued ? "Your world, " : "A new world, ") + YearAndSeason(w.Now) + ": " + w.LivingPeople().ToString("N0", System.Globalization.CultureInfo.InvariantCulture) + " people in " + w.InhabitedSettlements() + " places" : null;
+            bool busy = _newWorldBusy || w == null;
+            GUI.enabled = !busy;
+            if (MenuWord(new Rect(colX, y, itemW, 58f), 0, Host.Continued ? "Continue" : "Begin", worldLine)) TitleLeave();
+            y += 64f;
+            if (MenuWord(new Rect(colX, y, itemW, itemH), 1, "A New World")) { _menuPage = _menuPage == MenuNew ? MenuMain : MenuNew; if (_seedText == null) _seedText = NextSeed(); _copyNote = null; }
+            y += itemH;
+            bool anyKept = Settings.AnyKept();
+            if (anyKept) { if (MenuWord(new Rect(colX, y, itemW, itemH), 2, "Worlds Kept")) _menuPage = _menuPage == MenuWorlds ? MenuMain : MenuWorlds; y += itemH; }
+            if (MenuWord(new Rect(colX, y, itemW, itemH), 3, "How to Play")) _menuPage = _menuPage == MenuHow ? MenuMain : MenuHow;
+            y += itemH;
+            if (MenuWord(new Rect(colX, y, itemW, itemH), 4, "Settings")) _menuPage = _menuPage == MenuSettings ? MenuMain : MenuSettings;
+            y += itemH;
+            if (MenuWord(new Rect(colX, y, itemW, itemH), 5, "Credits")) _menuPage = _menuPage == MenuCredits ? MenuMain : MenuCredits;
+            GUI.enabled = true;
+            // the page beside the words, over the planet's side of the screen
+            if (_menuPage != MenuMain)
+            {
+                float pw = Mathf.Min(620f, sw - (colX + itemW + 34f) - 24f);
+                float ph = Mathf.Min(sh - 72f, _menuPage == MenuSettings ? 620f : _menuPage == MenuHow ? 640f : _menuPage == MenuCredits ? 560f : 420f);
+                if (pw < 360f) pw = Mathf.Min(sw - 40f, 620f);
+                MenuPageDraw(new Rect(sw - pw - 28f, Mathf.Max(24f, (sh - ph) * 0.5f), pw, ph), w, true);
+            }
+            if (_newWorldBusy)
+            {
+                var o = GUI.color; GUI.color = new Color(0f, 0f, 0f, 0.55f); GUI.DrawTexture(new Rect(0, 0, sw, sh), _dot); GUI.color = o;
+                Edged(new Rect(0, sh * 0.5f - 24f, sw, 48f), "A world is being made...", _busyWord);
+            }
+            GUI.color = old;
             PointerOverUi = true;
             return true;
+        }
+
+        /// <summary>The moment before there is a world: the logotype on the dark, and what the game is doing.</summary>
+        void BootScreen(float sw, float sh)
+        {
+            TitleStyles();
+            var logo = Ui("logo");
+            float lw = Mathf.Min(620f, sw * 0.6f), lh = lw * logo.height / Mathf.Max(1f, logo.width);
+            float y = sh * 0.5f - lh;
+            if (Event.current.type == EventType.Repaint) GUI.DrawTexture(new Rect((sw - lw) * 0.5f, y, lw, lh), logo, ScaleMode.ScaleToFit, true);
+            Ornament(new Rect((sw - lw * 0.8f) * 0.5f, y + lh + 2f, lw * 0.8f, 26f));
+            if (_bootLine == null) _bootLine = new GUIStyle(_titleWorld) { alignment = TextAnchor.UpperCenter };
+            GUI.Label(new Rect(0f, y + lh + 34f, sw, 26f), Host.StatusLine, _bootLine);
+        }
+        GUIStyle _bootLine;
+
+        static string YearAndSeason(long now)
+        {
+            string[] p = SimTime.Format(now).Split('·');
+            return p.Length >= 2 ? p[0].Trim() + ", " + p[1].Trim().ToLowerInvariant() : "";
         }
     }
 }

@@ -178,6 +178,9 @@ namespace TC2.Game
                         break;
                     }
                 case "names": Hud.Names = a.Length < 2 || a[1] == "on"; break;   // (session 25) places named on the map
+                case "menu": { var hud = Object.FindFirstObjectByType<Hud>(); if (hud != null) hud.ToolsMenu(a.Length > 1 ? int.Parse(a[1], inv) : 0); break; }   // (session 31) "menu PAGE": 0 its words, 1 how to play, 2 settings, 3 credits, 4 a new world, 5 worlds kept, -1 closed
+                case "title": { var hud = Object.FindFirstObjectByType<Hud>(); if (hud != null) hud.ToolsTitle(a.Length < 2 || a[1] != "off", a.Length > 2 ? int.Parse(a[2], inv) : 0); break; }   // (session 31) "title on [PAGE]" | "title off"
+                case "guide": { var hud = Object.FindFirstObjectByType<Hud>(); if (hud != null) hud.ToolsGuide(a.Length > 1 ? int.Parse(a[1], inv) : 0); break; }   // (session 31) "guide STEP" (-1 ended)
                 case "setting":   // (F11.2) tests: a setting changed as the panel changes it, and kept
                     {
                         float v = float.Parse(a[2], inv);

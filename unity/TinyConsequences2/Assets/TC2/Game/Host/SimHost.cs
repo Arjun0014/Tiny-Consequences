@@ -341,6 +341,25 @@ namespace TC2.Game
         public int SavesStored;
         SaveFile.Scratch _saveScratch = new SaveFile.Scratch();   // (sized for the world at each load: its first save grows nothing by doubling)
 
+        /// <summary>(session 31) Keeps a copy of the world under another name in the store (the menu's Worlds Kept).</summary>
+        public void SaveCopy(string key, Action<bool> done)
+        {
+            if (World == null || CatchingUp) { done?.Invoke(false); return; }
+            int length = SaveFile.Save(World, _saveScratch, Browser.NowUtcMs(), Offline, 0, 0, Feed.Count > 0 ? Feed[Feed.Count - 1] : "");
+            Store.Save(key, _saveScratch.Out.Buffer, length, done);
+        }
+
+        /// <summary>(session 31) Goes back to a copy kept (as it was kept: a copy does not go on while the player is away); false if there is none, or this version cannot read it.</summary>
+        public void LoadCopy(string key, Action<bool> done)
+        {
+            Store.Load(key, data =>
+            {
+                if (data == null) { done?.Invoke(false); return; }
+                try { LoadWorld(data); Continued = true; SaveNow(); done?.Invoke(true); }
+                catch (Exception e) { Debug.LogWarning("[TC2] could not read the copy: " + e.Message); done?.Invoke(false); }
+            });
+        }
+
         /// <summary>Reloads the saved world as if returning after <paramref name="absenceMs"/> (debug and tests).</summary>
         public void ReloadAsIfAway(long absenceMs)
         {

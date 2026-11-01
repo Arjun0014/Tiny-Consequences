@@ -49,12 +49,15 @@ namespace TC2.Game
             new Power { Name = "Ore", Col = new Color(0.40f, 0.85f, 0.70f), Doing = "Lay bare a vein of copper", Kind = CommandKind.GodOre, Recharge = 20 * SimTime.Year, Reach = 120,
                         Help = "rich copper ore in the rock at a place: someone must go there and see it - then a mine, smiths and trade may follow" },
         };
-        const int FirstRow = 9;
+        // (session 31) each its seal's picture, in the bar's order; the bar's three groups end after these places
+        static readonly string[] PowerIcons = { "lightning", "storm", "rain", "drought", "warmth", "cold", "quake", "eruption", "meteor", "plague", "blight", "bounty", "cull", "bring", "ore" };
+        static readonly int[] PowerGroupEnds = { 6, 9, 15 };
+        static readonly string[] PowerGroupNames = { "The sky", "The ground", "Life and land" };
 
         int _aim = -1;                 // the power being aimed (-1 none)
         Vector2 _downAt;               // where the pointer went down (a cast is a click, not a drag of the camera)
         Rect _powersRect;
-        GUIStyle _powerOn, _powerOff;
+        GUIStyle _coolWord;
 
         /// <summary>Aims a power as its button does (-1 stops aiming): the tests' way in (F9.1).</summary>
         public void Aim(int k) { _aim = k >= 0 && k < Powers.Length ? k : -1; }
@@ -107,10 +110,11 @@ namespace TC2.Game
             if (!GroundUnder(Input.mousePosition, out _, out int cell)) { CastNote("Aim at the ground - the sky has nothing to strike", false); return; }
             var pw = Powers[_aim];
             w.Issue(new Command { Time = w.Now, Kind = pw.Kind, Cell = cell, Arg = pw.Arg });
-            CastNote(pw.Doing + " " + TC2.Core.History.HistoryText.At(w.PlaceName(cell)) + " - what comes of it shows in Your hand, and in the book's last part", true);
+            CastNote(pw.Doing + " " + TC2.Core.History.HistoryText.At(w.PlaceName(cell)) + " - what comes of it will show in Your hand", true);
             // (session 27: the powers as play) the hand seen: a burst where it fell, the ground shaken by the heaviest
             // (the meteor: the stone seen falling to where the world strikes - the cell's heart, where its fires and its scar will be - and the burst and the
             // shaking when it lands)
+            AudioView.Ui("cast");
             float shake = pw.Kind == CommandKind.GodMeteor ? 1f : pw.Kind == CommandKind.GodQuake ? 0.85f : pw.Kind == CommandKind.GodEruption ? 0.7f : pw.Kind == CommandKind.GodStorm ? 0.3f : pw.Kind == CommandKind.GodLightning ? 0.25f : 0.1f;
             bool meteor = pw.Kind == CommandKind.GodMeteor;
             if (meteor) { AimView.Cast(w.Planet.Grid.Center[cell], pw.Reach, pw.Col, shake, true); AudioView.MeteorFall(AimView.FallTime); }
@@ -148,7 +152,7 @@ namespace TC2.Game
         {
             if (Input.GetMouseButtonDown(0)) _downAt = Input.mousePosition;
             if (_aim < 0) return false;
-            if (Input.GetKeyDown(KeyCode.Escape) || Input.GetMouseButtonUp(1)) { _aim = -1; return true; }
+            if (Input.GetKeyDown(KeyCode.Escape) || Input.GetMouseButtonUp(1)) { _aim = -1; AudioView.Ui("tick"); return true; }
             if (Input.GetMouseButtonUp(0) && !PointerOverUi)
             {
                 if (((Vector2)Input.mousePosition - _downAt).sqrMagnitude <= 64f) Cast();
@@ -188,14 +192,25 @@ namespace TC2.Game
                     _hand.Add((e.Id, what, e.Time, came, n));
                     string thread = TC2.Core.History.HistoryBook.Thread(w, e.Id, out int ty, out int depth);
                     if (thread.Length > 150) thread = thread.Substring(0, 147) + "...";
-                    _handThread.Add(thread.Length > 0 ? "<size=11><color=#f2c35f>its longest thread, " + depth + " links" + (ty > 0 ? ", " + ty + (ty == 1 ? " year" : " years") + " on" : "") + ":</color> " + thread + "</size>" : "");
+                    _handThread.Add(thread.Length > 0 ? "<size=13><color=#f2c35f>Its longest thread, " + depth + " links" + (ty > 0 ? ", " + ty + (ty == 1 ? " year" : " years") + " on" : "") + ":</color> " + thread + "</size>" : "");
                 }
             }
             if (_hand.Count == 0) return;
-            if (_handLine == null) { _handLine = new GUIStyle(_small) { fontSize = 12, wordWrap = true, richText = true, padding = new RectOffset(4, 4, 2, 3) }; _handLine.hover.textColor = new Color(1f, 0.86f, 0.45f); }
-            // (the panel sized to its lines: a fixed line height had cut each cast's second line, what came of it - s27book2)
-            float hw = 420f, inner = hw - _box.padding.horizontal;
-            const string head = "<b>Your hand</b>  <size=11>what has come of it so far - the book's last part tells all</size>";
+            if (_handLine == null) { _handLine = new GUIStyle(_small) { fontSize = 14, wordWrap = true, richText = true, padding = new RectOffset(4, 4, 2, 3) }; _handLine.hover.textColor = new Color(1f, 0.86f, 0.45f); }
+            // (session 31: progressive disclosure) a seal at the left foot while nothing has just come of it; under the pointer, or for a while after a cast, the leaf with what came
+            float now = Time.unscaledTime;
+            var seal = new Rect(14f, sh - 60f, 46f, 46f);
+            Vector2 mp = Event.current.mousePosition;
+            bool overLeaf = _handOpen.width > 0f && _handOpen.Contains(mp);
+            long newest = _hand[0].id;
+            if (newest != _handNewest) { _handNewest = newest; _handShowUntil = now + 14f; }
+            bool show = now < _handShowUntil || overLeaf || seal.Contains(mp);
+            if (show && overLeaf) _handShowUntil = Mathf.Max(_handShowUntil, now + 1.5f);
+            if (Seal(seal, "lightning", show, false, new Color(1f, 0.92f, 0.70f), out _)) _handShowUntil = show ? 0f : now + 30f;
+            _handRect = seal;
+            if (!show) { _handOpen = Rect.zero; return; }
+            float hw = Mathf.Min(Mathf.Max(300f, _powersRect.x - 24f), 420f), inner = hw - _box.padding.horizontal;
+            const string head = "<b>Your hand</b>  <i>what has come of it so far</i>";
             float hh = _small.CalcHeight(new GUIContent(head), inner) + _box.padding.vertical + 4f;
             if (_handText.Length < _hand.Count) _handText = new string[3];
             for (int k = 0; k < _hand.Count; k++)
@@ -204,17 +219,20 @@ namespace TC2.Game
                 long ago = w.Now - x.time;
                 long days = ago / SimTime.Day;   // ("(1 days ago)": s30pow1)
                 string when = ago < SimTime.Day ? "today" : ago < SimTime.Year ? (days == 1 ? "yesterday" : days + " days ago") : (ago / (double)SimTime.Year).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + (ago < 2 * SimTime.Year && ago / (double)SimTime.Year < 1.05 ? " year ago" : " years ago");
-                _handText[k] = "<b>" + x.what + "</b> <size=11>(" + when + ")</size>\n" + (x.came.Length > 0 ? x.came : "<i>nothing yet that the world remembers</i>") + (k < _handThread.Count && _handThread[k].Length > 0 ? "\n" + _handThread[k] : "");
+                _handText[k] = "<b>" + x.what + "</b>  <i>" + when + "</i>\n" + (x.came.Length > 0 ? x.came : "<i>nothing yet that the world remembers</i>") + (k < _handThread.Count && _handThread[k].Length > 0 ? "\n" + _handThread[k] : "");
                 hh += _handLine.CalcHeight(new GUIContent(_handText[k]), inner) + _handLine.margin.vertical;
             }
-            var r = new Rect(_powersRect.x, _powersRect.y - 10f - hh, hw, hh);
-            _handRect = r;   // (no name drawn under it: session 29)
+            float bottom = seal.x + hw + 8f <= _powersRect.x ? seal.y - 6f : Mathf.Min(seal.y - 6f, _powersRect.y - 6f);
+            var r = new Rect(14f, bottom - hh, hw, hh);
+            _handRect = Rect.MinMaxRect(r.xMin, r.yMin, Mathf.Max(r.xMax, seal.xMax), seal.yMax);
+            _handOpen = _handRect;
             GUILayout.BeginArea(r, _box);
             GUILayout.Label(head, _small);
             for (int k = 0; k < _hand.Count; k++)
-                if (GUILayout.Button(_handText[k], _handLine)) OpenBookAt(TC2.Core.History.HistoryBook.YourActionsPart, k);
+                if (GUILayout.Button(_handText[k], _handLine)) { OpenBookAt(TC2.Core.History.HistoryBook.YourActionsPart, k); AudioView.Ui("page"); }
             GUILayout.EndArea();
         }
+        Rect _handOpen; long _handNewest; float _handShowUntil;
 
         /// <summary>(session 27) The places a power aimed here would reach, by the world's own measure: the villages within its reach (the nearest
         /// within it for a sickness), with their people - what the player is about to touch.</summary>
@@ -252,61 +270,69 @@ namespace TC2.Game
         /// <summary>The bar of powers (bottom centre) and, while aiming, the ring where the power falls and what it is.</summary>
         void PowerBar(World w, float sw, float sh)
         {
-            if (_powerOn == null)
-            {
-                _powerOn = new GUIStyle(_btn) { fontSize = 13, fontStyle = FontStyle.Bold, padding = new RectOffset(10, 10, 5, 5) };
-                _powerOn.normal.textColor = new Color(1f, 0.86f, 0.45f);
-                _powerOff = new GUIStyle(_btn) { fontSize = 13, padding = new RectOffset(10, 10, 5, 5) };
-            }
-            float bw = 960f, bh = 78f;
-            _powersRect = new Rect((sw - bw) * 0.5f, sh - bh - 44f, bw, bh);
-            GUI.Box(_powersRect, GUIContent.none, _box);
-            var area = new Rect(_powersRect.x + 8f, _powersRect.y + 6f, _powersRect.width - 16f, _powersRect.height - 10f);
-            GUILayout.BeginArea(area);
+            // (session 31) a row of seals in three groups with no panel behind them - the world stays the picture; lit under the pointer, on the aim; while one comes
+            // back, its seal dull with its colour rising from the foot and how long it has to go
+            float size = Mathf.Clamp((sw - 60f) / 17.4f, 34f, 50f), step = size + 4f, groupGap = 18f;
+            float bw = Powers.Length * step + (PowerGroupEnds.Length - 1) * groupGap + 8f, bh = size + 26f;
+            _powersRect = new Rect((sw - bw) * 0.5f, sh - bh - 8f, bw, bh);
+            if (Event.current.type == EventType.Repaint) { var o = GUI.color; GUI.color = new Color(1f, 1f, 1f, 0.8f); GUI.DrawTexture(new Rect(0f, sh - bh - 46f, sw, bh + 46f), Ui("shade_foot"), ScaleMode.StretchToFill, true); GUI.color = o; }
             int hovered = -1; Rect hoveredRect = Rect.zero;
-            for (int row = 0; row < 2; row++)
+            float x = _powersRect.x + 4f, sealY = _powersRect.y + 20f;
+            int group = 0;
+            for (int k = 0; k < Powers.Length; k++)
             {
-                GUILayout.BeginHorizontal();
-                GUILayout.Label(row == 0 ? "<b>Powers</b>" : "", _small, GUILayout.Width(70));   // (the casts' consequences are "Your hand", above the bar)
-                for (int k = row == 0 ? 0 : FirstRow; k < (row == 0 ? FirstRow : Powers.Length); k++)
+                if (k == 0 || k == PowerGroupEnds[group])
                 {
-                    long wait = Recharging(w, k);
-                    var pw = Powers[k];
-                    bool on = _aim == k;
-                    var content = new GUIContent(pw.Name, pw.Help + (wait > 0 ? " - back in " + Wait(wait) : ""));
-                    Rect br = GUILayoutUtility.GetRect(content, on ? _powerOn : _powerOff, GUILayout.MinWidth(72));
-                    GUI.enabled = wait == 0;
-                    if (GUI.Toggle(br, on, content, on ? _powerOn : _powerOff) != on) _aim = on ? -1 : k;
-                    GUI.enabled = true;
-                    if (br.Contains(Event.current.mousePosition)) { hovered = k; hoveredRect = br; }
+                    if (k > 0) { group++; x += groupGap; }
+                    int end = PowerGroupEnds[group], first = group == 0 ? 0 : PowerGroupEnds[group - 1];
+                    var cap = new Rect(x, _powersRect.y + 1f, (end - first) * step - 4f, 18f);
                     if (Event.current.type == EventType.Repaint)
                     {
-                        // its colour on its left edge; while it comes back, how far it has come, along its foot
-                        GUI.color = wait > 0 ? new Color(pw.Col.r, pw.Col.g, pw.Col.b, 0.35f) : pw.Col;
-                        GUI.DrawTexture(new Rect(br.x + 1f, br.y + 3f, 3f, br.height - 6f), _dot);
-                        if (wait > 0)
-                        {
-                            float done = 1f - Mathf.Clamp01(wait / (float)pw.Recharge);
-                            GUI.color = new Color(0f, 0f, 0f, 0.45f); GUI.DrawTexture(new Rect(br.x + 4f, br.yMax - 4f, br.width - 8f, 2f), _dot);
-                            GUI.color = pw.Col; GUI.DrawTexture(new Rect(br.x + 4f, br.yMax - 4f, (br.width - 8f) * done, 2f), _dot);
-                        }
-                        GUI.color = Color.white;
+                        Vector2 ts = _capLabel.CalcSize(new GUIContent(PowerGroupNames[group]));
+                        var old = GUI.color; GUI.color = new Color(0.72f, 0.60f, 0.38f, 0.75f * old.a);
+                        float mid = cap.y + 9f, lx0 = cap.center.x - ts.x * 0.5f - 6f, lx1 = cap.center.x + ts.x * 0.5f + 6f;
+                        GUI.DrawTexture(new Rect(cap.x + 4f, mid, Mathf.Max(0f, lx0 - cap.x - 4f), 1f), _dot);
+                        GUI.DrawTexture(new Rect(lx1, mid, Mathf.Max(0f, cap.xMax - 4f - lx1), 1f), _dot);
+                        GUI.color = old;
                     }
+                    Edged(cap, PowerGroupNames[group], _capLabel);
                 }
-                GUILayout.FlexibleSpace();
-                GUILayout.EndHorizontal();
+                long wait = Recharging(w, k);
+                var pw = Powers[k];
+                bool on = _aim == k;
+                var br = new Rect(x, sealY, size, size);
+                if (Seal(br, PowerIcons[k], on, wait > 0, Color.Lerp(pw.Col, new Color(1f, 0.97f, 0.88f), 0.55f), out bool over))
+                {
+                    if (wait > 0) CastNote(pw.Name + " is not back yet - in " + Wait(wait), false);
+                    else _aim = on ? -1 : k;
+                }
+                if (over) { hovered = k; hoveredRect = br; }
+                if (wait > 0 && Event.current.type == EventType.Repaint)
+                {
+                    // how far it has come back: its colour rising inside the seal; the wait in figures
+                    float done = 1f - Mathf.Clamp01(wait / (float)pw.Recharge);
+                    var inner = Inset(br, size * 0.09f);
+                    var old = GUI.color;
+                    GUI.color = new Color(pw.Col.r, pw.Col.g, pw.Col.b, 0.34f * old.a);
+                    float fh = inner.height * done;
+                    GUI.BeginGroup(new Rect(inner.x, inner.yMax - fh, inner.width, fh));
+                    GUI.DrawTexture(new Rect(0f, fh - inner.height, inner.width, inner.height), Ui("disc"));
+                    GUI.EndGroup();
+                    GUI.color = old;
+                    if (_coolWord == null) { _coolWord = new GUIStyle(_mapSub) { fontSize = 12, fontStyle = FontStyle.Normal, alignment = TextAnchor.MiddleCenter, wordWrap = false }; }
+                    Edged(new Rect(br.x - 6f, br.yMax - 15f, br.width + 12f, 16f), Wait(wait), _coolWord);
+                }
+                x += step;
             }
-            GUILayout.EndArea();
-            // (session 27) the power under the pointer told above the bar: what it does, and when it is back (its tooltip was never drawn)
+            // (session 27) the power under the pointer told above the bar: what it does, and when it is back
             if (hovered >= 0 && _aim < 0 && Event.current.type == EventType.Repaint)
             {
                 var hp = Powers[hovered];
                 long hw = Recharging(w, hovered);
-                if (_tipStyle == null) _tipStyle = new GUIStyle(_mapTag) { wordWrap = true, padding = new RectOffset(9, 9, 6, 7) };
-                var tc = new GUIContent("<b>" + hp.Doing + "</b>: " + hp.Help + (hw > 0 ? "\n<color=#f2c35f>back in " + Wait(hw) + "</color>" : "") + "\n<size=11><i>click, then click the ground where it falls</i></size>");
-                float tw = 400f, th = _tipStyle.CalcHeight(tc, tw);
-                float cx = area.x + hoveredRect.center.x;
-                _tip = tc; _tipRect = new Rect(Mathf.Clamp(cx - tw * 0.5f, 4f, sw - tw - 4f), _powersRect.y - th - 8f, tw, th);   // (drawn last: over "Your hand")
+                if (_tipStyle == null) _tipStyle = new GUIStyle(_mapTag) { wordWrap = true };
+                var tc = new GUIContent("<size=17><b>" + hp.Name + "</b></size>\n" + Cap(hp.Help) + "." + (hw > 0 ? "\n<color=#f2c35f>Back in " + Wait(hw) + ".</color>" : "\n<i><color=#c9c3b4>Click it, then click the ground where it falls.</color></i>"));
+                float tw = 380f, th = _tipStyle.CalcHeight(tc, tw);
+                _tip = tc; _tipRect = new Rect(Mathf.Clamp(hoveredRect.center.x - tw * 0.5f, 4f, sw - tw - 4f), _powersRect.y - th - 6f, tw, th);   // (drawn last: over "Your hand")
             }
             // (over a page, the book or a bar a click is theirs, not the power's: the mark and its words only over open ground - last frame's PointerOverUi)
             if (_aim < 0 || PointerOverUi || !GroundUnder(Input.mousePosition, out var dir, out int cell)) return;
