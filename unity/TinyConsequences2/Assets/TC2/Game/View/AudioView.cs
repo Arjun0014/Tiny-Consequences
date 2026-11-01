@@ -361,7 +361,18 @@ namespace TC2.Game
             for (int i = H.FirstIndexAfter(_seenId); i < H.Count && told < 6; i++)
             {
                 var e = H.At(i);
-                if (e.Kind == HistoryKind.GodCommand) { Play("ui_power", 0.9f, (int)e.Id); told++; continue; }
+                if (e.Kind == HistoryKind.GodCommand)
+                {
+                    Play("ui_power", 0.6f, (int)e.Id); told++;
+                    // (session 31) each power with a sound of its own under the common cue, where the world's own events do not bring one
+                    var ck = (TC2.Core.Simulation.CommandKind)e.ArgA;
+                    if (ck == TC2.Core.Simulation.CommandKind.GodStorm || ck == TC2.Core.Simulation.CommandKind.GodRain) Play("thunder", 0.5f, (int)e.Id);
+                    else if (ck == TC2.Core.Simulation.CommandKind.GodCull) Play("wolf_howl", 0.5f, (int)e.Id);
+                    else if (ck == TC2.Core.Simulation.CommandKind.GodOre) PlayPanned("pick_stone", 0.7f, (int)e.Id, 0f);
+                    else if (ck == TC2.Core.Simulation.CommandKind.GodBounty) PlayOne("ui_chime", 0.42f);
+                    else if (ck == TC2.Core.Simulation.CommandKind.GodPlague || ck == TC2.Core.Simulation.CommandKind.GodBlight) PlayOne("ui_breaking", 0.34f);
+                    continue;
+                }
                 if (e.Cell < 0) continue;
                 double d = Vec3d.ArcDistance(dir, P.Grid.Center[e.Cell], P.Radius);
                 float v = Mathf.Clamp01(1f - (float)(d / hear));

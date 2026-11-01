@@ -44,6 +44,7 @@ Shader "TC2/Terrain"
             float _TC2FogDensity;
             float _TC2Year;   // the world's year (whole years since it began): which strips rest turns with it
             float _TC2SeaRadius;
+            float _TC2LandVary;    // (session 31: x the land's broad warm and cool drift)
             float _TC2Unbranched;   // (session 27, tools: 1 runs every branch below as if taken - the frame's cost of the branches measured; 0 in the game)
 
             struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; half4 color : COLOR; float2 uv0 : TEXCOORD0; float2 uv1 : TEXCOORD1; float4 uv2 : TEXCOORD2; float4 uv3 : TEXCOORD3; float3 uv4 : TEXCOORD4; float4 uv5 : TEXCOORD5; float2 uv6 : TEXCOORD6; float4 uv7 : TEXCOORD7; float4 tangentOS : TANGENT; };
@@ -89,7 +90,7 @@ Shader "TC2/Terrain"
                 // owners, blended over about a cell), so a village's fields stop at a ragged line of whole furlongs, not along the cells' staircase;
                 // from where a furlong is a few pixels across, the weight as it is
                 half edgeAt = 0.2h + 0.6h * (half)Hash21(blk + 23.1);
-                weight = lerp(smoothstep(edgeAt - 0.04h, edgeAt + 0.04h, a), a, (half)smoothstep(30.0, 80.0, px));
+                weight = lerp(smoothstep(edgeAt - 0.04h, edgeAt + 0.04h, a), a, (half)smoothstep(3.5, 12.0, px));   // (session 31: from the region view the land's share itself - whole furlongs read there as a grid of squares)
                 float hb = Hash21(blk + 3.7);
                 float ang = hb < 0.45 ? 0.0 : (hb < 0.8 ? 1.5708 : (hb - 0.8) * 2.0 - 0.2);
                 float ca = cos(ang), sa = sin(ang);
@@ -106,13 +107,15 @@ Shader "TC2/Terrain"
                 half furAmp = saturate(1.0 - dist / 650.0);
                 half fur = 0.5h + 0.5h * sin(q.x * 6.2831 / 1.45 + h * 6.28);
                 float edge = min(min(f.x, 1.0 - f.x) * sz.x, min(f.y, 1.0 - f.y) * sz.y);
-                half hedge = (1.0h - smoothstep(0.5, 1.5, edge)) * saturate(1.2 - dist / 2500.0);
+                half hedge = (1.0h - smoothstep(0.5, 1.5, edge)) * saturate(1.1 - dist / 1500.0);   // (session 31: from afar the strips' own colours part them, not drawn lines)
                 // fallow: rough grazed grass and weeds - and in the growing season some of it ploughed bare (the fallow's summer ploughing)
                 half3 fallow = lerp(crop, half3(0.16h, 0.22h, 0.08h), 0.75h);
                 half stage = (half)floor(farm.w);
                 half ploughed = (stage > 1.5h && stage < 2.5h && Hash21(cell + 41.7 + _TC2Year) < 0.35) ? 1.0h : 0.0h;
                 fallow = lerp(fallow, half3(0.30h, 0.22h, 0.13h), ploughed * 0.85h);
-                half3 plot = lerp(fallow, crop * (0.84h + 0.30h * h) * (1.0h - 0.16h * furAmp + 0.16h * furAmp * fur), worked);
+                // (session 31) each strip its own hand: a little warmer or cooler than its neighbours, as a season's sowing is
+                half3 stripTone = lerp(half3(1.05h, 0.99h, 0.88h), half3(0.95h, 1.02h, 1.04h), (half)frac(h * 7.31));
+                half3 plot = lerp(fallow, crop * stripTone * (0.86h + 0.26h * h) * (1.0h - 0.16h * furAmp + 0.16h * furAmp * fur), worked);
                 // (session 29) the crop burned this season (Settlement.CropBurnt: a band's torches, a wildfire) - that share of the sown strips charred
                 // whole, furlong by furlong as a fire runs on from strip to strip: black stubble streaked with grey ash, the spared strips standing
                 // (strip by strip more or less burned to ash, the furrows' streaks faint and fading with distance as the furrows do: s29v3's close and
@@ -120,7 +123,7 @@ Shader "TC2/Terrain"
                 half3 ash = lerp(half3(0.016h, 0.013h, 0.010h), half3(0.105h, 0.092h, 0.078h), saturate(0.15h + h * 0.55h + (fur - 0.5h) * furAmp * 0.2h));
                 half charred = worked * ((burnt > 0.01h && Hash21(blk + 5.3) * 0.6 + h * 0.4 < burnt) ? 1.0h : 0.0h);
                 plot = lerp(plot, ash, charred);
-                plot = lerp(plot, half3(0.045h, 0.085h, 0.025h), hedge * 0.85h);
+                plot = lerp(plot, plot * 0.52h + half3(0.008h, 0.016h, 0.004h), hedge * 0.75h);   // (a hedge's shade, of the field's own colour)
                 // a pixel wider than a strip sees the field's average, not a moire of strips (px: metres per pixel)
                 half3 mean = lerp(fallow, lerp(crop * 0.99h, half3(0.045h, 0.039h, 0.032h), burnt), saturate(farm.z));
                 return lerp(plot, mean, smoothstep(0.18, 0.45, px / sz.x));
@@ -255,7 +258,7 @@ Shader "TC2/Terrain"
                     // vertex's blend of the two.
                     float2 q1 = i.farm.xy;
                     float2 b1 = floor(q1 / 150.0 + 0.5 * Hash21(floor(q1 / 150.0)));
-                    half mark = lerp(0.15h + 0.7h * (half)Hash21(b1 + 61.7), 0.5h, (half)smoothstep(30.0, 80.0, px));
+                    half mark = lerp(0.15h + 0.7h * (half)Hash21(b1 + 61.7), 0.5h, (half)smoothstep(3.5, 12.0, px));
                     bool ok1 = px < 3.0 * pxw + 1.0, ok2 = px2 < 3.0 * pxw + 1.0;
                     bool two = ok2 && ((half)i.slot.w > mark || !ok1);
                     half3 crop = albedo;
@@ -268,13 +271,18 @@ Shader "TC2/Terrain"
                     albedo = lerp(albedo, fc, fw);
                 }
                 albedo *= (1.0h + d1 * 0.32h * (0.35h + 0.65h * near) + d2 * 0.30h * near + d3 * 0.26h);
+                // (session 31: the land's own drift) kilometres of ground a little warmer and drier-looking or cooler and greener, so a plain or a stretch of fields is
+                // not one flat colour from the village view to orbit - no state: the noise of the place, the same every time
+                half macro = Tri(i.positionWS, bw, 1.0 / 1050.0);
+                albedo *= lerp(half3(1.0h, 1.0h, 1.0h), lerp(half3(0.88h, 0.98h, 1.06h), half3(1.14h, 1.03h, 0.84h), (half)smoothstep(0.34, 0.66, macro)), (half)_TC2LandVary);
                 // beaches (D2-081), per pixel from the ground's own height over the sea - a vertex colour would follow the triangles of
                 // coarse patches as a staircase along every coast: sand to 0.6 + 4.2 x the beach's width (TerrainLod.BeachAt), wet near the
                 // water; under the water it is the shallows' floor
                 {
                     // (a metre of noise in the height read: on coarse patches the height is flat within each big triangle, and a contour
                     // of it - the sand's edge - would follow the triangles as steps)
-                    float relP = length(i.positionWS) - _TC2SeaRadius + d1 * 2.2;
+                    float farWob = (macro - 0.5) * smoothstep(900.0, 4500.0, dist) * 26.0;   // (session 31: from afar the shelf's edge wanders; the coarse patches' triangles had drawn it as a sawtooth)
+                    float relP = length(i.positionWS) - _TC2SeaRadius + d1 * 2.2 + farWob;
                     // the sea floor too, by its depth: sand in the shallows, dark below (as TerrainLod's Shelf and Abyss)
                     half3 seaFloor = lerp(half3(0.64h, 0.57h, 0.32h), half3(0.004h, 0.012h, 0.025h), (half)sqrt(saturate(-relP / 60.0)));
                     albedo = lerp(albedo, seaFloor * (1.0h + d1 * 0.2h), smoothstep(-0.2h, -1.0h, (half)relP));
@@ -506,7 +514,7 @@ Shader "TC2/Terrain"
                 }
                 // under the sea, the water's own colour by the depth of water above (Beer-Lambert): the sand of the shallows
                 // shows clear and turquoise, the deep goes blue; the sea's surface on top adds only sky and sun (D2-040)
-                float below = _TC2SeaRadius - length(i.positionWS) - d1 * 2.2;   // (the beach's own noise: its edge and the water's move together)
+                float below = _TC2SeaRadius - length(i.positionWS) - d1 * 2.2 - (macro - 0.5) * smoothstep(900.0, 4500.0, dist) * 26.0;   // (the beach's own noise: its edge and the water's move together)
                 if (below > 0.0)
                 {
                     half through = (half)exp(-below / 3.2);

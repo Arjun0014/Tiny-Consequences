@@ -64,12 +64,14 @@ Shader "TC2/Clouds"
                 // the sun's light on the tops, reddened on its long way through the air when it is low; the sky's blue in the shade
                 half3 sunTint = lerp(half3(1.0h, 0.60h, 0.38h), half3(1.0h, 0.99h, 0.97h), smoothstep(0.0h, 0.32h, mu));
                 half3 sky = half3(0.52h, 0.60h, 0.74h);
-                half3 lit = lerp(sky, sunTint, saturate(0.30h + 0.70h * saturate(mu * 1.4h)) * (0.58h + 0.42h * body));
+                half3 lit = lerp(sky, sunTint * 0.95h, saturate(0.30h + 0.70h * saturate(mu * 1.4h)) * (0.58h + 0.42h * body));
                 lit *= (1.0h - 0.42h * relief) * (1.0h + 0.08h * lift);
                 lit *= lerp(0.80h, 1.0h, body);                                      // (thin cloud: lit through, greyer than a top)
                 // the heaps: a convective deck's cauliflower and a layer's lumps in their own light and shade, the sunward lumps brighter
-                half heaped = saturate(body * (0.55h + 0.6h * cov.a));
-                lit *= lerp(1.0h, 0.70h + 0.38h * billow + 0.12h * (billow - billowS), heaped);
+                // (session 31: from the region view a deck was one flat white shape) its body in its own light and shade, deeper where it is thick, its rim lit through
+                half heaped = saturate(body * (0.80h + 0.45h * cov.a));
+                lit *= lerp(1.0h, 0.60h + 0.52h * billow + 0.22h * (billow - billowS), heaped);
+                lit *= lerp(half3(0.86h, 0.90h, 0.98h), half3(1.0h, 1.0h, 1.0h), smoothstep(0.30h, 0.95h, billow));   // (the valleys between its heaps take the sky's blue)
                 // by night only the moon's light, where it is up, as the ground below takes it (session 27: a fixed grey had drawn the night side's
                 // clouds as pale shapes over a black sea, moon or none - s27p3 orbit_21)
                 half moon = saturate((half)dot(up, _TC2MoonDir.xyz) * 0.7h + 0.3h) * (half)_TC2NightLift * (1.0h - day);

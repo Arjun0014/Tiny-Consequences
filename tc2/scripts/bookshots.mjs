@@ -282,6 +282,43 @@ try {
     await snap('extra_feedline');
     await cmd('closebook'); await cmd('history off');
   }
+  // (session 31) --menus: the title and its pages, the world entered, the game's menu and its pages, the time bar's and a power's tips, then the guide step by step
+  if (flag('--menus')) {
+    const snap = async (name) => { const f = path.join(outDir, `${name}.png`); await page.screenshot({ path: f }); report.shots.push(f); console.log('shot ' + name); };
+    await cmd('title on');
+    await page.waitForTimeout(7000);
+    await snap('menu_title');
+    await page.mouse.move(180, 420); await page.waitForTimeout(700);
+    await snap('menu_title_hover');
+    for (const [p, n] of [[1, 'how'], [2, 'settings'], [3, 'credits'], [4, 'new'], [5, 'kept']]) { await cmd(`title on ${p}`); await page.waitForTimeout(1500); await snap('menu_title_' + n); }
+    await cmd('title on 0');
+    await cmd('title off');
+    await page.waitForTimeout(3500);
+    await cmd('guide -1');
+    await page.waitForTimeout(800);
+    await page.mouse.move(800, 300);
+    await page.waitForTimeout(600);
+    await snap('hud_clean');
+    await page.mouse.move(1544, 36); await page.waitForTimeout(700); await snap('hud_tip_book');
+    await page.mouse.move(310, 40); await page.waitForTimeout(700); await snap('hud_tip_speed');
+    await page.mouse.move(400, 860); await page.waitForTimeout(700); await snap('hud_tip_power0');
+    await page.mouse.move(1100, 860); await page.waitForTimeout(700); await snap('hud_tip_power12');
+    await page.mouse.move(800, 300);
+    for (const [p, n] of [[0, 'words'], [1, 'how'], [2, 'settings'], [3, 'credits'], [5, 'kept']]) { await cmd(`menu ${p}`); await page.waitForTimeout(1500); await snap('menu_game_' + n); }
+    await cmd('menu -1');
+    await page.waitForTimeout(800);
+    const steps = (opt('--guide', '0,1,2,3,4,5,6,7,8,9,10,11,12')).split(',').filter((v) => v !== '').map(Number);
+    for (const s of steps) {
+      if (s === 4) await cmd('select oldest');
+      if (s === 5) await cmd('person oldest 0');
+      if (s === 8) await cmd('book');
+      await cmd(`guide ${s}`);
+      await page.waitForTimeout(s <= 3 ? 7000 : 2500);
+      await snap(`guide_${String(s).padStart(2, '0')}`);
+    }
+    await cmd('guide -1');
+    await cmd('closepages');
+  }
   // (session 27) the person and place pages as leaves of the book: --pages "person:0,person:5,place:0,place:2" - the oldest living person's page and
   // the greatest place's at those sections (page_person_0.png ...)
   for (const pp of opt('--pages', '').split(',').filter((v) => v)) {

@@ -46,6 +46,7 @@ namespace TC2.Game
         static readonly int AtmoOverGround = Shader.PropertyToID("_TC2AtmoOverGround");
         static readonly int NightLift = Shader.PropertyToID("_TC2NightLift");
         Volume _volume;
+        static readonly int LandVaryId = Shader.PropertyToID("_TC2LandVary");
         public Color Horizon;
 
         void Start()
@@ -71,13 +72,54 @@ namespace TC2.Game
             _volume.priority = 1;
             var profile = ScriptableObject.CreateInstance<VolumeProfile>();
             var tm = profile.Add<Tonemapping>(true); tm.mode.Override(TonemappingMode.Neutral);
-            var ca = profile.Add<ColorAdjustments>(true); ca.saturation.Override(14f); ca.contrast.Override(9f); ca.postExposure.Override(0.12f);
+            _ca = profile.Add<ColorAdjustments>(true); _ca.saturation.Override(Look.GradeSat); _ca.contrast.Override(Look.GradeContrast); _ca.postExposure.Override(Look.GradeExposure);
+            // (session 31) greens taken down and a touch toward olive (the hues of leaf and field, by a curve over hue: 0.25-0.45); the rest as it is
+            _cc = profile.Add<ColorCurves>(true);
+            SetGreenCurve(Look.GradeGreen);
+            var st = profile.Add<SplitToning>(true); st.shadows.Override(new Color(0.46f, 0.50f, 0.60f)); st.highlights.Override(new Color(0.58f, 0.53f, 0.46f)); st.balance.Override(10f);
             var bl = profile.Add<Bloom>(true); bl.intensity.Override(0.32f); bl.threshold.Override(1.05f); bl.scatter.Override(0.62f);
-            var vg = profile.Add<Vignette>(true); vg.intensity.Override(0.18f); vg.smoothness.Override(0.45f);
+            var vg = profile.Add<Vignette>(true); vg.intensity.Override(0.20f); vg.smoothness.Override(0.5f);
             var wb = profile.Add<WhiteBalance>(true); wb.temperature.Override(6f);
             _volume.sharedProfile = profile;
             var data = Rig.Cam.GetComponent<UniversalAdditionalCameraData>();
             if (data != null) { data.renderPostProcessing = true; data.requiresDepthTexture = false; }
+        }
+
+        ColorAdjustments _ca; ColorCurves _cc; float _gradeGreen = -1f;
+
+        void SetGreenCurve(float v)
+        {
+            _gradeGreen = v;
+            _cc.hueVsSat.Override(new TextureCurve(new[] { new Keyframe(0.15f, 0.5f), new Keyframe(0.24f, v), new Keyframe(0.42f, v), new Keyframe(0.52f, 0.5f) }, 0.5f, true, new Vector2(0f, 1f)));
+        }
+
+        // (session 31) the sky behind everything near the ground: pale at the horizon, deepening above it, a glow toward the sun (SkyDome.shader)
+        GameObject _dome; Material _domeMat;
+        static readonly int SkyHorizon = Shader.PropertyToID("_TC2SkyHorizon"), SkyZenith = Shader.PropertyToID("_TC2SkyZenith");
+
+        void Dome(float air, float elev, Color horizon, Color zenith, Vector3 cam)
+        {
+            if (_dome == null)
+            {
+                var sh = Resources.Load<Shader>("TC2Shaders/SkyDome");
+                if (sh == null) return;
+                _domeMat = new Material(sh);
+                _dome = new GameObject("SkyDome");
+                _dome.transform.SetParent(transform, false);
+                _dome.AddComponent<MeshFilter>().sharedMesh = ProcMeshes.Sphere(1f, 16, 32);
+                var mr = _dome.AddComponent<MeshRenderer>();
+                mr.sharedMaterial = _domeMat;
+                mr.shadowCastingMode = ShadowCastingMode.Off;
+                mr.receiveShadows = false;
+            }
+            bool show = air < 0.995f;
+            if (_dome.activeSelf != show) _dome.SetActive(show);
+            if (!show) return;
+            _dome.transform.position = cam;
+            _dome.transform.localScale = Vector3.one * Mathf.Min(Rig.Cam.farClipPlane * 0.8f, 200000f);
+            var hl = horizon.linear; var zl = zenith.linear;
+            _domeMat.SetVector(SkyHorizon, new Vector4(hl.r, hl.g, hl.b, 1f - air));
+            _domeMat.SetVector(SkyZenith, new Vector4(zl.r, zl.g, zl.b, Mathf.Clamp01(1f - elev * 3.2f)));
         }
 
         void LateUpdate()
@@ -85,6 +127,8 @@ namespace TC2.Game
             var w = Host.World;
             if (w == null || Rig == null || Rig.Cam == null || Sun == null) return;
             Vector3 cam = Rig.Cam.transform.position;
+            if (_ca != null) { _ca.saturation.value = Look.GradeSat; _ca.contrast.value = Look.GradeContrast; _ca.postExposure.value = Look.GradeExposure; if (_gradeGreen != Look.GradeGreen) SetGreenCurve(Look.GradeGreen); }
+            Shader.SetGlobalFloat(LandVaryId, Look.LandVary);
             float R = (float)w.Planet.Radius;
             float altitude = cam.magnitude - R;
             Vector3 up = cam.normalized, toSun = -Sun.transform.forward;
@@ -98,7 +142,7 @@ namespace TC2.Game
             float density = altitude < top ? Mathf.Lerp(1f / 26000f, 1f / 240000f, Mathf.Sqrt(Mathf.InverseLerp(150f, top, altitude))) : 0f;
             Shader.SetGlobalVector(FogColor, new Vector4(Horizon.linear.r, Horizon.linear.g, Horizon.linear.b, day));
             Shader.SetGlobalFloat(FogDensity, density * (1f - AirFade(altitude)));
-            Shader.SetGlobalVector(SunDir, toSun);
+            Shader.SetGlobalVector(SunDir, new Vector4(toSun.x, toSun.y, toSun.z, Mathf.Clamp01(elev * 6f + 0.5f)));
             // the moon: opposite the sun and a little to the side, so night has a light with a direction
             Vector3 moon = (Quaternion.AngleAxis(150f, Vector3.up) * toSun + Vector3.up * 0.25f).normalized;
             Shader.SetGlobalVector(MoonDir, moon);
@@ -139,6 +183,7 @@ namespace TC2.Game
             float sky = 1f - air;
             Color zenith = Color.Lerp(new Color(0.01f, 0.015f, 0.035f), new Color(0.30f, 0.50f, 0.82f), day);
             Rig.Cam.backgroundColor = Color.Lerp(new Color(0.012f, 0.016f, 0.035f), Color.Lerp(zenith, Horizon, 0.45f), sky);
+            Dome(air, elev, Horizon, zenith, cam);
         }
 
         /// <summary>How far the drawn air (Atmosphere.shader) has taken over from the views' own haze and sky: nothing at the village view

@@ -32,6 +32,7 @@ namespace TC2.Game
             if (Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1)) { _lastMouse = Input.mousePosition; _dragging = !Hud.PointerOverUi; }
             if (Input.GetMouseButtonUp(0) || Input.GetMouseButtonUp(1)) _dragging = false;
             bool hand = false;   // (session 31: the player's hand on the camera this frame cancels a flight)
+            HandTurned = false;
             float dtFeel = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
             if (_dragging && (Input.GetMouseButton(0) || Input.GetMouseButton(1)))
             {
@@ -41,6 +42,8 @@ namespace TC2.Game
                 double k = (altitude / R * 0.0022 + 0.00002) * Settings.CamSpeed;
                 double dLon = -dm.x * k * (1.0 / System.Math.Max(0.2, System.Math.Cos(Lat))), dLat = -dm.y * k;
                 Lon += dLon; Lat += dLat;
+                HandTurned = false;
+                if (dm.sqrMagnitude > 4f) HandTurned = true;
                 if (dm.sqrMagnitude > 0.5f) { hand = true; _velLon = _velLon * 0.5 + 0.5 * dLon / System.Math.Max(0.004, dtFeel); _velLat = _velLat * 0.5 + 0.5 * dLat / System.Math.Max(0.004, dtFeel); }
                 else { _velLat *= 0.6; _velLon *= 0.6; }
             }
@@ -51,15 +54,15 @@ namespace TC2.Game
             if (!held && menuKeys && Input.GetKey(KeyCode.Q)) { WheelZoom(w, Time.unscaledDeltaTime * 4f); hand = true; }
             if (!held && menuKeys && Input.GetKey(KeyCode.E)) { WheelZoom(w, -Time.unscaledDeltaTime * 4f); hand = true; }
             double kk = (Distance - R) / R * 0.9 + 0.01;
-            if (menuKeys && Input.GetKey(KeyCode.A)) { Lon -= Time.unscaledDeltaTime * kk; hand = true; }
-            if (menuKeys && Input.GetKey(KeyCode.D)) { Lon += Time.unscaledDeltaTime * kk; hand = true; }
-            if (menuKeys && Input.GetKey(KeyCode.W)) { Lat += Time.unscaledDeltaTime * kk; hand = true; }
-            if (menuKeys && Input.GetKey(KeyCode.S)) { Lat -= Time.unscaledDeltaTime * kk; hand = true; }
+            if (menuKeys && Input.GetKey(KeyCode.A)) { Lon -= Time.unscaledDeltaTime * kk; hand = true; HandTurned = true; }
+            if (menuKeys && Input.GetKey(KeyCode.D)) { Lon += Time.unscaledDeltaTime * kk; hand = true; HandTurned = true; }
+            if (menuKeys && Input.GetKey(KeyCode.W)) { Lat += Time.unscaledDeltaTime * kk; hand = true; HandTurned = true; }
+            if (menuKeys && Input.GetKey(KeyCode.S)) { Lat -= Time.unscaledDeltaTime * kk; hand = true; HandTurned = true; }
             FeelUpdate(w, hand, dtFeel);
             TitleUpdate(w, dtFeel);
             Lat = System.Math.Max(-1.45, System.Math.Min(1.45, Lat));
             // (session 29) the timelapse: the player's place kept, the camera up to the planet while the days would flash past, and back
-            LapseUpdate(w, Lat - lat0, Lon - lon0, Distance - dist0);
+            LapseUpdate(w, hand ? Lat - lat0 : 0.0, hand ? Lon - lon0 : 0.0, hand ? Distance - dist0 : 0.0);
             Apply();
             UpdateSun();
         }
@@ -738,6 +741,12 @@ namespace TC2.Game
             north.Normalize();
             Vector3 offset = (up * (float)System.Math.Cos(tilt) - north * (float)System.Math.Sin(tilt)) * (float)alt;
             Vector3 camPos = FocusPoint + offset;
+            // (session 31) low over rising ground the tilted camera could stand in a hill: it keeps a little above the ground under it
+            if (alt < 700.0)
+            {
+                float groundR = PlanetGeo.Surface(P, new Vec3d(camPos.x, camPos.y, camPos.z).Normalized).magnitude, clear = Mathf.Max(6f, (float)alt * 0.12f);
+                if (camPos.magnitude < groundR + clear) camPos = camPos.normalized * (groundR + clear);
+            }
             // a quake felt where the camera looks shakes it (presentation only)
             if (_shake > 0f)
             {

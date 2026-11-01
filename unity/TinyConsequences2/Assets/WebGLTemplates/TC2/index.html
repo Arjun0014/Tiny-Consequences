@@ -10,15 +10,16 @@
       html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #04060c; }
       #tc2-canvas { width: 100%; height: 100%; display: block; background: #04060c; outline: none; }
       #tc2-loading { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 320px; text-align: center;
-                     font: 15px/1.4 system-ui, sans-serif; color: #c9d6e8; }
-      #tc2-bar { margin-top: 12px; height: 6px; background: #1a2333; border-radius: 3px; overflow: hidden; }
-      #tc2-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #4f8ad8, #9fd1ff); }
+                     font: italic 15px/1.4 Georgia, 'Times New Roman', serif; color: #cdbf9f; }
+      #tc2-title { font: 34px/1.2 Georgia, 'Times New Roman', serif; font-style: normal; color: #f0d48c; letter-spacing: .02em; margin-bottom: 10px; }
+      #tc2-bar { margin-top: 12px; height: 3px; background: #2a2418; border-radius: 2px; overflow: hidden; }
+      #tc2-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #8a6a30, #f0d48c); }
       #tc2-warning { position: absolute; left: 0; right: 0; top: 0; font: 13px system-ui, sans-serif; color: #000; }
     </style>
   </head>
   <body>
     <canvas id="tc2-canvas" tabindex="-1"></canvas>
-    <div id="tc2-loading"><div id="tc2-title">Tiny Consequences 2</div><div id="tc2-bar"><div id="tc2-fill"></div></div><div id="tc2-note"></div></div>
+    <div id="tc2-loading"><div id="tc2-title">Tiny Consequences</div><div id="tc2-bar"><div id="tc2-fill"></div></div><div id="tc2-note"></div></div>
     <div id="tc2-warning"></div>
     <script>
       // TC2 web template (D2-011): probe for a working WebGPU device before Unity starts. Some browsers expose
@@ -80,7 +81,7 @@
       };
 
       tc2ProbeWebGPU().then(function () {
-        document.querySelector('#tc2-note').textContent = window.__TC2_GFX || '';
+        document.querySelector('#tc2-note').textContent = 'A small world is waking...';
         var script = document.createElement('script');
         script.src = buildUrl + "/{{{ LOADER_FILENAME }}}";
         script.onload = function () {

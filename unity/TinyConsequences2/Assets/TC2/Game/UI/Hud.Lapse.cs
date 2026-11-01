@@ -79,6 +79,7 @@ namespace TC2.Game
             _headNew.Clear(); _headQueue.Clear(); _headQueuedAt.Clear(); _headShown.Clear(); _headShownAt.Clear(); _headAll.Clear();
             _headNext = Time.unscaledTime + 1.2f;
             _lapseSummary = null; _lostNote = null; _skipMenu = false;
+            if (_guide == 10) _guideWaitsLapse = true;   // (session 31: the guide waits for it to end)
             // (what the player watched: the person followed, else the one chosen; the place whose page is open)
             _watchPid = _follow != 0 ? _follow : _selected;
             _watchSid = _placeSid;
@@ -298,6 +299,16 @@ namespace TC2.Game
             if (_lostNote != null)
             {
                 GUILayout.Label(_lostNote, _pgBody);
+                if (_lostPid != 0 && w.People.Exists(_lostPid))
+                {
+                    GUILayout.BeginHorizontal();
+                    Rect lf = GUILayoutUtility.GetRect(46f, 58f, GUILayout.Width(46f), GUILayout.Height(58f));
+                    if (Event.current.type == EventType.Repaint) GUI.DrawTexture(lf, Portrait(w, _lostPid), ScaleMode.StretchToFill, true);
+                    GUILayout.Space(8);
+                    if (_pgBuiltFor != _lostPid) { _pgBuiltFor = _lostPid; _pgBuiltAt = Time.unscaledTime; _pgTree = Lives.KinOf(w, _lostPid); _pgSkills = Lives.Skills(in w.People.Get(_lostPid)); _pageTitle = Biography.Title(w, _lostPid); _pageStanding = Biography.Standing(w, _lostPid); _pgLife = Lives.Chronicle(w, _lostPid); _pgTemper = Lives.Temperament(in w.People.Get(_lostPid)); _pgDeeds = Biography.Deeds(w, _lostPid); _pgHome = Biography.Home(w, _lostPid); _pgWorkText = Biography.Work(w, _lostPid); }
+                    GUILayout.Label(Epitaph(w, _lostPid), _pgItal);
+                    GUILayout.EndHorizontal();
+                }
                 GUILayout.BeginHorizontal();
                 if (_lostPid != 0 && GUILayout.Button("their life", _bkNav)) { ShowPerson(_lostPid, 5); }
                 if (_lostKin != 0 && w.People.Exists(_lostKin) && GUILayout.Button("follow " + Given(w, _lostKin) + Kinship(w, _lostPid, _lostKin), _bkNav)) { _selected = _lostKin; _follow = _lostKin; _personPage = false; _lapseSummary = null; _lostNote = null; }

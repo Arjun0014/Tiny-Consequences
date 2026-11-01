@@ -26,6 +26,12 @@ namespace TC2.Game
         public static float CloudTile = 3600f;   // (session 27) the forms' noise tile (m): its large shapes ~ a quarter of it, the cumulus' puffs ~ a thirtieth
         public static float CloudShadow = 0.6f;  // (session 27) the share of the sun a thick cloud takes from the ground, the sea and what stands there
         public static float NightFar = 0.16f;    // (session 27) the night's sky and moon light on the ground seen from orbit (x the near view's)
+        // (session 31: the world look) the picture's grade and the land's broad variation; a shot may set them for its view
+        public static float GradeSat = 5f;       // saturation over all (was +14: fields read lime)
+        public static float GradeContrast = 12f;
+        public static float GradeExposure = 0.06f;
+        public static float GradeGreen = 0.34f;  // how far greens' saturation is taken down (0.5 none): the living green of leaves, not a screen's
+        public static float LandVary = 1f;       // x the land's broad warm and cool drift (0 none)
         public static float SeaTrue = 1f;        // (session 30) the sea drawn where its true sphere is (0: on its mesh's faces, as before - a shot's "before")
 
         static readonly float[] Defaults = { AtmoH, AtmoTop, AtmoTau, AtmoMie, AtmoSun, AtmoGround, CloudDeck, CloudCu, CloudStretch, CloudShade, CloudTile, CloudShadow, NightFar, SeaTrue };

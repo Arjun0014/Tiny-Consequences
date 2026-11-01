@@ -24,6 +24,9 @@ namespace TC2.Game
         double _titleLonDrift;
         const float TitleYaw = 15.5f, TitleRoll = 13f;
 
+        /// <summary>Whether the player turned the camera by hand this frame (dragging, the keys): following someone gives way to it.</summary>
+        public bool HandTurned { get; private set; }
+
         /// <summary>Whether the title holds the camera now.</summary>
         public bool InTitle => _title;
 

@@ -152,6 +152,7 @@ namespace TC2.Game
         void BeginRise(double R)
         {
             bool fromOff = Lapse == LapseState.Off;
+            _fly = false; _zoomOn = false; _velLat = _velLon = 0; _nudgeLat = _nudgeLon = 0;   // (session 31: the lapse has the camera now)
             Lapse = LapseState.Rising; _lapseT = 0f; _lapseCam = true;
             _fromLat = Lat; _fromLon = Lon; _fromDist = System.Math.Max(Distance, R + 30.0);
             // (the orbit over the player's latitude, kept off the poles: the inhabited land turning under the camera)

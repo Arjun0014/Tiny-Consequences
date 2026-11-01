@@ -191,7 +191,6 @@ namespace TC2.Game
                     break;
                 case 10:
                     if (_guideWaitsLapse && Rig != null && !Rig.LapseActive && !Host.CatchingUp) _guide = 11;
-                    else if (Host.CatchingUp && !_guideWaitsLapse) _guideWaitsLapse = true;
                     break;
                 case 11:
                     if (_castNoteAt > _guideAt && _castOk) _guide = 12;
@@ -239,6 +238,7 @@ namespace TC2.Game
             if (_book) cy = sh - ch - 12f;
             float cx = 14f;
             if (_pageRect.width > 0f && _pageRect.x < cx + cw + 8f) cx = Mathf.Max(6f, _pageRect.x - cw - 8f);
+            if (_summaryRect.width > 0f && !_book) cx = Mathf.Min(_summaryRect.xMax + 14f, sw - cw - 8f);
             _guideCard = new Rect(cx, Mathf.Max(70f, cy), cw, ch);
             GUI.Box(_guideCard, GUIContent.none, _box);
             GUI.Label(new Rect(_guideCard.x + 22f, _guideCard.y + 14f, inner, h1), _guideTitleText, _guideHead);

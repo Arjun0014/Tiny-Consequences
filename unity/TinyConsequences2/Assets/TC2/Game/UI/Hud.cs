@@ -28,9 +28,9 @@ namespace TC2.Game
         GUIStyle _box, _label, _small, _title, _btn;
         float _scale = 1f;
         Rect _left, _right, _bottom, _toggles, _ticker;
-        bool _settings; Rect _settingsRect; float _settingsDirty; bool _lastMuted;   // (the player's settings: F11.2)
+        Rect _settingsRect; float _settingsDirty; bool _lastMuted;   // (the player's settings: F11.2; session 31: a page of the menu)
         float _fps; int _frames; float _fpsT;
-        bool _info, _history, _worldPanel, _hidden, _book;
+        bool _info, _history, _hidden, _book;
         // the person page (C12.1): a person's life in sections, from the world's state and its ledger (Core/History/Biography)
         bool _personPage; int _pageTab, _pagePid = -1, _pageTabBuilt = -1; float _pageAt; string _pageText = "", _pageTitle = ""; Vector2 _pageScroll; Rect _pageRect;
         // the settlement page (C12.2): a place's founding, people, food, works, land and making, neighbours and history (Core/History/Gazetteer)
@@ -112,7 +112,7 @@ namespace TC2.Game
             LapseHook();   // (session 29: the timelapse - Hud.Lapse.cs)
             if (w != null && Rig != null && Rig.LapseActive) PollHeadlines(w);
             if (w == null || Host.CatchingUp) return;
-            if (_titleOn) return;   // (the title holds the world still: F11.1)
+            if (_titleOn) { if (Input.GetKeyDown(KeyCode.Escape)) _menuPage = MenuMain; return; }   // (the title holds the world still: F11.1)
             if (!_bookAsked) { _bookAsked = true; if (Browser.Param("book") != null) OpenBook(-1); }   // (?book=1: open at the present age)
             GuideTick(w); HintsTick(w);   // (session 31: the first minutes)
             // (session 31) Esc takes back what is open, one thing at a time, then opens the menu
@@ -130,6 +130,12 @@ namespace TC2.Game
             }
             if (_menuOn) return;   // (the world waits behind it, and the keys and clicks are the menu's)
             if (Input.GetKeyDown(KeyCode.B)) { _book = !_book; AudioView.Ui(_book ? "page" : "click"); }
+            if (_book && _parts != null && _writer != null && GUIUtility.keyboardControl == 0)
+            {
+                // (session 31) its leaves by the arrow keys
+                if (Input.GetKeyDown(KeyCode.RightArrow)) Turn(1);
+                if (Input.GetKeyDown(KeyCode.LeftArrow)) Turn(-1);
+            }
             if (Input.GetKeyDown(KeyCode.Space)) { if (Host.SpeedIndex != 0) _resumeSpeed = Host.SpeedIndex; Host.SpeedIndex = Host.SpeedIndex == 0 ? _resumeSpeed : 0; Host.MaxSpeed = false; }
             if (Input.GetKeyDown(KeyCode.H)) _hidden = !_hidden;
             if (Input.GetKeyDown(KeyCode.R)) RealmsView.On = !RealmsView.On;   // (the realms map layer, D2-167)
@@ -147,7 +153,8 @@ namespace TC2.Game
                 else
                 {
                     Presence.Of(fw, in fw.People.Get(_follow), Host.RenderTime, out var d, out _, out _, out _);   // (where they are drawn)
-                    if (Rig.Flying) Rig.FlyRetarget(d.Latitude, d.Longitude); else { Rig.Lat = d.Latitude; Rig.Lon = d.Longitude; }
+                    if (Rig.HandTurned && !Rig.LapseActive) { _follow = 0; AudioView.Ui("tick"); }   // (session 31: the player's hand takes the camera: the following gives way)
+                    else if (Rig.Flying) Rig.FlyRetarget(d.Latitude, d.Longitude); else { Rig.Lat = d.Latitude; Rig.Lon = d.Longitude; }
                 }
             }
         }
@@ -836,7 +843,7 @@ namespace TC2.Game
             if (w == null) { BootScreen(sw, sh); return; }
             // (session 29) a catch-up or a skip is watched from orbit, the years in large type and the headlines as they come (Hud.Lapse.cs)
             if (Host.CatchingUp) { LapseOverlay(w, sw, sh, 16f); _uiRects.Clear(); LapseRects(); return; }   // (only the overlay is drawn: its rects alone keep names off it)
-            if (Title(sw, sh)) return;   // (the opening: F11.1)
+            if (Title(sw, sh)) { KeepSettings(); return; }   // (the opening: F11.1)
 
             if (_hidden) { PointerOverUi = false; WorldObjectsView.Chosen = WorldObjectsView.Pointed = WorldObjectsView.ChosenHome = WorldObjectsView.PointedHome = 0; return; }
             // (the names take no input: laid out and drawn on the repaint only - session 27, context 4: every IMGUI event had placed and measured them all
@@ -850,6 +857,7 @@ namespace TC2.Game
             bool lapse = Rig != null && Rig.LapseActive;
             if (lapse) LapseOverlay(w, sw, sh, _left.yMax + 10f);
             SealBar(sw);
+            FollowChip(w);
 
             _right = Rect.zero;
             float ry = 72;
@@ -944,12 +952,12 @@ namespace TC2.Game
             AudioView.Duck = _menuOn ? 0.55f : _book ? 0.5f : 1f;   // (session 31: the world quieter behind the book and the menu)
             Vector2 m = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y) / _scale;
             bool overLapse = lapse && PointerOverUi;   // (the overlay's own rects, set as it drew)
-            PointerOverUi = _menuOn || _guideCard.Contains(m) || overLapse || _skipRect.Contains(m) || _summaryRect.Contains(m) || _settingsRect.Contains(m) || _powersRect.Contains(m) || _left.Contains(m) || _toggles.Contains(m) || _right.Contains(m) || worldRect.Contains(m) || realmsRect.Contains(m) || _bottom.Contains(m) || _ticker.Contains(m) || (showInsp && (_building != 0 ? insp.Contains(m) : card.Contains(m))) || (_book && _bookRect.Contains(m)) || _pageRect.Contains(m);
+            PointerOverUi = _menuOn || _followChip.Contains(m) || _guideCard.Contains(m) || overLapse || _skipRect.Contains(m) || _summaryRect.Contains(m) || _settingsRect.Contains(m) || _powersRect.Contains(m) || _left.Contains(m) || _toggles.Contains(m) || _right.Contains(m) || worldRect.Contains(m) || realmsRect.Contains(m) || _bottom.Contains(m) || _ticker.Contains(m) || (showInsp && (_building != 0 ? insp.Contains(m) : card.Contains(m))) || (_book && _bookRect.Contains(m)) || _pageRect.Contains(m);
             if (!_book && !_menuOn) HoverTag(w, sw, sh);
             _uiRects.Clear();
             _uiRects.Add(_left); _uiRects.Add(_toggles); _uiRects.Add(_right); _uiRects.Add(worldRect); _uiRects.Add(realmsRect); _uiRects.Add(_bottom); _uiRects.Add(_ticker);
             _uiRects.Add(_powersRect); _uiRects.Add(_handRect); _uiRects.Add(_summaryRect); _uiRects.Add(_settingsRect); _uiRects.Add(_pageRect); _uiRects.Add(_tagRect);
-            _uiRects.Add(_aimRect); _uiRects.Add(_tipShown); _uiRects.Add(_noteRect); _uiRects.Add(_guideCard);
+            _uiRects.Add(_aimRect); _uiRects.Add(_tipShown); _uiRects.Add(_noteRect); _uiRects.Add(_guideCard); _uiRects.Add(_followChip);
             if (lapse) LapseRects();
             if (showInsp) _uiRects.Add(_building != 0 ? insp : card);
             // (session 27) who is ringed on the ground: the person whose page is open, the one under the pointer, the chosen home's household
@@ -1049,7 +1057,16 @@ namespace TC2.Game
             // (session 27) a leaf of the book
             int sidNow = _placeSid;
             System.Action<float> custom = _placeTab == PlaceNowTab ? (cw => PlaceNow(w, sidNow, cw)) : _placeTab == PlaceWhyTab ? (cw => PlaceWhy(w, sidNow, cw)) : _placeTab == PlaceRealmTab ? (System.Action<float>)(cw => PlaceRealm(w, sidNow, cw)) : null;
-            int tab = PaperPage(r, "A Place", _placeTitle, "", PlaceTabs, _placeTab, _placeText, out bool close, custom);
+            PersonStyles();
+            System.Action head = () =>
+            {
+                if (!w.Settlements.Exists(sidNow)) return;
+                ref var hs = ref w.Settlements.Get(sidNow);
+                if (GUILayout.Button("go there  ›", _pgLink)) { var a = PlaceCentres.Of(w, sidNow, Host.WorldVersion); Rig.FlyTo(a, System.Math.Min(System.Math.Max(Rig.Distance - w.Planet.Radius, 500.0), 1500.0), 2.4f); }
+                if (hs.Head != 0 && w.People.Exists(hs.Head) && GUILayout.Button("its first, " + Given(w, hs.Head) + "  ›", _pgLink)) ShowPerson(hs.Head, 0);
+                if (hs.Lord != 0 && w.Settlements.Exists(hs.Lord) && GUILayout.Button("its lord, " + w.History.NameOf(EntityRef.Settlement(hs.Lord)) + "  ›", _pgLink)) ShowPlace(hs.Lord, PlaceRealmTab);
+            };
+            int tab = PaperPage(r, "A Place", _placeTitle, "", PlaceTabs, _placeTab, _placeText, out bool close, custom, head);
             if (tab != _placeTab) { _placeTab = tab; _pageScroll = Vector2.zero; }
             if (close) _placeSid = 0;
         }

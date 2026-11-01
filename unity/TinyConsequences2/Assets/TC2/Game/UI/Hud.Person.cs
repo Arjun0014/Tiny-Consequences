@@ -27,7 +27,7 @@ namespace TC2.Game
         List<string> _pgFollow = new List<string>();   // (session 29: whom their household follows and who follows it)
         readonly List<int> _pgBack = new List<int>();          // (the people this page came from: "back to ...")
         long _pgWhy;                                            // (a Life record whose causes are open)
-        GUIStyle _pgBadge, _pgBox, _pgBoxDead, _pgBoxMe, _pgSmall, _pgBig, _pgItal, _pgBarLabel, _pgEntry, _pgEntryBig, _pgEntrySmall, _pgAge;
+        GUIStyle _pgLink, _pgBadge, _pgBox, _pgBoxDead, _pgBoxMe, _pgSmall, _pgBig, _pgItal, _pgBarLabel, _pgEntry, _pgEntryBig, _pgEntrySmall, _pgAge;
         Texture2D _pgBadgeTex, _pgTrack;
         readonly Dictionary<int, Texture2D> _portraits = new Dictionary<int, Texture2D>();
         readonly List<int> _portraitOrder = new List<int>();
@@ -67,6 +67,7 @@ namespace TC2.Game
             _pgEntrySmall = S(_serif, 14, Faded, l: 2, t: 2, b: 3); _pgEntrySmall.hover.textColor = Rubric;
             _pgAge = S(_serif, 12, Faded, FontStyle.Italic, a: TextAnchor.UpperRight, rt: 8);
             _pgTrack = Solid(new Color(0.55f, 0.45f, 0.32f, 0.22f));
+            _pgLink = S(_serif, 15, Rubric, FontStyle.Italic, a: TextAnchor.MiddleLeft, l: 2, rt: 12, t: 2, b: 2); _pgLink.wordWrap = false; _pgLink.hover.textColor = Ink;
         }
 
         /// <summary>The person page: the header with the portrait and badges, the sections, the chosen section.</summary>
@@ -105,15 +106,14 @@ namespace TC2.Game
                 if (w.People.Exists(back) && GUILayout.Button("‹  back to " + Given(w, back), _bkNav)) { _pgBack.RemoveAt(_pgBack.Count - 1); _selected = back; _pageTab = 0; return; }
             }
             GUILayout.FlexibleSpace();
-            if (p.Alive && GUILayout.Button(_follow == pid ? "stop following" : "follow", _bkNav, GUILayout.Width(110))) _follow = _follow == pid ? 0 : pid;
+            if (p.Alive && GUILayout.Button(_follow == pid ? "stop following" : "follow", _bkNav, GUILayout.Width(110))) ToggleFollow(w, pid);
             if (GUILayout.Button("close  ×", _bkNav, GUILayout.Width(84))) { _personPage = false; _pgBack.Clear(); }
             GUILayout.EndHorizontal();
             GUILayout.BeginHorizontal();
             Rect face = GUILayoutUtility.GetRect(78f, 98f, GUILayout.Width(78f), GUILayout.Height(98f));
             if (Event.current.type == EventType.Repaint)
             {
-                GUI.color = new Color(0.30f, 0.20f, 0.10f, 0.55f); GUI.DrawTexture(new Rect(face.x - 2f, face.y - 2f, face.width + 4f, face.height + 4f), _dot); GUI.color = Color.white;
-                GUI.DrawTexture(face, Portrait(w, pid));
+                GUI.DrawTexture(face, Portrait(w, pid), ScaleMode.StretchToFill, true);
             }
             GUILayout.Space(12);
             GUILayout.BeginVertical();
@@ -123,6 +123,7 @@ namespace TC2.Game
             Badges(w, pid);
             GUILayout.EndVertical();
             GUILayout.EndHorizontal();
+            PersonLinks(w, pid);
             // the sections
             GUILayout.BeginHorizontal();
             for (int i = 0; i < PersonTabs.Length; i++)
@@ -172,7 +173,7 @@ namespace TC2.Game
             GUILayout.BeginArea(new Rect(r.x + 14f, r.y + 10f, r.width - 26f, r.height - 16f));
             GUILayout.BeginHorizontal();
             Rect face = GUILayoutUtility.GetRect(56f, 70f, GUILayout.Width(56f), GUILayout.Height(70f));
-            if (Event.current.type == EventType.Repaint) { GUI.color = new Color(0.30f, 0.20f, 0.10f, 0.55f); GUI.DrawTexture(new Rect(face.x - 2f, face.y - 2f, face.width + 4f, face.height + 4f), _dot); GUI.color = Color.white; GUI.DrawTexture(face, Portrait(w, pid)); }
+            if (Event.current.type == EventType.Repaint) GUI.DrawTexture(face, Portrait(w, pid), ScaleMode.StretchToFill, true);
             GUILayout.Space(8);
             GUILayout.BeginVertical();
             GUILayout.Label(_pageTitle + (p.Alive ? "" : "  †"), _pgBig);
@@ -194,7 +195,7 @@ namespace TC2.Game
             if (_pgLife != null && _pgLife.Count > 0) { var last = _pgLife[_pgLife.Count - 1]; GUILayout.Label("<color=#8c2614>" + SimTime.YearOf(last.Time) + "</color>  " + last.Text, _pgSmall); }
             GUILayout.FlexibleSpace();
             GUILayout.BeginHorizontal();
-            if (p.Alive && GUILayout.Button(_follow == pid ? "stop following" : "follow", _bkNav)) _follow = _follow == pid ? 0 : pid;
+            if (p.Alive && GUILayout.Button(_follow == pid ? "stop following" : "follow", _bkNav)) ToggleFollow(w, pid);
             if (GUILayout.Button("their life  ›", _bkNav)) { _personPage = true; _pageTab = 0; _pgBack.Clear(); _placeSid = 0; AudioView.Ui("page"); }
             if (Event.current.type == EventType.Repaint) { var lb = GUILayoutUtility.GetLastRect(); _lifeBtnRect = new Rect(r.x + 14f + lb.x, r.y + 10f + lb.y, lb.width, lb.height); }
             if (p.Home != 0 && GUILayout.Button("their village  ›", _bkNav)) ShowPlace(p.Home);
@@ -283,6 +284,8 @@ namespace TC2.Game
             {
                 GUILayout.Label("Died in year " + SimTime.YearOf(p.Died) + ", aged " + ((int)p.AgeYears(p.Died)).ToString(CultureInfo.InvariantCulture) + ".", _pgBig);
                 if (p.DeathEvent != 0 && w.History.TryGet(p.DeathEvent, out var de)) GUILayout.Label(HistoryText.Describe(w, de), _pgItal);
+                GUILayout.Label(Epitaph(w, pid), _pgBody);
+                Rule(0f, 0.4f);
                 int heir = Heir(w, pid);
                 if (heir != 0 && GUILayout.Button("Go on with " + Given(w, heir) + Kinship(w, pid, heir) + "  ›", _bkNav)) GoTo(heir);
                 GUILayout.Label("Their life is told under Life; their family under Family.", _pgSmall);
@@ -319,6 +322,94 @@ namespace TC2.Game
                 GUILayout.Label("Of late", _pgHead);
                 for (int i = Mathf.Max(0, _pgLife.Count - 3); i < _pgLife.Count; i++) LifeRow(w, _pgLife[i], cw);
             }
+        }
+
+        /// <summary>(session 31) The way from a person to what is theirs - their home, where they work now, their village, their realm - one row, each a click away.</summary>
+        void PersonLinks(TC2.Core.Simulation.World w, int pid)
+        {
+            ref var p = ref w.People.Get(pid);
+            if (!p.Alive) return;
+            GUILayout.BeginHorizontal();
+            int home = p.Household != 0 && w.Households.Exists(p.Household) ? w.Households.Get(p.Household).Building : 0;
+            if (home != 0 && w.Buildings.Exists(home) && GUILayout.Button("their home  ›", _pgLink)) GoToBuilding(w, home);
+            int place = p.At != 0 ? p.At : p.Home;
+            int work = WorkplaceOf(w, in p);
+            if (work != 0 && GUILayout.Button("where they work  ›", _pgLink)) GoToBuilding(w, work);
+            if (p.Home != 0 && w.Settlements.Exists(p.Home) && GUILayout.Button("their village  ›", _pgLink)) ShowPlace(p.Home, PlaceNowTab);
+            if (p.Home != 0 && w.Settlements.Exists(p.Home) && (w.Settlements.Get(p.Home).Lord != 0 || w.Conflict.PolitySize(p.Home) > 0) && GUILayout.Button("their realm  ›", _pgLink)) ShowPlace(p.Home, PlaceRealmTab);
+            if (Presence.Of(w, in p, Host.RenderTime, out var at, out _, out _, out _) && GUILayout.Button("see them  ›", _pgLink)) { Rig.FlyTo(at, System.Math.Min(Rig.Distance - w.Planet.Radius, 90.0), 2.2f); }
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+        }
+
+        /// <summary>The work a person is at this moment, by its kind, in the village they are in (0 none).</summary>
+        static int WorkplaceOf(TC2.Core.Simulation.World w, in Person p)
+        {
+            int kind = -1;
+            switch (p.Act)
+            {
+                case ActivityKind.Smith: kind = TC2.Core.Places.Structures.Smithy; break;
+                case ActivityKind.Weave: kind = TC2.Core.Places.Structures.Workshop; break;
+                case ActivityKind.Pot: kind = TC2.Core.Places.Structures.Kiln; break;
+                case ActivityKind.Quarry: kind = TC2.Core.Places.Structures.Quarry; break;
+                case ActivityKind.Mine: kind = TC2.Core.Places.Structures.Mine; break;
+                case ActivityKind.Burn: kind = TC2.Core.Places.Structures.CharHearth; break;
+                case ActivityKind.Train: kind = TC2.Core.Places.Structures.Ground; break;
+                case ActivityKind.Thresh: kind = TC2.Core.Places.Structures.Barn; break;
+                default: return 0;
+            }
+            int sid = p.At != 0 ? p.At : p.Home;
+            if (sid == 0 || !w.Settlements.Exists(sid)) return 0;
+            if (p.Act == ActivityKind.Smith && p.WhyArg != 0 && w.Buildings.Exists(p.WhyArg)) return p.WhyArg;
+            var bl = w.BuildingsOf(sid);
+            for (int i = 0; i < bl.Count; i++) { ref var b = ref w.Buildings.Get(bl[i]); if (b.Kind == kind && b.Done != 0) return bl[i]; }
+            return 0;
+        }
+
+        /// <summary>A building's page, the camera flying to it.</summary>
+        void GoToBuilding(TC2.Core.Simulation.World w, int bid)
+        {
+            AudioView.Ui("select");
+            _personPage = false; _placeSid = 0; _building = bid; _bScroll = Vector2.zero;
+            ref var b = ref w.Buildings.Get(bid);
+            if (w.Settlements.Exists(b.Settlement)) { var at = w.Settlements.Get(b.Settlement).LocalToSphere(b.X, b.Y, w.Planet.Radius); Rig.FlyTo(at, System.Math.Min(Rig.Distance - w.Planet.Radius, 240.0), 2.2f); }
+        }
+
+        /// <summary>(session 31) Follows someone (the camera flies down to them, then keeps with them as they go about their day), or stops.</summary>
+        void ToggleFollow(TC2.Core.Simulation.World w, int pid)
+        {
+            AudioView.Ui("select");
+            if (_follow == pid) { _follow = 0; return; }
+            _follow = pid;
+            if (Presence.Of(w, in w.People.Get(pid), Host.RenderTime, out var d, out _, out _, out _)) Rig.FlyTo(d, System.Math.Min(Rig.Distance - w.Planet.Radius, 90.0), 2.2f);
+            else Rig.FlyTo(w.Agents.PositionAt(w.People.Get(pid), Host.RenderTime), System.Math.Min(Rig.Distance - w.Planet.Radius, 240.0), 2.2f);
+        }
+
+        /// <summary>(session 31) A completed life in a few words, from what the world kept: the years lived, whom they left, what they were best at, what marked them.</summary>
+        string Epitaph(TC2.Core.Simulation.World w, int pid)
+        {
+            ref var p = ref w.People.Get(pid);
+            var parts = new List<string>();
+            int age = (int)p.AgeYears(p.Died);
+            parts.Add(age < 5 ? "A short life." : age < 16 ? "A child's few years." : age < 40 ? "A life cut short." : age < 65 ? "A full life for its time." : "A long life.");
+            int kids = 0;
+            if (_pgTree != null) foreach (var l in _pgTree.ChildrenOf) kids += l.Count;
+            int living = 0;
+            if (_pgTree != null) foreach (var l in _pgTree.ChildrenOf) foreach (int c in l) if (w.People.Exists(c) && w.People.Get(c).Alive) living++;
+            int grand = _pgTree != null ? _pgTree.Grandchildren.Count : 0;
+            if (kids > 0) parts.Add(Cap(Number(kids)) + (kids == 1 ? " child" : " children") + (living > 0 && living < kids ? ", " + Number(living) + " of them living still" : living == 0 ? ", none of them living now" : "") + (grand > 0 ? "; " + Number(grand) + (grand == 1 ? " grandchild" : " grandchildren") : "") + ".");
+            else if (age >= 16) parts.Add("No children to carry them on.");
+            float best = 0f; string craft = null;
+            if (_pgSkills != null) foreach (var sk in _pgSkills) if (sk.Value > best && sk.Name != "Fighting") { best = sk.Value; craft = sk.Name; }
+            if (craft != null && best >= 0.3f && age >= 14) parts.Add(best >= 0.9f ? "A master of " + craft.ToLowerInvariant() + "." : best >= 0.6f ? "Skilled at " + craft.ToLowerInvariant() + "." : "Worked at " + craft.ToLowerInvariant() + ".");
+            if (p.Fights >= 3) parts.Add("Stood in " + Number(p.Fights) + " fights.");
+            return string.Join(" ", parts.ToArray());
+        }
+
+        static string Number(int n)
+        {
+            string[] words = { "no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve" };
+            return n >= 0 && n < words.Length ? words[n] : n.ToString(CultureInfo.InvariantCulture);
         }
 
         /// <summary>(session 29) The questions their state and records can answer - why they are first, sworn, sick, wounded, why they died - each opening
@@ -607,45 +698,18 @@ namespace TC2.Game
             Color cloth = WorldObjectsView.PageLivery(w, pid, out byte rank);
             int key = pid * 8 + rank * 2 + (p.Alive ? 1 : 0);
             if (_portraits.TryGetValue(key, out var tex) && tex != null) return tex;
-            const int W = 78, H = 98;
+            const int W = 156, H = 196;
             tex = new Texture2D(W, H, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear, name = "tc2-portrait" };
-            var px = new Color32[W * H];
-            float age = (float)p.AgeYears(p.Alive ? w.Now : p.Died);
-            float s = age < 6f ? 0.62f : age < 14f ? 0.78f : 1f;
-            bool woman = p.IsFemale;
             Color realm = rank != 0 && w.Settlements.Exists(p.Home) ? WorldObjectsView.PolityColour(w, p.Home) : cloth;
-            Color skin = new Color(0.86f, 0.69f, 0.55f), bg0 = new Color(0.90f, 0.85f, 0.74f), bg1 = new Color(0.80f, 0.73f, 0.60f);
-            Color dark = Color.Lerp(cloth, Color.black, 0.35f), mantle = Color.Lerp(realm, Color.black, 0.32f);
-            float cx = W * 0.5f, ground = H - 4f, headR = 10.5f * s, headY = ground - 74f * s, neck = headY + headR, shoulder = neck + 4f * s;
+            var spec = new PortraitArt.Spec { Seed = pid, Age = (float)p.AgeYears(p.Alive ? w.Now : p.Died), Woman = p.IsFemale, Alive = p.Alive, Rank = rank, ClothR = cloth.r, ClothG = cloth.g, ClothB = cloth.b, RealmR = realm.r, RealmG = realm.g, RealmB = realm.b };
+            var paint = new float[W * H * 4];
+            PortraitArt.Paint(in spec, W, H, paint);
+            var px = new Color32[W * H];
             for (int y = 0; y < H; y++)
                 for (int x = 0; x < W; x++)
                 {
-                    float fy = H - 1 - y;   // (rows from the top)
-                    float u = (x - cx), v = fy;
-                    Color c = Color.Lerp(bg0, bg1, v / H * 0.8f + Mathf.Abs(u) / W * 0.4f);
-                    // the mantle behind the body: the first's, in the realm's colour
-                    if (rank == 1 && v > shoulder - 2f && v < ground - 6f * s && Mathf.Abs(u) < (15f + (v - shoulder) * 0.32f) * s) c = mantle;
-                    // the body: a tunic to the knee over legs, or a gown to the ground
-                    float bodyTop = shoulder, bodyEnd = woman ? ground : ground - 22f * s;
-                    float half = (11f + (v - bodyTop) * (woman ? 0.22f : 0.12f)) * s;
-                    if (v >= bodyTop && v <= bodyEnd && Mathf.Abs(u) < half) c = Color.Lerp(cloth, dark, Mathf.Clamp01((v - bodyTop) / (bodyEnd - bodyTop + 1f)) * 0.35f);
-                    if (!woman && v > bodyEnd && v <= ground && (Mathf.Abs(u - 5f * s) < 3.2f * s || Mathf.Abs(u + 5f * s) < 3.2f * s)) c = Color.Lerp(dark, Color.black, 0.25f);
-                    // a belt
-                    if (!woman && Mathf.Abs(v - (bodyTop + (bodyEnd - bodyTop) * 0.55f)) < 1.2f && Mathf.Abs(u) < half) c = Color.Lerp(dark, Color.black, 0.4f);
-                    // the neck and the head
-                    if (Mathf.Abs(u) < 3.5f * s && v > headY && v <= shoulder) c = skin * 0.92f;
-                    float hd = Mathf.Sqrt(u * u + (v - headY) * (v - headY));
-                    if (hd < headR) c = Color.Lerp(skin, skin * 0.82f, Mathf.Clamp01(hd / headR - 0.5f));
-                    // hair (a woman's longer), over the head's top
-                    if (hd < headR + 1.2f && v < headY - headR * 0.25f) c = new Color(0.32f, 0.22f, 0.14f);
-                    if (woman && Mathf.Abs(u) > headR * 0.55f && Mathf.Abs(u) < headR + 2f && v > headY - 2f && v < headY + headR + 6f * s) c = new Color(0.32f, 0.22f, 0.14f);
-                    // the first's circlet; a sworn man's cap and his shield
-                    if (rank == 1 && hd < headR + 1.2f && Mathf.Abs(v - (headY - headR * 0.45f)) < 1.3f) c = new Color(0.95f, 0.78f, 0.30f);
-                    if (rank == 2 && hd < headR + 1.5f && v < headY - headR * 0.15f) c = Color.Lerp(realm, Color.white, 0.12f);
-                    if (rank == 2) { float sd = Mathf.Sqrt((u + 13f) * (u + 13f) + (v - (shoulder + 16f)) * (v - (shoulder + 16f))); if (sd < 9f) c = sd > 7.6f ? new Color(0.85f, 0.80f, 0.65f) : realm; }
-                    if (!p.Alive) { float g = c.r * 0.3f + c.g * 0.59f + c.b * 0.11f; c = Color.Lerp(c, new Color(g, g, g), 0.75f); }
-                    c.a = 1f;
-                    px[y * W + x] = c;
+                    int o = ((H - 1 - y) * W + x) * 4;
+                    px[y * W + x] = new Color32((byte)(paint[o] * 255f), (byte)(paint[o + 1] * 255f), (byte)(paint[o + 2] * 255f), (byte)(paint[o + 3] * 255f));
                 }
             tex.SetPixels32(px);
             tex.Apply(false, true);

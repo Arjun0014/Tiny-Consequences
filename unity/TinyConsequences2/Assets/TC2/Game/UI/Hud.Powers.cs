@@ -107,8 +107,11 @@ namespace TC2.Game
             // (session 29) no uncertainty whether a click worked: a cast refused says why, a cast made says what and where
             long back = Recharging(w, _aim);
             if (back > 0) { CastNote(Powers[_aim].Name + " is not back yet - in " + Wait(back), false); _aim = -1; return; }
-            if (!GroundUnder(Input.mousePosition, out _, out int cell)) { CastNote("Aim at the ground - the sky has nothing to strike", false); return; }
+            if (!GroundUnder(Input.mousePosition, out var aimDir, out int cell)) { CastNote("Aim at the ground - the sky has nothing to strike", false); return; }
             var pw = Powers[_aim];
+            // (session 31) a cast that could touch nothing is not spent: it says why
+            string refused = Refused(w, aimDir, pw);
+            if (refused != null) { CastNote(refused, false); AudioView.Ui("tick"); return; }
             w.Issue(new Command { Time = w.Now, Kind = pw.Kind, Cell = cell, Arg = pw.Arg });
             CastNote(pw.Doing + " " + TC2.Core.History.HistoryText.At(w.PlaceName(cell)) + " - what comes of it will show in Your hand", true);
             // (session 27: the powers as play) the hand seen: a burst where it fell, the ground shaken by the heaviest
@@ -234,6 +237,26 @@ namespace TC2.Game
         }
         Rect _handOpen; long _handNewest; float _handShowUntil;
 
+        /// <summary>(session 31) Why a power aimed here would touch nothing, by the world's own measure (null: it would): a sickness or a blight wants a village in reach
+        /// (a blight a standing crop); bounty, tired fields. The aim shows it in grey and its words say so.</summary>
+        static string Refused(World w, Vec3d dir, in Power pw)
+        {
+            if (pw.Kind != CommandKind.GodPlague && pw.Kind != CommandKind.GodBlight && pw.Kind != CommandKind.GodBounty) return null;
+            bool any = false, crop = false, tired = false;
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                ref var s = ref w.Settlements.Get(sid);
+                if (!s.Inhabited || Vec3d.ArcDistance(dir, s.Anchor, w.Planet.Radius) > World.GodReach) continue;
+                any = true;
+                if (s.Crop == TC2.Core.Places.CropStage.Sown || s.Crop == TC2.Core.Places.CropStage.Growing || s.Crop == TC2.Core.Places.CropStage.Ripe) crop = true;
+                if (s.Tired >= 0.02) tired = true;
+            }
+            if (!any) return "No village within its reach here: it would touch nobody";
+            if (pw.Kind == CommandKind.GodBlight && !crop) return "No crop stands within its reach now: the fields are bare";
+            if (pw.Kind == CommandKind.GodBounty && !tired) return "The fields within its reach are not tired: there is nothing to renew";
+            return null;
+        }
+
         /// <summary>(session 27) The places a power aimed here would reach, by the world's own measure: the villages within its reach (the nearest
         /// within it for a sickness), with their people - what the player is about to touch.</summary>
         static string InReach(World w, Vec3d dir, in Power pw)
@@ -338,13 +361,14 @@ namespace TC2.Game
             if (_aim < 0 || PointerOverUi || !GroundUnder(Input.mousePosition, out var dir, out int cell)) return;
             // (session 27) its reach laid on the ground (AimView), and the villages it would reach named
             var P = w.Planet; var pwr = Powers[_aim];
-            AimView.Aim(dir, pwr.Reach, pwr.Col);
-            string reach = InReach(w, dir, pwr);
+            string nothing = Refused(w, dir, pwr);
+            AimView.Aim(dir, pwr.Reach, nothing != null ? new Color(0.62f, 0.60f, 0.58f) : pwr.Col);   // (grey: it would touch nothing here)
+            string reach = nothing != null ? "<color=#e6b8a0>" + nothing + "</color>" : InReach(w, dir, pwr);
             Vector2 m = Event.current.mousePosition;
             string where = TC2.Core.History.HistoryText.At(w.PlaceName(cell));
             // (session 29) in a box sized to its words and kept on the screen, as the hover tag - a bare label had run over the map's names (s29book2)
             if (_aimBox == null) _aimBox = new GUIStyle(_mapTag) { wordWrap = true, richText = true, fontSize = 13, padding = new RectOffset(9, 9, 6, 7) };
-            var ac = new GUIContent("<b>" + pwr.Doing + "</b> " + where + (reach.Length > 0 ? "\n<size=12>" + reach + "</size>" : "") + "\n<size=11><color=#c9c3b4>" + pwr.Help + " - click to cast, right-click to stop</color></size>");
+            var ac = new GUIContent("<b>" + pwr.Doing + "</b> " + where + (reach.Length > 0 ? "\n" + reach : "") + "\n<size=13><i><color=#c9c3b4>" + (nothing != null ? "Right-click to stop" : "Click to cast, right-click to stop") + "</color></i></size>");
             float aw = Mathf.Min(470f, sw - 8f), ah = _aimBox.CalcHeight(ac, aw);
             float ax = m.x + 18f, ay = m.y + 12f;
             if (ax + aw > sw - 4f) ax = Mathf.Max(4f, m.x - 18f - aw);

@@ -181,11 +181,11 @@ namespace TC2.Game
                 Kicker("The Preface");
                 GUILayout.Label("Preface", _bkTitle);
                 GUILayout.Label("the world in year " + _writer.Book.Year, _bkSub);
-                Rule(0.0f, 1f);
+                OrnRule();
                 // (session 29: room for a chosen line's why under it - a line opened from the History panel lands here and its story had a sliver at the foot)
                 _bookScroll = GUILayout.BeginScrollView(_bookScroll, GUIStyle.none, GUI.skin.verticalScrollbar, GUILayout.Height(Mathf.Max(120f, right.height - 200f) * (_line != 0 ? 0.4f : 1f)));
                 bool first = true;
-                foreach (var para in _writer.Book.Preface) { GUILayout.Label(first ? Initial(para) : para, _bkBody); first = false; }
+                foreach (var para in _writer.Book.Preface) { if (first) LeadParagraph(para, _bkBody, right.width - 72f - 14f); else GUILayout.Label(para, _bkBody); first = false; }
                 GUILayout.EndScrollView();
             }
             else
@@ -193,7 +193,12 @@ namespace TC2.Game
                 var part = _parts[_bookPart];
                 if (_bookChapter >= part.Chapters.Count) _bookChapter = part.Chapters.Count - 1;
                 Kicker("Part " + HistoryBook.Roman(_bookPart + 1) + "  ·  " + HistoryBook.PartTitles[_bookPart]);
-                if (_bookChapter < 0) { GUILayout.Label(HistoryBook.PartTitles[_bookPart], _bkTitle); GUILayout.Label(part.Intro ?? "", _bkBody); }
+                if (_bookChapter < 0)
+                {
+                    GUILayout.Label(HistoryBook.PartTitles[_bookPart], _bkTitle);
+                    OrnRule();
+                    GUILayout.Label(string.IsNullOrEmpty(part.Intro) ? "Nothing of this kind has come to pass yet. The world is young; the leaves are waiting." : part.Intro, _bkBody);
+                }
                 else
                 {
                     ch = part.Chapters[_bookChapter];
@@ -208,7 +213,7 @@ namespace TC2.Game
                     }
                     GUILayout.EndHorizontal();
                     if (!string.IsNullOrEmpty(ch.Sub)) GUILayout.Label(ch.Sub, _bkSub);
-                    Rule(0.0f, 1f);
+                    OrnRule();
                     _bookScroll = GUILayout.BeginScrollView(_bookScroll, GUIStyle.none, GUI.skin.verticalScrollbar, GUILayout.Height(Mathf.Max(120f, right.height - 200f) * (_line != 0 ? 0.62f : 1f)));   // (room left for the leaf's foot: it was clipped at 720 px)
                     if (_bookChapter == 0 && !string.IsNullOrEmpty(part.Intro)) GUILayout.Label(part.Intro, _bkNote);
                     if (ch.MapSeat > 0 && w.Settlements.Exists(ch.MapSeat)) RealmMap(w, ch, right.width);
@@ -231,7 +236,7 @@ namespace TC2.Game
                             case BookKind.Fact: Rule(0.0f, 0.3f); GUILayout.Label(b.Text, _bkTally); break;
                             case BookKind.Note: GUILayout.Label("–  " + b.Text, _bkNote); break;
                             case BookKind.Line: Entry(in b); break;
-                            default: GUILayout.Label(lead ? Initial(b.Text) : b.Text, _bkBody); lead = false; break;
+                            default: if (lead) LeadParagraph(b.Text, _bkBody, right.width - 72f - 14f); else GUILayout.Label(b.Text, _bkBody); lead = false; break;
                         }
                     }
                     GUILayout.EndScrollView();
@@ -293,6 +298,80 @@ namespace TC2.Game
             GUILayout.EndHorizontal();
         }
 
+        /// <summary>(session 31) The rule under a chapter's title: the ornament in the page's ink, a small globe at its heart.</summary>
+        void OrnRule()
+        {
+            Rect line = GUILayoutUtility.GetRect(10f, 18f, GUILayout.ExpandWidth(true));
+            if (Event.current.type != EventType.Repaint) return;
+            var old = GUI.color;
+            GUI.color = new Color(0.62f, 0.26f, 0.13f, 0.9f);
+            GUI.DrawTexture(new Rect(line.x, line.y, line.width, 18f), Ui("divider"), ScaleMode.StretchToFill, true);
+            GUI.color = old;
+        }
+
+        // (session 31) a chapter's first paragraph opens under an illuminated initial: the letter in gold on a small rubric square, two lines tall, the words beside it
+        string _capFor, _capLead, _capL1 = "", _capL2 = "", _capRest = ""; float _capW, _capLineH, _capBoxS, _capRestH; string _capLetter = "";
+        GUIStyle _capLine, _capLetterSt;
+
+        void LeadParagraph(string text, GUIStyle st, float width)
+        {
+            if (string.IsNullOrEmpty(text)) return;
+            int i = 0;
+            while (i < text.Length && !char.IsLetter(text[i])) i++;
+            if (i >= text.Length || width < 200f) { GUILayout.Label(text, st); return; }
+            if (_capLine == null || _capLine.fontSize != st.fontSize)
+            {
+                _capLine = new GUIStyle(st) { wordWrap = false, padding = new RectOffset(0, 0, 0, 0), margin = new RectOffset(0, 0, 0, 0), clipping = TextClipping.Overflow };
+                _capLetterSt = new GUIStyle(st) { font = _display, fontSize = st.fontSize * 2 + 6, alignment = TextAnchor.MiddleCenter, wordWrap = false, padding = new RectOffset(0, 0, 0, 0), margin = new RectOffset(0, 0, 0, 0), clipping = TextClipping.Overflow };
+                _capLetterSt.normal.textColor = new Color(0.98f, 0.86f, 0.56f);
+            }
+            if (!ReferenceEquals(_capFor, text) || _capW != width)
+            {
+                _capFor = text; _capW = width;
+                _capLetter = text.Substring(i, 1).ToUpperInvariant();
+                _capLineH = Mathf.Ceil(_capLine.CalcSize(new GUIContent("Ag")).y) + 1f;
+                _capBoxS = Mathf.Round(_capLineH * 2f - 2f);
+                float avail = width - _capBoxS - 10f;
+                string rest = text.Substring(i + 1);
+                _capL1 = TakeLine(ref rest, avail, _capLine);
+                _capL2 = TakeLine(ref rest, avail, _capLine);
+                _capRest = rest;
+                _capRestH = _capRest.Length > 0 ? st.CalcHeight(new GUIContent(_capRest), width) : 0f;
+            }
+            Rect r = GUILayoutUtility.GetRect(width, _capBoxS + 6f + _capRestH, GUILayout.Width(width));
+            if (Event.current.type != EventType.Repaint) return;
+            var box = new Rect(r.x, r.y + 3f, _capBoxS, _capBoxS);
+            var old = GUI.color;
+            GUI.color = new Color(0.42f, 0.11f, 0.06f, 1f); GUI.DrawTexture(box, _dot);
+            GUI.color = new Color(0.86f, 0.68f, 0.34f, 0.9f);
+            GUI.DrawTexture(new Rect(box.x + 1.5f, box.y + 1.5f, box.width - 3f, 1f), _dot); GUI.DrawTexture(new Rect(box.x + 1.5f, box.yMax - 2.5f, box.width - 3f, 1f), _dot);
+            GUI.DrawTexture(new Rect(box.x + 1.5f, box.y + 1.5f, 1f, box.height - 3f), _dot); GUI.DrawTexture(new Rect(box.xMax - 2.5f, box.y + 1.5f, 1f, box.height - 3f), _dot);
+            GUI.color = old;
+            GUI.Label(box, _capLetter, _capLetterSt);
+            float tx = box.xMax + 10f;
+            GUI.Label(new Rect(tx, r.y + 1f, width - _capBoxS - 10f, _capLineH), _capL1, _capLine);
+            GUI.Label(new Rect(tx, r.y + 1f + _capLineH, width - _capBoxS - 10f, _capLineH), _capL2, _capLine);
+            if (_capRest.Length > 0) GUI.Label(new Rect(r.x, r.y + _capBoxS + 6f - st.padding.top, width, _capRestH), _capRest, st);
+        }
+
+        /// <summary>As many words of a text as fit a width: taken off its head.</summary>
+        static string TakeLine(ref string text, float width, GUIStyle st)
+        {
+            int at = 0, last = 0;
+            while (at < text.Length)
+            {
+                int sp = text.IndexOf(' ', at + 1);
+                int end = sp < 0 ? text.Length : sp;
+                if (st.CalcSize(new GUIContent(text.Substring(0, end))).x > width) break;
+                last = end; at = end;
+                if (sp < 0) break;
+            }
+            if (last == 0) last = System.Math.Min(text.Length, 1);
+            string line = text.Substring(0, last);
+            text = last < text.Length ? text.Substring(last).TrimStart() : "";
+            return line;
+        }
+
         /// <summary>A thin rule of the page's red ink, from a share of the leaf's width to another.</summary>
         void Rule(float from, float to)
         {
@@ -343,7 +422,7 @@ namespace TC2.Game
         /// rubric, the rest as paragraphs, the first under a raised initial. Returns the section chosen; <paramref name="close"/> when it is shut.
         /// The words are Biography's and Gazetteer's (Core); nothing here writes the world.
         /// </summary>
-        int PaperPage(Rect r, string kicker, string title, string standing, string[] tabs, int tab, string text, out bool close, System.Action<float> custom = null)
+        int PaperPage(Rect r, string kicker, string title, string standing, string[] tabs, int tab, string text, out bool close, System.Action<float> custom = null, System.Action links = null)
         {
             BookStyles();
             close = false;
@@ -360,6 +439,7 @@ namespace TC2.Game
             GUILayout.EndHorizontal();
             GUILayout.Label(title, _pgTitle);
             if (!string.IsNullOrEmpty(standing)) GUILayout.Label(standing, _pgSub);
+            if (links != null) { GUILayout.BeginHorizontal(); links(); GUILayout.FlexibleSpace(); GUILayout.EndHorizontal(); }
             GUILayout.BeginHorizontal();
             for (int i = 0; i < tabs.Length; i++)
             {

@@ -83,6 +83,26 @@ namespace TC2.Game
         int _resumeSpeed = 3;
         GUIStyle _skipStyle;
 
+        Rect _followChip;
+
+        /// <summary>Who the camera is keeping with, under the time bar: their name opens their life, the cross lets them go.</summary>
+        void FollowChip(TC2.Core.Simulation.World w)
+        {
+            _followChip = Rect.zero;
+            if (_follow == 0 || !w.People.Exists(_follow) || _book) return;
+            string name = w.History.NameOf(EntityRef.Person(_follow));
+            var c = new GUIContent("Following " + name);
+            float tw = _dateSub.CalcSize(c).x;
+            _followChip = new Rect(_left.x, _left.yMax + 6f, tw + 34f + 28f, 34f);
+            GUI.Box(_followChip, GUIContent.none, _panelSoft);
+            Icon(new Rect(_followChip.x + 9f, _followChip.y + 8f, 18f, 18f), "eye", new Color(0.97f, 0.86f, 0.60f));
+            GUI.Label(new Rect(_followChip.x + 32f, _followChip.y, tw + 2f, 34f), c, _dateSub);
+            if (GUI.Button(new Rect(_followChip.x, _followChip.y, tw + 34f, 34f), GUIContent.none, GUIStyle.none)) { AudioView.Ui("page"); ShowPerson(_follow, 0); }
+            var x = new Rect(_followChip.xMax - 25f, _followChip.y + 8f, 18f, 18f);
+            Icon(x, "close", x.Contains(Event.current.mousePosition) ? Color.white : new Color(0.85f, 0.80f, 0.70f));
+            if (GUI.Button(x, GUIContent.none, GUIStyle.none)) { _follow = 0; AudioView.Ui("tick"); }
+        }
+
         /// <summary>The seals at the top right: the History Book, the realms, the world now, recent history, the sound, the menu.</summary>
         void SealBar(float sw)
         {
