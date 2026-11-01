@@ -208,13 +208,14 @@ namespace TC2.Game
             float cw = Mathf.Min(620f, sw - 40f), cx = sw * 0.5f - cw * 0.5f;
             Rect top = new Rect(cx, topY, cw, span ? 132f : 92f);
             // (no box behind the date: the planet is the picture - the letters carry their own dark edge)
-            Edged(new Rect(top.x, top.y, top.width, 56f), "Year " + SimTime.YearOf(w.Now), _lpDate);
+            bool down = Rig != null && Rig.Lapse == CameraRig.LapseState.Returning && !span;
+            if (!down) Edged(new Rect(top.x, top.y, top.width, 56f), "Year " + SimTime.YearOf(w.Now), _lpDate);
             string season = SimTime.FormatDate(w.Now);
             int comma = season.IndexOf(',');
             season = comma > 0 ? season.Substring(comma + 1).Trim() : "";
             string pace = Host.AchievedSpeed > SimTime.Day ? FormatSpeed(Host.AchievedSpeed) : "";
             string what = span ? (Host.Skipping ? "Skipping ahead" : "While you were away") : "The days run too fast to watch from the ground";
-            Edged(new Rect(top.x, top.y + 56f, top.width, 24f), what + (season.Length > 0 ? "  ·  " + season : "") + (pace.Length > 0 ? "  ·  " + pace : ""), _lpSub);
+            if (!down) Edged(new Rect(top.x, top.y + 56f, top.width, 24f), what + (season.Length > 0 ? "  ·  " + season : "") + (pace.Length > 0 ? "  ·  " + pace : ""), _lpSub);
             Rect stopRect = Rect.zero;
             if (span)
             {

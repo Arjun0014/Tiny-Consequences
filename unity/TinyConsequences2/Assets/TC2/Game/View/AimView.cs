@@ -103,11 +103,11 @@ namespace TC2.Game
                 double r = System.Math.Max(minR, AimReach);
                 float breathe = 0.5f + 0.5f * Mathf.Sin(now * 3.2f);
                 Color fill = AimColor; fill.a = 0.10f + 0.04f * breathe;
-                Color edge = AimColor; edge.a = 0.65f + 0.3f * breathe;
+                Color edge = AimColor; edge.a = 0.42f + 0.28f * breathe;
                 Color clear = AimColor; clear.a = 0f;
                 // the band and the mark at its heart sized for the eye (the camera's height), not by the reach: a 900 m reach had laid a 50 m opaque
                 // ring over the village at its heart and a band as wide as a field at its edge
-                double wid = System.Math.Min(r * 0.05, System.Math.Max(1.5, alt * 0.008));
+                double wid = System.Math.Min(r * 0.03, System.Math.Max(1.0, alt * 0.0045));
                 Disc(w, AimDir, r - wid * 0.5, fill, lift);
                 Band(w, AimDir, r - wid * 0.5, r + wid * 0.5, edge, edge, lift);
                 Band(w, AimDir, r + wid * 0.5, r + wid * 2.0, edge, clear, lift);

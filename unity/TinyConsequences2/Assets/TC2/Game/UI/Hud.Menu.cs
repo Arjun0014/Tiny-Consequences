@@ -89,7 +89,7 @@ namespace TC2.Game
             {
                 float pw = Mathf.Min(620f, sw - (colX + itemW + 34f) - 24f);
                 if (pw < 360f) pw = Mathf.Min(sw - 40f, 620f);
-                float ph = Mathf.Min(sh - 56f, _menuPage == MenuSettings ? 620f : _menuPage == MenuHow ? 640f : _menuPage == MenuCredits ? 560f : 460f);
+                float ph = Mathf.Min(sh - 56f, _menuPage == MenuSettings ? 620f : _menuPage == MenuHow ? 736f : _menuPage == MenuCredits ? 560f : 460f);
                 MenuPageDraw(new Rect(sw - pw - 28f, Mathf.Max(20f, (sh - ph) * 0.5f), pw, ph), w, false);
             }
             PointerOverUi = true;
@@ -274,6 +274,7 @@ namespace TC2.Game
 
         void NewWorldPage(TC2.Core.Simulation.World w, bool onTitle)
         {
+            if (_seedText == null) _seedText = NextSeed();
             GUILayout.Label("A new planet with its own seas, its own climate and its own first peoples. Who settles where, who rules, and what becomes of them is theirs to decide.", _mnText);
             GUILayout.Space(10);
             GUILayout.BeginHorizontal();

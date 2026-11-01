@@ -185,11 +185,12 @@ namespace TC2.Game
         }
 
         /// <summary>A gold ring round something on the screen, breathing (the guide's mark).</summary>
-        void Halo(Rect r)
+        void Halo(Rect r, bool onPaper = false)
         {
             if (Event.current.type != EventType.Repaint || r.width <= 0f) return;
             var old = GUI.color;
-            GUI.color = new Color(1f, 1f, 1f, 0.72f + 0.28f * Mathf.Sin(Time.unscaledTime * 3.2f));
+            float breath = 0.72f + 0.28f * Mathf.Sin(Time.unscaledTime * 3.2f);
+            GUI.color = onPaper ? new Color(0.70f, 0.18f, 0.07f, breath) : new Color(1f, 1f, 1f, breath);   // (session 31: gold is lost on paper - s31a guide_06)
             _haloBox.Draw(new Rect(r.x - 28f, r.y - 28f, r.width + 56f, r.height + 56f), false, false, false, false);
             GUI.color = old;
         }

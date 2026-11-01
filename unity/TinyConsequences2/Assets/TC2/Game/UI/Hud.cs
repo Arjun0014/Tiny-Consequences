@@ -378,8 +378,8 @@ namespace TC2.Game
                 if (clash) continue;
                 _placed.Add(room);
                 shown++;
-                GUI.color = new Color(0f, 0f, 0f, 0.8f); GUI.DrawTexture(new Rect(x - 3f, y - 3f, 6f, 6f), _dot); GUI.color = Color.white;
-                GUI.DrawTexture(new Rect(x - 2f, y - 2f, 4f, 4f), _dot);
+                GUI.color = new Color(0f, 0f, 0f, 0.8f); GUI.DrawTexture(new Rect(x - 3.5f, y - 3.5f, 7f, 7f), Ui("disc")); GUI.color = Color.white;
+                GUI.DrawTexture(new Rect(x - 2.5f, y - 2.5f, 5f, 5f), Ui("disc"));
                 if (inRealm && Event.current.type == EventType.Repaint)
                 {
                     GUI.color = new Color(0.04f, 0.05f, 0.06f, 0.85f); GUI.DrawTexture(new Rect(flag.x - 1f, flag.y - 1f, flag.width + 2f, flag.height + 2f), _dot);
@@ -432,8 +432,8 @@ namespace TC2.Game
                     if (clash) continue;
                     _placed.Add(box);
                     namedKinds |= 1 << (b.Kind & 31);
-                    GUI.color = new Color(0f, 0f, 0f, 0.75f); GUI.DrawTexture(new Rect(x - 2.5f, y - 2.5f, 5f, 5f), _dot); GUI.color = new Color(1f, 0.86f, 0.5f);
-                    GUI.DrawTexture(new Rect(x - 1.5f, y - 1.5f, 3f, 3f), _dot); GUI.color = Color.white;
+                    GUI.color = new Color(0f, 0f, 0f, 0.75f); GUI.DrawTexture(new Rect(x - 3f, y - 3f, 6f, 6f), Ui("disc")); GUI.color = new Color(1f, 0.86f, 0.5f);
+                    GUI.DrawTexture(new Rect(x - 2f, y - 2f, 4f, 4f), Ui("disc")); GUI.color = Color.white;
                     Edged(box, text, _mapSub);
                 }
             }
@@ -508,7 +508,8 @@ namespace TC2.Game
                 float fx = Input.mousePosition.x / _scale + 14f, fy = (Screen.height - Input.mousePosition.y) / _scale + 10f;
                 if (fx + fs.x > sw) fx = sw - fs.x - 4f;
                 if (fy + fs.y > sh) fy = sh - fs.y - 4f;
-                GUI.Box(new Rect(fx, fy, fs.x, fs.y), fc, _mapTag);
+                _tagRect = new Rect(fx, fy, fs.x, fs.y);
+                GUI.Box(_tagRect, fc, _mapTag);
                 return;
             }
             Vector2 mp = Input.mousePosition;
@@ -636,6 +637,16 @@ namespace TC2.Game
             if (tagAt.width <= 0f) { _tagRect = Rect.zero; return; }
             _tagRect = tagAt;
             GUI.Box(_tagRect, content, _mapTag);
+        }
+
+        /// <summary>(session 31) A feed line for the eye: its date in gold, only where it differs from the line above it (the newest first).</summary>
+        static string FeedWords(string line, string above)
+        {
+            int c = line.IndexOf(": ", System.StringComparison.Ordinal);
+            if (c < 6 || c > 40 || !line.StartsWith("Year ", System.StringComparison.Ordinal)) return line;
+            string date = line.Substring(0, c), words = line.Substring(c + 2);
+            bool same = above != null && above.StartsWith(date + ": ", System.StringComparison.Ordinal);
+            return same ? words : "<color=#e2bf78>" + date.Substring(5) + "</color>   " + words;
         }
 
         static string Cap(string s) => string.IsNullOrEmpty(s) ? s : char.ToUpperInvariant(s[0]) + s.Substring(1);
@@ -920,7 +931,7 @@ namespace TC2.Game
                 for (int i = Host.Feed.Count - 1; i >= from; i--)
                 {
                     long id = i < Host.FeedIds.Count ? Host.FeedIds[i] : 0;
-                    if (GUILayout.Button(Host.Feed[i], _feedLine) && id != 0 && w.History.TryGet(id, out _)) { _book = true; _line = id; _whyScroll = Vector2.zero; }   // (lit gold under the pointer: the HUD's font has no "›")
+                    if (GUILayout.Button(FeedWords(Host.Feed[i], i == Host.Feed.Count - 1 ? null : Host.Feed[i + 1]), _feedLine) && id != 0 && w.History.TryGet(id, out _)) { _book = true; _line = id; _whyScroll = Vector2.zero; AudioView.Ui("page"); }   // (lit gold under the pointer: the HUD's font has no "›")
                 }
                 GUILayout.EndArea();
             }
@@ -963,7 +974,7 @@ namespace TC2.Game
             _uiRects.Clear();
             _uiRects.Add(_left); _uiRects.Add(_toggles); _uiRects.Add(_right); _uiRects.Add(worldRect); _uiRects.Add(realmsRect); _uiRects.Add(_bottom); _uiRects.Add(_ticker);
             _uiRects.Add(_powersRect); _uiRects.Add(_handRect); _uiRects.Add(_summaryRect); _uiRects.Add(_settingsRect); _uiRects.Add(_pageRect); _uiRects.Add(_tagRect);
-            _uiRects.Add(_aimRect); _uiRects.Add(_tipShown); _uiRects.Add(_noteRect); _uiRects.Add(_guideCard); _uiRects.Add(_followChip);
+            _uiRects.Add(_aimRect); _uiRects.Add(_tipShown); _uiRects.Add(_noteRect); _uiRects.Add(_guideCard); _uiRects.Add(_followChip); _uiRects.Add(_hintRect);
             if (lapse) LapseRects();
             if (showInsp) _uiRects.Add(_building != 0 ? insp : card);
             // (session 27) who is ringed on the ground: the person whose page is open, the one under the pointer, the chosen home's household
@@ -1103,7 +1114,7 @@ namespace TC2.Game
                 long fev = FellCached(w, _building);
                 if (fev != 0 && w.History.TryGet(fev, out var fe)) sb.Append(HistoryText.Dated(w, fe)).Append('\n');
             }
-            else sb.Append("standing ").Append(age.ToString("0", CultureInfo.InvariantCulture)).Append(" years   condition ").Append(cond.ToString("0.00", CultureInfo.InvariantCulture)).Append(b.Left != 0 ? "   unkept since " + SimTime.FormatShort(b.Left) : "").Append('\n');
+            else sb.Append("standing ").Append(age.ToString("0", CultureInfo.InvariantCulture)).Append(age >= 0.5 && age < 1.5 ? " year, " : " years, ").Append(cond >= 0.85 ? "in good repair" : cond >= 0.5 ? "showing its age" : cond >= 0.2 ? "in poor repair" : "near to falling").Append(b.Left != 0 ? "; unkept since year " + SimTime.YearOf(b.Left).ToString(CultureInfo.InvariantCulture) : "").Append('\n');
             // what it is for
             if (home)
             {
@@ -1431,8 +1442,8 @@ namespace TC2.Game
                     float u = box.x + box.width * (0.5f + (float)(x / (2.0 * _mapHalf * MapW / MapH))), v = box.y + box.height * (0.5f - (float)(y / (2.0 * _mapHalf)));
                     if (u < box.x || u > box.xMax || v < box.y || v > box.yMax) continue;
                     bool seat = sid == ch.MapSeat; float d = seat ? 9f : k == 0 ? 4f : 6f;
-                    GUI.color = new Color(0f, 0f, 0f, 0.7f); GUI.DrawTexture(new Rect(u - d * 0.5f - 1f, v - d * 0.5f - 1f, d + 2f, d + 2f), _dot);
-                    GUI.color = k == 0 ? new Color(0.45f, 0.42f, 0.38f) : ink; GUI.DrawTexture(new Rect(u - d * 0.5f, v - d * 0.5f, d, d), _dot);
+                    GUI.color = new Color(0f, 0f, 0f, 0.7f); GUI.DrawTexture(new Rect(u - d * 0.5f - 1f, v - d * 0.5f - 1f, d + 2f, d + 2f), Ui("disc"));
+                    GUI.color = k == 0 ? new Color(0.45f, 0.42f, 0.38f) : ink; GUI.DrawTexture(new Rect(u - d * 0.5f, v - d * 0.5f, d, d), Ui("disc"));
                     if (seat)
                     {
                         // its seat by name, as a map names its capital

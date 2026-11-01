@@ -150,7 +150,13 @@ namespace TC2.Game
                 _tickLine = new GUIStyle(_mapSub) { font = _serif, fontSize = 15, fontStyle = FontStyle.Italic, wordWrap = false, clipping = TextClipping.Clip, alignment = TextAnchor.MiddleCenter };
                 _tickLine.normal.textColor = new Color(0.98f, 0.95f, 0.86f);
             }
-            if (!ReferenceEquals(_tickFor, _news) || _tickW != width) { _tickFor = _news; _tickW = width; _tickText = OneLine(_news, _tickLine, width - 8f); }
+            if (!ReferenceEquals(_tickFor, _news) || _tickW != width)
+            {
+                _tickFor = _news; _tickW = width;
+                int c = _news.IndexOf(": ", System.StringComparison.Ordinal);   // (the bar has the date: the line has the news)
+                string plain = c > 5 && c < 40 && _news.StartsWith("Year ", System.StringComparison.Ordinal) ? _news.Substring(c + 2) : _news;
+                _tickText = OneLine(plain, _tickLine, width - 8f);
+            }
             float cx = Mathf.Clamp(sw * 0.5f, left + width * 0.5f, right - width * 0.5f);
             float floor = _powersRect.width > 0f ? _powersRect.y - 4f : sh - 12f;
             _ticker = new Rect(cx - width * 0.5f, floor - 24f, width, 24f);

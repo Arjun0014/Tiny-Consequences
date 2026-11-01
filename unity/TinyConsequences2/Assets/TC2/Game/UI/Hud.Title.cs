@@ -172,7 +172,7 @@ namespace TC2.Game
             if (_menuPage != MenuMain)
             {
                 float pw = Mathf.Min(620f, sw - (colX + itemW + 34f) - 24f);
-                float ph = Mathf.Min(sh - 72f, _menuPage == MenuSettings ? 620f : _menuPage == MenuHow ? 640f : _menuPage == MenuCredits ? 560f : 420f);
+                float ph = Mathf.Min(sh - 72f, _menuPage == MenuSettings ? 620f : _menuPage == MenuHow ? 736f : _menuPage == MenuCredits ? 560f : 420f);
                 if (pw < 360f) pw = Mathf.Min(sw - 40f, 620f);
                 MenuPageDraw(new Rect(sw - pw - 28f, Mathf.Max(24f, (sh - ph) * 0.5f), pw, ph), w, true);
             }

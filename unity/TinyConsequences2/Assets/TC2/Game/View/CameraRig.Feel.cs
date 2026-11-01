@@ -22,7 +22,8 @@ namespace TC2.Game
         // the title
         bool _title; float _titleK;
         double _titleLonDrift;
-        const float TitleYaw = 15.5f, TitleRoll = 13f;
+        const float TitleYaw = 11.5f, TitleRoll = 13f;
+        const double TitleHeight = 1.78;   // (x the radius, above the ground: s31a's planet ran off the screen and its night with it)
 
         /// <summary>Whether the player turned the camera by hand this frame (dragging, the keys): following someone gives way to it.</summary>
         public bool HandTurned { get; private set; }
@@ -136,7 +137,7 @@ namespace TC2.Game
             if (w != null)
             {
                 double R = w.Planet.Radius;
-                Distance = R + R * 1.42;
+                Distance = R + R * TitleHeight;
                 Lat = System.Math.Max(-0.55, System.Math.Min(0.55, Lat));
             }
         }
@@ -152,7 +153,7 @@ namespace TC2.Game
             if (!_dragging) Lon += 0.016 * dt;   // (one turn in six minutes)
             double R = w.Planet.Radius;
             // (the height kept, whatever came before: a world newly made frames its own first village)
-            Distance += (R + R * 1.42 - Distance) * (1.0 - System.Math.Exp(-dt / 0.8));
+            Distance += (R + R * TitleHeight - Distance) * (1.0 - System.Math.Exp(-dt / 0.8));
             Lat += (System.Math.Max(-0.55, System.Math.Min(0.55, Lat)) - Lat) * (1.0 - System.Math.Exp(-dt / 2.0));
         }
 
@@ -171,7 +172,7 @@ namespace TC2.Game
             if (_titleK <= 0f) return shown;
             float s = Smoother(_titleK);
             Vector3 up = Cam.transform.up, right = Cam.transform.right, toCam = -Cam.transform.forward;
-            Vector3 steady = (toCam * 0.62f - right * 0.72f + up * 0.32f).normalized;
+            Vector3 steady = (toCam * 0.48f - right * 0.82f + up * 0.30f).normalized;
             return Vector3.Slerp(shown, steady, s).normalized;
         }
     }

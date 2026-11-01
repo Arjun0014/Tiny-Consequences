@@ -232,7 +232,7 @@ namespace TC2.Game
                 if (sp.z > 0f) { float x = sp.x / _scale, y = (Screen.height - sp.y) / _scale; target = new Rect(x - 13f, y - 25f, 26f, 32f); }
             }
             _guideTarget = target;
-            if (target.width > 0f) Halo(target);
+            if (target.width > 0f) Halo(target, _guide == 4 || _guide == 6);
             // the card: lower left, clear of the power bar; high up while a page or the book covers that corner's words
             float cw = Mathf.Min(430f, sw - 24f);
             float inner = cw - 44f;
@@ -309,15 +309,19 @@ namespace TC2.Game
         /// <summary>The hint now said: a line in the book's italic above the power bar, with a small gold mark.</summary>
         void HintDraw(float sw, float sh)
         {
+            _hintRect = Rect.zero;
             if (_hintShown == null) return;
             if (_book || _guide >= 0) return;
             if (_hintStyle == null) { _hintStyle = new GUIStyle(_mapSub) { fontSize = 17, fontStyle = FontStyle.Italic, alignment = TextAnchor.MiddleCenter, wordWrap = false }; _hintStyle.normal.textColor = new Color(1f, 0.90f, 0.66f); }
             float floor = _powersRect.width > 0f ? _powersRect.y : sh;
             float a = Mathf.Clamp01((Time.unscaledTime - _hintAt) / 0.5f) * Mathf.Clamp01((9f - (Time.unscaledTime - _hintAt)) / 1.5f);
             var old = GUI.color; GUI.color = new Color(old.r, old.g, old.b, a);
-            Edged(new Rect(0f, floor - 58f, sw, 26f), _hintShown, _hintStyle);
+            float tw = _hintStyle.CalcSize(new GUIContent(_hintShown)).x + 34f;
+            _hintRect = new Rect((sw - tw) * 0.5f, floor - 72f, tw, 38f);
+            GUI.Box(_hintRect, GUIContent.none, _panelSoft);
+            GUI.Label(_hintRect, _hintShown, _hintStyle);
             GUI.color = old;
         }
-        GUIStyle _hintStyle;
+        GUIStyle _hintStyle; Rect _hintRect;
     }
 }
