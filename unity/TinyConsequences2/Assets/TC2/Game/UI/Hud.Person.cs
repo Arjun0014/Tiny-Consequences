@@ -385,6 +385,61 @@ namespace TC2.Game
             else Rig.FlyTo(w.Agents.PositionAt(w.People.Get(pid), Host.RenderTime), System.Math.Min(Rig.Distance - w.Planet.Radius, 240.0), 2.2f);
         }
 
+        int _storyFor; float _storyAt; string _story = "";
+
+        /// <summary>(session 31) A life as a paragraph: where they were born and to whom, whom they made a life with and the children they had, what they worked at, what marked
+        /// them and how it stands or ended. Only what the world kept; a thing it did not keep is not said.</summary>
+        string LifeStory(TC2.Core.Simulation.World w, int pid)
+        {
+            ref var p = ref w.People.Get(pid);
+            string given = Given(w, pid);
+            var sb = new System.Text.StringBuilder();
+            int born = Biography.BornAt(w, pid);
+            var t = _pgTree;
+            string Kin(int id) => id != 0 && w.People.Exists(id) ? Given(w, id) : null;
+            if (p.Born < 0) sb.Append(given).Append(" was among the first people of the land");
+            else
+            {
+                sb.Append(given).Append(" was born in year ").Append(SimTime.YearOf(p.Born));
+                if (born != 0) sb.Append(" in ").Append(w.History.NameOf(EntityRef.Settlement(born)));
+                string mo = t != null ? Kin(t.Mother) : null, fa = t != null ? Kin(t.Father) : null;
+                if (mo != null && fa != null) sb.Append(", to ").Append(mo).Append(" and ").Append(fa);
+                else if (mo != null || fa != null) sb.Append(", the child of ").Append(mo ?? fa);
+            }
+            sb.Append(". ");
+            if (t != null)
+            {
+                int kids = 0, living = 0;
+                foreach (var l in t.ChildrenOf) foreach (int c in l) { kids++; if (w.People.Exists(c) && w.People.Get(c).Alive) living++; }
+                var names = new List<string>();
+                foreach (int q in t.Partners) { string n = Kin(q); if (n != null) names.Add(n); }
+                if (names.Count > 0) sb.Append("They made a life with ").Append(names.Count == 1 ? names[0] : string.Join(", ", names.GetRange(0, names.Count - 1).ToArray()) + " and then " + names[names.Count - 1]);
+                if (kids > 0) sb.Append(names.Count > 0 ? ", and had " : "They had ").Append(Number(kids)).Append(kids == 1 ? " child" : " children").Append(living == 0 ? ", none of whom lives now" : living < kids ? ", " + Number(living) + " of whom still " + (living == 1 ? "lives" : "live") : "");
+                if (names.Count > 0 || kids > 0) sb.Append(". ");
+            }
+            float best = 0f; string craft = null;
+            if (_pgSkills != null) foreach (var sk in _pgSkills) if (sk.Value > best && sk.Name != "Fighting") { best = sk.Value; craft = sk.Name; }
+            if (craft != null && best >= 0.3f) sb.Append("They worked above all at ").Append(craft.ToLowerInvariant()).Append(best >= 0.9f ? ", and became a master of it. " : best >= 0.6f ? ", and grew skilled. " : ". ");
+            int hard = 0, led = 0, fights = p.Fights, moved = 0;
+            if (_pgLife != null)
+                foreach (var e in _pgLife)
+                {
+                    if (e.Kind == Lives.Hardship && e.Weight >= 1) hard++;
+                    if (e.Kind == Lives.Work && e.Weight >= 2) led++;
+                    if (e.Kind == Lives.Home) moved++;
+                }
+            if (led > 0) sb.Append("They left ").Append(Number(led)).Append(led == 1 ? " work of note behind them. " : " works of note behind them. ");
+            if (moved > 1) sb.Append("They moved home ").Append(Number(moved)).Append(" times. ");
+            if (fights >= 3) sb.Append("They stood in ").Append(Number(fights)).Append(" fights. ");
+            if (hard >= 2) sb.Append("They lived through ").Append(Number(hard)).Append(" hard times that the world remembers. ");
+            if (_pageStanding.Length > 0 && p.Alive) sb.Append("Now they are ").Append(_pageStanding.TrimEnd('.')).Append(". ");
+            if (!p.Alive)
+            {
+                sb.Append("They died in year ").Append(SimTime.YearOf(p.Died)).Append(", aged ").Append(((int)p.AgeYears(p.Died)).ToString(CultureInfo.InvariantCulture)).Append(".");
+            }
+            return sb.ToString().TrimEnd();
+        }
+
         /// <summary>(session 31) A completed life in a few words, from what the world kept: the years lived, whom they left, what they were best at, what marked them.</summary>
         string Epitaph(TC2.Core.Simulation.World w, int pid)
         {
@@ -678,7 +733,10 @@ namespace TC2.Game
         void LifeSection(TC2.Core.Simulation.World w, int pid, float cw)
         {
             if (_pgLife == null || _pgLife.Count == 0) { GUILayout.Label("Nothing of their life is kept in the history yet.", _pgBody); return; }
-            GUILayout.Label("A life as the world remembers it: their own records, their household's, their kin's, and what their village lived through while they lived in it. A name opens that person's page; a record opens its causes.", _pgSmall);
+            // (session 31: a life told, not a log) its story in a paragraph, every clause from what the world kept, then the years
+            if (_storyFor != pid || Time.unscaledTime - _storyAt > 5f) { _storyFor = pid; _storyAt = Time.unscaledTime; _story = LifeStory(w, pid); }   // (kept: IMGUI asks every event, and the same text keeps its measured lines)
+            LeadParagraph(_story, _pgBody, cw - 16f);
+            GUILayout.Label("Below, a life as the world remembers it: their own records, their household's, their kin's, and what their village lived through. A name opens that person's page; a record opens its causes.", _pgSmall);
             GUILayout.Space(4);
             int lastDecade = int.MinValue;
             foreach (var e in _pgLife)
