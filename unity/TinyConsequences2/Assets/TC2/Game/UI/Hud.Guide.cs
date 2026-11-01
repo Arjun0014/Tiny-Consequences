@@ -317,7 +317,10 @@ namespace TC2.Game
             float a = Mathf.Clamp01((Time.unscaledTime - _hintAt) / 0.5f) * Mathf.Clamp01((9f - (Time.unscaledTime - _hintAt)) / 1.5f);
             var old = GUI.color; GUI.color = new Color(old.r, old.g, old.b, a);
             float tw = _hintStyle.CalcSize(new GUIContent(_hintShown)).x + 34f;
-            _hintRect = new Rect((sw - tw) * 0.5f, floor - 72f, tw, 38f);
+            // (centred in the room an open page leaves, or not said over it: s31b extra_far_click)
+            float room = _pageRect.width > 0f ? _pageRect.x : sw;
+            if (tw > room - 16f) { GUI.color = old; return; }
+            _hintRect = new Rect((room - tw) * 0.5f, floor - 72f, tw, 38f);
             GUI.Box(_hintRect, GUIContent.none, _panelSoft);
             GUI.Label(_hintRect, _hintShown, _hintStyle);
             GUI.color = old;
