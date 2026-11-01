@@ -4,6 +4,8 @@
 
 **END (1 Nov 2026): Arjun stopped the session.** Nothing is running. main = `wip/s27-int`, all of it committed; not pushed. Only the first commit of the session (f301037) has been seen in a Web build; everything after it compiles (`unity.mjs cc`) but has never run in the game, and Unity has not compiled its new and changed shaders. The next step is "Next, in order" 1 below, once the other session is done.
 
+Arjun's last word (1 Nov 2026, session 31): he played the f301037 build (the first commit of the session: old world look, new interface) and said "so many issues" without listing them, then asked to stop the server and close every process this session started - done, nothing is running. **Do not start builds, servers or heavy jobs on your own: first ask him what the issues were, and whether the other game's session has finished.** His list comes before everything else in "Next, in order".
+
 ### Exact state (keep current)
 - **Direction (Arjun, session 31; root `NEXT_SESSION_PROMPT.md`)**: make TC2 look and feel like a beautiful, complete, polished game that happens to contain a deep simulation; readability and game feel over hidden depth; heavy simulation runs only for a genuine regression; RAM < 86 %, CPU < 85 %, integrated Radeon only, never kill what you did not start; when the machine is busy, keep going with lightweight work and queue the heavy validation.
 - **Code**: on `wip/s27-int` (worktree `C:/Game Dev/tc-s27int`, every edit there); fast-forward main before a build: `git -C "C:/Game Dev/tiny-consequences" merge --ff-only wip/s27-int`, never while a Unity job holds main's checkout. Sim **108** unchanged (presentation only).

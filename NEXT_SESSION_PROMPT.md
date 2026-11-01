@@ -1,5 +1,12 @@
 # Next session — start here
 
+## FIRST - the state at the end of session 31 (1 Nov 2026; these lines override everything below)
+- **Arjun stopped the session.** He played the build of f301037 (new interface, old world look) and said "so many issues" without listing them, then asked to stop the server and close every process the session started: done, nothing of ours runs. **Ask him what the issues were before doing anything else.** Do not start a build, a server or a heavy job on your own.
+- **A Web build waits for his word**: the other game's session must have finished and RAM be about 60 % or less (the last build peaked at 98 % from a 65 % start, and Claude Code stopped its wrapper for low memory). He cannot be read from process lists: the other session's Claude processes stay open when idle.
+- **What is verified**: main = `wip/s27-int` (worktree `C:/Game Dev/tc-s27int`, every edit there), committed, not pushed; sim 108, no file under `Assets/TC2/Core` changed. `unity.mjs cc` compiles everything. Only f301037 ran in the game, in `tc2/out/webtest/s31a` and `s31b` (bookshots: no exceptions) and Arjun's own play.
+- **What is not verified**: everything after f301037 has never run (portraits, life story, initials, realm maps, links, follow chip, zoom toward the pointer is in f301037 but untried by hand, the world's look pass, stars, sky dome, clouds) and Unity has not compiled `SkyDome.shader`, `Stars.shader` or the changes to `Terrain.shader`, `Clouds.shader`, `TC2CloudForm.hlsl`. The guide has never been walked by real clicks (`tc2/scripts/firstrun.mjs`, needs the next build). Sound was levelled, never heard. `webtest.mjs` and the full suite did not run this session.
+- **Then**: `docs/tc2/SESSION_HANDOFF.md` "Session 31" (exact state, steps) and D2-205. Work his list first, then its "Next, in order". The sections below are older: "FIRST" and "Do next" further down describe session 30.
+
 You are continuing **Tiny Consequences 2.0 (TC2)**: a Unity 6.6 Web game in `unity/TinyConsequences2` whose standing direction
 (Arjun, D2-089) is *an autonomous medieval civilisation inside a living miniature planet* - no player orders; every structure,
 road, mine, boat, market, army and polity arises from simulated need, labour, material, knowledge and history; nothing scripted;
