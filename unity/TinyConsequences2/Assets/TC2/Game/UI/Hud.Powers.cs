@@ -209,7 +209,7 @@ namespace TC2.Game
             if (newest != _handNewest) { _handNewest = newest; _handShowUntil = now + 14f; }
             bool show = now < _handShowUntil || overLeaf || seal.Contains(mp);
             if (show && overLeaf) _handShowUntil = Mathf.Max(_handShowUntil, now + 1.5f);
-            if (Seal(seal, "lightning", show, false, new Color(1f, 0.92f, 0.70f), out _)) _handShowUntil = show ? 0f : now + 30f;
+            if (Seal(seal, "why", show, false, new Color(1f, 0.92f, 0.70f), out bool overHand)) _handShowUntil = show ? 0f : now + 30f;
             _handRect = seal;
             if (!show) { _handOpen = Rect.zero; return; }
             float hw = Mathf.Min(Mathf.Max(300f, _powersRect.x - 24f), 420f), inner = hw - _box.padding.horizontal;

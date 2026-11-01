@@ -144,7 +144,12 @@ namespace TC2.Game
             _newsAge += Time.unscaledDeltaTime;
             for (int i = 0; i < SimHost.Speeds.Length && i < 8; i++) if (Input.GetKeyDown(KeyCode.Alpha1 + i)) { Host.SpeedIndex = i; Host.MaxSpeed = false; }
             if (Input.GetKeyDown(KeyCode.Alpha9)) Host.MaxSpeed = !Host.MaxSpeed;
-            if (!PowersInput() && Input.GetMouseButtonUp(0) && !PointerOverUi && ((Vector2)Input.mousePosition - _downAt).sqrMagnitude <= 64f) Pick();   // (a click while aiming a power casts it: F9.1; a drag of the camera picks nothing - session 29)
+            if (!PowersInput() && Input.GetMouseButtonUp(0) && !PointerOverUi && ((Vector2)Input.mousePosition - _downAt).sqrMagnitude <= 64f)
+            {
+                // (session 31) a double click on the ground: the camera flies down toward it, a good way nearer each time
+                if (Time.unscaledTime - _lastClickAt < 0.32f && GroundUnder(Input.mousePosition, out Vec3d dc, out _)) { Rig.FlyTo(dc, System.Math.Max(60.0, (Rig.Distance - w.Planet.Radius) * 0.32), 1.1f); _lastClickAt = -9f; }
+                else { _lastClickAt = Time.unscaledTime; Pick(); }
+            }   // (a click while aiming a power casts it: F9.1; a drag of the camera picks nothing - session 29)
             // following: the camera keeps over the person as they go about their day (its height as the player left it)
             var fw = Host.World;
             if (_follow != 0 && fw != null && !Rig.LapseFlies)   // (while the camera flies a timelapse it keeps the person's place: Hud.Lapse.cs)
@@ -352,7 +357,7 @@ namespace TC2.Game
                 float x = sp.x / _scale, y = (Screen.height - sp.y) / _scale;
                 if (x < -60f || x > sw + 60f || y < -30f || y > sh + 30f) continue;
                 if (alt < 1400f && (new Vector2(x - sw * 0.5f, y - sh * 0.5f)).magnitude < 90f) continue;   // (the village the camera is over)
-                bool town = s.Population >= 300;
+                bool town = s.Population >= 300 || _seats.Contains(sid);   // (session 31: a realm's seat named large, whatever its size)
                 string name = w.History.NameOf(EntityRef.Settlement(sid));
                 var st = town ? _mapTown : _mapName;
                 Vector2 ns = st.CalcSize(new GUIContent(name));
@@ -481,6 +486,7 @@ namespace TC2.Game
         }
 
         /// <summary>Close in, who or what is under the pointer: a person's name, age and doing; a building's kind and whose it is.</summary>
+        float _lastClickAt = -9f;   // (session 31: a double click)
         Rect _lastTagRect;   // (session 30: last frame's tag - among last frame's panels, which the tag keeps clear of, it is not one)
 
         void HoverTag(TC2.Core.Simulation.World w, float sw, float sh)
@@ -562,7 +568,7 @@ namespace TC2.Game
                     var lines = Whys.Fields(w, _hoverField);
                     _fieldText = lines.Count > 0 ? "<b>" + lines[0] + "</b>" : "";
                     for (int i = 1; i < lines.Count; i++) _fieldText += "\n" + (i == 1 ? lines[i] : "<color=#e6dfcf>" + lines[i] + "</color>");
-                    _fieldText += "\n<size=10><color=#9a9486>click for its land</color></size>";
+                    _fieldText += "\n<size=13><i><color=#b3aa96>click for its land</color></i></size>";
                 }
                 text = _fieldText;
             }
@@ -585,7 +591,7 @@ namespace TC2.Game
                 if (doing.Length > 70) doing = doing.Substring(0, 67) + "...";
                 if (why.Length > 76) why = why.Substring(0, 73) + "...";   // (session 29: the why under the what - read from the same choice)
                 string standing = Biography.Standing(w, _hoverPid);   // (session 27: the first, a lord, the sworn, the first's household)
-                text = "<b>" + Biography.Title(w, _hoverPid) + "</b>" + (standing.Length > 0 ? "\n<color=#f2c35f>" + standing + "</color>" : "") + "\n" + doing + (why.Length > 0 ? "\n<i><color=#c9c3b4>why: " + why + "</color></i>" : "") + "\n<size=10><color=#9a9486>click for them</color></size>";
+                text = "<b>" + Biography.Title(w, _hoverPid) + "</b>" + (standing.Length > 0 ? "\n<color=#f2c35f>" + standing + "</color>" : "") + "\n" + doing + (why.Length > 0 ? "\n<i><color=#c9c3b4>why: " + why + "</color></i>" : "") + "\n<size=13><i><color=#b3aa96>click for them</color></i></size>";
             }
             else if (_hoverBid != 0 && w.Buildings.Exists(_hoverBid))
             {
@@ -713,7 +719,7 @@ namespace TC2.Game
             var now = Whys.Now(w, sid);
             return "<b>" + name + "</b>  " + Gazetteer.Word(in s).Substring(2) + " of " + s.Population.ToString("N0", CultureInfo.InvariantCulture) +
                    "\n<color=#f2c35f>" + bond + first + "</color>" + (doing.Count > 0 ? "\nnow: " + string.Join(", ", doing.ToArray()) : "") +
-                   (now.Count > 0 ? "\n<color=#e6b8a0>" + now[0] + "</color>" : "") + "\n<size=10><color=#9a9486>click for its page</color></size>";
+                   (now.Count > 0 ? "\n<color=#e6b8a0>" + now[0] + "</color>" : "") + "\n<size=13><i><color=#b3aa96>click for its page</color></i></size>";
         }
 
         float _workTextAt = -99f; int _workTextFor; string _workText = "";
@@ -735,9 +741,9 @@ namespace TC2.Game
             {
                 string how = HistoryText.Describe(w, e);
                 if (how.Length > 110) how = how.Substring(0, 107) + "...";
-                return "\n<color=#e6b8a0>" + how + "</color> <size=11>(year " + SimTime.YearOf(e.Time).ToString(CultureInfo.InvariantCulture) + ")</size>\n<size=10><color=#9a9486>click for its page</color></size>";
+                return "\n<color=#e6b8a0>" + how + "</color> <size=13>(year " + SimTime.YearOf(e.Time).ToString(CultureInfo.InvariantCulture) + ")</size>\n<size=13><i><color=#b3aa96>click for its page</color></i></size>";
             }
-            return "\nfallen in" + (b.Left != 0 ? " - left in year " + SimTime.YearOf(b.Left).ToString(CultureInfo.InvariantCulture) : "") + "\n<size=10><color=#9a9486>click for its page</color></size>";
+            return "\nfallen in" + (b.Left != 0 ? " - left in year " + SimTime.YearOf(b.Left).ToString(CultureInfo.InvariantCulture) : "") + "\n<size=13><i><color=#b3aa96>click for its page</color></i></size>";
         }
 
         /// <summary>(session 29) A work's tag under its name: being raised, fallen in, or standing since its year; how many of its village are at
@@ -781,7 +787,7 @@ namespace TC2.Game
                 if (why.Length > 96) why = why.Substring(0, 93) + "...";
                 sb.Append("\n<i><color=#c9c3b4>why: ").Append(why).Append("</color></i>");
             }
-            sb.Append("\n<size=10><color=#9a9486>click for its page</color></size>");
+            sb.Append("\n<size=13><i><color=#b3aa96>click for its page</color></i></size>");
             return sb.ToString();
         }
 
@@ -867,7 +873,7 @@ namespace TC2.Game
                 // greatest realms (each opening its page), what troubles it now; the tool's numbers kept small below
                 WorldNow(w);
                 bool devLines = Browser.Param("dev") == "1";
-                float wh = 132f + 24f * _worldRealms.Count + (devLines ? 96f : 0f);
+                float wh = 176f + 27f * _worldRealms.Count + (devLines ? 110f : 0f);
                 _right = new Rect(sw - 392f, ry, 380f, wh);
                 GUILayout.BeginArea(_right, _box);
                 GUILayout.Label("<b>The world now</b>  " + _worldAge, _label);
@@ -1000,7 +1006,7 @@ namespace TC2.Game
                 else if (w.Conflict.PolitySize(sid) == 0) free++;
             }
             bool wars = RealmsView.FeudRaids > 0;
-            var r = new Rect(sw - 340, ry, 330, 52 + 20 * Mathf.Max(1, shown) + (legend.Count > shown ? 18 : 0) + (wars ? 36 : 0));
+            var r = new Rect(sw - 372, ry, 360, 66 + 27 * Mathf.Max(1, shown) + (legend.Count > shown ? 22 : 0) + (wars ? 62 : 0));
             GUILayout.BeginArea(r, _box);
             GUILayout.Label("<b>Realms</b>   " + paying + (paying == 1 ? " village pays" : " villages pay") + " a lord, " + free + " stand" + (free == 1 ? "s" : "") + " alone", _label);
             if (legend.Count == 0) GUILayout.Label("No village pays tribute to another now.", _small);
@@ -1333,6 +1339,7 @@ namespace TC2.Game
         // ground drawn once a chapter into a texture, the villages as dots over it
         const int MapW = 256, MapH = 160;
         Texture2D _mapTex; int _mapSeat = -1, _mapYear = -1; double _mapHalf;
+        GUIStyle _mapSeatName;
         Vec3d _mapAt, _mapE, _mapN;
         readonly System.Collections.Generic.List<int> _mapIn = new System.Collections.Generic.List<int>(), _mapOut = new System.Collections.Generic.List<int>();
 
@@ -1359,7 +1366,8 @@ namespace TC2.Game
             if (_mapTex == null) { _mapTex = new Texture2D(MapW, MapH, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear }; }
             var px = new Color32[MapW * MapH];
             double scale = 2.0 * _mapHalf / MapH;   // m a pixel
-            var parchment = new Color(0.86f, 0.79f, 0.63f); var wood = new Color(0.62f, 0.64f, 0.46f); var sea = new Color(0.60f, 0.68f, 0.72f); var ice = new Color(0.92f, 0.93f, 0.94f);
+            var parchment = new Color(0.88f, 0.81f, 0.65f); var wood = new Color(0.62f, 0.64f, 0.44f); var sea = new Color(0.66f, 0.72f, 0.72f); var ice = new Color(0.93f, 0.93f, 0.92f);
+            var isLand = new bool[MapW * MapH];
             for (int j = 0; j < MapH; j++)
                 for (int i = 0; i < MapW; i++)
                 {
@@ -1367,8 +1375,34 @@ namespace TC2.Game
                     Vec3d p = _mapAt;
                     if (rr > 1e-9) { double th = rr / R; p = (_mapAt * System.Math.Cos(th) + (_mapE * (x / rr) + _mapN * (y / rr)) * System.Math.Sin(th)).Normalized; }
                     int c = P.Grid.CellOf(p);
-                    Color col = c < 0 ? sea : !P.IsLand(c) || P.IsLake(c) ? sea : P.Ice[c] > 5f ? ice : Color.Lerp(parchment, wood, 0.7f * P.Forest[c]);
+                    bool land = c >= 0 && P.IsLand(c) && !P.IsLake(c);
+                    isLand[j * MapW + i] = land;
+                    Color col = !land ? sea : P.Ice[c] > 5f ? ice : Color.Lerp(parchment, wood, 0.7f * P.Forest[c]);
                     px[j * MapW + i] = col;
+                }
+            // (session 31) the coast inked, and waterlines following it out to sea, as on a chart; a little paper's grain over all
+            var nearCoast = new byte[MapW * MapH];
+            for (int j = 0; j < MapH; j++)
+                for (int i = 0; i < MapW; i++)
+                {
+                    bool here = isLand[j * MapW + i];
+                    for (int r = 1; r <= 9 && nearCoast[j * MapW + i] == 0 && !here; r++)
+                        for (int a = 0; a < 8; a++)
+                        {
+                            int x2 = i + (a == 0 || a == 1 || a == 7 ? r : a >= 3 && a <= 5 ? -r : 0), y2 = j + (a >= 1 && a <= 3 ? r : a >= 5 ? -r : 0);
+                            if (x2 >= 0 && x2 < MapW && y2 >= 0 && y2 < MapH && isLand[y2 * MapW + x2]) { nearCoast[j * MapW + i] = (byte)r; break; }
+                        }
+                }
+            Color inkLine = new Color(0.27f, 0.20f, 0.13f);
+            for (int j = 0; j < MapH; j++)
+                for (int i = 0; i < MapW; i++)
+                {
+                    int r = nearCoast[j * MapW + i];
+                    Color c = px[j * MapW + i];
+                    if (r == 1 || r == 2) c = Color.Lerp(c, inkLine, r == 1 ? 0.85f : 0.28f);
+                    else if (r == 5 || r == 9) c = Color.Lerp(c, inkLine, r == 5 ? 0.20f : 0.11f);
+                    float grain = 0.97f + 0.06f * ((i * 7919 + j * 104729) % 97) / 97f;
+                    px[j * MapW + i] = new Color(c.r * grain, c.g * grain, c.b * grain, 1f);
                 }
             _mapTex.SetPixels32(px);
             _mapTex.Apply(false);
@@ -1383,6 +1417,9 @@ namespace TC2.Game
             GUILayout.FlexibleSpace(); GUILayout.EndHorizontal();
             GUILayout.Label("<size=11>" + w.History.NameOf(EntityRef.Settlement(ch.MapSeat)) + "'s realm in year " + ch.MapYear + ": its villages in its ink, the others grey; " + OneDec(2.0 * _mapHalf / 1000.0) + " km from top to foot</size>", _inkFact);
             if (Event.current.type != EventType.Repaint) return;
+            GUI.color = new Color(0.27f, 0.17f, 0.10f, 0.9f);
+            GUI.DrawTexture(new Rect(box.x - 2f, box.y - 2f, box.width + 4f, box.height + 4f), _dot);
+            GUI.color = Color.white;
             GUI.DrawTexture(box, _mapTex);
             Color ink = RealmInk[0];
             for (int k = 0; k < 2; k++)
@@ -1396,6 +1433,16 @@ namespace TC2.Game
                     bool seat = sid == ch.MapSeat; float d = seat ? 9f : k == 0 ? 4f : 6f;
                     GUI.color = new Color(0f, 0f, 0f, 0.7f); GUI.DrawTexture(new Rect(u - d * 0.5f - 1f, v - d * 0.5f - 1f, d + 2f, d + 2f), _dot);
                     GUI.color = k == 0 ? new Color(0.45f, 0.42f, 0.38f) : ink; GUI.DrawTexture(new Rect(u - d * 0.5f, v - d * 0.5f, d, d), _dot);
+                    if (seat)
+                    {
+                        // its seat by name, as a map names its capital
+                        GUI.color = Color.white;
+                        if (_mapSeatName == null) { _mapSeatName = new GUIStyle(_inkHead) { fontSize = 14, alignment = TextAnchor.MiddleLeft, wordWrap = false, padding = new RectOffset(0, 0, 0, 0) }; }
+                        string nm = w.History.NameOf(EntityRef.Settlement(sid));
+                        float tw = _mapSeatName.CalcSize(new GUIContent(nm)).x;
+                        float tx = u + 8f + tw > box.xMax ? u - 8f - tw : u + 8f;
+                        GUI.Label(new Rect(tx, v - 10f, tw + 2f, 20f), nm, _mapSeatName);
+                    }
                 }
             }
             GUI.color = Color.white;
@@ -1444,7 +1491,8 @@ namespace TC2.Game
                     if (_inkFact.CalcSize(new GUIContent(name)).x < x1 - x0 - 4f) GUI.Label(new Rect(x0 + 2f, ages.y, x1 - x0, ages.height), name, _inkFact);
                 }
                 GUI.DrawTexture(chart, _timelineTex);
-                for (int y = (tl.From / 100 + 1) * 100; y <= tl.To; y += 100)
+                int years = tl.To - tl.From, every = years <= 15 ? 2 : years <= 40 ? 5 : years <= 90 ? 10 : years <= 220 ? 20 : years <= 500 ? 50 : 100;
+                for (int y = (tl.From / every + 1) * every; y <= tl.To; y += every)
                 {
                     float x = chart.x + cw * (y - tl.From) / (float)(n - 1);
                     GUI.Label(new Rect(x - 30f, axis.y, 60f, axis.height + 6f), y.ToString(CultureInfo.InvariantCulture), _inkFactCentre);

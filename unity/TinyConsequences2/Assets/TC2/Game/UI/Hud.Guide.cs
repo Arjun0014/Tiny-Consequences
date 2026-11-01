@@ -33,6 +33,7 @@ namespace TC2.Game
 
         void GuideEnd(bool finished)
         {
+            if (Host.SpeedIndex > 0 && Host.SpeedIndex < 3) Host.SpeedIndex = 3;
             _guide = -1; _guideTarget = Rect.zero; _guideCard = Rect.zero; _guidePid = 0; _guideGround = false;
             Settings.GuideSeen = true; Settings.Save();
             if (!finished) { AudioView.Ui("click"); }
@@ -111,6 +112,7 @@ namespace TC2.Game
                 case 6:
                     {
                         _personPage = false; _selected = 0; _guidePid = 0;
+                        if (Host.SpeedIndex < 3) Host.SpeedIndex = 3;   // (slowed to point at someone: the world's own pace again)
                         int home = _guideSid;
                         if (home != 0) ShowPlace(home, PlaceWhyTab);
                         _guideTitleText = "Why?";

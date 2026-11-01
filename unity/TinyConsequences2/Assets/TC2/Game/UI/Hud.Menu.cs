@@ -142,7 +142,7 @@ namespace TC2.Game
         {
             GUILayout.Label("You do not command this world. It lives on its own; you watch it, read it, and now and then reach in.", _mnTextDim);
             GUILayout.Space(10);
-            HowRow("eye", "Look", "Drag to turn the planet. The wheel comes down to a village or rises to the whole world. A click on a far village opens its page.", width);
+            HowRow("eye", "Look", "Drag to turn the planet. The wheel comes down toward the pointer or rises to the whole world; a double click flies down to the ground. A click on a far village opens its page.", width);
             HowRow("person", "Read the living", "Point at anyone or anything - a person, a house, a work, a road, a field, a ruin - to see what it is and why. A click opens its page, its life and its Why?.", width);
             HowRow("hourglass", "Time", "Space holds the world still; the ladder at the top (or 1-8) sets the speed. Skip leaps years ahead, watched from orbit. The world lives on while you are away.", width);
             HowRow("book", "The History Book", "B opens it. Every line happened and tells what caused it. After a long skip, read what changed.", width);
