@@ -8,7 +8,9 @@ only - never modify or stage it. **Do not stop at a milestone**: after each slic
 evidence and keep going; context handoffs are a continuation mechanism, not a stop condition. Stop only for a real external blocker.
 **No subagents.**
 
-**Arjun's direction (28 Oct 2026, session 29) - CURRENT: "THE JAM MUST CLEARLY READ AS A REAL SIMULATION TO THE PLAYER."** Every feature answers: what is
+**Arjun's direction (1 Nov 2026, session 31) - CURRENT, over the one below: make TC2 look and feel like an absolutely beautiful, complete, polished game that happens to contain an extremely deep simulation.** Whenever there is a choice between another invisible mechanic and making an existing one beautifully readable, choose readability, presentation and game feel. Simulation changes only for a genuine broken rule, and the smallest real fix. Another game's session may share the machine: keep heavy work to a minimum, no seed batteries or 1,000-year runs; when the machine has no room, keep going with lightweight work and queue the validation. **A Web build peaks near 98 % RAM from a 65 % start: start one only when the other session has finished and RAM is about 60 % or less.** State and next steps: `docs/tc2/SESSION_HANDOFF.md` "Session 31", D2-205.
+
+**Arjun's direction (28 Oct 2026, session 29): "THE JAM MUST CLEARLY READ AS A REAL SIMULATION TO THE PLAYER."** Every feature answers: what is
 happening, who is doing it, why, from what resources/relationships/history, what changed, how the player can inspect and follow the chain, and how the
 picture shows it. The player's own casts must be traceable: power -> immediate effect -> people/places affected -> secondary consequences -> long-term
 history. Never fabricate an explanation: read the real state and the causal ledger; if a truth is not kept, add the smallest real state. Order of the

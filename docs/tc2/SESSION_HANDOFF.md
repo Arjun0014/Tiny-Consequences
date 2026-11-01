@@ -9,6 +9,12 @@
 - **Web build `s31a` (f301037, 1 Nov ~17:59-18:2x): RAM reached 93-97 % (the machine started at 65 %), so Claude Code stopped its wrapper shell for low memory; its Unity, emscripten and wasm-opt children ran on (the classifier refuses stopping them: let them finish). Do not restart a Web build without Arjun's word (the notice says so) - queue it instead. While a build is unfinished `tc2/web-build/web/Build` holds a NEW data file beside an OLD wasm: not playable until a build completes. After it: `git checkout -- unity/TinyConsequences2/ProjectSettings/ProjectSettings.asset` in main's checkout.**
 - **New art tools**: `python tc2/art/ui_kit.py [--sheet F]` (icons, panels, logotype into `Game/Resources/UI`), `python tc2/art/ui_sounds.py` (interface and stillness sounds into `Game/Resources/Audio`). Bridge: `title on|off [PAGE]`, `menu PAGE|-1`, `guide STEP|-1`; bookshots `--menus [--guide "0,1,..."]`. `?dev=1` shows the tool numbers in The World Now.
 
+### Next, in order (session 31)
+1. **When the other session has finished and RAM is about 60 % or less** (Arjun's word, 1 Nov): fast-forward main (`git -C "C:/Game Dev/tiny-consequences" merge --ff-only wip/s27-int`, first reverting any local copies of the scripts in main), Web build, then `node tc2/scripts/firstrun.mjs --tag s31c` (the opening by real clicks), `webtest.mjs --tag s31web1` (must stay 9/9), bookshots `--menus` and `--views orbit,region,village` over `tc2/out/civ/s2_ac5/world_y300.tc2` and `world_y600.tc2`; afterwards `git checkout -- unity/TinyConsequences2/ProjectSettings/ProjectSettings.asset`.
+2. Judge the world's look pass in those pictures (grade, land drift, softer fields, sky dome, stars, clouds, the shelf; `Look.GradeSat/GradeContrast/GradeExposure/GradeGreen/LandVary` are tunable per shot): new shaders `SkyDome`, `Stars`, changes in `Terrain`, `Clouds`, `TC2CloudForm` have never been compiled by Unity yet.
+3. Judge in them: portraits in the page, illuminated initials, a person's links, the follow chip, the title's new composition, hints as chips. Sound can only be levelled here, not heard: Arjun's ear decides the mix.
+4. Then the ten-minute judge pass and W-FOREST's sameness.
+
 ## Session 30 (29 Oct 2026, from ~02:00 IST; Control Room run #86 session 3; Arjun AFK) - fields between villages, a skip's colours of one moment, the sea's edge (D2-204)
 
 ### Exact state (keep current)
