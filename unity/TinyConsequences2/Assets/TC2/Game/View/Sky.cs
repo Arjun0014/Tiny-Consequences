@@ -93,6 +93,59 @@ namespace TC2.Game
             _cc.hueVsSat.Override(new TextureCurve(new[] { new Keyframe(0.15f, 0.5f), new Keyframe(0.24f, v), new Keyframe(0.42f, v), new Keyframe(0.52f, 0.5f) }, 0.5f, true, new Vector2(0f, 1f)));
         }
 
+        // (session 31) the stars behind the planet from high up: a mesh of small quads, each a direction, a colour and a size; a faint band across the sky where they gather
+        GameObject _starsGo; Material _starsMat;
+        static readonly int StarFade = Shader.PropertyToID("_TC2StarFade");
+
+        void Stars(float air)
+        {
+            if (_starsGo == null)
+            {
+                var sh = Resources.Load<Shader>("TC2Shaders/Stars");
+                if (sh == null) return;
+                _starsMat = new Material(sh);
+                const int N = 2600;
+                var v = new Vector3[N * 4]; var c = new Color[N * 4]; var u = new Vector2[N * 4]; var t = new int[N * 6];
+                var rng = new System.Random(20261101);
+                Vector3 band = new Vector3(0.35f, 0.82f, 0.45f).normalized;
+                for (int i = 0; i < N; i++)
+                {
+                    Vector3 d;
+                    while (true)
+                    {
+                        d = new Vector3((float)rng.NextDouble() * 2f - 1f, (float)rng.NextDouble() * 2f - 1f, (float)rng.NextDouble() * 2f - 1f);
+                        float m = d.sqrMagnitude;
+                        if (m > 1f || m < 1e-4f) continue;
+                        d /= Mathf.Sqrt(m);
+                        // (half of them gather near a great circle: the galaxy's band)
+                        float off = Mathf.Abs(Vector3.Dot(d, band));
+                        if (i % 2 == 0 || (float)rng.NextDouble() > off * 3.5f) break;
+                    }
+                    float mag = (float)rng.NextDouble();
+                    float size = Mathf.Lerp(0.55f, 1.0f, mag * mag * mag);
+                    float bright = Mathf.Lerp(0.20f, 0.95f, mag * mag * mag * mag);
+                    float tint = (float)rng.NextDouble();
+                    Color col = tint < 0.18f ? new Color(1f, 0.84f, 0.70f) : tint < 0.42f ? new Color(0.78f, 0.86f, 1f) : new Color(0.96f, 0.96f, 1f);
+                    col *= bright; col.a = size;
+                    for (int k = 0; k < 4; k++) { v[i * 4 + k] = d; c[i * 4 + k] = col; }
+                    u[i * 4] = new Vector2(-1f, -1f); u[i * 4 + 1] = new Vector2(1f, -1f); u[i * 4 + 2] = new Vector2(1f, 1f); u[i * 4 + 3] = new Vector2(-1f, 1f);
+                    t[i * 6] = i * 4; t[i * 6 + 1] = i * 4 + 1; t[i * 6 + 2] = i * 4 + 2; t[i * 6 + 3] = i * 4; t[i * 6 + 4] = i * 4 + 2; t[i * 6 + 5] = i * 4 + 3;
+                }
+                var mesh = new Mesh { name = "tc2-stars", vertices = v, colors = c, uv = u, triangles = t };
+                mesh.bounds = new Bounds(Vector3.zero, Vector3.one * 1e6f);
+                _starsGo = new GameObject("Stars");
+                _starsGo.transform.SetParent(transform, false);
+                _starsGo.AddComponent<MeshFilter>().sharedMesh = mesh;
+                var mr = _starsGo.AddComponent<MeshRenderer>();
+                mr.sharedMaterial = _starsMat;
+                mr.shadowCastingMode = ShadowCastingMode.Off;
+                mr.receiveShadows = false;
+            }
+            bool show = air > 0.02f;
+            if (_starsGo.activeSelf != show) _starsGo.SetActive(show);
+            if (show) Shader.SetGlobalFloat(StarFade, air);
+        }
+
         // (session 31) the sky behind everything near the ground: pale at the horizon, deepening above it, a glow toward the sun (SkyDome.shader)
         GameObject _dome; Material _domeMat;
         static readonly int SkyHorizon = Shader.PropertyToID("_TC2SkyHorizon"), SkyZenith = Shader.PropertyToID("_TC2SkyZenith");
@@ -184,6 +237,7 @@ namespace TC2.Game
             Color zenith = Color.Lerp(new Color(0.01f, 0.015f, 0.035f), new Color(0.30f, 0.50f, 0.82f), day);
             Rig.Cam.backgroundColor = Color.Lerp(new Color(0.012f, 0.016f, 0.035f), Color.Lerp(zenith, Horizon, 0.45f), sky);
             Dome(air, elev, Horizon, zenith, cam);
+            Stars(air);
         }
 
         /// <summary>How far the drawn air (Atmosphere.shader) has taken over from the views' own haze and sky: nothing at the village view

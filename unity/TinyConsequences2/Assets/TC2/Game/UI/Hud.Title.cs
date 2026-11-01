@@ -155,7 +155,8 @@ namespace TC2.Game
             string worldLine = w != null ? (Host.Continued ? "Your world, " : "A new world, ") + YearAndSeason(w.Now) + ": " + w.LivingPeople().ToString("N0", System.Globalization.CultureInfo.InvariantCulture) + " people in " + w.InhabitedSettlements() + " places" : null;
             bool busy = _newWorldBusy || w == null;
             GUI.enabled = !busy;
-            if (MenuWord(new Rect(colX, y, itemW, 58f), 0, Host.Continued ? "Continue" : "Begin", worldLine)) TitleLeave();
+            _titleBeginRect = new Rect(colX, y, itemW, 58f);
+            if (MenuWord(_titleBeginRect, 0, Host.Continued ? "Continue" : "Begin", worldLine)) TitleLeave();
             y += 64f;
             if (MenuWord(new Rect(colX, y, itemW, itemH), 1, "A New World")) { _menuPage = _menuPage == MenuNew ? MenuMain : MenuNew; if (_seedText == null) _seedText = NextSeed(); _copyNote = null; }
             y += itemH;
@@ -198,6 +199,7 @@ namespace TC2.Game
             GUI.Label(new Rect(0f, y + lh + 34f, sw, 26f), Host.StatusLine, _bootLine);
         }
         GUIStyle _bootLine;
+        Rect _titleBeginRect;
 
         static string YearAndSeason(long now)
         {

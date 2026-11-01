@@ -1,5 +1,14 @@
 # TC2 Session handoff
 
+## Session 31 (1 Nov 2026, from 17:35 IST; Control Room Frontier Max + Release/QA; another game's session shares the machine) - a finished game's face (D2-205)
+
+### Exact state (keep current)
+- **Direction (Arjun, session 31; root `NEXT_SESSION_PROMPT.md`)**: make TC2 look and feel like a beautiful, complete, polished game that happens to contain a deep simulation; readability and game feel over hidden depth; heavy simulation runs only for a genuine regression; RAM < 86 %, CPU < 85 %, integrated Radeon only, never kill what you did not start; when the machine is busy, keep going with lightweight work and queue the heavy validation.
+- **Code**: on `wip/s27-int` (worktree `C:/Game Dev/tc-s27int`, every edit there); fast-forward main before a build: `git -C "C:/Game Dev/tiny-consequences" merge --ff-only wip/s27-int`, never while a Unity job holds main's checkout. Sim **108** unchanged (presentation only).
+- **The old queue is gone** (the machine restarted; `$Q` of session 30 no longer exists). Web builds now run from this session's scratchpad script `webbuild.sh TAG`: a build logs RAM every 20 s to `ram_TAG.log`. A build's own peak is ~95-97 % when the machine starts at 65 %: start them only from about 60 % or less, and run nothing beside them.
+- **Web build `s31a` (f301037, 1 Nov ~17:59-18:2x): RAM reached 93-97 % (the machine started at 65 %), so Claude Code stopped its wrapper shell for low memory; its Unity, emscripten and wasm-opt children ran on (the classifier refuses stopping them: let them finish). Do not restart a Web build without Arjun's word (the notice says so) - queue it instead. While a build is unfinished `tc2/web-build/web/Build` holds a NEW data file beside an OLD wasm: not playable until a build completes. After it: `git checkout -- unity/TinyConsequences2/ProjectSettings/ProjectSettings.asset` in main's checkout.**
+- **New art tools**: `python tc2/art/ui_kit.py [--sheet F]` (icons, panels, logotype into `Game/Resources/UI`), `python tc2/art/ui_sounds.py` (interface and stillness sounds into `Game/Resources/Audio`). Bridge: `title on|off [PAGE]`, `menu PAGE|-1`, `guide STEP|-1`; bookshots `--menus [--guide "0,1,..."]`. `?dev=1` shows the tool numbers in The World Now.
+
 ## Session 30 (29 Oct 2026, from ~02:00 IST; Control Room run #86 session 3; Arjun AFK) - fields between villages, a skip's colours of one moment, the sea's edge (D2-204)
 
 ### Exact state (keep current)

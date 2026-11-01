@@ -324,6 +324,7 @@ namespace TC2.Game
                 var pw = Powers[k];
                 bool on = _aim == k;
                 var br = new Rect(x, sealY, size, size);
+                if (k == 0) _power0Rect = br;
                 if (Seal(br, PowerIcons[k], on, wait > 0, Color.Lerp(pw.Col, new Color(1f, 0.97f, 0.88f), 0.55f), out bool over))
                 {
                     if (wait > 0) CastNote(pw.Name + " is not back yet - in " + Wait(wait), false);

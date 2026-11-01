@@ -19,6 +19,7 @@ namespace TC2.Game
         float _t;
         string _hashTest = "";
         BenchRunner _bench;
+        Hud _hud;
         string _lastCmd = "";
         Vec3d _wayProbe; bool _wayProbeOn;   // (session 29: tests - a point on the greatest place's busiest way, to point at it as a player would)
 
@@ -343,6 +344,8 @@ namespace TC2.Game
                 }
             }
             if (Rig != null) sb.Append(",\"lapse\":\"").Append(Rig.Lapse).Append("\",\"lapseLight\":").Append(Rig.LapseLight.ToString("0.###", inv)).Append(",\"camAlt\":").Append((Rig.Distance - (w != null ? w.Planet.Radius : 0)).ToString("0", inv));   // (session 29: the timelapse)
+            if (_hud == null) _hud = Object.FindFirstObjectByType<Hud>();
+            if (_hud != null) _hud.ToolsState(sb);   // (session 31: firstrun.mjs plays the opening by these)
             sb.Append(",\"terrainPending\":").Append(TerrainLod.Pending);   // (session 30, tools: the ground still to be built for this view - bookshots' settle)
             sb.Append(",\"saveBytes\":").Append(Host.LastSaveBytes);
             sb.Append(",\"saveOk\":").Append(Host.LastSaveOk ? "true" : "false");

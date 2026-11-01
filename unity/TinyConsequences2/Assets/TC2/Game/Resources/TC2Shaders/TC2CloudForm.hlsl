@@ -43,7 +43,7 @@ half TC2CloudDensity(float3 dir, half4 cover, float lod, float t, out half thick
     half4 a = TC2Noise(q, max(0.0, lod));
     half4 b = TC2Noise(q * 3.71 + float3(0.37, 0.11, 0.73), max(0.0, lod + 1.89));
     // a third look, 14 times finer than the tile, where a pixel is small enough to see it (the region view and nearer): ragged, crisp edges
-    half fineW = (half)saturate(-0.5 - (lod + 1.89) * 0.5);
+    half fineW = (half)saturate(0.8 - (lod + 1.89) * 0.5);   // (session 31: from orbit too - their edges were soft cotton)
     half4 f = fineW > 0.0h ? TC2Noise(q * 14.3 + float3(0.71, 0.29, 0.13), max(0.0, lod + 3.84)) : half4(0.5h, 0.5h, 0.5h, 0.5h);
     // near the poles the circles shrink to nothing: the plain 3-D position there
     half polar = smoothstep(0.86h, 0.95h, (half)abs(dir.y));
@@ -56,7 +56,7 @@ half TC2CloudDensity(float3 dir, half4 cover, float lod, float t, out half thick
     // the large shapes, their edges frayed by the finer grain
     half shape = a.r + (b.a - 0.5h) * 0.30h + (b.r - 0.5h) * 0.20h + (f.r - 0.5h) * 0.16h * fineW;
     // the edges' softness: a pixel's share of the forms' finest scale - soft from orbit, crisp near
-    half soft = (half)clamp(0.03 + 0.05 * (lod + 3.0), 0.03, 0.2);
+    half soft = (half)clamp(0.02 + 0.03 * (lod + 3.0), 0.02, 0.13);
     // decks: the rain's cover with ragged, billowing edges; where the air is warm the deck is heaped into clusters of towers
     half dk = smoothstep(0.44h - soft * 2.0h, 0.44h + soft * 2.0h, deck + (shape - 0.5h) * 0.80h);
     dk *= lerp(1.0h, 0.45h + 0.75h * a.g, conv * 0.85h);

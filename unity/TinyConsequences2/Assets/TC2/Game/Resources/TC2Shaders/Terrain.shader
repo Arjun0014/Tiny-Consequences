@@ -274,6 +274,13 @@ Shader "TC2/Terrain"
                 // (session 31: the land's own drift) kilometres of ground a little warmer and drier-looking or cooler and greener, so a plain or a stretch of fields is
                 // not one flat colour from the village view to orbit - no state: the noise of the place, the same every time
                 half macro = Tri(i.positionWS, bw, 1.0 / 1050.0);
+                // (and from the region view out, the ground's own grain at some hundreds of metres: from orbit the land's colours had been a soft wash)
+                UNITY_BRANCH
+                if (dist > 1800.0 || every)
+                {
+                    half grain2 = TriG(i.positionWS, bw, 1.0 / 310.0, dpx, dpy) - 0.5h;
+                    albedo *= 1.0h + grain2 * 0.42h * (half)smoothstep(1800.0, 7000.0, dist) * (half)_TC2LandVary;
+                }
                 albedo *= lerp(half3(1.0h, 1.0h, 1.0h), lerp(half3(0.88h, 0.98h, 1.06h), half3(1.14h, 1.03h, 0.84h), (half)smoothstep(0.34, 0.66, macro)), (half)_TC2LandVary);
                 // beaches (D2-081), per pixel from the ground's own height over the sea - a vertex colour would follow the triangles of
                 // coarse patches as a staircase along every coast: sand to 0.6 + 4.2 x the beach's width (TerrainLod.BeachAt), wet near the
@@ -518,7 +525,9 @@ Shader "TC2/Terrain"
                 if (below > 0.0)
                 {
                     half through = (half)exp(-below / 3.2);
-                    half3 waterCol = lerp(half3(0.07h, 0.42h, 0.50h), half3(0.010h, 0.052h, 0.155h), (half)saturate(below / 28.0)) * (0.3h * (half)_TC2NightLift + (1.0h - 0.3h * (half)_TC2NightLift) * day);
+                    // (session 31: from afar the shelf a deep sea-green, not a neon band round every coast)
+                    half shelfFar = (half)smoothstep(1500.0, 9000.0, dist);
+                    half3 waterCol = lerp(lerp(half3(0.07h, 0.42h, 0.50h), half3(0.030h, 0.205h, 0.270h), shelfFar), half3(0.010h, 0.052h, 0.155h), (half)saturate(below / lerp(28.0h, 15.0h, shelfFar))) * (0.3h * (half)_TC2NightLift + (1.0h - 0.3h * (half)_TC2NightLift) * day);
                     c = lerp(waterCol, c * half3(0.86h, 0.98h, 1.0h), through);
                 }
                 // the surf: a broken, moving line of foam just below the sea surface, where waves run up the shore

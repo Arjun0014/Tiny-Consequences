@@ -19,6 +19,14 @@ namespace TC2.Game
         Vector2 _menuScroll;
         Rect _menuRect;
 
+        /// <summary>Tools and tests (firstrun.mjs plays by them): the state of the opening, and where its parts stand on the screen, in pixels from the top left.</summary>
+        public void ToolsState(System.Text.StringBuilder sb)
+        {
+            string R(Rect r) => "[" + (r.x * _scale).ToString("0", CultureInfo.InvariantCulture) + "," + (r.y * _scale).ToString("0", CultureInfo.InvariantCulture) + "," + (r.width * _scale).ToString("0", CultureInfo.InvariantCulture) + "," + (r.height * _scale).ToString("0", CultureInfo.InvariantCulture) + "]";
+            sb.Append(",\"title\":").Append(_titleOn ? "true" : "false").Append(",\"continued\":").Append(Host.Continued ? "true" : "false").Append(",\"guide\":").Append(_guide);
+            sb.Append(",\"begin\":").Append(R(_titleBeginRect)).Append(",\"gt\":").Append(R(_guideTarget)).Append(",\"gn\":").Append(R(_guideNextRect)).Append(",\"gskip\":").Append(R(_guideSkipYearRect)).Append(",\"power0\":").Append(R(_power0Rect));
+        }
+
         /// <summary>Tools and tests: the menu open at a page (-1 closed).</summary>
         public void ToolsMenu(int page) { _menuOn = page >= 0; _menuPage = Mathf.Max(0, page); }
         /// <summary>Tools and tests: the title over the world (true), or the way into the world from it, as its first word is.</summary>

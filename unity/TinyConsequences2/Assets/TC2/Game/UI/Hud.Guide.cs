@@ -39,6 +39,7 @@ namespace TC2.Game
         }
 
         bool _guideGround;
+        Rect _guideNextRect, _guideSkipYearRect, _power0Rect;
 
         /// <summary>The greatest inhabited village.</summary>
         static int GreatestPlace(TC2.Core.Simulation.World w)
@@ -228,6 +229,7 @@ namespace TC2.Game
                 Vector3 sp = Rig.Cam.WorldToScreenPoint(PlanetGeo.Surface(w.Planet, d));
                 if (sp.z > 0f) { float x = sp.x / _scale, y = (Screen.height - sp.y) / _scale; target = new Rect(x - 13f, y - 25f, 26f, 32f); }
             }
+            _guideTarget = target;
             if (target.width > 0f) Halo(target);
             // the card: lower left, clear of the power bar; high up while a page or the book covers that corner's words
             float cw = Mathf.Min(430f, sw - 24f);
@@ -250,7 +252,9 @@ namespace TC2.Game
             float rx = _guideCard.xMax - 22f;
             string next = _guide >= GuideLast ? "Done" : _guide == 2 || _guide == 3 ? "Skip this" : "Next";
             float nw = _guide >= GuideLast ? 80f : 86f;
-            if (GUI.Button(new Rect(rx - nw, by, nw, 30f), next, _btn))
+            _guideNextRect = new Rect(rx - nw, by, nw, 30f);
+            _guideSkipYearRect = _guide == 10 ? new Rect(rx - nw - 68f - 104f, by, 98f, 30f) : Rect.zero;
+            if (GUI.Button(_guideNextRect, next, _btn))
             {
                 AudioView.Ui("click");
                 if (_guide >= GuideLast) { GuideEnd(true); return; }
