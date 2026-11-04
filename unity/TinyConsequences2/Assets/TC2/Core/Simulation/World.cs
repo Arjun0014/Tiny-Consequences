@@ -335,7 +335,7 @@ namespace TC2.Core.Simulation
         }
 
         /// <summary>(F9.4) A god's drought: how far round the place the rain is withheld (m) and for how many days (a third of the year: a summer).</summary>
-        public const double DroughtReach = 4000.0;
+        public const double DroughtReach = 1200.0;   // (session 32, Arjun: 4 km covered a tenth of the 6 km world - a place and its neighbours now)
         public const int DroughtDays = 16;
         /// <summary>(F9.4) A meteor: what its blast flattens (m), within which those at home die, and the strength of the fire it lights.</summary>
         public const double BlastM = 140.0, KillM = 70.0, MeteorFire = 4.0;
@@ -352,7 +352,7 @@ namespace TC2.Core.Simulation
         public bool RainBrought(int cell) => Spell(cell, 1);
 
         /// <summary>(F9.9) The god's warmth or cold: how far round the place the air is changed (m), for how many days (a summer, as a drought), by how much (C).</summary>
-        public const double AirReach = 4000.0, AirBy = 5.0;
+        public const double AirReach = 1200.0, AirBy = 5.0;   // (session 32: 4 km before)
         public const int AirDays = 16;
 
         /// <summary>(F9.9) How much warmer (or, below zero, colder) the god has made the air over a cell now: each warm or cold air held over it.</summary>
@@ -380,7 +380,7 @@ namespace TC2.Core.Simulation
         }
 
         /// <summary>(F9.5) The god's rain: how far round the place it falls (m), for how many days, and how hard (rain units a day: a soaking rain).</summary>
-        public const double RainReach = 3000.0, RainFall = 1.0;
+        public const double RainReach = 1000.0, RainFall = 1.0;   // (session 32: 3 km before)
         public const int RainDays = 5;
 
         /// <summary>(F9.4) The god's droughts whose time is past are let go (the weather's day).</summary>
@@ -448,7 +448,7 @@ namespace TC2.Core.Simulation
         readonly List<int> _meteorDie = new List<int>(), _meteorHurt = new List<int>(), _meteorFall = new List<int>();
 
         /// <summary>(F9.3) How far from the place a god's plague or blight reaches (m): a village within a walk of it.</summary>
-        public const double GodReach = 2500.0;
+        public const double GodReach = 900.0;   // (session 32: 2.5 km before - a blight took a dozen villages)
         /// <summary>(F9.3) The share of a standing crop a god's blight takes.</summary>
         public const double BlightShare = 0.7;
 
@@ -673,7 +673,7 @@ namespace TC2.Core.Simulation
                         Planet.Storms.Add(new TC2.Core.Planet.Storm
                         {
                             Id = Ids.Next(EntityKind.Process), At = at, Heading = (east * -0.95 + north * (at.Y >= 0 ? 0.3 : -0.3)).Normalized, Speed = 0.05f,
-                            Wind = wind, Peak = wind, Radius = 2000f, Kind = 0, Born = Now, Cause = ev,
+                            Wind = wind, Peak = wind, Radius = 1500f, Kind = 0, Born = Now, Cause = ev,   // (session 32: geo-lengths - 900 m on the drawn world, the aim's ring; 2,000 before)
                         });
                         Metrics.Storms++;
                         if (!had) Queue.Push(Now + TC2.Core.Planet.Storms.StepSeconds, Phase.Process, EventKind.StormStep, 0);
@@ -682,7 +682,7 @@ namespace TC2.Core.Simulation
                 case CommandKind.GodQuake:
                     {
                         long ev = Record(new HistoryEvent { Kind = HistoryKind.GodCommand, Time = Now, Cell = c.Cell, Settlement = SettlementAtCell(c.Cell), RootKind = RootKind.You, ArgA = (int)c.Kind });
-                        GodQuake(c.Cell, ev, c.Arg > 0 ? c.Arg : 7);
+                        GodQuake(c.Cell, ev, c.Arg >= 10 ? c.Arg / 10.0 : c.Arg > 0 ? c.Arg : 7);   // (session 32: an Arg of 10 or more in tenths - 65 is M 6.5)
                         break;
                     }
                 case CommandKind.GodPlague:
@@ -980,7 +980,7 @@ namespace TC2.Core.Simulation
         void GodEruption(int cell, long cause, int vei = 0)
         {
             var P = Planet;
-            int best = -1; double bd = 2500.0;
+            int best = -1; double bd = 1500.0;   // (geo-lengths: 900 m on the drawn world - the aim's ring; session 32, 2,500 before)
             Vec3d at = P.Grid.Center[cell];
             for (int v = 0; v < P.Vents.Count; v++)
             {
@@ -1112,7 +1112,7 @@ namespace TC2.Core.Simulation
         /// </summary>
         /// <summary>The god shakes the earth (R7): a fault line through the cell loaded to the brink and broken at once - long
         /// enough for the magnitude asked for (one patch ~5.5, each x5 in length +1 M).</summary>
-        void GodQuake(int cell, long cause, long magnitude)
+        void GodQuake(int cell, long cause, double magnitude)
         {
             var P = Planet;
             var g = P.Grid;

@@ -20,7 +20,7 @@ namespace TC2.Game
         {
             new Power { Name = "Lightning", Col = new Color(1.00f, 0.93f, 0.55f), Doing = "Strike", Kind = CommandKind.GodLightning, Recharge = SimTime.Day, Reach = 60,
                         Help = "a bolt from the sky: it can kindle the woods, the fields or a roof" },
-            new Power { Name = "Storm", Col = new Color(0.55f, 0.66f, 0.85f), Doing = "Raise a storm", Kind = CommandKind.GodStorm, Arg = 50, Recharge = 30 * SimTime.Day, Reach = 2000,
+            new Power { Name = "Storm", Col = new Color(0.55f, 0.66f, 0.85f), Doing = "Raise a storm", Kind = CommandKind.GodStorm, Arg = 50, Recharge = 30 * SimTime.Day, Reach = 900,
                         Help = "a gale of 50 m/s that lives and wanders as storms do: roofs, crops, boats at sea" },
             new Power { Name = "Rain", Col = new Color(0.40f, 0.68f, 1.00f), Doing = "Bring rain", Kind = CommandKind.GodRain, Recharge = SimTime.Year / 2, Reach = World.RainReach,
                         Help = "a soaking rain for some days on the land round it: the soil drinks, the crops take it, fires go out" },
@@ -30,10 +30,10 @@ namespace TC2.Game
                         Help = "a summer 5 C warmer on the land round it: crops grow where it is cold (and wilt where it is hot), the soil dries, homes burn less wood" },
             new Power { Name = "Cold", Col = new Color(0.70f, 0.90f, 1.00f), Doing = "Chill the air", Kind = CommandKind.GodCold, Recharge = 2 * SimTime.Year, Reach = World.AirReach,
                         Help = "a summer 5 C colder on the land round it: crops grow slowly or fail where it is cool, homes burn more wood, frost keeps the herds in" },
-            new Power { Name = "Quake", Col = new Color(0.80f, 0.58f, 0.36f), Doing = "Shake the ground", Kind = CommandKind.GodQuake, Arg = 7, Recharge = 2 * SimTime.Year, Reach = 3000,
-                        Help = "a magnitude-7 quake: homes may fall, slopes slide, the sea may come" },
-            new Power { Name = "Eruption", Col = new Color(1.00f, 0.38f, 0.15f), Doing = "Split the earth", Kind = CommandKind.GodEruption, Arg = 3, Recharge = 10 * SimTime.Year, Reach = 2500,
-                        Help = "the nearest vent within 2.5 km wakes, or the ground opens a new one" },
+            new Power { Name = "Quake", Col = new Color(0.80f, 0.58f, 0.36f), Doing = "Shake the ground", Kind = CommandKind.GodQuake, Arg = 65, Recharge = 2 * SimTime.Year, Reach = 1200,
+                        Help = "a magnitude-6.5 quake, hardest within the ring: homes may fall, slopes slide; it is felt further off" },
+            new Power { Name = "Eruption", Col = new Color(1.00f, 0.38f, 0.15f), Doing = "Split the earth", Kind = CommandKind.GodEruption, Arg = 3, Recharge = 10 * SimTime.Year, Reach = 900,
+                        Help = "the nearest vent within the ring wakes, or the ground opens a new one where you point" },
             new Power { Name = "Meteor", Col = new Color(1.00f, 0.62f, 0.22f), Doing = "Throw down a stone", Kind = CommandKind.GodMeteor, Recharge = 20 * SimTime.Year, Reach = World.BlastM,
                         Help = "a stone from the sky: what stands near it falls, those at home there die, it burns and the ground shakes" },
             new Power { Name = "Plague", Col = new Color(0.66f, 0.85f, 0.30f), Doing = "Send a sickness", Kind = CommandKind.GodPlague, Recharge = 5 * SimTime.Year, Reach = World.GodReach,
@@ -114,8 +114,8 @@ namespace TC2.Game
             if (refused != null) { CastNote(refused, false); AudioView.Ui("tick"); return; }
             // (session 32) a stone strikes when it is seen to land: the world applies it the fall's real seconds later at the speed the world runs (the town had
             // fallen while the stone was still in the sky)
-            // (session 32) a cast made while the world is held still sets it going (at a minute a second): a cast never waits unseen
-            if (Host.SpeedIndex == 0 && !Host.MaxSpeed) Host.SpeedIndex = 3;
+            // (session 32) a cast made while the world is held still sets it going (as it is lived, the default pace): a cast never waits unseen
+            if (Host.SpeedIndex == 0 && !Host.MaxSpeed) Host.SpeedIndex = 1;
             long lead = 0;
             if (pw.Kind == CommandKind.GodMeteor)
             {
