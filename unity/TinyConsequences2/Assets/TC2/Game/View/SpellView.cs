@@ -229,6 +229,8 @@ namespace TC2.Game
             {
                 var sp = w.DrySpells[i];
                 if (w.Now >= sp.Until || sp.Cell < 0 || sp.Cell >= P.Cells) continue;
+                // (session 32: the last of a rain and a drought cast on one place rules - World.SkyAt) one overruled at its heart is not drawn nor named
+                if (sp.Kind <= 1 && w.SkyAt(sp.Cell) != (sp.Kind == 0 ? -1 : 1)) continue;
                 long key = sp.Event != 0 ? sp.Event : (sp.Cell * 8L + sp.Kind) ^ (sp.Until << 3);
                 if (!_geo.TryGetValue(key, out var g)) { g = Lay(w, P.Grid.Center[sp.Cell], sp.Reach); g.Born = now; _geo[key] = g; }
                 g.Live = true;
