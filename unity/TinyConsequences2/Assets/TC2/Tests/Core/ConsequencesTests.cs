@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using TC2.Core.Foundation;
 using TC2.Core.History;
+using TC2.Core.Persistence;
 using TC2.Core.Simulation;
 
 namespace TC2.Tests.Core
@@ -292,6 +293,102 @@ namespace TC2.Tests.Core
             Assert.IsNotNull(fd3, "the founding 34 years on, followed first");
             Assert.AreEqual("34 years on", fd3.When);
             Assert.IsNotNull(t3.Nodes.Find(n => n.Below > 0 && n.Tier == ConsequenceTier.Immediate), "the first hour's branches counted, not drawn");
+        }
+
+        // ------------------------------------------------------------------ (session 32: every power checked) past the cast's days
+
+        [Test]
+        public void AHomeRaisedAgainAfterAQuakeAnswersTheLossAndASaveKeepsIt()
+        {
+            var w = TestWorlds.Make(616);
+            w.AdvanceTo(w.Now + SimTime.Days(2) + SimTime.Hours(4));
+            int sid = w.Settlements.First();
+            long mark = w.History.LastId;
+            w.Issue(new Command { Time = w.Now, Kind = CommandKind.GodQuake, Cell = w.Settlements.Get(sid).Cell, Arg = 7 });
+            w.AdvanceTo(w.Now + SimTime.Minutes(3));
+            long cast = 0, loss = 0; int hid = 0;
+            for (int i = w.History.FirstIndexAfter(mark); i < w.History.Count; i++)
+            {
+                var e = w.History.At(i);
+                if (e.Kind == HistoryKind.GodCommand) cast = e.Id;
+                if (hid == 0 && e.Root == cast && e.Kind == HistoryKind.HomeCleared && e.Other.Kind == EntityKind.Household) { hid = e.Other.Id; loss = e.Id; }
+                if (hid == 0 && e.Root == cast && e.Kind == HistoryKind.HomeTaken) { hid = e.Subject.Id; loss = e.Id; }
+            }
+            Assume.That(hid != 0, "a household lost its home to the quake");
+            Assert.AreEqual(loss, TC2.Core.Places.Homes.LossCause(w, hid), "its loss is found from its own records");
+            var w2 = SaveFile.Load(SaveFile.Save(w, 0, OfflineMode.Paused, 0, 0, ""), out _);
+            Assert.AreEqual(loss, TC2.Core.Places.Homes.LossCause(w2, hid), "and alike in the world saved and loaded");
+            // the homes raised again over the next year answer the quake: the cast's tree goes on past its days
+            Coarse(w);
+            long built = 0;
+            for (int d = 0; d < 48 && built == 0; d += 4)
+            {
+                w.AdvanceTo(w.Now + SimTime.Days(4));
+                for (int i = w.History.FirstIndexAfter(mark); i < w.History.Count; i++) { var e = w.History.At(i); if (e.Kind == HistoryKind.HomeBuilt && e.Root == cast) { built = e.Id; break; } }
+            }
+            Assert.AreNotEqual(0L, built, "a home raised again after the quake is rooted in it");
+            Assert.IsTrue(w.History.TryGet(built, out var be) && be.Cause1 != 0 && be.Rel1 == CauseRel.InResponseTo);
+            var t = Consequences.Build(w, cast);
+            Traces(w, t);
+            Assert.IsNotNull(t.Nodes.Find(n => n.Kind == HistoryKind.HomeBuilt), "and stands in its tree");
+            // a household whose last word is a home raised with no cause is building for itself
+            int other = 0;
+            for (int h = w.Households.First(); h != 0 && other == 0; h = w.Households.Next(h)) if (h != hid && TC2.Core.Places.Homes.LossCause(w, h) == 0) other = h;
+            Assert.AreNotEqual(0, other);
+        }
+
+        [Test]
+        public void AFamineToldAnewWhenTheBlightsHarvestFailsIsTheBlights()
+        {
+            var w = TestWorlds.Make(614);
+            Coarse(w);
+            int sid = w.Settlements.First();
+            for (int d = 0; d < 60 && w.Settlements.Get(sid).Crop != TC2.Core.Places.CropStage.Growing; d++) w.AdvanceTo(w.Now + SimTime.Day);
+            Assume.That(w.Settlements.Get(sid).Crop == TC2.Core.Places.CropStage.Growing, "a crop growing");
+            // the village starving already: a rationing and a famine of nature's
+            long ration = w.Record(new HistoryEvent { Kind = HistoryKind.Rationing, Time = w.Now, Settlement = sid, Subject = EntityRef.Settlement(sid), Magnitude = 0.6f });
+            long famine = w.Record(new HistoryEvent { Kind = HistoryKind.Famine, Time = w.Now, Settlement = sid, Subject = EntityRef.Settlement(sid), Cause1 = ration });
+            { ref var s = ref w.Settlements.Get(sid); s.RationEvent = ration; s.FamineEvent = famine; s.FamineAt = w.Now; }
+            long famineAt = w.Now;
+            long mark = w.History.LastId;
+            w.Issue(new Command { Time = w.Now, Kind = CommandKind.GodBlight, Cell = w.Settlements.Get(sid).Cell });
+            long cast = 0, failed = 0;
+            for (int d = 0; d < 48 && failed == 0; d++)
+            {
+                w.AdvanceTo(w.Now + SimTime.Day);
+                for (int i = w.History.FirstIndexAfter(mark); i < w.History.Count; i++) { var e = w.History.At(i); if (e.Kind == HistoryKind.GodCommand) cast = e.Id; if (e.Kind == HistoryKind.HarvestFailed && e.Settlement == sid) failed = e.Id; }
+            }
+            Assume.That(failed != 0, "the blighted harvest failed");
+            Assert.AreEqual(0L, w.Settlements.Get(sid).FamineEvent, "the famine is to be told anew");
+            Assert.AreEqual(famineAt, w.Settlements.Get(sid).FamineAt, "and is the famine it was: its memory dates from its start");
+            // its people starve: the next death of hunger tells the famine anew - the failed harvest its cause, the blight its root
+            {
+                ref var s = ref w.Settlements.Get(sid); s.Granary = 0;
+                var hl = w.HouseholdsOf(sid);
+                for (int i = 0; i < hl.Count; i++) { ref var hh = ref w.Households.Get(hl[i]); hh.Larder = 0; hh.Ready = 0; hh.Grain = 0; }
+                var res = w.Residents(sid);
+                for (int i = 0; i < res.Count; i++) { ref var p = ref w.People.Get(res[i]); if (p.Alive) p.Reserve = 0.01f; }
+            }
+            long told = 0; int dead = 0;
+            long mark2 = w.History.LastId;
+            for (int d = 0; d < 6 && told == 0; d++)
+            {
+                w.AdvanceTo(w.Now + SimTime.Day);
+                for (int i = w.History.FirstIndexAfter(mark2); i < w.History.Count; i++)
+                {
+                    var e = w.History.At(i);
+                    if (e.Kind == HistoryKind.Famine && e.Settlement == sid) told = e.Id;
+                    if (e.Kind == HistoryKind.PersonDied && told != 0 && e.Cause1 == told) dead++;
+                }
+            }
+            Assume.That(told != 0, "they died of hunger");
+            Assert.IsTrue(w.History.TryGet(told, out var fe));
+            // (the failed harvest, or the empty store it left - its hunger naming the failed harvest)
+            long via = fe.Cause1 == failed ? failed : w.History.TryGet(fe.Cause1, out var ce) && ce.Kind == HistoryKind.Hunger ? ce.Cause1 : 0;
+            Assert.AreEqual(failed, via, "the famine told anew names the failed harvest");
+            Assert.AreEqual(cast, fe.Root, "and runs back to the blight");
+            Assert.AreEqual(famineAt, w.Settlements.Get(sid).FamineAt, "its memory still dates from its start");
+            Console.WriteLine("famine told anew #" + told + ", cause2 " + fe.Cause2 + " (the rationing #" + ration + "), its deaths so far " + dead);
         }
     }
 }
