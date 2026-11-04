@@ -6,22 +6,178 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no">
     <title>{{{ PRODUCT_NAME }}}</title>
+    <link rel="preload" href="TemplateData/logo.png" as="image">
     <style>
+      /* (session 32) The page while Unity downloads and starts: the game's own logotype and ornament (copies of Resources/UI's, made by
+         tc2/art/ui_kit.py), its display type (IM FELL English, OFL - TemplateData/OFL-IMFell.txt), a small planet turning under the stars,
+         the loader's real progress and what it is doing. Laid out in the HUD's units (Hud._scale) so the logotype stands where the game's
+         own boot screen draws it. Only transform and opacity are animated: they keep moving while the page's thread is busy starting the world. */
+      @font-face { font-family: 'IM FELL English'; src: url('TemplateData/IMFellEnglish.ttf') format('truetype'); font-display: swap; }
+      :root { --u: 1px; --lw: 620px; --pd: 220px; --gold: #f2d38c; --cream: #ede5d1; --dim: #b9b2a1; }
       html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #04060c; }
       #tc2-canvas { width: 100%; height: 100%; display: block; background: #04060c; outline: none; }
-      #tc2-loading { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 320px; text-align: center;
-                     font: italic 15px/1.4 Georgia, 'Times New Roman', serif; color: #cdbf9f; }
-      #tc2-title { font: 34px/1.2 Georgia, 'Times New Roman', serif; font-style: normal; color: #f0d48c; letter-spacing: .02em; margin-bottom: 10px; }
-      #tc2-bar { margin-top: 12px; height: 3px; background: #2a2418; border-radius: 2px; overflow: hidden; }
-      #tc2-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #8a6a30, #f0d48c); }
-      #tc2-warning { position: absolute; left: 0; right: 0; top: 0; font: 13px system-ui, sans-serif; color: #000; }
+
+      #tc2-loading { position: fixed; inset: 0; z-index: 2; pointer-events: none; overflow: hidden; opacity: 1; transition: opacity 1.1s ease;
+                     background: radial-gradient(ellipse 70% 60% at 50% 34%, #0d1a30 0%, #070c18 46%, #04060c 78%);
+                     font-family: 'IM FELL English', 'EB Garamond', Garamond, Georgia, 'Times New Roman', serif; color: var(--cream); }
+      #tc2-loading.gone { opacity: 0; }
+      .tc2-stars { position: absolute; inset: -2px; background-repeat: repeat; animation: tc2-twinkle 5.5s ease-in-out infinite alternate; }
+      .tc2-s1 { background-size: 211px 197px; opacity: .75;
+                background-image: radial-gradient(1.2px 1.2px at 23px 41px, #fff 0, transparent 100%), radial-gradient(1px 1px at 97px 13px, #dfe8ff 0, transparent 100%),
+                                  radial-gradient(1px 1px at 151px 88px, #fff 0, transparent 100%), radial-gradient(1.4px 1.4px at 61px 152px, #ffeccc 0, transparent 100%),
+                                  radial-gradient(1px 1px at 183px 171px, #fff 0, transparent 100%), radial-gradient(1px 1px at 128px 131px, #cfdcff 0, transparent 100%); }
+      .tc2-s2 { background-size: 317px 283px; opacity: .5; animation-duration: 7.5s; animation-delay: -3s;
+                background-image: radial-gradient(1.6px 1.6px at 41px 211px, #fff 0, transparent 100%), radial-gradient(1px 1px at 233px 47px, #fff 0, transparent 100%),
+                                  radial-gradient(1.2px 1.2px at 287px 163px, #e8eeff 0, transparent 100%), radial-gradient(1px 1px at 173px 254px, #fff 0, transparent 100%),
+                                  radial-gradient(1px 1px at 119px 23px, #ffe9c4 0, transparent 100%); }
+      .tc2-s3 { background-size: 461px 419px; opacity: .9; animation-duration: 9s; animation-delay: -6s;
+                background-image: radial-gradient(2px 2px at 331px 97px, #fff 0, transparent 100%), radial-gradient(1.6px 1.6px at 83px 307px, #fff4dc 0, transparent 100%),
+                                  radial-gradient(1.8px 1.8px at 419px 389px, #e4ecff 0, transparent 100%); }
+      @keyframes tc2-twinkle { from { opacity: .25; } to { opacity: .95; } }
+
+      #tc2-top { position: absolute; left: 0; right: 0; bottom: 50%; display: flex; flex-direction: column; align-items: center; }
+      #tc2-low { position: absolute; left: 0; right: 0; top: 50%; display: flex; flex-direction: column; align-items: center; }
+      #tc2-logo { display: block; width: var(--lw); height: auto; opacity: 0; animation: tc2-in 1.4s ease .1s forwards; }
+      #tc2-rule { display: block; width: calc(var(--lw) * .8); height: calc(var(--u) * 26); margin-top: calc(var(--u) * 2); opacity: 0; animation: tc2-in 1.4s ease .4s forwards; }
+      @keyframes tc2-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+      /* the planet: a sea, land and clouds on strips twice its width sliding round under a shaded, lit ball and its air */
+      #tc2-planet { position: relative; width: var(--pd); height: var(--pd); margin-bottom: calc(var(--u) * 34); opacity: 0; animation: tc2-in 2s ease .2s forwards; }
+      #tc2-planet .air { position: absolute; inset: -38%; border-radius: 50%; animation: tc2-breathe 6s ease-in-out infinite alternate;
+                         background: radial-gradient(circle, rgba(150,195,255,.30) 34%, rgba(120,170,240,.10) 46%, rgba(240,200,120,.05) 58%, transparent 70%); }
+      @keyframes tc2-breathe { from { opacity: .65; transform: scale(.97); } to { opacity: 1; transform: scale(1.03); } }
+      #tc2-planet .ball { position: absolute; inset: 0; border-radius: 50%; overflow: hidden; background: #1d5480;
+                          box-shadow: 0 0 calc(var(--pd) * .08) rgba(150,200,255,.45); }
+      #tc2-planet .strip { position: absolute; top: 0; left: 0; width: 200%; height: 100%; background-repeat: repeat-x; background-size: 50% 100%;
+                           animation: tc2-turn 64s linear infinite; will-change: transform; }
+      @keyframes tc2-turn { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+      #tc2-planet .sea { background-image:
+          radial-gradient(ellipse 22% 27% at 20% 39%, rgba(96,178,190,.42), transparent 72%),
+          radial-gradient(ellipse 20% 18% at 58% 65%, rgba(96,178,190,.40), transparent 72%),
+          radial-gradient(ellipse 13% 12% at 83% 27%, rgba(96,178,190,.38), transparent 72%),
+          linear-gradient(#173f63, #21608a 38%, #286a91 62%, #173f63); }
+      /* three lands and a few islands, each of soft overlapping lobes (one colour, so they read as one coast), woods darker, fields paler */
+      #tc2-planet .land { background-image:
+          radial-gradient(ellipse 6.4% 5.2% at 17% 36%, rgba(60,100,41,.75) 0 25%, rgba(60,100,41,0) 85%),
+          radial-gradient(ellipse 5.8% 3.8% at 24% 48%, rgba(181,164,99,.8) 0 30%, rgba(181,164,99,0) 85%),
+          radial-gradient(ellipse 8.0% 6.0% at 60% 62%, rgba(60,100,41,.75) 0 25%, rgba(60,100,41,0) 85%),
+          radial-gradient(ellipse 4.8% 3.5% at 53% 70%, rgba(181,164,99,.8) 0 30%, rgba(181,164,99,0) 85%),
+          radial-gradient(ellipse 4.8% 4.0% at 85% 25%, rgba(60,100,41,.75) 0 25%, rgba(60,100,41,0) 85%),
+          radial-gradient(ellipse 12% 14% at 18% 36%, #5c873d 0 76%, rgba(92,135,61,0) 92%),
+          radial-gradient(ellipse 8% 10% at 26% 49%, #5c873d 0 76%, rgba(92,135,61,0) 92%),
+          radial-gradient(ellipse 6% 7% at 11% 49%, #5c873d 0 76%, rgba(92,135,61,0) 92%),
+          radial-gradient(ellipse 7% 6% at 23% 23%, #5c873d 0 76%, rgba(92,135,61,0) 92%),
+          radial-gradient(ellipse 4% 5% at 30% 60%, #5c873d 0 76%, rgba(92,135,61,0) 92%),
+          radial-gradient(ellipse 13% 9% at 57% 66%, #66903f 0 76%, rgba(102,144,63,0) 92%),
+          radial-gradient(ellipse 7% 10% at 64% 57%, #66903f 0 76%, rgba(102,144,63,0) 92%),
+          radial-gradient(ellipse 6% 5% at 50% 75%, #66903f 0 76%, rgba(102,144,63,0) 92%),
+          radial-gradient(ellipse 4% 4% at 69% 72%, #66903f 0 76%, rgba(102,144,63,0) 92%),
+          radial-gradient(ellipse 8% 7% at 83% 26%, #5a853c 0 76%, rgba(90,133,60,0) 92%),
+          radial-gradient(ellipse 5% 6% at 89% 33%, #5a853c 0 76%, rgba(90,133,60,0) 92%),
+          radial-gradient(ellipse 3% 2.5% at 40% 29%, #6c9445 0 72%, rgba(108,148,69,0) 92%),
+          radial-gradient(ellipse 2.2% 2% at 44% 33%, #6c9445 0 72%, rgba(108,148,69,0) 92%),
+          radial-gradient(ellipse 2.6% 2.2% at 88% 62%, #6c9445 0 72%, rgba(108,148,69,0) 92%),
+          radial-gradient(ellipse 2% 1.8% at 36% 82%, #6c9445 0 72%, rgba(108,148,69,0) 92%); }
+      #tc2-planet .clouds { animation-duration: 41s; opacity: .7; background-image:
+          radial-gradient(ellipse 16% 5% at 22% 26%, rgba(255,255,255,.75), transparent 70%),
+          radial-gradient(ellipse 12% 4% at 47% 44%, rgba(255,255,255,.6), transparent 70%),
+          radial-gradient(ellipse 18% 5% at 71% 70%, rgba(255,255,255,.7), transparent 70%),
+          radial-gradient(ellipse 9% 4% at 88% 52%, rgba(255,255,255,.55), transparent 70%),
+          radial-gradient(ellipse 10% 3% at 8% 78%, rgba(255,255,255,.5), transparent 70%); }
+      #tc2-planet .poles { position: absolute; inset: 0; background: radial-gradient(ellipse 34% 9% at 50% 0%, rgba(236,243,252,.85) 0 45%, rgba(236,243,252,0) 85%),
+                                                                     radial-gradient(ellipse 28% 7% at 50% 100%, rgba(236,243,252,.7) 0 40%, rgba(236,243,252,0) 85%); }
+      #tc2-planet .shade { position: absolute; inset: 0; border-radius: 50%;
+                           background: radial-gradient(circle at 31% 27%, rgba(255,238,205,.30) 0, rgba(255,238,205,0) 30%),
+                                       radial-gradient(circle at 36% 34%, rgba(4,7,16,0) 42%, rgba(4,7,16,.45) 62%, rgba(4,7,16,.88) 82%, rgba(4,7,16,.97) 100%);
+                           box-shadow: inset 0 0 calc(var(--pd) * .05) rgba(170,215,255,.55); }
+
+      #tc2-note { margin-top: calc(var(--u) * 6); min-height: 1.4em; font-size: calc(var(--u) * 17); letter-spacing: .03em; color: var(--dim); text-align: center;
+                  text-shadow: 0 1px 2px #000; opacity: 0; animation: tc2-in 1.2s ease .6s forwards; }
+      #tc2-pct { color: #8f8673; margin-left: .55em; font-size: .86em; }
+      #tc2-bar { position: relative; width: min(calc(var(--lw) * .5), 320px); height: 3px; margin-top: calc(var(--u) * 12); border-radius: 2px; overflow: hidden;
+                 background: rgba(120,100,62,.28); box-shadow: 0 0 0 1px rgba(242,211,140,.08); opacity: 0; animation: tc2-in 1.2s ease .6s forwards; }
+      #tc2-fill { position: absolute; inset: 0; transform-origin: 0 50%; transform: scaleX(0); transition: transform .35s ease-out;
+                  background: linear-gradient(90deg, #7d5f2a, #c9a35a 60%, var(--gold)); }
+      #tc2-gleam { position: absolute; top: 0; bottom: 0; left: 0; width: 30%; animation: tc2-gleam 2.4s ease-in-out infinite;
+                   background: linear-gradient(90deg, transparent, rgba(255,246,220,.75), transparent); }
+      @keyframes tc2-gleam { from { transform: translateX(-110%); } to { transform: translateX(370%); } }
+      #tc2-hint { position: absolute; left: 16px; right: 16px; bottom: 7vh; text-align: center; font-size: calc(var(--u) * 19); color: #d8cdb3;
+                  text-shadow: 0 1px 3px #000; transition: opacity .8s ease; }
+      #tc2-hint.out { opacity: 0; }
+      #tc2-hint::before, #tc2-hint::after { content: '\2766'; color: rgba(242,211,140,.45); font-size: .75em; margin: 0 .8em; vertical-align: .08em; }
+      #tc2-loading.failed #tc2-gleam, #tc2-loading.failed .strip { animation-play-state: paused; }
+      @media (prefers-reduced-motion: reduce) { #tc2-loading * { animation-duration: .01s !important; animation-iteration-count: 1 !important; } }
+
+      #tc2-warning { position: absolute; left: 0; right: 0; top: 0; z-index: 3; font: 14px/1.4 Georgia, 'Times New Roman', serif; }
+      #tc2-warning div { margin: 8px auto 0; max-width: 760px; padding: 9px 14px; border-radius: 6px; color: #f3ead6; background: rgba(12,15,24,.94);
+                         border: 1px solid #c9a35a; box-shadow: 0 4px 18px rgba(0,0,0,.5); }
+      #tc2-warning div.error { border-color: #d0573f; color: #ffd9cf; }
     </style>
   </head>
   <body>
     <canvas id="tc2-canvas" tabindex="-1"></canvas>
-    <div id="tc2-loading"><div id="tc2-title">Tiny Consequences</div><div id="tc2-bar"><div id="tc2-fill"></div></div><div id="tc2-note"></div></div>
+    <div id="tc2-loading">
+      <div class="tc2-stars tc2-s1"></div><div class="tc2-stars tc2-s2"></div><div class="tc2-stars tc2-s3"></div>
+      <div id="tc2-top">
+        <div id="tc2-planet"><div class="air"></div><div class="ball"><div class="strip sea"></div><div class="strip land"></div><div class="strip clouds"></div><div class="poles"></div><div class="shade"></div></div></div>
+        <img id="tc2-logo" src="TemplateData/logo.png" alt="Tiny Consequences">
+      </div>
+      <div id="tc2-low">
+        <img id="tc2-rule" src="TemplateData/divider.png" alt="">
+        <div id="tc2-note" aria-live="polite"><span id="tc2-stage">Fetching the world...</span><span id="tc2-pct"></span></div>
+        <div id="tc2-bar" role="progressbar" aria-label="Loading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="tc2-fill"></div><div id="tc2-gleam"></div></div>
+      </div>
+      <div id="tc2-hint">A world that lives without you.</div>
+    </div>
     <div id="tc2-warning"></div>
     <script>
+      // The loading page laid out in the HUD's units: Hud._scale = max(1, screen height / 900) in device pixels, so one unit is that over the device's
+      // pixel ratio in CSS pixels; the logotype as the boot screen draws it (min(620, 60% of the width) wide, its foot at the middle).
+      (function () {
+        var root = document.documentElement.style;
+        function layout() {
+          var W = window.innerWidth, H = window.innerHeight, d = window.devicePixelRatio || 1;
+          var u = Math.max(1 / d, H / 900), lw = Math.min(620 * u, W * 0.6), lh = lw * 157 / 1100;
+          var room = H * 0.5 - lh - 34 * u - H * 0.06;
+          root.setProperty('--u', u + 'px');
+          root.setProperty('--lw', lw + 'px');
+          root.setProperty('--pd', Math.max(48, Math.min(250 * u, W * 0.42, room)) + 'px');
+        }
+        layout();
+        window.addEventListener('resize', layout);
+      })();
+
+      // A line under the planet that changes while it loads: what the game is.
+      var tc2Hints = ['A world that lives without you.', 'Every story in its history really happened.', 'Nobody here takes orders - not even from you.',
+                      'Click anyone: they have a family, a trade and their reasons.', 'Skip a century, then read what changed.', 'Reach in, and watch what the world does about it.'];
+      var tc2HintAt = 0, tc2HintTimer = setInterval(function () {
+        var h = document.querySelector('#tc2-hint');
+        h.classList.add('out');
+        setTimeout(function () { tc2HintAt = (tc2HintAt + 1) % tc2Hints.length; h.textContent = tc2Hints[tc2HintAt]; h.classList.remove('out'); }, 850);
+      }, 6000);
+
+      function tc2Stage(text, progress) {
+        document.querySelector('#tc2-stage').textContent = text;
+        document.querySelector('#tc2-pct').textContent = progress >= 0 && progress < 0.9 ? Math.round(100 * progress / 0.9) + '%' : '';
+        if (progress >= 0) {
+          document.querySelector('#tc2-fill').style.transform = 'scaleX(' + Math.min(1, progress) + ')';
+          document.querySelector('#tc2-bar').setAttribute('aria-valuenow', String(Math.round(100 * Math.min(1, progress))));
+        }
+      }
+
+      // The loading page goes when the world is up (the bridge's window.__TC2.ready: the title is drawn then), or after a while in any case.
+      function tc2Reveal() {
+        var since = Date.now();
+        (function wait() {
+          if (!(window.__TC2 && window.__TC2.ready) && Date.now() - since < 30000) { setTimeout(wait, 150); return; }
+          var l = document.querySelector('#tc2-loading');
+          requestAnimationFrame(function () { requestAnimationFrame(function () {
+            l.classList.add('gone');
+            setTimeout(function () { l.style.display = 'none'; clearInterval(tc2HintTimer); }, 1300);
+          }); });
+        })();
+      }
+
       // TC2 web template (D2-011): probe for a working WebGPU device before Unity starts. Some browsers expose
       // navigator.gpu but cannot create a device (missing drivers/compilers); Unity only falls back to WebGL2 when
       // WebGPU is absent, so a failed probe hides it. ?gfx=webgl2 forces the fallback (tests, troubleshooting).
@@ -52,7 +208,7 @@
         var w = document.querySelector('#tc2-warning');
         var div = document.createElement('div');
         div.textContent = msg;
-        div.style = 'padding: 8px; background: ' + (type == 'error' ? '#e66' : '#ec6');
+        if (type == 'error') div.className = 'error';
         w.appendChild(div);
         if (type != 'error') setTimeout(function () { w.removeChild(div); }, 6000);
       }
@@ -81,21 +237,25 @@
       };
 
       tc2ProbeWebGPU().then(function () {
-        document.querySelector('#tc2-note').textContent = 'A small world is waking...';
+        tc2Stage('Fetching the world...', 0);
         var script = document.createElement('script');
         script.src = buildUrl + "/{{{ LOADER_FILENAME }}}";
         script.onload = function () {
-          var fill = document.querySelector('#tc2-fill');
+          // (Unity's loader: 0 to 0.9 while its files download, 0.9 while the code compiles and the runtime starts, 1 when it runs)
           createUnityInstance(document.querySelector('#tc2-canvas'), config, function (progress) {
-            fill.style.width = (100 * progress) + '%';
+            tc2Stage(progress < 0.9 ? 'Fetching the world...' : progress < 1 ? 'Waking the planet...' : 'Starting the simulation...', progress);
           }).then(function (unityInstance) {
             window.__TC2_INSTANCE = unityInstance;
-            document.querySelector('#tc2-loading').style.display = 'none';
+            tc2Stage('Starting the simulation...', 1);
+            tc2Reveal();
           }).catch(function (message) {
             window.__TC2_FATAL = String(message);
             tc2Banner(String(message), 'error');
+            document.querySelector('#tc2-loading').classList.add('failed');
+            tc2Stage('The world could not start in this browser.', -1);
           });
         };
+        script.onerror = function () { tc2Banner('The game files could not be fetched. Check the connection and reload the page.', 'error'); tc2Stage('The world could not be fetched.', -1); };
         document.body.appendChild(script);
       });
     </script>

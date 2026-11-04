@@ -74,13 +74,13 @@ namespace TC2.Game
                 Host.SaveNow(ok => MenuNote(ok ? "Saved. It lives in this browser, and it goes on while you are away." : "It could not be saved: the browser refused.", ok));
             }
             y += itemH;
-            if (MenuWord(new Rect(colX, y, itemW, itemH), 2, "Worlds Kept")) _menuPage = _menuPage == MenuWorlds ? MenuMain : MenuWorlds;
+            if (MenuWord(new Rect(colX, y, itemW, itemH), 2, "Worlds Kept", open: _menuPage == MenuWorlds)) _menuPage = _menuPage == MenuWorlds ? MenuMain : MenuWorlds;
             y += itemH;
-            if (MenuWord(new Rect(colX, y, itemW, itemH), 3, "How to Play")) _menuPage = _menuPage == MenuHow ? MenuMain : MenuHow;
+            if (MenuWord(new Rect(colX, y, itemW, itemH), 3, "How to Play", open: _menuPage == MenuHow)) _menuPage = _menuPage == MenuHow ? MenuMain : MenuHow;
             y += itemH;
-            if (MenuWord(new Rect(colX, y, itemW, itemH), 4, "Settings")) _menuPage = _menuPage == MenuSettings ? MenuMain : MenuSettings;
+            if (MenuWord(new Rect(colX, y, itemW, itemH), 4, "Settings", open: _menuPage == MenuSettings)) _menuPage = _menuPage == MenuSettings ? MenuMain : MenuSettings;
             y += itemH;
-            if (MenuWord(new Rect(colX, y, itemW, itemH), 5, "Credits")) _menuPage = _menuPage == MenuCredits ? MenuMain : MenuCredits;
+            if (MenuWord(new Rect(colX, y, itemW, itemH), 5, "Credits", open: _menuPage == MenuCredits)) _menuPage = _menuPage == MenuCredits ? MenuMain : MenuCredits;
             y += itemH;
             if (MenuWord(new Rect(colX, y, itemW, itemH), 6, "To the Title")) { Host.SaveNow(); _menuHeld = false; TitleEnter(); }
             y += itemH + 8f;
@@ -89,15 +89,20 @@ namespace TC2.Game
             {
                 float pw = Mathf.Min(620f, sw - (colX + itemW + 34f) - 24f);
                 if (pw < 360f) pw = Mathf.Min(sw - 40f, 620f);
-                float ph = Mathf.Min(sh - 56f, _menuPage == MenuSettings ? 620f : _menuPage == MenuHow ? 736f : _menuPage == MenuCredits ? 560f : 460f);
+                float ph = Mathf.Min(sh - 56f, MenuPageHeight());
                 MenuPageDraw(new Rect(sw - pw - 28f, Mathf.Max(20f, (sh - ph) * 0.5f), pw, ph), w, false);
             }
+            else _menuScrollPage = -1;
             PointerOverUi = true;
         }
 
-        /// <summary>A page of the menu in its panel.</summary>
+        float MenuPageHeight() => _menuPage == MenuSettings ? 620f : _menuPage == MenuHow ? 760f : _menuPage == MenuCredits ? 720f : 440f;
+        int _menuScrollPage = -1;
+
+        /// <summary>A page of the menu in its panel (read from its top each time it is opened).</summary>
         void MenuPageDraw(Rect r, TC2.Core.Simulation.World w, bool onTitle)
         {
+            if (_menuScrollPage != _menuPage) { _menuScrollPage = _menuPage; _menuScroll = Vector2.zero; }
             GUI.Box(r, GUIContent.none, _box);
             var area = new Rect(r.x + 24f, r.y + 18f, r.width - 44f, r.height - 32f);
             GUILayout.BeginArea(area);
@@ -116,7 +121,7 @@ namespace TC2.Game
             {
                 case MenuHow: HowToPage(area.width - 16f); break;
                 case MenuSettings: SettingsPage(area.width - 16f); break;
-                case MenuCredits: CreditsPage(); break;
+                case MenuCredits: CreditsPage(area.width - 16f); break;
                 case MenuNew: NewWorldPage(w, onTitle); break;
                 case MenuWorlds: WorldsPage(w, onTitle); break;
             }
@@ -127,33 +132,56 @@ namespace TC2.Game
         void HowRow(string icon, string head, string text, float width)
         {
             GUILayout.BeginHorizontal();
-            Rect ic = GUILayoutUtility.GetRect(46f, 46f, GUILayout.Width(46f), GUILayout.Height(46f));
-            if (Event.current.type == EventType.Repaint) { GUI.DrawTexture(ic, Ui("seal")); Icon(Inset(ic, 11f), icon, new Color(0.97f, 0.88f, 0.66f)); }
-            GUILayout.Space(12);
+            Rect ic = GUILayoutUtility.GetRect(42f, 42f, GUILayout.Width(42f), GUILayout.Height(42f));
+            if (Event.current.type == EventType.Repaint) { GUI.DrawTexture(ic, Ui("seal")); Icon(Inset(ic, 10f), icon, new Color(0.97f, 0.88f, 0.66f)); }
+            GUILayout.Space(14);
             GUILayout.BeginVertical(GUILayout.Width(width - 60f));
             GUILayout.Label(head, _pageCap);
-            GUILayout.Label(text, _mnText);
+            GUILayout.Space(1);
+            GUILayout.Label(text, _howText);
             GUILayout.EndVertical();
             GUILayout.EndHorizontal();
-            GUILayout.Space(10);
+            GUILayout.Space(12);
+        }
+
+        /// <summary>A line of the controls: the keys in the display type at the left, what they do beside them.</summary>
+        void KeyRow(string keys, string what, float width)
+        {
+            Rect r = GUILayoutUtility.GetRect(width, 24f, GUILayout.Height(24f));
+            if (Event.current.type != EventType.Repaint) return;
+            GUI.Label(new Rect(r.x + 56f, r.y, 150f, r.height), keys, _keyCap);
+            GUI.Label(new Rect(r.x + 214f, r.y, r.width - 214f, r.height), what, _howText);
         }
 
         void HowToPage(float width)
         {
-            GUILayout.Label("You do not command this world. It lives on its own; you watch it, read it, and now and then reach in.", _mnTextDim);
-            GUILayout.Space(10);
-            HowRow("eye", "Look", "Drag to turn the planet. The wheel comes down toward the pointer or rises to the whole world; a double click flies down to the ground. A click on a far village opens its page.", width);
-            HowRow("person", "Read the living", "Point at anyone or anything - a person, a house, a work, a road, a field, a ruin - to see what it is and why. A click opens its page, its life and its Why?.", width);
-            HowRow("hourglass", "Time", "Space holds the world still; the ladder at the top (or 1-8) sets the speed. Skip leaps years ahead, watched from orbit. The world lives on while you are away.", width);
-            HowRow("book", "The History Book", "B opens it. Every line happened and tells what caused it. After a long skip, read what changed.", width);
-            HowRow("lightning", "Reach in", "Choose a power at the foot of the screen, then click the ground; right-click stops. Each comes back in the world's time. What follows is the world's own doing - Your Actions, in the book, traces it.", width);
-            HowRow("menu", "Keys", "B the book  ·  R the realms  ·  N names  ·  M sound  ·  H hide all this  ·  Esc the menu  ·  W A S D move  ·  Q E rise and come down", width);
+            CreditStyles();
+            GUILayout.Label("You do not command this world. You watch it, read it - and now and then, reach in.", _mnTextDim);
+            GUILayout.Space(12);
+            HowRow("globe", "The world lives without you", "Its people farm, build, marry, trade and quarrel for their own reasons. It goes on whether you watch or not - even while you are away.", width);
+            HowRow("person", "Watch and follow", "Click a person: what they are doing, and why. Their life holds their family, work and story; follow keeps the camera with them. Click a village for its page - Why? traces how it came to be.", width);
+            HowRow("book", "The History Book", "B opens it. Every line really happened: click one to see what caused it.", width);
+            HowRow("hourglass", "Time", "Space pauses, and 1-8 set the pace. Skip leaps years ahead, watched from orbit, then brings you back to read what changed.", width);
+            HowRow("lightning", "Your powers", "Choose a power at the foot of the screen, then click the ground (right-click puts it down). Your hand, at the lower left, shows what came of it - open it to follow the consequences.", width);
+            GUILayout.Label("Controls", _pageCap);
+            GUILayout.Space(4);
+            KeyRow("Drag", "turn the world", width);
+            KeyRow("Wheel", "come down toward the pointer, or rise", width);
+            KeyRow("Double-click", "fly down to the ground", width);
+            KeyRow("W A S D  ·  Q E", "move  ·  come down, rise", width);
+            KeyRow("Space  ·  1-8  ·  9", "pause  ·  the pace  ·  as fast as it goes", width);
+            KeyRow("B  ·  R  ·  N", "the History Book  ·  realms  ·  names", width);
+            KeyRow("M  ·  H  ·  Esc", "sound  ·  hide the interface  ·  the menu", width);
+            GUILayout.Space(12);
+            GUILayout.BeginHorizontal();
             if (GUILayout.Button("Walk me through it", _btn, GUILayout.Height(34f)))
             {
                 _menuOn = false; _menuPage = MenuMain;
                 if (_titleOn) TitleLeave();
                 GuideStart();
             }
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
         }
 
         static bool Choice(bool on, string word, GUIStyle st) { bool c = GUILayout.Toggle(on, word, st, GUILayout.Height(30f)); if (c && !on) AudioView.Ui("click"); return c && !on; }
@@ -254,22 +282,75 @@ namespace TC2.Game
             }
         }
 
-        void CreditsPage()
+        GUIStyle _crHead, _crText, _crDim, _crName, _crNameC, _crRole, _howText, _keyCap;
+
+        void CreditStyles()
         {
-            GUILayout.Label("Tiny Consequences II", _pageCap);
-            GUILayout.Label("A world simulated person by person: nothing in it is scripted, and every story in its book happened.", _mnText);
-            GUILayout.Space(10);
-            GUILayout.Label("Made by", _pageCap);
-            GUILayout.Label("Arjun, who directs it, with Claude, who writes and draws it. Every mesh, texture, icon and shader is generated by the project's own code.", _mnText);
-            GUILayout.Space(10);
-            GUILayout.Label("Type", _pageCap);
-            GUILayout.Label("EB Garamond (Copyright 2017 The EB Garamond Project Authors) and IM FELL English (Copyright 2010 Igino Marini), both under the SIL Open Font License 1.1.", _mnText);
-            GUILayout.Space(10);
-            GUILayout.Label("Sound", _pageCap);
-            GUILayout.Label("The world's sound was generated for this project with ElevenLabs' sound effects model and levelled with ffmpeg; the interface's and the stillness's were synthesised by the project's own code.", _mnText);
-            GUILayout.Space(10);
-            GUILayout.Label("Built with", _pageCap);
-            GUILayout.Label("Unity 6, and for a planet that keeps its word: one deterministic core that plays the same in every browser, bit for bit.", _mnText);
+            if (_crHead != null) return;
+            _crHead = new GUIStyle(_pageCap) { alignment = TextAnchor.MiddleCenter, fontSize = 17 };
+            _crText = new GUIStyle(_mnText) { alignment = TextAnchor.UpperCenter, fontSize = 16, wordWrap = true };
+            _crDim = new GUIStyle(_mnTextDim) { alignment = TextAnchor.UpperCenter, fontSize = 14, wordWrap = true };
+            _crName = new GUIStyle(_pageCap) { fontSize = 20, alignment = TextAnchor.MiddleLeft, wordWrap = false };
+            _crName.normal.textColor = new Color(0.96f, 0.93f, 0.85f);
+            _crNameC = new GUIStyle(_crName) { alignment = TextAnchor.MiddleCenter };
+            _crRole = new GUIStyle(_mnTextDim) { fontSize = 15, alignment = TextAnchor.MiddleLeft, wordWrap = false };
+            _howText = new GUIStyle(_mnText) { fontSize = 16, wordWrap = true };
+            _keyCap = new GUIStyle(_pageCap) { fontSize = 15, alignment = TextAnchor.MiddleLeft, wordWrap = false };
+        }
+
+        /// <summary>The small rule between the credits' parts.</summary>
+        void CreditRule(float width)
+        {
+            Rect r = GUILayoutUtility.GetRect(width, 30f, GUILayout.Height(30f));
+            Ornament(new Rect(r.center.x - 120f, r.y + 6f, 240f, 18f), 0.6f);
+        }
+
+        void CreditHead(string text) { GUILayout.Label(text, _crHead); GUILayout.Space(2); }
+
+        /// <summary>A name and what they did, centred on one line (two when it is too long for the page).</summary>
+        void CreditPair(string name, string role, float width)
+        {
+            float wn = _crName.CalcSize(new GUIContent(name)).x, wr = _crRole.CalcSize(new GUIContent(role)).x;
+            if (wn + 14f + wr > width) { GUILayout.Label(name, _crNameC); GUILayout.Label(role, _crDim); return; }
+            Rect r = GUILayoutUtility.GetRect(width, 28f, GUILayout.Height(28f));
+            if (Event.current.type != EventType.Repaint) return;
+            float x = r.x + (r.width - wn - 14f - wr) * 0.5f;
+            GUI.Label(new Rect(x, r.y, wn, r.height), name, _crName);
+            GUI.Label(new Rect(x + wn + 14f, r.y + 2f, wr, r.height), role, _crRole);
+        }
+
+        /// <summary>The credits, from the project's own record of them (Assets/TC2/CREDITS.md).</summary>
+        void CreditsPage(float width)
+        {
+            CreditStyles();
+            var logo = Ui("logo");
+            float lw = Mathf.Min(width * 0.72f, 420f), lh = lw * logo.height / Mathf.Max(1f, logo.width);
+            Rect lr = GUILayoutUtility.GetRect(width, lh + 8f, GUILayout.Height(lh + 8f));
+            if (Event.current.type == EventType.Repaint) GUI.DrawTexture(new Rect(lr.center.x - lw * 0.5f, lr.y + 4f, lw, lh), logo, ScaleMode.ScaleToFit, true);
+            GUILayout.Label("A world lived person by person. Nothing in it is scripted, and every story in its book really happened.", _crDim);
+            CreditRule(width);
+            CreditHead("Made by");
+            CreditPair("Arjun", "direction", width);
+            CreditPair("Claude, by Anthropic", "engineering and art", width);
+            CreditRule(width);
+            CreditHead("Art");
+            GUILayout.Label("Every model, texture, icon and shader is made by the project's own code: the planet in Unity, the models in Blender from a Python script, the interface's pictures and its logotype in Python.", _crText);
+            CreditRule(width);
+            CreditHead("Type");
+            CreditPair("EB Garamond", "Copyright 2017 The EB Garamond Project Authors", width);
+            CreditPair("IM FELL English", "Copyright 2010 Igino Marini", width);
+            GUILayout.Label("Both under the SIL Open Font License 1.1", _crDim);
+            CreditRule(width);
+            CreditHead("Sound");
+            GUILayout.Label("The world's sound was generated for this game with ElevenLabs' sound effects model and levelled with ffmpeg. The stillness and most of the interface's cues are synthesised by the project's own code.", _crText);
+            CreditRule(width);
+            CreditHead("Code");
+            GUILayout.Label("Deterministic maths after fdlibm (Copyright 1993 Sun Microsystems). SplitMix64 mixing after Steele, Lea and Flood (2014), from Sebastiano Vigna's public-domain reference.", _crText);
+            CreditRule(width);
+            CreditHead("Built with");
+            GUILayout.Label("Unity 6.6  ·  Blender  ·  Python  ·  ffmpeg", _crText);
+            GUILayout.Label("One deterministic core: the same world, bit for bit, in every browser.", _crDim);
+            GUILayout.Space(8);
         }
 
         void NewWorldPage(TC2.Core.Simulation.World w, bool onTitle)
