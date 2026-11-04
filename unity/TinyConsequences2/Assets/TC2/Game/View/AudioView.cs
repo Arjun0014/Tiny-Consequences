@@ -346,6 +346,8 @@ namespace TC2.Game
             _want[SeaOpen] = !land && !shore ? 0.2f + 0.4f * near : 0f;
         }
 
+        float _lastCry = -99f;
+
         /// <summary>The world's happenings since the last frame, near where the camera looks: thunder, a quake, a house falling, your casts.</summary>
         void Happenings(TC2.Core.Simulation.World w)
         {
@@ -382,6 +384,8 @@ namespace TC2.Game
                     case HistoryKind.Quake: if (v > 0f || e.Magnitude > 6.5f) { Play("quake", 0.4f + 0.6f * Mathf.Max(v, 0.3f), (int)e.Id); told++; } break;
                     case HistoryKind.MeteorStruck: { Landing("thunder", 1f, (int)e.Id); Landing("house_fall", 0.6f + 0.4f * v, (int)e.Id + 1); told++; break; }
                     case HistoryKind.BuildingBurned: case HistoryKind.HomesDrowned: if (v > 0.2f) { Play("house_fall", 0.4f + 0.6f * v, (int)e.Id); told++; } break;
+                    case HistoryKind.HomesShaken: if (v > 0.1f) { Play("house_fall", 0.5f + 0.5f * v, (int)e.Id); told++; } break;   // (session 32: a quake's fallen buildings)
+                    case HistoryKind.PersonDied: if (v > 0.5f && (e.ArgA == 14 || e.ArgA == 5) && Time.unscaledTime - _lastCry > 3f) { _lastCry = Time.unscaledTime; Play("shout", 0.25f + 0.35f * v, (int)e.Id); } break;   // (a stone's or a quake's dead: a cry, now and then)
                     case HistoryKind.Raid: if (v > 0.3f) { Play("shout", 0.3f + 0.5f * v, (int)e.Id); told++; } break;
                 }
                 if (e.Tier >= Tier.Historical && Time.unscaledTime - _lastStory > 4f && e.Kind != HistoryKind.GodCommand) { _lastStory = Time.unscaledTime; Play("ui_story", 0.25f, (int)e.Id); }

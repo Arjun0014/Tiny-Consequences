@@ -48,6 +48,7 @@ namespace TC2.Game
             {
                 case "speed": Host.SpeedIndex = int.Parse(a[1], inv); Host.MaxSpeed = false; break;
                 case "max": Host.MaxSpeed = a.Length < 2 || a[1] == "on"; break;
+                case "tune": if (a.Length > 2 && !Look.Set(a[1], a[2])) Debug.LogWarning("[TC2] no look tunable " + a[1]); break;   // (session 32) "tune NAME VALUE": a look tunable live (Look.cs), for judging in the Web build
                 case "save": Host.SaveNow(); break;
                 case "away": Host.ReloadAsIfAway((long)(double.Parse(a[1], inv) * 3600000.0)); break;
                 case "look":

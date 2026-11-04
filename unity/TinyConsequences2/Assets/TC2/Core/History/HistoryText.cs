@@ -323,7 +323,13 @@ namespace TC2.Core.History
                 case ActivityKind.Wood: return "cutting wood: " + home + "'s woodstore is low";
                 case ActivityKind.Water: return "fetching water " + ((w.Settlements.Exists(p.Home) && (w.Settlements.Get(p.Home).Works & 1) != 0) ? "from the well" : "from the stream") + ": the household's pots are low";
                 case ActivityKind.Ill:
-                    if (p.Why == WhyCode.Hurt) return "abed at home with wounds from a fight in the night: they must heal";
+                    if (p.Why == WhyCode.Hurt)
+                    {
+                        // (session 32) hurt by a shock felt where they were - told by it, not by a fight
+                        if (p.Alarm != 0 && w.Now - p.AlarmT < 20 * SimTime.Day && w.History.TryGet(p.Alarm, out var ae) && TC2.Core.Agents.Hazards.ShockHold(ae.Kind) > 0)
+                            return "abed with wounds: " + ShockWords((int)ae.Kind) + " - they must heal";
+                        return "abed at home with wounds from a fight in the night: they must heal";
+                    }
                     return "abed at home with " + w.History.NameOf(new EntityRef(EntityKind.Pathogen, p.Sick)) + ": it must run its course";
                 case ActivityKind.Watch: return "keeping watch at " + home + "'s store through the night: grain has been taken from it";
                 case ActivityKind.Craft: return "making and mending at home - spinning, weaving, sewing, tools: the household's clothes and tools are wearing thin";

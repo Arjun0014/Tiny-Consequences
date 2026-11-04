@@ -1973,7 +1973,23 @@ namespace TC2.Game
             for (int id = w.People.First(); id != 0; id = w.People.Next(id))
             {
                 ref var p = ref w.People.Get(id);
-                if (!p.Alive) continue;
+                if (!p.Alive)
+                {
+                    // (session 32: deaths seen) the dead of a stone from the sky or a quake lie where they fell, under a pale shroud, through the hours after
+                    // it - read from their death's own record (its reason) and where they were when it came; nothing drawn for any other death
+                    if (t < p.Died || t - p.Died > 8 * SimTime.Hour || p.Died == 0) continue;
+                    if (!w.History.TryGet(p.DeathEvent, out var de) || (de.ArgA != 14 && de.ArgA != 5)) continue;
+                    Vec3d dd = w.Agents.PositionAt(p, p.Died);
+                    if (cull && Vector3.Dot(PlanetGeo.ToVector(dd), camPos) < limb) continue;
+                    Vector3 dpos = Stand(P, dd);
+                    if (cull && !InView(_peoplePlanes, dpos, 60f)) continue;
+                    float dage = (float)p.AgeYears(p.Died);
+                    float dsc = (dage < 12 ? 0.55f + dage * 0.038f : 1f) * PeopleScale(dpos);
+                    Color dcloth = Color.Lerp(Livery(w, in p, dage, out int ddye, out float dstat, out _), new Color(0.86f, 0.84f, 0.79f), 0.65f);
+                    var drot = PlanetGeo.Upright(dpos, (id * 53) % 360) * Quaternion.Euler(90f, 0f, 0f);
+                    _people.Add(ddye, dcloth, Matrix4x4.TRS(dpos + dpos.normalized * 0.12f * dsc, drot, Vector3.one * dsc * dstat), 0f, Presence.Stand);
+                    continue;
+                }
                 if (p.Act == ActivityKind.Sleep || p.Act == ActivityKind.Infant || p.Act == ActivityKind.Ill) continue; // indoors
                 Vec3d d = w.Agents.PositionAt(p, t);
                 if (cull && Vector3.Dot(PlanetGeo.ToVector(d), camPos) < limb) { PeopleCulled++; continue; }
