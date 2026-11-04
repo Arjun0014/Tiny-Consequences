@@ -1057,7 +1057,7 @@ namespace TC2.Game
             if (_soilSnap.Length != P.Cells) _soilSnap = new float[P.Cells];
             System.Array.Copy(P.SoilWater, _soilSnap, P.Cells);
             _crops.Clear();
-            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid)) _crops[sid] = CropOf(in w.Settlements.Get(sid));
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid)) _crops[sid] = CropOf(w, sid);
         }
 
         /// <summary>(session 30) A village's fields as a cycle colours them: its crop's colour (sRGB), the share of its arable it works, the crop's stage
@@ -1067,17 +1067,40 @@ namespace TC2.Game
         float[] _soilSnap = new float[0];
         long _colourNow;   // (the world's time this cycle's colours were read at)
 
-        static FieldCrop CropOf(in TC2.Core.Places.Settlement st) => new FieldCrop
+        static FieldCrop CropOf(TC2.Core.Simulation.World w, int sid)
         {
-            Colour = CropColour(st),
-            Used = st.ArableHa > 0 ? (float)System.Math.Min(1.0, st.FieldHa / st.ArableHa) : 1f,
-            Stage = (float)st.Crop + (float)System.Math.Min(0.99, st.CropGrowth),
-            Burnt = (float)st.CropBurnt,
-        };
+            ref var st = ref w.Settlements.Get(sid);
+            return new FieldCrop
+            {
+                Colour = CropColour(st),
+                Used = st.ArableHa > 0 ? (float)System.Math.Min(1.0, st.FieldHa / st.ArableHa) : 1f,
+                Stage = (float)st.Crop + (float)System.Math.Min(0.99, st.CropGrowth),
+                Burnt = Blighted(w, sid, in st) ? -(float)st.CropBurnt : (float)st.CropBurnt,   // (session 32: a blight's share sent negative - the shader withers it, a fire's it chars)
+            };
+        }
+
+        /// <summary>(session 32) Whether a blight took this village's standing crop this season: the season's first loss was a blight (`CropCause`), or a
+        /// CropsBlighted record of the place since its last harvest (its records read back, a year at most). Read with the crop's colours, once a cycle.</summary>
+        static bool Blighted(TC2.Core.Simulation.World w, int sid, in TC2.Core.Places.Settlement st)
+        {
+            if (st.CropBurnt <= 0.01) return false;
+            var H = w.History;
+            if (st.CropCause != 0 && H.TryGet(st.CropCause, out var cc) && cc.Kind == TC2.Core.History.HistoryKind.CropsBlighted) return true;
+            var at = H.RecordsAt(sid);
+            if (at == null) return false;
+            for (int i = at.Count - 1, k = 0; i >= 0 && k < 96; i--, k++)
+            {
+                if (!H.TryGet(at[i], out var e)) continue;
+                if (w.Now - e.Time > TC2.Core.Foundation.SimTime.Year) break;
+                if (e.Kind == TC2.Core.History.HistoryKind.CropsBlighted) return true;
+                if (e.Kind == TC2.Core.History.HistoryKind.Harvest || e.Kind == TC2.Core.History.HistoryKind.HarvestFailed) break;   // (an earlier season's)
+            }
+            return false;
+        }
 
         FieldCrop CropNow(TC2.Core.Simulation.World w, int sid)
         {
-            if (!_crops.TryGetValue(sid, out var f)) { f = CropOf(in w.Settlements.Get(sid)); _crops[sid] = f; }   // (a village founded since the cycle began)
+            if (!_crops.TryGetValue(sid, out var f)) { f = CropOf(w, sid); _crops[sid] = f; }   // (a village founded since the cycle began)
             return f;
         }
 
