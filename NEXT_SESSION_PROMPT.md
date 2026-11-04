@@ -1,5 +1,7 @@
 # Next session — start here
 
+## FIRST - session 32 (4 Nov 2026): Arjun's FINAL SHIP PUSH (powers with real reactions, the butterfly tree, camera, look, opening). Read `docs/tc2/SESSION_HANDOFF.md` "Session 32" first - it overrides the session 31 lines below.
+
 ## FIRST - the state at the end of session 31 (1 Nov 2026; these lines override everything below)
 - **Arjun stopped the session.** He played the build of f301037 (new interface, old world look) and said "so many issues" without listing them, then asked to stop the server and close every process the session started: done, nothing of ours runs. **Ask him what the issues were before doing anything else.** Do not start a build, a server or a heavy job on your own.
 - **A Web build waits for his word**: the other game's session must have finished and RAM be about 60 % or less (the last build peaked at 98 % from a 65 % start, and Claude Code stopped its wrapper for low memory). He cannot be read from process lists: the other session's Claude processes stay open when idle.
