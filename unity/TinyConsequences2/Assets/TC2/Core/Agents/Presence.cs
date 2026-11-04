@@ -21,13 +21,22 @@ namespace TC2.Core.Agents
         /// or a pick, hammering, sitting, talking, walking with a load, rowing, working with the hands standing (a loom), drawing water, sparring,
         /// running (children at play), fishing from the shore, sitting at work with the hands (spinning, mending, throwing pots), sitting and talking.</summary>
         public const byte Stand = 0, Walk = 1, Hoe = 2, Reap = 3, Chop = 4, Hammer = 5, Sit = 6, Talk = 7, Carry = 8, Row = 9, Loom = 10, Draw = 11,
-                          Spar = 12, Run = 13, Fish = 14, SitWork = 15, SitTalk = 16, Flail = 17;
+                          Spar = 12, Run = 13, Fish = 14, SitWork = 15, SitTalk = 16, Flail = 17,
+                          // (session 32, Arjun: "most people I'm looking at are standing still and doing nothing") the body astir in place at what they
+                          // really do: standing at leisure (the weight shifted, a look round, a hand to the hip or the head), sitting at leisure (leaning
+                          // back, hugging the knees, a look round), pointing (an arm out toward what they face: where a shock struck, a fire), looking out
+                          // (a hand to the brow, the trunk turning: a watch, a herder, a hunter waiting), stoking (bent to a fire or a clamp with a pole),
+                          // running in alarm (hard, the arms pumping, now and then a hand flung up), a child hopping and clapping at play
+                          Loiter = 18, SitIdle = 19, Point = 20, Look = 21, Stoke = 22, Scared = 23, Hop = 24;
 
         /// <summary>Whether a pose shows the body at work or moving (else it stands or sits still: true of leisure and waiting).</summary>
         public static bool Busy(byte pose) => pose != Stand && pose != Sit;
 
         /// <summary>Whether a pose is at leisure with others (talking, standing or sitting): neither still nor at work.</summary>
         public static bool Talking(byte pose) => pose == Talk || pose == SitTalk;
+
+        /// <summary>Whether a pose is astir in place, not at work: standing or sitting at leisure with the body moving, looking out, pointing, hopping.</summary>
+        public static bool Astir(byte pose) => pose == Loiter || pose == SitIdle || pose == Point || pose == Look || pose == Hop;
 
         /// <summary>
         /// Where and how person `p` is drawn at time t (seconds, fractional): the direction from the planet's centre, the way they face (a unit
@@ -43,7 +52,7 @@ namespace TC2.Core.Agents
             if (p.Step == StepKind.Travel)
             {
                 moving = p.S0 != p.S1;
-                pose = !moving ? Stand : carrying ? Carry : Walk;
+                pose = !moving ? Loiter : carrying ? Carry : p.Act == ActivityKind.Flee ? Scared : Walk;
                 // on the way as it is drawn: in a village along the street it leaves by (WayLines), facing the way they go
                 var r = w.Agents.RouteOf(in p);
                 if (r != null && p.Act != ActivityKind.Voyage && p.Act != ActivityKind.Sail)
@@ -59,7 +68,7 @@ namespace TC2.Core.Agents
             if (p.Step == StepKind.Local && t < p.TA)
             {
                 moving = true;
-                pose = carrying ? Carry : p.Act == ActivityKind.Play || p.Act == ActivityKind.Flee ? Run : Walk;
+                pose = carrying ? Carry : p.Act == ActivityKind.Flee ? Scared : p.Act == ActivityKind.Play ? Run : Walk;
                 double wx = (double)p.ToX - p.FromX, wy = (double)p.ToY - p.FromY;
                 if (p.TBend > p.T0 && p.TBend < p.TA)   // (round the water: along the leg they are on - D2-156)
                 {
@@ -81,22 +90,46 @@ namespace TC2.Core.Agents
                     // at the hearth, under their own roof: not seen (the chimney's smoke shows the cooking); at a camp, by its fire
                     if (Roofed(w, in p, sid)) return false;
                     Door(w, in p, sid, u0, ref x, ref y, ref fx, ref fy);
-                    pose = p.Act == ActivityKind.Cook ? SitWork : Sit;
+                    pose = p.Act == ActivityKind.Cook ? SitWork : SitIdle;
                     break;
                 case ActivityKind.Idle:
-                    // idle at home: sitting by the door in the day, facing out - turned to the neighbours idle at their doors near by, talking
+                {
+                    // (session 32) in from a gale: keeping in at home while it blows (AgentSystem.ShockStep) - under their roof, not seen
+                    if (p.Why == WhyCode.Shock && sid == p.Home && Roofed(w, in p, sid)) return false;
+                    // idle at home: by the door in the day, facing out - turned to the neighbours idle at their doors near by, talking. Their own
+                    // round of it (session 32: sat still the whole hour before): sat a while, up on their feet a while, now and then a few steps out
+                    // before the door to look down the street and back
                     Door(w, in p, sid, u0, ref x, ref y, ref fx, ref fy);
-                    if (GroupCentre(w, in p, sid, t, out double mx, out double my) && (mx - x) * (mx - x) + (my - y) * (my - y) > 0.25)
-                    { fx = mx - x; fy = my - y; pose = u1 < 0.75 ? SitTalk : Talk; }
-                    else pose = u1 < 0.75 ? Sit : Stand;
+                    bool grp = GroupCentre(w, in p, sid, t, out double mx, out double my) && (mx - x) * (mx - x) + (my - y) * (my - y) > 0.25;
+                    if (grp) { fx = mx - x; fy = my - y; }
+                    double per = 300.0, v = since + per * u0, f = (v - DMath.Floor(v / per) * per) / per;
+                    long slot = DMath.ToLong(DMath.Floor(v / per));
+                    bool speaks = Roll(p.Id, DMath.ToLong(DMath.Floor((since + 40.0 * u2) / 40.0)), 0x7A1) < 0.6;
+                    double sitShare = 0.35 + 0.35 * u1;   // (some sit most of their leisure, some stand)
+                    if (f < sitShare) pose = grp && speaks ? SitTalk : SitIdle;
+                    else if (f < 0.82 || p.Why == WhyCode.Shock) pose = grp && speaks ? Talk : Loiter;
+                    else
+                    {
+                        // a few steps out (5 m) and back, then stood there; the way out turned a little each time
+                        double g = (f - 0.82) / 0.18;
+                        double a = (Roll(p.Id, slot, 0x57E) - 0.5) * 1.4, l = DMath.Sqrt(fx * fx + fy * fy);
+                        double ox = l > 1e-9 ? fx / l : 1.0, oy = l > 1e-9 ? fy / l : 0.0;
+                        double bx = ox * DMath.Cos(a) - oy * DMath.Sin(a), by = ox * DMath.Sin(a) + oy * DMath.Cos(a);
+                        double outM = g < 0.2 ? g / 0.2 : g < 0.8 ? 1.0 : (1.0 - g) / 0.2;
+                        x += bx * 5.0 * outM; y += by * 5.0 * outM;
+                        if (g < 0.2) { fx = bx; fy = by; pose = Walk; moving = true; }
+                        else if (g >= 0.8) { fx = -bx; fy = -by; pose = Walk; moving = true; }
+                        else { fx = bx; fy = by; pose = Look; }
+                    }
                     break;
+                }
                 case ActivityKind.Garden:
                 {
                     // in the household's croft behind its house: along a bed a couple of metres to and fro - the spade and the hoe while the crops grow,
                     // stooped to the gathering from the ripening
-                    double run = Tri(since * 0.04 / 3.0 + u0) * 3.0 - 1.5, a = u1 * DMath.TwoPi;
+                    double run = Tri(since * 0.08 / 3.0 + u0) * 3.0 - 1.5, a = u1 * DMath.TwoPi;
                     x += run * DMath.Cos(a); y += run * DMath.Sin(a);
-                    fx = DMath.Cos(a) * TriSlope(since * 0.04 / 3.0 + u0); fy = DMath.Sin(a) * TriSlope(since * 0.04 / 3.0 + u0);
+                    fx = DMath.Cos(a) * TriSlope(since * 0.08 / 3.0 + u0); fy = DMath.Sin(a) * TriSlope(since * 0.08 / 3.0 + u0);
                     pose = s.Crop == CropStage.Ripe || s.Crop == CropStage.Harvested ? Reap : Hoe;
                     moving = true;
                     break;
@@ -112,7 +145,7 @@ namespace TC2.Core.Agents
                     // beat - a breather now and then, the straw turned and the grain swept up
                     double a = Threshing.RingAngle(p.Id);
                     fx = -DMath.Cos(a); fy = -DMath.Sin(a);
-                    pose = Cycle(since + 150.0 * u0, 150.0, 125.0) ? Flail : Stand;
+                    pose = Cycle(since + 150.0 * u0, 150.0, 125.0) ? Flail : Loiter;   // (the breather: the weight shifted, a word, the brow wiped)
                     break;
                 }
                 case ActivityKind.Craft:
@@ -125,28 +158,46 @@ namespace TC2.Core.Agents
                     // along the rows of the village's plots (drawn in its own grid: rows along its east), a few metres to and fro - sowing walks the
                     // furrows broadcasting, the growing crop is hoed, the ripe one reaped, at their own slow pace
                     CropStage st = s.Crop;
-                    double speed = st == CropStage.Sown ? 0.28 : st == CropStage.Ripe ? 0.04 : 0.05, span = st == CropStage.Sown ? 22.0 : 9.0;
-                    double run = Tri(since * speed / span + u0) * span - 0.5 * span;
-                    double dirSign = TriSlope(since * speed / span + u0);
+                    // (session 32: at 0.05 m/s a field hand read as a statue from the village view) up a row at the work's pace - broadcasting
+                    // 0.5 m/s, hoeing 0.12, reaping 0.08 - then back down the headland at a walk to the next row, the rows taken in turn across
+                    // eight of them and back
+                    double speed = st == CropStage.Sown ? 0.5 : st == CropStage.Ripe ? 0.08 : 0.12, span = st == CropStage.Sown ? 22.0 : 9.0, back = 1.1;
+                    double tw = span / speed, per = tw + span / back, v = since + per * u0;
+                    long row = DMath.ToLong(DMath.Floor(v / per));
+                    double f = v - DMath.Floor(v / per) * per, along, across;
+                    double r0 = (Tri(row / 16.0) * 8.0 - 4.0) * 0.9, r1 = (Tri((row + 1) / 16.0) * 8.0 - 4.0) * 0.9;
+                    bool working = f < tw;
+                    if (working) { along = f * speed; across = r0; }
+                    else { double g = (f - tw) / (per - tw); along = span * (1.0 - g); across = r0 + (r1 - r0) * g; }
+                    along -= 0.5 * span;
+                    double dirSign = working ? 1.0 : -1.0;
                     bool rows = u1 < 0.5;   // (half work along the rows, half across)
-                    if (rows) { x += run; fx = dirSign; } else { y += run; fy = dirSign; }
-                    pose = st == CropStage.Sown ? Walk : st == CropStage.Ripe ? Reap : Hoe;
+                    if (rows) { x += along; y += across; fx = dirSign; } else { y += along; x += across; fy = dirSign; }
+                    pose = !working || st == CropStage.Sown ? Walk : st == CropStage.Ripe ? Reap : Hoe;
                     moving = true;
                     break;
                 }
                 case ActivityKind.Gather:
                 case ActivityKind.Forage:
                 {
-                    double run = Tri(since * 0.03 / 6.0 + u0) * 6.0 - 3.0, a = u1 * DMath.TwoPi;
+                    // stooped at a bush or a patch for most of a minute, then a few steps on to the next, along a dozen metres and back
+                    double per = 60.0, v = since + per * u0, f = v - DMath.Floor(v / per) * per, a = u1 * DMath.TwoPi;
+                    long i = DMath.ToLong(DMath.Floor(v / per));
+                    double p0 = Tri(i / 6.0) * 12.0 - 6.0, p1 = Tri((i + 1) / 6.0) * 12.0 - 6.0, run;
+                    if (f < 46.0) { run = p0; pose = Reap; }
+                    else { run = p0 + (p1 - p0) * (f - 46.0) / 14.0; pose = Walk; }
+                    double sl = p1 >= p0 ? 1.0 : -1.0;
                     x += run * DMath.Cos(a); y += run * DMath.Sin(a);
-                    fx = DMath.Cos(a) * TriSlope(since * 0.03 / 6.0 + u0); fy = DMath.Sin(a) * TriSlope(since * 0.03 / 6.0 + u0);
-                    pose = Reap; moving = true;
+                    fx = DMath.Cos(a) * sl; fy = DMath.Sin(a) * sl;
+                    moving = true;
                     break;
                 }
                 case ActivityKind.Wood:
                     // at a tree: swinging, a breather now and then (a minute and a half of work, twenty seconds' rest)
-                    pose = Cycle(since + 110.0 * u0, 110.0, 90.0) ? Chop : Stand;
+                    // (session 32) the breather spent carrying what was cut to the stack a few metres off and back, not stood
                     fx = DMath.Cos(u1 * DMath.TwoPi); fy = DMath.Sin(u1 * DMath.TwoPi);
+                    if (Cycle(since + 110.0 * u0, 110.0, 90.0)) pose = Chop;
+                    else Fetch(since + 110.0 * u0, 110.0, 90.0, 4.0, ref x, ref y, ref fx, ref fy, out pose, out moving);
                     break;
                 case ActivityKind.Quarry:
                 case ActivityKind.Mine:
@@ -156,9 +207,24 @@ namespace TC2.Core.Agents
                     else Fetch(since + 100.0 * u0, 100.0, 80.0, 4.0, ref x, ref y, ref fx, ref fy, out pose, out moving);
                     break;
                 case ActivityKind.Burn:
-                    pose = Cycle(since + 120.0 * u0, 120.0, 70.0) ? Hoe : Stand;   // (raking and tending the clamp)
-                    Toward(w, s.CharHearth, x, y, ref fx, ref fy);
+                {
+                    // raking and tending the clamp: raking a while, then round it a quarter of the way to its next side and stoking there (a pole
+                    // worked into the vents) - taken round the clamp side by side (session 32: stood a breather of 50 s in every two minutes)
+                    double per = 120.0, v = since + per * u0, f = v - DMath.Floor(v / per) * per;
+                    long lap = DMath.ToLong(DMath.Floor(v / per));
+                    if (s.CharHearth != 0 && w.Buildings.Exists(s.CharHearth))
+                    {
+                        ref var ch = ref w.Buildings.Get(s.CharHearth);
+                        double dx = x - ch.X, dy = y - ch.Y, r = DMath.Max(2.5, DMath.Sqrt(dx * dx + dy * dy)), a0 = DMath.Atan2(dy, dx);
+                        double q = f < 70.0 ? 0.0 : f < 88.0 ? (f - 70.0) / 18.0 : 1.0;
+                        double a = a0 + ((lap & 3) + q) * 0.5 * DMath.PI;
+                        x = ch.X + r * DMath.Cos(a); y = ch.Y + r * DMath.Sin(a);
+                        if (f >= 70.0 && f < 88.0) { fx = -DMath.Sin(a); fy = DMath.Cos(a); pose = Walk; moving = true; }
+                        else { fx = ch.X - x; fy = ch.Y - y; pose = f < 70.0 ? Hoe : Stoke; }
+                    }
+                    else { pose = f < 70.0 ? Hoe : Stoke; }
                     break;
+                }
                 case ActivityKind.Smith:
                     pose = Hammer;
                     OutOf(w, sid, p.WhyArg, ref x, ref y);   // (at the smithy's open front, not inside its walls)
@@ -189,30 +255,31 @@ namespace TC2.Core.Agents
                 case ActivityKind.Tend:
                 {
                     // with the herd on its ground: walking round it at a herder's pace, then standing to watch it
-                    double lap = 240.0, k = since / lap + u0 - DMath.Floor(since / lap + u0);
-                    if (k < 0.6)
+                    // (session 32) the walk most of the lap, the whole way round, then a look over the herd where the lap began (before: stood 40 %)
+                    double lap = 240.0, k = since / lap + u0 - DMath.Floor(since / lap + u0), lap0 = DMath.Floor(since / lap + u0);
+                    if (k < 0.82)
                     {
-                        double a = (since / lap + u0) * DMath.TwoPi, r = 6.0 + 6.0 * u1;
+                        double a = (lap0 + k / 0.82) * DMath.TwoPi, r = 6.0 + 6.0 * u1;
                         x += r * DMath.Cos(a); y += r * DMath.Sin(a);
                         fx = -DMath.Sin(a); fy = DMath.Cos(a);
                         pose = Walk; moving = true;
                     }
                     else
                     {
-                        double a = DMath.Floor(since / lap + u0) * DMath.TwoPi + 0.6 * DMath.TwoPi, r = 6.0 + 6.0 * u1;
+                        double a = (lap0 + 1.0) * DMath.TwoPi, r = 6.0 + 6.0 * u1;
                         x += r * DMath.Cos(a); y += r * DMath.Sin(a);
                         fx = -DMath.Cos(a); fy = -DMath.Sin(a);   // (watching the herd)
-                        pose = Stand;
+                        pose = Look;
                     }
                     break;
                 }
                 case ActivityKind.Hunt:
                 {
                     double run = Tri(since * 0.25 / 40.0 + u0) * 40.0 - 20.0, a = u1 * DMath.TwoPi, sl = TriSlope(since * 0.25 / 40.0 + u0);
-                    bool still = Cycle(since + 90.0 * u2, 90.0, 30.0);   // (a stalk, then a wait)
+                    bool still = Cycle(since + 90.0 * u2, 90.0, 15.0);   // (a stalk, then a short wait, looking out)
                     x += run * DMath.Cos(a); y += run * DMath.Sin(a);
                     fx = DMath.Cos(a) * sl; fy = DMath.Sin(a) * sl;
-                    pose = still ? Stand : Walk; moving = !still;
+                    pose = still ? Look : Walk; moving = !still;
                     break;
                 }
                 case ActivityKind.Fish:
@@ -220,7 +287,10 @@ namespace TC2.Core.Agents
                     fx = x - s.SquareX; fy = y - s.SquareY;   // (out from the village: toward the water's side)
                     break;
                 case ActivityKind.Haul:
-                    pose = Carry;
+                    // (session 32: walked on the spot before) at the load: stooped to it, then carrying it the few metres to where it goes and back
+                    fx = DMath.Cos(u1 * DMath.TwoPi); fy = DMath.Sin(u1 * DMath.TwoPi);
+                    if (Cycle(since + 80.0 * u0, 80.0, 25.0)) pose = Reap;
+                    else Fetch(since + 80.0 * u0, 80.0, 25.0, 5.0, ref x, ref y, ref fx, ref fy, out pose, out moving);
                     break;
                 case ActivityKind.Play:
                 {
@@ -228,7 +298,7 @@ namespace TC2.Core.Agents
                     double a = since * (0.35 + 0.25 * u1) + u0 * DMath.TwoPi, r = 2.0 + 2.5 * u2;
                     x += r * DMath.Cos(a); y += r * DMath.Sin(a);
                     fx = -DMath.Sin(a); fy = DMath.Cos(a);
-                    pose = Cycle(since + 60.0 * u0, 60.0, 45.0) ? Run : Stand; moving = pose == Run;
+                    pose = Cycle(since + 60.0 * u0, 60.0, 52.0) ? Run : Hop; moving = pose == Run;   // (a breath between, hopping and clapping)
                     break;
                 }
                 case ActivityKind.Train:
@@ -238,33 +308,141 @@ namespace TC2.Core.Agents
                 case ActivityKind.Social:
                 case ActivityKind.Visit:
                     // at leisure on the green, or visiting: those near each other turn to each other and talk; some sit on the grass
-                    Group(w, in p, sid, t, ref x, ref y, ref fx, ref fy, 1.1);
-                    pose = u1 < 0.3 ? Sit : Talk;
-                    // (session 32, Arjun: the reactions read cheap - crowds idling every way) kept together by a shock felt: on their feet, turned to
-                    // where it struck, talking it over with a hand toward it - read from the alarm they hold (its record's place); no state written
+                    // (session 32, Arjun: the reactions read cheap - crowds idling every way) kept together by a shock felt: closed in round the
+                    // refuge they ran to, on their feet, turned to where it struck - talking it over, an arm out toward it, looking; a child beside
+                    // a grown-up of its household kept together there - read from the alarm they hold (its record's place); no state written
                     if (p.Why == WhyCode.Shock && p.Alarm != 0 && w.History.TryGet(p.Alarm, out var shock) && shock.Cell >= 0 && shock.Cell < w.Planet.Cells)
                     {
                         s.SphereToLocal(w.Planet.Grid.Center[shock.Cell], w.Planet.Radius, out double sx, out double sy);
+                        bool child = p.AgeYears((long)t) < 12.0;
+                        Crowd(w, in p, sid, t, since, child, sx, sy, ref x, ref y, out bool closing);
                         if ((sx - x) * (sx - x) + (sy - y) * (sy - y) > 1.0) { fx = sx - x; fy = sy - y; }
-                        pose = u1 < 0.6 ? Talk : Stand;
+                        double r = Roll(p.Id, DMath.ToLong(DMath.Floor((since + 25.0 * u2) / 25.0)), 0x5C0C);
+                        if (closing) { pose = Walk; moving = true; }
+                        else pose = child ? (r < 0.75 ? Look : Point) : r < 0.3 ? Point : r < 0.72 ? Talk : Look;
+                        break;
+                    }
+                    // at leisure: a sitting or a standing spell of some minutes (a third of the time sat), speaking or listening by turns
+                    Group(w, in p, sid, t, ref x, ref y, ref fx, ref fy, 1.1);
+                    {
+                        bool sat = Roll(p.Id, DMath.ToLong(DMath.Floor((since + 300.0 * u0) / 300.0)), 0x5175) < 0.3;
+                        bool speaks = Roll(p.Id, DMath.ToLong(DMath.Floor((since + 40.0 * u2) / 40.0)), 0x7A1) < 0.55;
+                        pose = sat ? (speaks ? SitTalk : SitIdle) : (speaks ? Talk : Loiter);
                     }
                     break;
                 case ActivityKind.Watch:
-                    pose = Stand;
-                    fx = x - s.SquareX; fy = y - s.SquareY;   // (watching outward from the store)
+                {
+                    // watching outward from the store, looking round; now and then pacing the beat before it (7 m along and back)
+                    fx = x - s.SquareX; fy = y - s.SquareY;
+                    double per = 200.0, v = since + per * u0, f = (v - DMath.Floor(v / per) * per) / per;
+                    if (f < 0.78) pose = Look;
+                    else
+                    {
+                        double g = (f - 0.78) / 0.22, l = DMath.Sqrt(fx * fx + fy * fy);
+                        double bx = l > 1e-9 ? -fy / l : 1.0, by = l > 1e-9 ? fx / l : 0.0, m = g < 0.5 ? 2.0 * g : 2.0 - 2.0 * g;
+                        x += bx * 7.0 * m; y += by * 7.0 * m;
+                        if (g < 0.5) { fx = bx; fy = by; } else { fx = -bx; fy = -by; }
+                        pose = Walk; moving = true;
+                    }
                     break;
+                }
                 case ActivityKind.Sail:
                 case ActivityKind.Voyage:
                     pose = Row;
                     break;
+                case ActivityKind.Flee:
+                case ActivityKind.Wait:
+                {
+                    // (session 32) run clear, or kept back by a fire: turned to the danger they fled - where the shock struck, the nearest fire burning -
+                    // looking at it, an arm out toward it by turns; sheltering from a fire at home, at their own door
+                    bool fire = p.Why == WhyCode.FireNear || p.Why == WhyCode.FireAhead || p.Why == WhyCode.FireBehind || p.Why == WhyCode.WaitingForFire;
+                    if (fire && sid == p.Home) Door(w, in p, sid, u0, ref x, ref y, ref fx, ref fy);
+                    bool seen = false;
+                    if (p.Why == WhyCode.Shock && p.Alarm != 0 && w.History.TryGet(p.Alarm, out var fled) && fled.Cell >= 0 && fled.Cell < w.Planet.Cells)
+                    {
+                        s.SphereToLocal(w.Planet.Grid.Center[fled.Cell], w.Planet.Radius, out double sx, out double sy);
+                        if ((sx - x) * (sx - x) + (sy - y) * (sy - y) > 1.0) { fx = sx - x; fy = sy - y; seen = true; }
+                    }
+                    else if (fire)
+                    {
+                        int fc = FireCell(w, sid);
+                        if (fc >= 0)
+                        {
+                            s.SphereToLocal(w.Planet.Grid.Center[fc], w.Planet.Radius, out double sx, out double sy);
+                            if ((sx - x) * (sx - x) + (sy - y) * (sy - y) > 1.0) { fx = sx - x; fy = sy - y; seen = true; }
+                        }
+                    }
+                    double r = Roll(p.Id, DMath.ToLong(DMath.Floor((since + 20.0 * u2) / 20.0)), 0xF1EE);
+                    pose = seen ? (r < 0.35 ? Point : Look) : Loiter;
+                    break;
+                }
                 default:
-                    pose = Stand;
+                    pose = Loiter;
                     break;
             }
             if (fx == 0 && fy == 0) { double a = u2 * DMath.TwoPi; fx = DMath.Cos(a); fy = DMath.Sin(a); }
             dir = s.LocalToSphere(x, y, w.Planet.Radius);
             face = (s.East * fx + s.North * fy).Normalized;
             return true;
+        }
+
+        /// <summary>A person's own draw for a slot of time (which way a spell goes: sat or stood, speaking or listening) - a hash, no state.</summary>
+        static double Roll(int id, long slot, ulong salt) => KeyedRng.Unit(KeyedRng.Mix((ulong)id * 0x9E3779B97F4A7C15UL ^ (ulong)slot * 0xBF58476D1CE4E5B9UL ^ salt));
+
+        /// <summary>The burning cell nearest a village now (-1 none) - read once a moment for each village asked.</summary>
+        static int FireCell(World w, int sid)
+        {
+            if (w.Fire == null || w.Fire.Active.Count == 0) return -1;
+            if (_fireAt.TryGetValue(sid, out int c)) return c;
+            ref var s = ref w.Settlements.Get(sid);
+            double best = double.MaxValue; c = -1;
+            for (int i = 0; i < w.Fire.Active.Count; i++)
+            {
+                int cell = w.Fire.Active[i];
+                double d = Vec3d.ArcDistance(w.Planet.Grid.Center[cell], s.Anchor, w.Planet.Radius);
+                if (d < best) { best = d; c = cell; }
+            }
+            _fireAt[sid] = c;
+            return c;
+        }
+
+        /// <summary>
+        /// Those kept together by a shock (session 32), closed in round the refuge they ran to (AgentSystem.ShockStep's: the green, or 220 m past the
+        /// point it struck when that was near the green): each their own spot of the 30 m patch drawn in to a third, a child beside the first grown-up
+        /// of its household kept together there - closing in over their first 25 s at it (`closing`, a walk). The refuge is reckoned once a moment for
+        /// each shock and village; nothing written.
+        /// </summary>
+        static void Crowd(World w, in Person p, int sid, double t, double since, bool child, double sx, double sy, ref double x, ref double y, out bool closing)
+        {
+            closing = false;
+            Moment(w, t);
+            var key = (sid, p.Alarm);
+            if (!_refuge.TryGetValue(key, out var rf))
+            {
+                ref var s = ref w.Settlements.Get(sid);
+                double gx = s.SquareX, gy = s.SquareY;
+                Boats.OutOfTheWater(w, in s, ref gx, ref gy);
+                double dx = gx - sx, dy = gy - sy, d = DMath.Sqrt(dx * dx + dy * dy);
+                rf = (gx, gy);
+                if (d < 180.0) { double ux = d > 1.0 ? dx / d : 1.0, uy = d > 1.0 ? dy / d : 0.0; rf = (sx + ux * 220.0, sy + uy * 220.0); }
+                _refuge[key] = rf;
+            }
+            const double In = 0.33;
+            double tx = rf.x + (p.ToX - rf.x) * In, ty = rf.y + (p.ToY - rf.y) * In;
+            if (child && p.Household != 0 && _crowdAdult.TryGetValue((sid, p.Alarm, p.Household), out int ad) && ad != p.Id && w.People.Exists(ad))
+            {
+                ref var a = ref w.People.Get(ad);
+                double ax = rf.x + (a.ToX - rf.x) * In, ay = rf.y + (a.ToY - rf.y) * In;
+                double fx = sx - ax, fy = sy - ay, l = DMath.Sqrt(fx * fx + fy * fy), side = (p.Id & 1) == 0 ? 0.6 : -0.6;
+                if (l > 1e-6) { tx = ax - fy / l * side; ty = ay + fx / l * side; } else { tx = ax + side; ty = ay; }
+            }
+            double c = since / 25.0;
+            if (c < 1.0)
+            {
+                closing = (tx - x) * (tx - x) + (ty - y) * (ty - y) > 0.25;
+                x += (tx - x) * c; y += (ty - y) * c;
+            }
+            else { x = tx; y = ty; }
         }
 
         /// <summary>The unit tangent at a from a toward b (zero when they coincide).</summary>
@@ -407,6 +585,9 @@ namespace TC2.Core.Agents
         static World _gw; static double _gt = double.NaN;
         static readonly Dictionary<long, (double x, double y, int n)> _groups = new Dictionary<long, (double, double, int)>();
         static readonly Dictionary<int, int> _rank = new Dictionary<int, int>();
+        static readonly Dictionary<(int sid, long alarm), (double x, double y)> _refuge = new Dictionary<(int, long), (double, double)>();
+        static readonly Dictionary<(int sid, long alarm, int hh), int> _crowdAdult = new Dictionary<(int, long, int), int>();
+        static readonly Dictionary<int, int> _fireAt = new Dictionary<int, int>();
         const double Cell = 9.0;
 
         static long GroupKey(int sid, int act, double x, double y) => ((long)sid * 64 + act) * 4194304L + ((long)DMath.Floor(x / Cell) + 1024) * 2048 + ((long)DMath.Floor(y / Cell) + 1024);
@@ -428,23 +609,32 @@ namespace TC2.Core.Agents
         }
         static double _cx, _cy;
 
+        /// <summary>The groups at leisure (and those kept together by a shock, and their households' grown-ups) read once for a moment.</summary>
+        static void Moment(World w, double t)
+        {
+            if (ReferenceEquals(_gw, w) && _gt == t) return;
+            _gw = w; _gt = t; _groups.Clear(); _rank.Clear(); _refuge.Clear(); _crowdAdult.Clear(); _fireAt.Clear();
+            for (int id = w.People.First(); id != 0; id = w.People.Next(id))
+            {
+                ref var q = ref w.People.Get(id);
+                if (!q.Alive || q.Step != StepKind.Local || t < q.TA) continue;
+                if (q.Act != ActivityKind.Social && q.Act != ActivityKind.Visit && q.Act != ActivityKind.Train && q.Act != ActivityKind.Idle) continue;
+                int qs = q.At != 0 ? q.At : q.Home;
+                if (q.Act == ActivityKind.Social && q.Why == WhyCode.Shock && q.Alarm != 0 && q.Household != 0 && q.AgeYears((long)t) >= 16.0)
+                {
+                    var ak = (qs, q.Alarm, q.Household);
+                    if (!_crowdAdult.ContainsKey(ak)) _crowdAdult[ak] = id;
+                }
+                long key = GroupKey(qs, (int)q.Act == (int)ActivityKind.Visit ? (int)ActivityKind.Social : (int)q.Act, q.ToX, q.ToY);
+                (double x, double y, int n) g = _groups.TryGetValue(key, out var gg) ? gg : (0.0, 0.0, 0);
+                _rank[id] = g.n;
+                _groups[key] = (g.x + q.ToX, g.y + q.ToY, g.n + 1);
+            }
+        }
+
         static void Group(World w, in Person p, int sid, double t, ref double x, ref double y, ref double fx, ref double fy, double spacing, bool place = true)
         {
-            if (!ReferenceEquals(_gw, w) || _gt != t)
-            {
-                _gw = w; _gt = t; _groups.Clear(); _rank.Clear();
-                for (int id = w.People.First(); id != 0; id = w.People.Next(id))
-                {
-                    ref var q = ref w.People.Get(id);
-                    if (!q.Alive || q.Step != StepKind.Local || t < q.TA) continue;
-                    if (q.Act != ActivityKind.Social && q.Act != ActivityKind.Visit && q.Act != ActivityKind.Train && q.Act != ActivityKind.Idle) continue;
-                    int qs = q.At != 0 ? q.At : q.Home;
-                    long key = GroupKey(qs, (int)q.Act == (int)ActivityKind.Visit ? (int)ActivityKind.Social : (int)q.Act, q.ToX, q.ToY);
-                    (double x, double y, int n) g = _groups.TryGetValue(key, out var gg) ? gg : (0.0, 0.0, 0);
-                    _rank[id] = g.n;
-                    _groups[key] = (g.x + q.ToX, g.y + q.ToY, g.n + 1);
-                }
-            }
+            Moment(w, t);
             long k = GroupKey(sid, p.Act == ActivityKind.Visit ? (int)ActivityKind.Social : (int)p.Act, p.ToX, p.ToY);
             if (!_groups.TryGetValue(k, out var grp) || grp.n < 2 || !_rank.TryGetValue(p.Id, out int rank)) return;
             double mx = grp.x / grp.n, my = grp.y / grp.n;
