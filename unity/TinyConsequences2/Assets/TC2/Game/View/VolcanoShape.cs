@@ -15,7 +15,7 @@ namespace TC2.Game
         struct Cone { public Vec3d At, East, North; public double H, R, Crater, Depth; public bool Shield; public int Vent; }
 
         static PlanetState _P;
-        static int _relief = -1, _count = -1;
+        static int _relief = -1, _count = -1, _erupted = -1;
         static long _now;
 
         /// <summary>The world's time for the cones' ages (set by the view each frame; cones are rebuilt with the relief).</summary>
@@ -25,8 +25,9 @@ namespace TC2.Game
 
         static void Refresh(PlanetState P)
         {
-            if (P == _P && P.ReliefVersion == _relief && P.Vents.Count == _count) return;
-            _P = P; _relief = P.ReliefVersion; _count = P.Vents.Count;
+            int erupted = Signature(P);
+            if (P == _P && P.ReliefVersion == _relief && P.Vents.Count == _count && erupted == _erupted) return;
+            _P = P; _relief = P.ReliefVersion; _count = P.Vents.Count; _erupted = erupted;
             if (_cellCone == null || _cellCone.Length != P.Cells) _cellCone = new int[P.Cells];
             for (int c = 0; c < _cellCone.Length; c++) _cellCone[c] = -1;
             _cones = new Cone[P.Vents.Count];
@@ -63,6 +64,16 @@ namespace TC2.Game
                     }
                 }
             }
+        }
+
+        /// <summary>(session 32 QA, s32erupt1) The vents and their eruptions in one number: the ground's patches are built again when it changes
+        /// (TerrainLod) - a vent the god opened stood its cone only in the patches built after it, the rest open beside it (dark wedges of the
+        /// sea below, a mountain in the air).</summary>
+        public static int Signature(PlanetState P)
+        {
+            int sig = P.Vents.Count * 7919;
+            for (int v = 0; v < P.Vents.Count; v++) sig = sig * 31 + P.Vents[v].Eruptions;
+            return sig;
         }
 
         /// <summary>

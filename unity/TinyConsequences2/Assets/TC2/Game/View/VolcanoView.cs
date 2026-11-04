@@ -214,7 +214,7 @@ namespace TC2.Game
                         {
                             // the lava's own cells (the flow as the simulation ran it)
                             float flick = 0.7f + 0.3f * Mathf.Sin(now * 2.3f + seed * 9f);
-                            Add(at + up * 2f, 30f + 5f * l.Fx.Size, 0.35f * s, 0.95f, 1.1f * s * flick, seed, 0.15f);
+                            Add(at + up * 1.5f, 14f + 2f * l.Fx.Size, 0.26f * s, 0.95f, 0.75f * s * flick, seed, 0.15f);   // (session 32 QA: 30+ m blocks before)
                             break;
                         }
                 }
@@ -309,20 +309,26 @@ namespace TC2.Game
                 cur = next;
                 _path.Add(cur);
             }
+            // (session 32 QA, s32erupt1: 40 m puffs every 50 m had drawn a staircase of glowing blocks to the shore) a narrow stream of small soft
+            // embers on the ground, close together, wandering a little from the cells' line, its glow gentler and cooling from the front back
+            const int Per = 12;
             for (int i = 0; i + 1 < _path.Count; i++)
             {
                 Vec3d a = g.Center[_path[i]], b = g.Center[_path[i + 1]];
-                for (int j = 0; j < 5; j++)
+                Vec3d side = Vec3d.Cross(a, b - a);
+                if (side.LengthSq > 1e-12) side = side.Normalized;
+                for (int j = 0; j < Per; j++)
                 {
-                    float t = (j + 0.5f) / 5f;
-                    Vec3d d = (a * (1 - t) + b * t).Normalized;
-                    Vector3 p = Ground.Surface(P, d, 2f);
+                    float t = (j + 0.5f) / Per;
+                    float wander = (float)(System.Math.Sin((i + t) * 2.1 + cell * 0.37) * 0.035 + System.Math.Sin((i + t) * 5.3 + cell) * 0.012);
+                    Vec3d d = (a * (1 - t) + b * t + side * (wander * P.CellSize / P.Radius)).Normalized;
+                    Vector3 p = Ground.Surface(P, d, 1.2f);
                     float along = (i + t) / Mathf.Max(1, _path.Count - 1);
-                    float flick = 0.7f + 0.3f * Mathf.Sin(now * 2.3f + i * 1.7f + j);
+                    float flick = 0.75f + 0.25f * Mathf.Sin(now * 2.3f + i * 1.7f + j * 0.9f);
                     // the front cools first: the glow fades from the end of the flow back to the vent
                     float hot = s * Mathf.Clamp01(1.25f - along * (1.2f - s));
                     if (hot <= 0.01f) continue;
-                    Add(p, 22f + 6f * vei, 0.35f * hot, 0.95f, 1.1f * hot * flick, Mathf.Repeat(i * 0.31f + j * 0.17f, 1f), 0.15f);
+                    Add(p, 9f + 2f * vei, 0.24f * hot, 0.95f, 0.7f * hot * flick, Mathf.Repeat(i * 0.31f + j * 0.17f, 1f), 0.15f);
                 }
             }
         }

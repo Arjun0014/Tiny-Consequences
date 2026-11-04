@@ -106,7 +106,7 @@ namespace TC2.Game
                     new Color(0.42f, 0.52f, 0.20f), new Color(0.78f, 0.80f, 0.70f) },   // (4: the boreal floor's moss, 5: its pale lichen)
             new[] { new Color(0.66f, 0.64f, 0.60f), new Color(0.48f, 0.46f, 0.44f), new Color(0.70f, 0.61f, 0.50f) },
         };
-        int _builtWorld = -1, _builtCoast = -1, _builtRelief = -1;
+        int _builtWorld = -1, _builtCoast = -1, _builtRelief = -1, _builtVents = int.MinValue;
         int _frame, _cycle;
         float _recolourTimer;
         long _cycleNow = long.MinValue, _cycleLast = -1;   // (the world's time and last record when the colours were last refreshed)
@@ -216,7 +216,8 @@ namespace TC2.Game
             Rivers.Refresh(w, Host.WorldVersion);   // (the rivers' shape: the ground draws their corridors, D2-084)
             // a new world, a new coast, or relief moved past a hand-over: everything is built again
             bool reliefMoved = P.ReliefVersion - _builtRelief >= Tectonics.ResampleEvery;
-            if (_builtWorld != Host.WorldVersion || _builtCoast != P.CoastVersion || reliefMoved)
+            int vents = VolcanoShape.Signature(P);   // (session 32 QA: a vent opened or erupting - its cone in every patch at once, never in some)
+            if (_builtWorld != Host.WorldVersion || _builtCoast != P.CoastVersion || reliefMoved || vents != _builtVents)
             {
                 foreach (var p in _cache.Values) { p.Built = false; }
                 if (_builtWorld != Host.WorldVersion)
@@ -224,7 +225,7 @@ namespace TC2.Game
                     RefreshCellColours(w);
                     MaxLevel = System.Math.Max(4, MaxLevel10 + (int)System.Math.Round(System.Math.Log(P.GeoScale, 2.0)));
                 }
-                _builtWorld = Host.WorldVersion; _builtCoast = P.CoastVersion; _builtRelief = P.ReliefVersion;
+                _builtWorld = Host.WorldVersion; _builtCoast = P.CoastVersion; _builtRelief = P.ReliefVersion; _builtVents = vents;
                 for (int f = 0; f < 6; f++) Build(w, Get(f, 0, 0, 0)); // roots now: never a hole
             }
             _roadTimer -= Time.unscaledDeltaTime;
