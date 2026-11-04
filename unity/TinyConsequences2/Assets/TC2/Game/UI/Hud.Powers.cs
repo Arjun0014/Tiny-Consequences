@@ -112,7 +112,15 @@ namespace TC2.Game
             // (session 31) a cast that could touch nothing is not spent: it says why
             string refused = Refused(w, aimDir, pw);
             if (refused != null) { CastNote(refused, false); AudioView.Ui("tick"); return; }
-            w.Issue(new Command { Time = w.Now, Kind = pw.Kind, Cell = cell, Arg = pw.Arg });
+            // (session 32) a stone strikes when it is seen to land: the world applies it the fall's real seconds later at the speed the world runs (the town had
+            // fallen while the stone was still in the sky)
+            long lead = 0;
+            if (pw.Kind == CommandKind.GodMeteor)
+            {
+                long rate = Host.MaxSpeed ? 600 : SimHost.Speeds[Mathf.Clamp(Host.SpeedIndex, 0, SimHost.Speeds.Length - 1)];
+                lead = rate > 0 ? (long)Math.Ceiling(AimView.FallTime * rate) : 0;
+            }
+            w.Issue(new Command { Time = w.Now + lead, Kind = pw.Kind, Cell = cell, Arg = pw.Arg });
             CastNote(pw.Doing + " " + TC2.Core.History.HistoryText.At(w.PlaceName(cell)) + " - what comes of it will show in Your hand", true);
             // (session 27: the powers as play) the hand seen: a burst where it fell, the ground shaken by the heaviest
             // (the meteor: the stone seen falling to where the world strikes - the cell's heart, where its fires and its scar will be - and the burst and the

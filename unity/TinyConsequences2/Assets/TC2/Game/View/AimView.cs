@@ -46,7 +46,7 @@ namespace TC2.Game
         // (session 27) a stone falling from the sky to where it was thrown (the meteor), its burst and the ground's shaking when it lands
         struct Fall { public Vec3d Dir; public Color Col; public float Born; }
         static readonly List<Fall> Falls = new List<Fall>();
-        public const float FallTime = 0.75f;
+        public const float FallTime = 1.1f;   // (session 32: a beat longer - its coming seen)
         struct Throw { public Vec3d Dir; public float LandAt; }
         static readonly List<Throw> Throws = new List<Throw>();   // the stones thrown in the last seconds and when each lands (VolcanoView: one fall)
 
@@ -203,6 +203,11 @@ namespace TC2.Game
                 Color smoke = new Color(0.55f, 0.48f, 0.42f, 0f);
                 Ribbon(tail, head, wHead * 0.15f, wHead, smoke, hot, cam);
                 Sprite(head, wHead * 1.6f, hot, cam);
+                // (session 32: anticipation) its glow on the ground where it will strike, widening and brightening as it comes; a hot halo round its head
+                Color glowG = Color.Lerp(f.Col, new Color(1f, 0.85f, 0.6f), 0.4f); glowG.a = 0.10f + 0.35f * k;
+                Disc(w, f.Dir, 20.0 + 150.0 * k, glowG, lift);
+                Color halo = hot; halo.a = 0.35f;
+                Sprite(head, wHead * (4f + 3f * k), halo, cam);
             }
             if (_v.Count == 0) return;
             _mesh.Clear();
