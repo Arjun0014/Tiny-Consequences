@@ -69,6 +69,8 @@ namespace TC2.Game
             wild.Host = host; wild.Rig = rig;
             var stock = views.AddComponent<LivestockView>();
             stock.Host = host; stock.Rig = rig;
+            var spells = views.AddComponent<SpellView>();   // (session 32: the slow powers on the world - droughts, rain, air, the sick, blight, the god's ore)
+            spells.Host = host; spells.Rig = rig;
             var sea = views.AddComponent<SeaLifeView>();
             sea.Host = host; sea.Rig = rig;
             var audio = views.AddComponent<AudioView>();   // (the world's sound, an observer: F10.1)

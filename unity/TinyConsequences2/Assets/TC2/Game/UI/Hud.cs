@@ -871,6 +871,7 @@ namespace TC2.Game
             // (the names take no input: laid out and drawn on the repaint only - session 27, context 4: every IMGUI event had placed and measured them all
             // again, the map's names 3.6 ms of the region view's frame in s27prof1)
             if (!_book && Event.current.type == EventType.Repaint) { MapNames(w, sw, sh); WorkNames(w, sw, sh); PeopleNames(w, sw, sh); }
+            if (!_book && Event.current.type == EventType.Repaint) SpellNames(w, sw, sh);   // (session 32: the slow powers' words on the land - Hud.Spells.cs)
             // (session 31) the bars over the world: the time at the top left, the seals at the top right (Hud.Bars.cs)
             TimeBar(w, sw);
             _skipRect = Rect.zero;
