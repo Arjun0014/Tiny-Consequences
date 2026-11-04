@@ -699,6 +699,10 @@ namespace TC2.Core.Places
                         Cause1 = s.CropCause, Rel1 = CauseRel.CausedBy, Cause2 = hev, Rel2 = CauseRel.PartOf,
                         Magnitude = (float)(1.0 - yield / s.ExpectedHarvest), RootKind = RootKind.Nature,
                     });
+                    // (session 32: every power checked) a harvest failed in a famine: the famine is told anew from its next death, the failed harvest its
+                    // cause - before, a village starving already went on dying of the famine begun before (s32powers: a blight's failed harvest at a town
+                    // in a long rationing, 500 deaths in two years all of a famine rooted in nature, none in the blight's tree)
+                    if (s.FamineEvent != 0 && w.Now - s.FamineAt <= SimTime.Year) s.FamineEvent = 0;
                 }
             }
             if (s.Crop == CropStage.Ripe && k == 0 && !SheavesOff) Sheaves(ref s);
@@ -935,14 +939,19 @@ namespace TC2.Core.Places
             ref var s = ref w.Settlements.Get(sid);
             if (s.FamineEvent == 0 || w.Now - s.FamineAt > SimTime.Year)
             {
-                long cause = s.HungerEvent != 0 ? s.HungerEvent : s.RationEvent;
+                // (session 32: every power checked) its cause the newer of the village's empty store and its last failed harvest within the year (a
+                // famine in a rationing begun years before is the failed harvest's - the rationing its second cause); else the rationing
+                bool anew = s.FamineEvent == 0 && s.FamineAt > 0 && w.Now - s.FamineAt <= SimTime.Year;   // (the same famine, told anew: a harvest failed in it)
+                long failed = LastFailedHarvest(sid, SimTime.Year);
+                long cause = s.HungerEvent > failed ? s.HungerEvent : failed != 0 ? failed : s.RationEvent;
+                long second = cause != s.RationEvent ? s.RationEvent : 0;
                 s.FamineEvent = w.Record(new HistoryEvent
                 {
                     Kind = HistoryKind.Famine, Time = w.Now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Settlement(sid),
-                    Cause1 = cause, Rel1 = CauseRel.CausedBy, RootKind = cause == 0 ? RootKind.Nature : RootKind.Unknown,
+                    Cause1 = cause, Rel1 = CauseRel.CausedBy, Cause2 = second, Rel2 = second != 0 ? CauseRel.CausedBy : default,
+                    RootKind = cause == 0 ? RootKind.Nature : RootKind.Unknown,
                 });
-                s.FamineAt = w.Now;
-                w.Metrics.Famines++;
+                if (!anew) { s.FamineAt = w.Now; w.Metrics.Famines++; }   // (a famine told anew is the famine it was: its memory dates from its start)
             }
             return s.FamineEvent;
         }

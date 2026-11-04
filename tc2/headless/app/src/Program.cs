@@ -71,6 +71,8 @@ namespace TC2.Headless
                         return Commands.ClimateRun(args);
                     case "tree":
                         return TreeCmd.Run(args);   // (session 32) a cast's tree of consequences on a saved world, year by year
+                    case "powers":
+                        return PowersCmd.Run(args);   // (session 32) each power cast as the bar does, what it changed at once and over years
                     case "cells":
                         return Commands.Cells(args);   // (session 29) the ground's cells along lines out of a place
                     default:

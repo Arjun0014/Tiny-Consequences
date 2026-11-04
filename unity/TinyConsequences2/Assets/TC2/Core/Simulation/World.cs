@@ -348,6 +348,16 @@ namespace TC2.Core.Simulation
         /// <summary>Whether the god's drought withholds the rain from a cell today (any drought held over it).</summary>
         public bool RainWithheld(int cell) => Spell(cell, 0);
 
+        /// <summary>(session 32: every power checked) The record of the god's drought withholding the rain from a cell today (the first held over it), 0 none.</summary>
+        public long DroughtOver(int cell)
+        {
+            if (DrySpells.Count == 0) return 0;
+            Vec3d p = Planet.Grid.Center[cell];
+            for (int i = 0; i < DrySpells.Count; i++)
+                if (DrySpells[i].Kind == 0 && Now < DrySpells[i].Until && Vec3d.ArcDistance(p, Planet.Grid.Center[DrySpells[i].Cell], Planet.Radius) <= DrySpells[i].Reach) return DrySpells[i].Event;
+            return 0;
+        }
+
         /// <summary>(F9.5) Whether the god's rain falls on a cell today (any rain brought over it).</summary>
         public bool RainBrought(int cell) => Spell(cell, 1);
 
@@ -463,6 +473,29 @@ namespace TC2.Core.Simulation
             for (int q = 0; q < P.Cells; q++) if (P.IsLand(q) == land && Vec3d.ArcDistance(at, P.Grid.Center[q], P.Radius) <= GodReach) into.Add(q);
         }
         readonly List<int> _beastCells = new List<int>();
+
+        /// <summary>(session 32: every power checked) The hunting beasts a god's cull at a cell would take (animals; 0: none within its reach - half the villages
+        /// of a year-300 world have none, and a cull there took nothing and told nothing). Reads only: for the bar to refuse a cull that could touch nothing.</summary>
+        public double CullWouldTake(int cell)
+        {
+            var P = Planet; int n = P.Cells;
+            if (P.Abund == null || P.Abund.Length == 0 || cell < 0 || cell >= n) return 0;
+            bool land = P.IsLand(cell); byte hab = (byte)(land ? 0 : 1);
+            Vec3d at = P.Grid.Center[cell];
+            double took = 0;
+            for (int q = 0; q < n; q++)
+            {
+                if (P.IsLand(q) != land || Vec3d.ArcDistance(at, P.Grid.Center[q], P.Radius) > GodReach) continue;
+                for (int s = 0; s < P.Species.Count; s++)
+                {
+                    var sp = P.Species[s];
+                    if (sp.Gone != 0 || sp.Habitat != hab || sp.Prey == 0) continue;
+                    double a = P.Abund[s * n + q];
+                    if (a > 0) took += a * CullShare;
+                }
+            }
+            return took;
+        }
 
         /// <summary>(F9.8) The god's cull: nine in ten of each kind that hunts (wolves, foxes, bears; at sea seals and the hunting fish) taken from every
         /// cell of the place's habitat within a walk of it; each kind's cull told, caused by the cast. Those beyond the reach live on and wander in.</summary>

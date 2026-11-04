@@ -180,10 +180,13 @@ namespace TC2.Core.Places
                         hh.Shelter++; hh.Build = 0f;
                         Homes.Raised(w, hid);   // a building on its lot, outliving its tenancy (D2-059)
                         if (hh.Shelter == House) Stone.Footings(w, sid, w.Households.Get(hid).Building);   // on stone footings, when the store has them (C1.3)
+                        // (session 32: every power checked) raised again after a loss with a cause (a quake, a stone, a fire): in answer to it - a cast's
+                        // tree goes on past its days to the homes built again
+                        long lost = Homes.LossCause(w, hid);
                         w.Record(new HistoryEvent
                         {
                             Kind = HistoryKind.HomeBuilt, Time = w.Now, Cell = s.Cell, Settlement = sid, Subject = EntityRef.Household(hid),
-                            ArgA = hh.Shelter, RootKind = RootKind.People,
+                            ArgA = w.Households.Get(hid).Shelter, Cause1 = lost, Rel1 = lost != 0 ? CauseRel.InResponseTo : default, RootKind = lost != 0 ? RootKind.Unknown : RootKind.People,
                         });
                     }
                     return rate > 0 ? done / rate : 0;

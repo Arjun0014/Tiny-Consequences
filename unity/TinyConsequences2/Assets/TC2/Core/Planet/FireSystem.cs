@@ -67,10 +67,15 @@ namespace TC2.Core.Planet
             if (u >= catchP) return 0;
             int id = w.Ids.Next(EntityKind.Process);
             var proc = new FireProc { Id = id, Started = w.Now, Cause = cause, Origin = cell };
+            // (session 32: every power checked) a fire the sky lights in land the god's drought has dried caught for the drought: it is the drought's, what
+            // lit it its second cause (s32powers: 149 cells burning round a town under a drought, none of it in the drought's tree)
+            long c1 = cause, c2 = 0;
+            long drought = w.DroughtOver(cell);
+            if (drought != 0 && drought != cause && (cause == 0 || !w.History.TryGet(cause, out var ce) || ce.RootKind != RootKind.You)) { c1 = drought; c2 = cause; }
             long ev = w.Record(new HistoryEvent
             {
                 Kind = HistoryKind.FireStarted, Time = w.Now, Cell = cell, Settlement = w.SettlementAtCell(cell),
-                Subject = EntityRef.Process(id), Cause1 = cause, Rel1 = CauseRel.CausedBy, RootKind = rootIfNoCause,
+                Subject = EntityRef.Process(id), Cause1 = c1, Rel1 = CauseRel.CausedBy, Cause2 = c2, Rel2 = c2 != 0 ? CauseRel.CausedBy : default, RootKind = rootIfNoCause,
                 Magnitude = (float)(fuel * dry),
             });
             proc.StartEvent = ev;
