@@ -96,6 +96,7 @@ namespace TC2.Game
                 Binding(new Rect(r.x - 8f, r.y - 7f, r.width + 16f, r.height + 14f));
                 GUI.DrawTexture(r, _leaf);
             }
+            PageWheel(r, _pgScrollRect, ref _pageScroll);   // (session 32, final: the wheel anywhere on the leaf - Hud.Book.cs)
             GUILayout.BeginArea(new Rect(r.x + 24f, r.y + 14f, r.width - 40f, r.height - 22f));
             // the header: kicker, back, close; the portrait beside the name, what they are and their badges
             GUILayout.BeginHorizontal();
@@ -145,7 +146,9 @@ namespace TC2.Game
                 case 4: HouseholdSection(w, pid); break;
                 default: LifeSection(w, pid, cw); break;
             }
+            GUILayout.Space(BookFoot);
             GUILayout.EndScrollView();
+            if (Event.current.type == EventType.Repaint) _pgScrollRect = Moved(GUILayoutUtility.GetLastRect(), new Vector2(r.x + 24f, r.y + 14f));
             GUILayout.EndArea();
         }
 

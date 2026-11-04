@@ -976,7 +976,8 @@ namespace TC2.Game
             AudioView.Duck = _menuOn ? 0.55f : _book ? 0.5f : 1f;   // (session 31: the world quieter behind the book and the menu)
             Vector2 m = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y) / _scale;
             bool overLapse = lapse && PointerOverUi;   // (the overlay's own rects, set as it drew)
-            PointerOverUi = _menuOn || _followChip.Contains(m) || _guideCard.Contains(m) || overLapse || _skipRect.Contains(m) || _summaryRect.Contains(m) || _settingsRect.Contains(m) || _powersRect.Contains(m) || _left.Contains(m) || _toggles.Contains(m) || _right.Contains(m) || worldRect.Contains(m) || realmsRect.Contains(m) || _bottom.Contains(m) || _ticker.Contains(m) || (showInsp && (_building != 0 ? insp.Contains(m) : card.Contains(m))) || (_book && _bookRect.Contains(m)) || _pageRect.Contains(m) || _impactRect.Contains(m);
+            // (session 32, final) the open book holds the whole screen: the wheel beside it scrolls the chapter (Hud.Book.cs), never the camera behind it
+            PointerOverUi = _menuOn || _followChip.Contains(m) || _guideCard.Contains(m) || overLapse || _skipRect.Contains(m) || _summaryRect.Contains(m) || _settingsRect.Contains(m) || _powersRect.Contains(m) || _left.Contains(m) || _toggles.Contains(m) || _right.Contains(m) || worldRect.Contains(m) || realmsRect.Contains(m) || _bottom.Contains(m) || _ticker.Contains(m) || (showInsp && (_building != 0 ? insp.Contains(m) : card.Contains(m))) || _book || _pageRect.Contains(m) || _impactRect.Contains(m);
             if (!_book && !_menuOn) HoverTag(w, sw, sh);
             _uiRects.Clear();
             _uiRects.Add(_left); _uiRects.Add(_toggles); _uiRects.Add(_right); _uiRects.Add(worldRect); _uiRects.Add(realmsRect); _uiRects.Add(_bottom); _uiRects.Add(_ticker);
@@ -1101,6 +1102,7 @@ namespace TC2.Game
         /// </summary>
         void BuildingPage(Rect r, TC2.Core.Simulation.World w)
         {
+            PageWheel(r, _bScrollRect, ref _bScroll);   // (session 32, final: the wheel anywhere on the leaf - Hud.Book.cs)
             ref var b = ref w.Buildings.Get(_building);
             var sb = new StringBuilder();
             string place = w.History.NameOf(EntityRef.Settlement(b.Settlement));
@@ -1290,6 +1292,7 @@ namespace TC2.Game
             if (GUILayout.Button("close  ×", _bkNav, GUILayout.Width(84))) _building = 0;
             GUILayout.EndHorizontal();
             GUILayout.Label(title, _pgBig);
+            var bin = new Vector2(r.x + 16f, r.y + 10f);
             _bScroll = GUILayout.BeginScrollView(_bScroll, GUIStyle.none, GUI.skin.verticalScrollbar);
             foreach (string raw in body.Split('\n'))
             {
@@ -1304,7 +1307,9 @@ namespace TC2.Game
             // why it was raised, told as a story from its root (Core/History/Whys)
             if (b.Cause != 0 && w.History.TryGet(b.Cause, out _)) WhyToggle(w, "Why was it raised? The story from its root", b.Cause, r.width - 60f);
             { long fev = FellCached(w, _building); if (fev != 0 && w.History.TryGet(fev, out _)) WhyToggle(w, "How did it fall? The story from its root", fev, r.width - 60f); }   // (session 29: war scars)
+            GUILayout.Space(BookFoot);
             GUILayout.EndScrollView();
+            if (Event.current.type == EventType.Repaint) _bScrollRect = Moved(GUILayoutUtility.GetLastRect(), bin);
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("its village  ›", _bkNav)) ShowPlace(b.Settlement);
             if (home && b.Household != 0 && w.Households.Exists(b.Household))
@@ -1487,7 +1492,7 @@ namespace TC2.Game
             var tl = _timeline;
             GUILayout.Label("A Timeline of the World", _inkTitle);
             GUILayout.Label(tl.To > tl.From ? "years " + tl.From + " to " + tl.To + ": its ages, its realms and its people" : "its first days", _inkSub);
-            _bookScroll = GUILayout.BeginScrollView(_bookScroll, GUILayout.Height(Mathf.Max(120f, r.height - 210f)));   // (room left for the leaf's foot: it was clipped at 720 px)
+            _bookScroll = GUILayout.BeginScrollView(_bookScroll);   // (session 32, final: what is left of the leaf under its head - Hud.Book.cs; a fixed r.height - 210 before)
             float cw = Mathf.Max(200f, r.width * 0.64f - 100f);   // (the right leaf's text width: Hud.Book.cs)
             float ch = 250f;
             Rect ages = GUILayoutUtility.GetRect(cw, 20f);
@@ -1576,6 +1581,7 @@ namespace TC2.Game
                     else GUILayout.Label("Year " + m.Year + ": " + m.Text + ".", _ink);
                 }
             }
+            GUILayout.Space(BookFoot);   // (session 32, final: its last line clear of the clip)
             GUILayout.EndScrollView();
         }
 

@@ -138,6 +138,23 @@ namespace TC2.Game
             return tex;
         }
 
+        // (session 32, final) the rects the book's scroll views were drawn in at the last repaint (the wheel outside them scrolls the leaf's own), the why's height
+        Rect _bkListRect, _bkBodyRect, _bkWhyRect;
+        long _whyHFor = -1; float _whyHW, _whyH;
+        /// <summary>(session 32, final) Room under a scroll's last line: its last words clear of the clip and the leaf's darker edge.</summary>
+        const float BookFoot = 18f;
+        static Rect Moved(Rect r, Vector2 by) => new Rect(r.x + by.x, r.y + by.y, r.width, r.height);
+
+        /// <summary>(session 32, final) The wheel over a page anywhere off its scroll view scrolls the page (IMGUI's scroll view takes it only inside its own rect:
+        /// over a page's name, its sections or its margins it did nothing).</summary>
+        static void PageWheel(Rect page, Rect inner, ref Vector2 scroll)
+        {
+            var e = Event.current;
+            if (e.type != EventType.ScrollWheel || !page.Contains(e.mousePosition) || inner.Contains(e.mousePosition)) return;
+            scroll.y = Mathf.Max(0f, scroll.y + e.delta.y * 20f);
+            e.Use();
+        }
+
         /// <summary>The spread: the binding, two leaves, the gutter; the contents on the left leaf and the chapter (or the preface, the timeline) on the right.</summary>
         void BookSpread(Rect r, TC2.Core.Simulation.World w)
         {
@@ -150,6 +167,20 @@ namespace TC2.Game
             }
             float lw = Mathf.Round(r.width * 0.36f);
             Rect left = new Rect(r.x, r.y, lw, r.height), right = new Rect(r.x + lw, r.y, r.width - lw, r.height);
+            // (session 32, final) the wheel scrolls the leaf it is over wherever the pointer is on it - IMGUI's scroll view takes the wheel only with the pointer
+            // inside its own rect, so over a chapter's title, the leaf's margins, its foot or beside the book it did nothing ("in some places the scroll wheel
+            // doesn't work"); over the why under a chosen line the why scrolls, as before
+            var wev = Event.current;
+            if (wev.type == EventType.ScrollWheel && !_bkListRect.Contains(wev.mousePosition) && !_bkBodyRect.Contains(wev.mousePosition) && !_bkWhyRect.Contains(wev.mousePosition))
+            {
+                float d = wev.delta.y * 20f;
+                if (left.Contains(wev.mousePosition)) _listScroll.y = Mathf.Max(0f, _listScroll.y + d);
+                else _bookScroll.y = Mathf.Max(0f, _bookScroll.y + d);   // (the right leaf, or beside the book: it holds the screen while open)
+                wev.Use();
+            }
+            if (wev.type == EventType.Repaint) { _bkListRect = _bkBodyRect = _bkWhyRect = Rect.zero; }
+            var leftIn = new Vector2(left.x + 30f, left.y + 26f);
+            var rightIn = new Vector2(right.x + 40f, right.y + 26f);
             if (Event.current.type == EventType.Repaint)
             {
                 GUI.DrawTexture(left, _leaf);
@@ -180,7 +211,9 @@ namespace TC2.Game
                     if (GUILayout.Button(toc, k == _bookChapter ? _bkTocSel : _bkToc) && k != _bookChapter) { _bookChapter = k; _bookScroll = Vector2.zero; _line = 0; }
                 }
             }
+            GUILayout.Space(BookFoot);
             GUILayout.EndScrollView();
+            if (Event.current.type == EventType.Repaint) _bkListRect = Moved(GUILayoutUtility.GetLastRect(), leftIn);
             GUILayout.EndArea();
             // the right leaf
             GUILayout.BeginArea(new Rect(right.x + 40f, right.y + 26f, right.width - 72f, right.height - 40f));
@@ -193,9 +226,13 @@ namespace TC2.Game
                 GUILayout.Label("the world in year " + _writer.Book.Year + "  ·  " + _writer.Book.Sub, _bkSub);
                 OrnRule();
                 // (session 29: room for a chosen line's why under it - a line opened from the History panel lands here and its story had a sliver at the foot)
-                _bookScroll = GUILayout.BeginScrollView(_bookScroll, GUIStyle.none, GUI.skin.verticalScrollbar, GUILayout.Height(Mathf.Max(120f, right.height - 200f) * (_line != 0 ? 0.4f : 1f)));
+                // (session 32, final) the leaf's words fill what is left of it under its head (a fixed height under a head of any size had run the scroll's
+                // foot, and its last lines, under the leaf's edge)
+                _bookScroll = GUILayout.BeginScrollView(_bookScroll, GUIStyle.none, GUI.skin.verticalScrollbar);
                 FrontPage(w, right.width - 72f - 14f);   // (session 32: the preface's first words, your hand, the parts)
+                GUILayout.Space(BookFoot);
                 GUILayout.EndScrollView();
+                if (Event.current.type == EventType.Repaint) _bkBodyRect = Moved(GUILayoutUtility.GetLastRect(), rightIn);
             }
             else
             {
@@ -224,7 +261,10 @@ namespace TC2.Game
                     if (!string.IsNullOrEmpty(ch.Sub)) GUILayout.Label(ch.Sub, _bkSub);
                     if (_bookPart == HistoryBook.YourActionsPart && ch.Blocks.Count > 0 && ch.Blocks[0].Kind == BookKind.Line && GUILayout.Button("See what came of it: its tree of consequences  ›", _bkCall, GUILayout.ExpandWidth(false))) { OpenConsequences(ch.Blocks[0].Event, true); }   // (session 32: Hud.Consequences.cs)
                     OrnRule();
-                    _bookScroll = GUILayout.BeginScrollView(_bookScroll, GUIStyle.none, GUI.skin.verticalScrollbar, GUILayout.Height(Mathf.Max(120f, right.height - 200f) * (_line != 0 ? 0.62f : 1f)));   // (room left for the leaf's foot: it was clipped at 720 px)
+                    // (session 32, final) the chapter fills what is left of the leaf under its head, the why below it its own share: the scroll had a fixed
+                    // right.height - 200 whatever stood above it, and a title on two lines, a place's buttons beside it or Your Actions' "See what came of
+                    // it" made the head taller than the 125 px left for it - the scroll's foot, its last lines and the leaf's own foot ran under the edge
+                    _bookScroll = GUILayout.BeginScrollView(_bookScroll, GUIStyle.none, GUI.skin.verticalScrollbar);
                     if (_bookChapter == 0 && !string.IsNullOrEmpty(part.Intro)) GUILayout.Label(part.Intro, _bkNote);
                     if (ch.MapSeat > 0 && w.Settlements.Exists(ch.MapSeat)) RealmMap(w, ch, right.width);
                     bool lead = true;
@@ -258,7 +298,9 @@ namespace TC2.Game
                             default: if (lead) LeadParagraph(b.Text, _bkBody, right.width - 72f - 14f); else GUILayout.Label(b.Text, _bkBody); lead = false; PlaceLink(w, in b, ch.Settlement); break;
                         }
                     }
+                    GUILayout.Space(BookFoot);
                     GUILayout.EndScrollView();
+                    if (Event.current.type == EventType.Repaint) _bkBodyRect = Moved(GUILayoutUtility.GetLastRect(), rightIn);
                 }
             }
             // a chosen line's causes, back to their root
@@ -272,8 +314,20 @@ namespace TC2.Game
                 GUILayout.EndHorizontal();
                 GUILayout.Label("each cause is a record of its own; the chain's root is " + (chosen.RootKind == RootKind.You ? "your hand" : chosen.RootKind == RootKind.Nature ? "nature" : "people's choices"), _bkTally);
                 BookLinks(w, in chosen);   // (session 29: the people and places it names, each to its page)
-                _whyScroll = GUILayout.BeginScrollView(_whyScroll, GUIStyle.none, GUI.skin.verticalScrollbar);
+                // (session 32, final) the why its own height - its rows' own, at most a third of the leaf - and the chapter above it the rest
                 int n = w.History.CausalChain(_line, _chain);
+                float ww = right.width - 72f - 11f;
+                if (_line != _whyHFor || ww != _whyHW)
+                {
+                    _whyHFor = _line; _whyHW = ww; _whyH = 6f;
+                    for (int i = 0; i < n; i++)
+                    {
+                        if (!w.History.TryGet(_chain[i], out var e)) { _whyH += 24f; break; }
+                        var st = _chain[i] == _line ? _bkLineSel : _bkWhy;
+                        _whyH += st.CalcHeight(new GUIContent((i == 0 ? "" : "<color=#8c2614>←</color>  ") + HistoryText.Dated(w, e)), ww) + st.margin.vertical;
+                    }
+                }
+                _whyScroll = GUILayout.BeginScrollView(_whyScroll, GUIStyle.none, GUI.skin.verticalScrollbar, GUILayout.Height(Mathf.Clamp(_whyH, 60f, Mathf.Max(90f, right.height * 0.34f))));
                 for (int i = 0; i < n; i++)
                 {
                     if (!w.History.TryGet(_chain[i], out var e)) { GUILayout.Label("(a record forgotten)", _bkTally); break; }
@@ -281,6 +335,7 @@ namespace TC2.Game
                     if (GUILayout.Button(row, _chain[i] == _line ? _bkLineSel : _bkWhy) && _chain[i] != _line) { _line = _chain[i]; break; }
                 }
                 GUILayout.EndScrollView();
+                if (Event.current.type == EventType.Repaint) _bkWhyRect = Moved(GUILayoutUtility.GetLastRect(), rightIn);
             }
             GUILayout.FlexibleSpace();
             // the foot of the leaf: back, the folio, on
@@ -571,15 +626,19 @@ namespace TC2.Game
         /// rubric, the rest as paragraphs, the first under a raised initial. Returns the section chosen; <paramref name="close"/> when it is shut.
         /// The words are Biography's and Gazetteer's (Core); nothing here writes the world.
         /// </summary>
+        Rect _pgScrollRect, _bScrollRect;   // (session 32, final) a page's scroll view as last drawn (the wheel elsewhere on the page scrolls it)
+
         int PaperPage(Rect r, string kicker, string title, string standing, string[] tabs, int tab, string text, out bool close, System.Action<float> custom = null, System.Action links = null)
         {
             BookStyles();
             close = false;
+            PageWheel(r, _pgScrollRect, ref _pageScroll);
             if (Event.current.type == EventType.Repaint)
             {
                 Binding(new Rect(r.x - 8f, r.y - 7f, r.width + 16f, r.height + 14f));
                 GUI.DrawTexture(r, _leaf);
             }
+            var pin = new Vector2(r.x + 26f, r.y + 16f);
             GUILayout.BeginArea(new Rect(r.x + 26f, r.y + 16f, r.width - 44f, r.height - 26f));
             GUILayout.BeginHorizontal();
             Kicker(kicker);
@@ -600,7 +659,15 @@ namespace TC2.Game
             GUILayout.EndHorizontal();
             Rule(0f, 1f);
             _pageScroll = GUILayout.BeginScrollView(_pageScroll, GUIStyle.none, GUI.skin.verticalScrollbar);
-            if (custom != null) { custom(r.width - 70f); GUILayout.EndScrollView(); GUILayout.EndArea(); return tab; }   // (session 29: a section drawn by its own hand - a place's Now, Why? and Realm)
+            if (custom != null)   // (session 29: a section drawn by its own hand - a place's Now, Why? and Realm)
+            {
+                custom(r.width - 70f);
+                GUILayout.Space(BookFoot);
+                GUILayout.EndScrollView();
+                if (Event.current.type == EventType.Repaint) _pgScrollRect = Moved(GUILayoutUtility.GetLastRect(), pin);
+                GUILayout.EndArea();
+                return tab;
+            }
             if (!ReferenceEquals(text, _pgFor)) { _pgFor = text; _pgLines = (text ?? "").Split('\n'); }
             bool first = true;
             for (int i = 0; i < _pgLines.Length; i++)
@@ -624,7 +691,9 @@ namespace TC2.Game
                 GUILayout.Label(first && !label && char.IsLetter(t[0]) ? Initial(t, 34) : t, _pgBody);
                 first = false;
             }
+            GUILayout.Space(BookFoot);
             GUILayout.EndScrollView();
+            if (Event.current.type == EventType.Repaint) _pgScrollRect = Moved(GUILayoutUtility.GetLastRect(), pin);
             GUILayout.EndArea();
             return tab;
         }
