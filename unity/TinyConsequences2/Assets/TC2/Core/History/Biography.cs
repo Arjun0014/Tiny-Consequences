@@ -22,7 +22,7 @@ namespace TC2.Core.History
         static string Place(World w, int sid) => sid != 0 ? w.History.NameOf(EntityRef.Settlement(sid)) : "the road";
         static string Year(long t) => "year " + (t / SimTime.Year);
 
-        static string Age(World w, in Person p) => F(p.AgeYears(p.Alive ? w.Now : p.Died), "0");
+        static string Age(World w, in Person p) => F(System.Math.Floor(p.AgeYears(p.Alive ? w.Now : p.Died)), "0");   // (session 32: whole years, as the records count them)
 
         /// <summary>"Breista Rindra, a woman of 34" (or "who died at 61").</summary>
         public static string Title(World w, int pid)
@@ -49,7 +49,7 @@ namespace TC2.Core.History
             {
                 int held = 0;
                 for (int o = w.Settlements.First(); o != 0; o = w.Settlements.Next(o)) { ref var os = ref w.Settlements.Get(o); if (os.Lord == p.Home && os.Inhabited) held++; }
-                return "first of " + place + (held > 0 ? ", lord of " + held + (held == 1 ? " village" : " villages") : "") +
+                return "first of " + place + (held > 0 ? ", lord of " + (held == 1 ? "one village" : held < 13 ? new[] { "", "", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve" }[held] + " villages" : held + " villages") : "") +
                        (s.Lord != 0 && w.Settlements.Exists(s.Lord) ? ", paying " + Place(w, s.Lord) : "");
             }
             if (p.Sworn != 0 && p.Sworn == s.Head && w.People.Exists(p.Sworn)) return "sworn to " + Name(w, p.Sworn) + ", first of " + place;
@@ -71,7 +71,7 @@ namespace TC2.Core.History
             {
                 ref var hh = ref w.Households.Get(p.Household);
                 sb.Append(", in the ").Append(HomeWord(w, in hh)).Append(" of the ").Append(HistoryText.Plural(w.History.NameOf(EntityRef.Household(p.Household)))).Append(" (")
-                  .Append(w.Members(p.Household).Count).Append(" people)");
+                  .Append(w.Members(p.Household).Count).Append(w.Members(p.Household).Count == 1 ? " person)" : " people)");   // ("(1 people)" had stood)
             }
             sb.Append(".\n");
             if (w.Settlements.Exists(p.Home) && w.Settlements.Get(p.Home).Head == pid && !Society.Leaders.Off)
@@ -148,7 +148,10 @@ namespace TC2.Core.History
                 // unmarried, of an age to marry: whether a household of their own could be kept now (C3.5)
                 int at = w.Households.Get(p.Household).Settlement, toHarvest = w.SettlementSys.ToHarvest(at);
                 double own = w.SettlementSys.OwnDays(pid);
-                sb.Append("Unmarried. ").Append(p.IsFemale ? "Her" : "His").Append(" share of the household's grain would keep ").Append(p.IsFemale ? "her " : "him ").Append(HistoryText.Span(own))
+                // (session 32: "Unmarried" had stood for the widowed, beside their children)
+                bool wed = false; var mev = w.History.EventsOf(EntityRef.Person(pid));
+                if (mev != null) for (int i = 0; i < mev.Count && !wed; i++) if (w.History.TryGet(mev[i], out var me) && me.Kind == HistoryKind.Marriage) wed = true;
+                sb.Append(wed ? "Widowed. " : "Unmarried. ").Append(p.IsFemale ? "Her" : "His").Append(" share of the household's grain would keep ").Append(p.IsFemale ? "her " : "him ").Append(HistoryText.Span(own))
                   .Append("; the harvest is ").Append(toHarvest).Append(toHarvest == 1 ? " day" : " days").Append(" off")
                   .Append(own < toHarvest + Places.Holdings.Reserve ? " - a match waits for the means of a household (a couple marries when what they bring keeps them to the harvest).\n" : ".\n");
             }
@@ -270,7 +273,7 @@ namespace TC2.Core.History
             if (p.SkWood >= 0.6f) r.Add("a woodcutter and builder");
             if (p.SkPot >= 0.3f) r.Add(home != 0 && w.Settlements.Exists(home) && Pottery.Kiln(w, home) != 0 && Pottery.Maker(in w.Settlements.Get(home), in p, w.Now) ? "a potter at the kiln" : "a potter");   // (from their hours at a kiln - before, everyone who could fire a pot: C3.2)
             if (p.SkCraft >= 0.3f) r.Add(home != 0 && w.Settlements.Exists(home) && Weaving.Shed(w, home) != 0 && Weaving.Maker(in w.Settlements.Get(home), in p, w.Now) ? "a weaver at the weaver's shed" : "a weaver");   // (from their hours at a shed: C3.1)
-            if (Society.Retinue.SwornHere(w, in p)) r.Add("sworn to " + w.History.NameOf(EntityRef.Person(p.Sworn)) + ", first among the people of " + Place(w, p.Home) + ", whose household feeds him");   // (C10.7b)
+            if (Society.Retinue.SwornHere(w, in p)) r.Add("sworn to " + w.History.NameOf(EntityRef.Person(p.Sworn)) + " of " + Place(w, p.Home));   // (session 32: its long clause had run the list together)   // (C10.7b)
             if (p.SkFight >= 0.3f) r.Add(p.Fights > 0 ? "a fighter who has fought" : "a trained fighter");
             return string.Join(", ", r);
         }

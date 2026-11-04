@@ -41,6 +41,8 @@ namespace TC2.Headless
                         return Commands.ChronicleBook(args);
                     case "book":
                         return Commands.WholeBook(args);
+                    case "texts":
+                        return Commands.Texts(args);
                     case "inspect":
                         return Commands.Inspect(args);
                     case "person":

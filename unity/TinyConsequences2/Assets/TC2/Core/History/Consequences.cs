@@ -383,7 +383,7 @@ namespace TC2.Core.History
                 case HistoryKind.Storm: return "A storm gathered " + near;
                 case HistoryKind.StormLandfall: return "The storm came ashore " + near;
                 case HistoryKind.StormSurge: return "The sea surged ashore " + near;
-                case HistoryKind.Quake: return (c == 1 ? "The ground shook " : N(c) + " quakes ") + near + " (M " + ((double)e.Magnitude).ToString("0.0", CultureInfo.InvariantCulture) + ")";
+                case HistoryKind.Quake: return (c == 1 ? "The ground shook " : N(c) + " quakes ") + near + " (magnitude " + ((double)e.Magnitude).ToString("0.0", CultureInfo.InvariantCulture) + ")";
                 case HistoryKind.Landslides: return (n.SumA == 1 ? "A slope slid " : N(n.SumA) + " slopes slid ") + near;
                 case HistoryKind.StoresSpoiled: return "The stores of " + subj + " spoiled";
                 case HistoryKind.Tsunami: return "A great wave struck " + near;

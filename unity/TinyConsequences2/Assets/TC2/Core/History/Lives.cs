@@ -188,7 +188,7 @@ namespace TC2.Core.History
                     last = list[j].Time; times++;
                     list[j] = new Entry { Time = list[j].Time, Text = null };
                 }
-                if (times > 1) e.Text = e.Text.TrimEnd('.') + " - " + times + " times" + (SimTime.YearOf(last) != SimTime.YearOf(e.Time) ? ", to year " + SimTime.YearOf(last) : " that year") + ".";
+                if (times > 1) e.Text = e.Text.TrimEnd('.') + " - " + (times == 2 ? "twice" : times == 3 ? "three times" : times + " times") + (SimTime.YearOf(last) != SimTime.YearOf(e.Time) ? ", to year " + SimTime.YearOf(last) : " that year") + ".";
                 outl.Add(e);
             }
             return outl;
@@ -448,26 +448,40 @@ namespace TC2.Core.History
             long since = w.Now - Society.Leaders.FollowYears * SimTime.Year;
             ref var mine = ref w.Households.Get(hid);
             int patron = mine.Patron; long patronAt = mine.PatronAt;
-            var follows = new List<string>();
+            // (session 32) households of one family name told once ("the Trilouks (kin); the Trilouks (kin); the Trilouks (kin)" had stood): how many, their bonds
+            // together and the grain owed them all; a debt under a day's grain said as such ("owing them 0 days' grain" had stood)
+            var byName = new SortedDictionary<string, (int n, bool kin, double fu, bool fed)>(System.StringComparer.Ordinal);
             foreach (var kv in all)
             {
                 if (kv.Key == hid || !kv.Value.Contains(hid) || !w.Households.Exists(kv.Key)) continue;
-                var why = new List<string>();
-                if (kin.TryGetValue(kv.Key, out var kl) && kl.Contains(hid)) why.Add("kin");
-                for (int i = 0; i < hs.DebtCount; i++) { var d = hs.DebtAt(i); if (d.Debtor == hid && d.Creditor == kv.Key) { why.Add("owing them " + F(d.Fu) + " days' grain"); break; } }
-                if (patron == kv.Key && patronAt >= since) why.Add("fed by them in hard times");
-                follows.Add("the " + HistoryText.Plural(w.History.NameOf(EntityRef.Household(kv.Key))) + (why.Count > 0 ? " (" + string.Join(", ", why.ToArray()) + ")" : ""));
+                string fam = HistoryText.Plural(w.History.NameOf(EntityRef.Household(kv.Key)));
+                byName.TryGetValue(fam, out var b);
+                b.n++;
+                if (kin.TryGetValue(kv.Key, out var kl) && kl.Contains(hid)) b.kin = true;
+                for (int i = 0; i < hs.DebtCount; i++) { var d = hs.DebtAt(i); if (d.Debtor == hid && d.Creditor == kv.Key) { b.fu += d.Fu; break; } }
+                if (patron == kv.Key && patronAt >= since) b.fed = true;
+                byName[fam] = b;
             }
-            follows.Sort(string.CompareOrdinal);
+            var follows = new List<string>();
+            foreach (var kv in byName)
+            {
+                var b = kv.Value;
+                var why = new List<string>();
+                if (b.kin) why.Add("kin");
+                if (b.fu > 0.0) why.Add("owing them " + (b.fu < 1.0 ? "a little grain" : b.fu < 1.5 ? "a day's grain" : F(b.fu) + " days' grain"));
+                if (b.fed) why.Add("fed by them in hard times");
+                string who = b.n == 1 ? "the " + kv.Key : (b.n == 2 ? "two" : b.n == 3 ? "three" : b.n == 4 ? "four" : b.n.ToString(CultureInfo.InvariantCulture)) + " households of the " + kv.Key;
+                follows.Add(who + (why.Count > 0 ? " (" + string.Join(", ", why.ToArray()) + ")" : ""));
+            }
             if (follows.Count > 0) l.Add("Their household follows " + string.Join("; ", follows.ToArray()) + ".");
             int n = Society.Leaders.Following(w, sid, hid, out int k, out int owing, out int fed);
             if (n > 0)
             {
                 var parts = new List<string>();
-                if (k > 0) parts.Add(k + " of kin");
-                if (owing > 0) parts.Add(owing + " owing it grain");
-                if (fed > 0) parts.Add(fed + " it fed in hard times");
-                l.Add(n + (n == 1 ? " household follows theirs" : " households follow theirs") + (parts.Count > 0 ? " - " + string.Join(", ", parts.ToArray()) : "") +
+                if (k > 0) parts.Add(n == 1 ? "kin" : k + " of kin");   // (session 32: "1 household follows theirs - 1 of kin" had stood)
+                if (owing > 0) parts.Add(n == 1 ? "owing it grain" : owing + " owing it grain");
+                if (fed > 0) parts.Add(n == 1 ? "fed by it in hard times" : fed + " it fed in hard times");
+                l.Add((n == 1 ? "One household follows theirs" : n + " households follow theirs") + (parts.Count > 0 ? " - " + string.Join(", ", parts.ToArray()) : "") +
                       (w.Settlements.Get(sid).HeadHh == hid ? ": the most of any, so theirs is the first household" : "") + ".");
             }
             else l.Add("No household follows theirs.");

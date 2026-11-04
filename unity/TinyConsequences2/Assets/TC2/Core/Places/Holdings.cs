@@ -816,12 +816,12 @@ namespace TC2.Core.Places
                     if (d.Fu > bigFu) { bigFu = d.Fu; big = d.Creditor; }
                     if (d.Since < since) since = d.Since;
                 }
-                sb.Append("It owes ").Append(Days(owes)).Append(" days' grain").Append(need > 0 ? " (" + Days(owes / need) + " days of its food)" : "")
-                  .Append(" - the most to the ").Append(TC2.Core.History.HistoryText.Plural(w.History.NameOf(EntityRef.Household(big)))).Append(to > 1 ? " and " + (to - 1) + (to == 2 ? " other household" : " other households") : "")
+                sb.Append("It owes ").Append(owes < 1.0 ? "a little grain" : Days(owes) + " days' grain").Append(need > 0 && owes >= 1.0 ? " (" + Days(owes / need) + " days of its food)" : "")   // (session 32: "0.5 days' grain (0.1 days of its food)" had stood)
+                  .Append(" - the most to the ").Append(TC2.Core.History.HistoryText.Plural(w.History.NameOf(EntityRef.Household(big)))).Append(to > 1 ? (to == 2 ? " and one other household" : " and " + (to - 1) + " other households") : "")
                   .Append(", since year ").Append(since / SimTime.Year).Append(".\n");
             }
             double owed = hs.Owed(hid, out int by);
-            if (owed > 0.05) sb.Append("It is owed ").Append(Days(owed)).Append(" days' grain by ").Append(by).Append(by == 1 ? " household" : " households").Append(" it lent to when their own ran out.\n");
+            if (owed > 0.05) sb.Append("It is owed ").Append(Days(owed)).Append(" days' grain by ").Append(by == 1 ? "one household" : by + " households").Append(" it lent to when their own ran out.\n");
             return sb.ToString();
         }
 
