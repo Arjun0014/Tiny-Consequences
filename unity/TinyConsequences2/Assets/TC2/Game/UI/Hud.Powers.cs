@@ -247,7 +247,10 @@ namespace TC2.Game
             GUILayout.BeginArea(r, _box);
             GUILayout.Label(head, _small);
             for (int k = 0; k < _hand.Count; k++)
+            {
                 if (GUILayout.Button(_handText[k], _handLine)) OpenConsequences(_hand[k].id);   // (session 32: what came of it, as a tree - Hud.Consequences.cs)
+                if (k == 0 && Event.current.type == EventType.Repaint) { var hr = GUILayoutUtility.GetLastRect(); _handFirstRect = new Rect(r.x + hr.x, r.y + hr.y, hr.width, hr.height); }   // (the guide rings the newest)
+            }
             GUILayout.EndArea();
         }
         Rect _handOpen; long _handNewest; float _handShowUntil;

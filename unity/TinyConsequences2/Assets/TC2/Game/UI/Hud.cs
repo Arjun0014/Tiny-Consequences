@@ -867,7 +867,10 @@ namespace TC2.Game
             if (flash > 0f && Event.current.type == EventType.Repaint) { var fo = GUI.color; GUI.color = new Color(1f, 0.97f, 0.9f, flash); GUI.DrawTexture(new Rect(0f, 0f, sw, sh), Texture2D.whiteTexture); GUI.color = fo; }
 
             if (_hidden) { PointerOverUi = false; WorldObjectsView.Chosen = WorldObjectsView.Pointed = WorldObjectsView.ChosenHome = WorldObjectsView.PointedHome = 0; return; }
-            if (TreeHolds(w, sw, sh)) return;   // (session 32: a cast's tree of what came of it holds the screen - Hud.Consequences.cs)
+            // (session 32: the guide speaks over the tree - Hud.Guide.cs: its card takes its clicks before the tree's leaf, and is drawn over it)
+            bool guideOverTree = _guide >= 0 && _treeOn && !_book && !_menuOn;
+            if (guideOverTree && Event.current.type != EventType.Repaint) GuideDraw(w, sw, sh);
+            if (TreeHolds(w, sw, sh)) { if (guideOverTree && Event.current.type == EventType.Repaint) GuideDraw(w, sw, sh); return; }   // (session 32: a cast's tree of what came of it holds the screen - Hud.Consequences.cs)
             // (the names take no input: laid out and drawn on the repaint only - session 27, context 4: every IMGUI event had placed and measured them all
             // again, the map's names 3.6 ms of the region view's frame in s27prof1)
             if (!_book && Event.current.type == EventType.Repaint) { MapNames(w, sw, sh); WorkNames(w, sw, sh); PeopleNames(w, sw, sh); }

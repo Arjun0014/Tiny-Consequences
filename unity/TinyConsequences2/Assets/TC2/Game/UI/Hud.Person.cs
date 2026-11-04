@@ -107,6 +107,7 @@ namespace TC2.Game
             }
             GUILayout.FlexibleSpace();
             if (p.Alive && GUILayout.Button(_follow == pid ? "stop following" : "follow", _bkNav, GUILayout.Width(110))) ToggleFollow(w, pid);
+            if (Event.current.type == EventType.Repaint) { var fb = p.Alive ? GUILayoutUtility.GetLastRect() : Rect.zero; _followBtnRect = fb.width > 0f ? new Rect(r.x + 24f + fb.x, r.y + 14f + fb.y, fb.width, fb.height) : Rect.zero; }   // (session 32: the guide rings it)
             if (GUILayout.Button("close  ×", _bkNav, GUILayout.Width(84))) { _personPage = false; _pgBack.Clear(); }
             GUILayout.EndHorizontal();
             GUILayout.BeginHorizontal();
