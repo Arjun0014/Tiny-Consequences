@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-"""TC2's interface and stillness sounds (session 31), synthesised here: nothing recorded, nothing licensed. Writes Ogg Vorbis into Game/Resources/Audio (ffmpeg).
+"""TC2's interface and stillness sounds (session 31) and (session 32) the powers' and the ground's sounds the library lacked - a quake's lasting rumble,
+a storm's gusts, the rain coming on, heat, frost, a withering - synthesised here: nothing recorded, nothing licensed. Writes Ogg Vorbis into
+Game/Resources/Audio (ffmpeg), each levelled to a -6 dBFS peak.
 
-    python tc2/art/ui_sounds.py [--list]
+    python tc2/art/ui_sounds.py [--only NAME]
 
 Levels are measured against the library's own ui_click so a new sound sits with the rest: it prints each sound's peak and RMS.
 """
@@ -47,6 +49,12 @@ def tone(n, f, phase=0.0):
 
 def norm(x, peak):
     return x / max(1e-9, np.max(np.abs(x))) * peak
+
+
+def soft(x, k=2.5):
+    """Peaks rounded off (tanh) so a few sharp transients do not set a sound's whole level."""
+    x = x / max(1e-9, np.max(np.abs(x)))
+    return np.tanh(k * x) / np.tanh(k)
 
 
 def tick():
@@ -165,10 +173,124 @@ def stillness(seconds=48):
     return norm(x + air, 0.5)
 
 
+# ---- (session 32) the powers' and the ground's own sounds the library lacked: a quake that goes on rumbling, a storm's gusts, the rain coming on,
+# heat, frost and a withering - each made of filtered noise and a few partials, levelled to a -6 dBFS peak like the rest
+
+def droplets(n, rate, seed, lo=2000, hi=7000, decay=0.004):
+    """Sparse little impacts at a rate (per second, an array over time): rain on leaves, ice, dry grass."""
+    rng = np.random.default_rng(seed)
+    hits = (rng.random(n) < np.asarray(rate) / SR) * rng.uniform(0.3, 1.0, n)
+    k = int(0.03 * SR)
+    kern = noise(k, seed + 1) * np.exp(-np.arange(k) / (decay * SR))
+    from scipy.signal import fftconvolve
+    return band(fftconvolve(hits, kern)[:n], lo, hi)
+
+
+def quake_rumble(seed, seconds=12.0):
+    """The ground shaking and going on shaking: a thump as it breaks, a deep rumble strong for two seconds and dying slowly, two aftershocks
+    swelling under it, things rattling and falling in its first seconds. (The library's quakes build for two seconds and are gone in six.)"""
+    n = int(seconds * SR)
+    t = np.arange(n) / SR
+    deep = low(noise(n, seed), 75, 4)
+    deep = deep / np.std(deep)
+    mid = band(noise(n, seed + 1), 70, 260, 2)
+    mid = mid / np.std(mid)
+    am = 0.65 + 0.35 * low(noise(n, seed + 2), 6, 2) / np.std(low(noise(n, seed + 2), 6, 2))   # (the shaking comes in surges)
+    shape = np.minimum(t / 0.08, 1.0) * np.where(t < 1.8, 1.0, np.exp(-(t - 1.8) / 2.6))
+    after = 0.42 * np.exp(-((t - 5.6) / 0.7) ** 2) + 0.26 * np.exp(-((t - 8.7) / 0.8) ** 2)
+    body = (deep + 0.55 * mid) * am * (shape + after)
+    f = 70 - 36 * np.minimum(t / 0.45, 1.0)
+    thump = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t / 0.4) * 2.6
+    rattle = low(droplets(n, 150 * np.exp(-t / 1.4) + 35 * np.exp(-((t - 5.6) / 0.5) ** 2), seed + 3, 500, 2600, 0.015), 2800, 4)
+    rattle = np.tanh(rattle / max(1e-9, np.std(rattle)) * 0.5) * 0.35
+    x = body + thump + rattle
+    x *= np.minimum(1.0, (seconds - t) / 1.0)   # (a clean end)
+    return norm(soft(x, 2.0), 0.5)
+
+
+def wind_gust(seed, seconds=4.2):
+    """A storm's gust: wind rising, tearing past with a whistle in it, and falling away; its surges uneven."""
+    n = int(seconds * SR)
+    t = np.arange(n) / SR
+    u = np.clip(t / seconds, 0, 1)
+    g = np.sin(np.pi * np.clip(u / 0.42, 0, 1) * 0.5) ** 2 * np.where(u < 0.42, 1.0, np.exp(-(u - 0.42) / 0.22))
+    turb = low(noise(n, seed + 1), 4, 2)
+    g = g * (0.75 + 0.25 * turb / np.std(turb))
+    base = noise(n, seed)
+    out = np.zeros(n)
+    for i, (lo, hi) in enumerate([(90, 300), (250, 800), (600, 1800), (1400, 4000)]):
+        c = (i + 0.5) / 4
+        out += band(base, lo, hi) / (1 + i * 0.4) * (0.35 + 0.65 * np.exp(-((g - c) / 0.35) ** 2))
+    whistle = band(noise(n, seed + 2), 640, 690, 2) * 6
+    return norm((out + whistle * g ** 2) * g, 0.5)
+
+
+def rain_onset(seconds=4.0):
+    """The rain brought: first drops, then more, then a steady fall - the rain's own bed takes it up from there."""
+    n = int(seconds * SR)
+    t = np.arange(n) / SR
+    rate = 25 + 1100 * np.clip(t / 2.6, 0, 1) ** 2
+    drops = droplets(n, rate, 41, 1800, 7500, 0.003)
+    wash = band(noise(n, 42), 700, 6500) * np.clip((t - 0.6) / 2.4, 0, 1) ** 1.5 * 0.5
+    drops = np.tanh(drops / max(1e-9, np.std(drops[-n // 4:])) * 0.7)
+    x = drops * 0.6 + wash / max(1e-9, np.std(wash[-n // 4:])) * 0.4
+    x *= np.minimum(1.0, (seconds - t) / 0.9)
+    return norm(soft(x, 1.8), 0.5)
+
+
+def heat_haze(seconds=2.8):
+    """Warm, dry air laid over the land (warmth, drought): a breath of hot wind with a dry rustle in it over a low warm hum, the haze shimmering."""
+    n = int(seconds * SR)
+    t = np.arange(n) / SR
+    swell = np.sin(np.pi * np.clip(t / seconds, 0, 1)) ** 1.4
+    air = band(noise(n, 51), 2500, 9000) * 0.6 + band(noise(n, 52), 400, 1500) * 0.5
+    ph = 2 * np.pi * np.cumsum(1 + 0.004 * np.sin(2 * np.pi * 5.5 * t)) / SR
+    hum = (np.sin(110 * ph) + 0.5 * np.sin(165 * ph) + 0.2 * np.sin(330 * ph)) * 0.018
+    crackle = droplets(n, 22 * swell, 53, 3000, 8000, 0.002)
+    crackle = np.tanh(crackle / max(1e-9, np.std(crackle)) * 0.4) * 0.05
+    shimmer = 1 + 0.25 * np.sin(2 * np.pi * np.cumsum(3 + 4 * t) / SR)
+    return norm(soft((air * shimmer / np.std(air) * 0.1 + hum + crackle) * swell, 2.2), 0.5)
+
+
+def frost(seconds=2.6):
+    """Cold air laid over the land: a breath of icy wind, ice crackling as it forms, a few glassy tinkles."""
+    n = int(seconds * SR)
+    t = np.arange(n) / SR
+    breath = band(noise(n, 61), 900, 4200) * np.sin(np.pi * np.clip(t / seconds, 0, 1)) ** 1.6
+    ice = droplets(n, 20 + 260 * np.clip(t / 1.6, 0, 1), 62, 4000, 11000, 0.0015) * np.minimum(1.0, (seconds - t) / 0.6)
+    tinkle = np.zeros(n)
+    rng = np.random.default_rng(63)
+    for at in (0.35, 0.8, 1.15, 1.6, 1.95):
+        f0 = rng.choice([2637.0, 3136.0, 3520.0, 4186.0])
+        tt = np.maximum(t - at, 0)
+        tinkle += (t >= at) * np.exp(-tt / 0.18) * (np.sin(2 * np.pi * f0 * tt) + 0.4 * np.sin(2 * np.pi * f0 * 2.76 * tt))
+    x = breath / np.std(breath) * 0.12 + ice / max(1e-9, np.std(ice)) * 0.05 + tinkle * 0.06
+    return norm(x, 0.5)
+
+
+def wither(seconds=2.4):
+    """A blight on the fields: a dry rustle running down and away, as of leaves curling, over a low sigh."""
+    n = int(seconds * SR)
+    t = np.arange(n) / SR
+    u = np.clip(t / seconds, 0, 1)
+    base = noise(n, 71)
+    out = np.zeros(n)
+    for i, (lo, hi) in enumerate([(4000, 8000), (2200, 4500), (1100, 2400), (500, 1200)]):
+        c = (i + 0.5) / 4
+        out += band(base, lo, hi) * np.exp(-((u - c) / 0.28) ** 2)
+    flutter = 0.55 + 0.45 * np.abs(low(noise(n, 72), 24, 2)) / np.std(low(noise(n, 72), 24, 2))
+    sigh = band(noise(n, 73), 160, 420) * np.sin(np.pi * u) ** 2 * 0.6
+    shape = np.minimum(t / 0.15, 1.0) * np.minimum(1.0, (seconds - t) / 0.5)
+    return norm((out * flutter + sigh) * shape, 0.5)
+
+
 SOUNDS = dict(
     ui_tick=tick, ui_select=select, ui_page=page, ui_leaf=leaf, ui_cast=cast, ui_enter=enter, ui_chime=chime,
     lapse_rise=lambda: whoosh(3.2, True, 31), lapse_fall=lambda: whoosh(3.8, False, 32),
     amb_stillness=stillness,
+    quake_rumble_1=lambda: quake_rumble(81), quake_rumble_2=lambda: quake_rumble(91, 13.0),
+    wind_gust_1=lambda: wind_gust(101), wind_gust_2=lambda: wind_gust(111, 4.8),
+    rain_onset=rain_onset, heat_haze=heat_haze, frost=frost, wither=wither,
 )
 
 META = """fileFormatVersion: 2

@@ -75,6 +75,7 @@ namespace TC2.Game
             _guideAt = Time.unscaledTime;
             _guideTarget = Rect.zero;
             _guideGround = false;
+            if (step > 0) AudioView.Ui("leaf");   // (session 32: each step heard as a leaf turned, by Next or by the player's own doing)
             switch (step)
             {
                 case 0:
@@ -259,13 +260,12 @@ namespace TC2.Game
             _guideSkipYearRect = _guide == 10 ? new Rect(rx - nw - 68f - 104f, by, 98f, 30f) : Rect.zero;
             if (GUI.Button(_guideNextRect, next, _btn))
             {
-                AudioView.Ui("click");
-                if (_guide >= GuideLast) { GuideEnd(true); return; }
+                if (_guide >= GuideLast) { AudioView.Ui("chime"); GuideEnd(true); return; }
                 if (_guide == 2 || _guide == 3 || _guide == 4 || _guide == 5) { _personPage = false; _selected = 0; _guide = 6; }
                 else _guide++;
             }
-            if (_guide >= 6 && GUI.Button(new Rect(rx - nw - 68f, by, 62f, 30f), "Back", _btn)) { AudioView.Ui("click"); _guide = Mathf.Max(0, _guide == 6 ? 1 : _guide - 1); }
-            else if (_guide == 1 && GUI.Button(new Rect(rx - nw - 68f, by, 62f, 30f), "Back", _btn)) { AudioView.Ui("click"); _guide = 0; }
+            if (_guide >= 6 && GUI.Button(new Rect(rx - nw - 68f, by, 62f, 30f), "Back", _btn)) _guide = Mathf.Max(0, _guide == 6 ? 1 : _guide - 1);
+            else if (_guide == 1 && GUI.Button(new Rect(rx - nw - 68f, by, 62f, 30f), "Back", _btn)) _guide = 0;
             // in the skip's step: a year, from the card itself as well
             if (_guide == 10 && !Host.CatchingUp && !(Rig != null && Rig.LapseActive) && GUI.Button(new Rect(rx - nw - 68f - 104f, by, 98f, 30f), "Skip a year", _btn)) { AudioView.Ui("click"); Host.BeginSkip(SimTime.Year); _guideWaitsLapse = true; }
         }
