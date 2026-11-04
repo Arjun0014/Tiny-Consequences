@@ -106,7 +106,7 @@ Shader "TC2/Instanced"
                 armL = 0.2 + 2.2 * s; armR = armL;
                 lean = -(0.22 + 0.38 * (1.0 - s));
                 legA = 0.14 * side;
-                bob = -0.05 * (1.0 - s);
+                bob = -0.025 * (1.0 - s);
             }
             else if (code == 3)
             {
@@ -121,7 +121,7 @@ Shader "TC2/Instanced"
                 float up = smoothstep(0.80, 0.86, g) * (1.0 - smoothstep(0.94, 1.0, g));
                 lean = lerp(lean, -0.12, up); twist *= 1.0 - up;
                 armR = lerp(armR, 1.25, up); armL = lerp(armL, 1.25, up);
-                bob = -0.04 * (1.0 - up);
+                bob = -0.02 * (1.0 - up);
             }
             else if (code == 4)
             {
@@ -130,7 +130,7 @@ Shader "TC2/Instanced"
                 armL = 0.3 + 2.75 * s; armR = armL;
                 lean = -(0.04 + 0.44 * (1.0 - s));
                 legA = 0.18 * side;
-                bob = -0.06 * (1.0 - s);
+                bob = -0.03 * (1.0 - s);
             }
             else if (code == 5)
             {
@@ -264,7 +264,7 @@ Shader "TC2/Instanced"
                 armL = 0.65 + 0.7 * s; armR = armL;
                 lean = -(0.32 + 0.22 * s);
                 legA = 0.22 * side;
-                bob = -0.04 * s;
+                bob = -0.015 * s;
             }
             else if (code == 24)
             {
