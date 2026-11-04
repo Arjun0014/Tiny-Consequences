@@ -112,9 +112,41 @@
       #tc2-warning div { margin: 8px auto 0; max-width: 760px; padding: 9px 14px; border-radius: 6px; color: #f3ead6; background: rgba(12,15,24,.94);
                          border: 1px solid #c9a35a; box-shadow: 0 4px 18px rgba(0,0,0,.5); }
       #tc2-warning div.error { border-color: #d0573f; color: #ffd9cf; }
+      /* (session 32, Arjun) the studio's intro before everything: the film over the loading page while the world loads under it */
+      #tc2-intro { position: fixed; inset: 0; z-index: 10; background: #000; opacity: 1; transition: opacity .9s ease; cursor: pointer; }
+      #tc2-intro.gone { opacity: 0; pointer-events: none; }
+      #tc2-intro video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
+      #tc2-intro .tc2-intro-btn { position: absolute; bottom: 18px; font: 15px/1 Georgia, 'Times New Roman', serif; letter-spacing: .06em; color: rgba(236,220,182,.82);
+                                  background: rgba(0,0,0,.38); border: 1px solid rgba(236,220,182,.32); padding: 7px 14px; border-radius: 3px; user-select: none; }
+      #tc2-intro .tc2-intro-btn:hover { color: #fff3d6; border-color: rgba(236,220,182,.7); }
+      #tc2-intro-skip { right: 22px; }
+      #tc2-intro-sound { left: 22px; display: none; }
     </style>
   </head>
   <body>
+    <div id="tc2-intro" aria-label="Fractured Sanity Studios presents"><video id="tc2-intro-video" src="TemplateData/intro.mp4" playsinline preload="auto"></video>
+      <div class="tc2-intro-btn" id="tc2-intro-sound">&#9834; click for sound</div><div class="tc2-intro-btn" id="tc2-intro-skip">Skip &#8250;</div></div>
+    <script>
+      // (session 32) the studio's intro: with its sound where the browser allows it, else muted with a word to click for it; a click (or Esc, Space, Enter) or
+      // its end lets the game through; never longer than the film. Test browsers (navigator.webdriver) and ?test / ?nointro go straight in; ?intro=1 keeps it.
+      (function () {
+        var box = document.getElementById('tc2-intro'), v = document.getElementById('tc2-intro-video'), snd = document.getElementById('tc2-intro-sound');
+        var q = new URLSearchParams(location.search), done = false;
+        function end() { if (done) return; done = true; box.classList.add('gone'); try { v.pause(); } catch (e) {} setTimeout(function () { if (box.parentNode) box.parentNode.removeChild(box); }, 1000); }
+        if (!q.has('intro') && (navigator.webdriver || q.has('test') || q.has('nointro'))) { box.parentNode.removeChild(box); return; }
+        v.addEventListener('ended', end); v.addEventListener('error', end);
+        setTimeout(end, 24000);
+        function muted() { v.muted = true; snd.style.display = 'block'; var m = v.play(); if (m && m.catch) m.catch(end); }
+        try { var p = v.play(); if (p && p.catch) p.catch(muted); } catch (e) { muted(); }
+        box.addEventListener('click', function (e) {
+          if (e.target && e.target.id === 'tc2-intro-skip') { end(); return; }
+          if (v.muted) { v.muted = false; snd.style.display = 'none'; var u = v.play(); if (u && u.catch) u.catch(function () {}); return; }
+          end();
+        });
+        window.addEventListener('keydown', function (e) { if (!done && (e.key === 'Escape' || e.key === ' ' || e.key === 'Enter')) end(); });
+        window.tcIntroDone = function () { return done; };
+      })();
+    </script>
     <canvas id="tc2-canvas" tabindex="-1"></canvas>
     <div id="tc2-loading">
       <div class="tc2-stars tc2-s1"></div><div class="tc2-stars tc2-s2"></div><div class="tc2-stars tc2-s3"></div>

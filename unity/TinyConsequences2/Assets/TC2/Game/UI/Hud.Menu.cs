@@ -333,6 +333,7 @@ namespace TC2.Game
             GUILayout.Label("A world lived person by person. Nothing in it is scripted, and every story in its book really happened.", _crDim);
             CreditRule(width);
             CreditHead("Made by");
+            CreditPair("Fractured Sanity Studios", "presents", width);   // (session 32: the studio's intro opens the game)
             CreditPair("Arjun", "direction", width);
             CreditPair("Claude, by Anthropic", "engineering and art", width);
             CreditRule(width);
