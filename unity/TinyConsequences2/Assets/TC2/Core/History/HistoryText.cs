@@ -14,6 +14,16 @@ namespace TC2.Core.History
     {
         static string F(double v, string fmt = "0.#") => v.ToString(fmt, CultureInfo.InvariantCulture);
 
+        /// <summary>(session 32) A count of grain or food as a reader takes it: a large one with its thousands marked ("13,874"), under a day's said as such
+        /// ("(0 days' grain)" had stood in the book).</summary>
+        static string Days(double v, string what = "grain") => v < 0.5 ? "a little " + what : v < 1.5 ? "a day's " + what : v.ToString(v >= 10000 ? "N0" : "0", CultureInfo.InvariantCulture) + " days' " + what;
+
+        /// <summary>A household named as its family ("the Skorthousts"); anyone else by their name.</summary>
+        static string Family(EntityRef who, string name) => who.Kind == EntityKind.Household ? "the " + Plural(name) : name;
+
+        /// <summary>(session 32) A wind's strength in words a reader knows ("winds 28 m/s" had stood): km/h, to five.</summary>
+        static string Wind(double ms) => "winds of " + F(DMath.Max(5.0, DMath.RoundHalfUp(ms * 3.6 / 5.0) * 5.0), "0") + " km/h";
+
         /// <summary>(session 30) A fire's burned ground (its record's cells) in hectares, as the world's laws measure land - the book had said "(1 cells)",
         /// the grid's word.</summary>
         static string Burned(World w, in HistoryEvent e)
@@ -26,6 +36,10 @@ namespace TC2.Core.History
 
         /// <summary>Where, as a place name reads after a deed: at a village, on the land beyond it, in the wilds (`World.PlaceName`).</summary>
         public static string At(string place) => place == "the wilds" ? "in the wilds" : place.StartsWith("the land", System.StringComparison.Ordinal) ? "on " + place : "at " + place;
+
+        /// <summary>(session 32) Near a place, as a place name reads after a happening: near a village, on the land beyond it, in the wilds ("shook the land near
+        /// the land beyond Aindstead", "struck near the wilds" had stood).</summary>
+        public static string Near(string place) => place == "the wilds" ? "in the wilds" : place.StartsWith("the land", System.StringComparison.Ordinal) ? "on " + place : "near " + place;
 
         public static string Describe(World w, in HistoryEvent e)
         {
@@ -42,14 +56,14 @@ namespace TC2.Core.History
                 case HistoryKind.PersonDied:
                     {
                         string how = e.ArgA == 2 ? " of hunger" : (e.ArgA == 3 ? " in childbirth" : (e.ArgA == 4 ? " in the eruption" : (e.ArgA == 5 ? " when the earthquake brought the house down" : (e.ArgA == 6 ? " in the great wave" : (e.ArgA == 7 ? " in the storm" : (e.ArgA == 8 ? " when the storm drove the sea ashore" : (e.ArgA == 9 ? " of the cold" : (e.ArgA == 10 ? " of " + Sickness(w, e.Cause1) : (e.ArgA == 11 ? " of the wounds of a fight in the night" : (e.ArgA == 12 ? " at sea, when their boat overturned" : (e.ArgA == 14 ? " when the stone fell from the sky" : "")))))))))));
-                        return subj + " died" + how + " in " + place + ", aged " + F(e.Magnitude, "0") + ".";
+                        return subj + " died" + how + " in " + place + ", aged " + F(System.Math.Floor(e.Magnitude), "0") + ".";   // (session 32: whole years, as every page counts them - "died aged 56" beside "aged 57" had stood)
                     }
                 case HistoryKind.Marriage: return subj + " and " + obj + " married in " + place + (e.ArgA > 0 ? ", setting up their household with " + Bread(e.ArgA) + " bread of their own" : "") + ".";
                 case HistoryKind.HouseholdFormed: return "The household of the " + Plural(subj) + " was formed in " + place + ".";
-                case HistoryKind.LightningStrike: return (e.RootKind == RootKind.You ? "Your lightning" : "Lightning") + " struck near " + place + ".";
-                case HistoryKind.FireStarted: return "A fire started near " + place + ".";
-                case HistoryKind.Wildfire: return "A wildfire spread near " + place + " (" + Burned(w, in e) + " burnt so far).";
-                case HistoryKind.FireOut: return "The fire near " + place + " burnt out " + (e.ArgA <= 0 ? "within the hour" : "after " + e.ArgA + (e.ArgA == 1 ? " hour" : " hours")) + ", having burned " + Burned(w, in e) + ".";   // ("after 0 hours": s30pow1)
+                case HistoryKind.LightningStrike: return (e.RootKind == RootKind.You ? "Your lightning" : "Lightning") + " struck " + Near(place) + ".";
+                case HistoryKind.FireStarted: return "A fire started " + Near(place) + ".";
+                case HistoryKind.Wildfire: return "A wildfire spread " + Near(place) + " (" + Burned(w, in e) + " burnt so far).";
+                case HistoryKind.FireOut: return "The fire " + Near(place) + " burnt out " + (e.ArgA <= 0 ? "within the hour" : "after " + e.ArgA + (e.ArgA == 1 ? " hour" : " hours")) + ", having burned " + Burned(w, in e) + ".";   // ("after 0 hours": s30pow1)
                 case HistoryKind.FieldsBurned: return "The fields of " + subj + " burned.";
                 case HistoryKind.CropsBlighted: return "A blight took the crop of " + subj + ".";
                 case HistoryKind.FieldsHarried:   // (C8.1a: the cause is the raid - its band named from it)
@@ -59,11 +73,13 @@ namespace TC2.Core.History
                     }
                 case HistoryKind.MeteorStruck: return "A stone fell from the sky " + At(place) + (e.ArgA > 0 || e.ArgB > 0 ? ": " + (e.ArgA > 0 ? e.ArgA + (e.ArgA == 1 ? " building" : " buildings") + " flattened" : "") + (e.ArgA > 0 && e.ArgB > 0 ? ", " : "") + (e.ArgB > 0 ? e.ArgB + (e.ArgB == 1 ? " dead" : " dead") : "") : "") + ".";
                 case HistoryKind.RainBrought: return "Rain came over the land round " + place + (e.ArgA > 0 ? " for " + e.ArgA + " days" : "") + ".";
-                case HistoryKind.TakenIn: return "The " + Plural(obj) + " of " + place + " took the " + Plural(subj) + " into their keep" + (e.ArgA == 1 ? ", landless in " + other + ": they came to live at their hall" : ": landless, fed from their grain") + ".";
+                case HistoryKind.TakenIn:   // ("The Traiskors of Kaihope took the Traiskors into their keep" had stood)
+                    return "The " + Plural(obj) + " of " + place + " took " + (Plural(subj) == Plural(obj) ? "another household of " + Plural(subj) : "the " + Plural(subj)) + " into their keep" +
+                           (e.ArgA == 1 ? ", landless in " + other + ": they came to live at their hall" : ": landless, fed from their grain") + ".";
                 case HistoryKind.LetGo:
                     {
                         string why = e.ArgA == 1 ? "their grain could keep them no longer" : e.ArgA == 2 ? "no household is first in " + place + " to keep them now" : "they hold land of their own";
-                        return "The " + Plural(subj) + " of " + place + " left the keep of the " + Plural(obj) + ": " + why + ".";
+                        return (Plural(subj) == Plural(obj) ? "A household of the " + Plural(subj) + " of " + place + " left the keep of their kin" : "The " + Plural(subj) + " of " + place + " left the keep of the " + Plural(obj)) + ": " + why + ".";
                     }
                 case HistoryKind.WarmAir: return "Warm air came over the land round " + place + (e.ArgA > 0 ? " for " + e.ArgA + " days" : "") + ", " + F(e.Magnitude, "0") + " C warmer than its summer.";
                 case HistoryKind.ColdAir: return "Cold air came over the land round " + place + (e.ArgA > 0 ? " for " + e.ArgA + " days" : "") + ", " + F(e.Magnitude, "0") + " C colder than its summer.";
@@ -86,37 +102,41 @@ namespace TC2.Core.History
                 case HistoryKind.CoastChanged:
                     {
                         int emerged = e.ArgB / 1000, villages = e.ArgB % 1000;
-                        string v = villages > 0 ? " The water reached " + villages + " village cell" + (villages > 1 ? "s" : "") + "." : "";
+                            // (session 32: "cells" is the grid's word, not the reader's)
+                        string v = villages > 0 ? " The water reached " + (villages == 1 ? "a stretch" : villages + " stretches") + " of village land." : "";
                         return e.Magnitude > 0
-                            ? "The sea rose " + F(e.Magnitude, "0.0") + " m: " + e.ArgA + " cells of shore were drowned." + v
-                            : "The sea fell " + F(-e.Magnitude, "0.0") + " m: " + emerged + " cells of new shore emerged.";
+                            ? "The sea rose " + F(e.Magnitude, "0.0") + " m: " + (e.ArgA == 1 ? "a stretch of shore was" : e.ArgA + " stretches of shore were") + " drowned." + v
+                            : "The sea fell " + F(-e.Magnitude, "0.0") + " m: " + (emerged == 1 ? "a stretch of new shore" : emerged + " stretches of new shore") + " emerged.";
                     }
                 case HistoryKind.Eruption:
-                    return subj + " erupted near " + place + " (VEI " + F(e.Magnitude, "0") + ")" + (e.Magnitude >= 6 ? ": the sky darkened and the summers turned cold." : (e.Magnitude >= 4 ? ": fire ran down its flanks and ash fell far around." : "."));
-                case HistoryKind.VentBorn: return "A volcano, " + subj + ", " + (e.ArgB == 1 ? "broke out over the deep fire" : "opened") + " near " + place + ".";
-                case HistoryKind.IslandRose: return "A new island rose from the sea: " + subj + ", near " + place + ".";
-                case HistoryKind.VentExtinct: return subj + ", near " + place + ", has fallen silent (" + e.ArgB + " eruptions).";
+                    return e.Magnitude >= 6 ? subj + " erupted " + Near(place) + ": the sky darkened and the summers turned cold."
+                         : e.Magnitude >= 4 ? subj + " erupted " + Near(place) + ": fire ran down its flanks and ash fell far around."
+                         : e.Magnitude >= 2 ? subj + " erupted " + Near(place) + ", throwing ash over the land round it."
+                         : subj + " stirred " + Near(place) + ", breathing smoke and a little ash.";   // (session 32: "(VEI 1)" had stood - a scientist's word)
+                case HistoryKind.VentBorn: return "A volcano, " + subj + ", " + (e.ArgB == 1 ? "broke out over the deep fire" : "opened") + " " + Near(place) + ".";
+                case HistoryKind.IslandRose: return "A new island rose from the sea: " + subj + ", " + Near(place) + ".";
+                case HistoryKind.VentExtinct: return subj + ", " + Near(place) + ", has fallen silent (" + e.ArgB + " eruptions).";
                 case HistoryKind.Speciation:
-                    return "The " + obj + " of the land near " + place + ", long cut off from the rest of their kind, have become a kind of their own: the " + subj + ".";
-                case HistoryKind.Extinction: return "The last of the " + subj + " are gone: the kind has died out.";
+                    return "The " + obj + " of the land near " + place + ", long cut off from the rest of its kind, has become a kind of its own: the " + subj + ".";
+                case HistoryKind.Extinction: return "The " + subj + " is gone from the world: the last of its kind has died.";   // ("The last of the seal are gone" had stood)
                 case HistoryKind.Storm:
-                    return (e.ArgA == 0 ? "A great storm gathered over the sea" : "A winter storm grew") + " near " + place + " (winds " + F(e.Magnitude, "0") + " m/s).";
-                case HistoryKind.StormLandfall: return "The storm came ashore near " + place + " (winds " + F(e.Magnitude, "0") + " m/s).";
+                    return (e.ArgA == 0 ? "A great storm gathered over the sea" : "A winter storm grew") + " " + Near(place) + " (" + Wind(e.Magnitude) + ").";
+                case HistoryKind.StormLandfall: return "The storm came ashore " + Near(place) + " (" + Wind(e.Magnitude) + ").";
                 case HistoryKind.CropsFlattened: return "The storm flattened the crops of " + subj + " (" + F(e.Magnitude * 100.0, "0") + "% lost).";
                 case HistoryKind.StormSurge: return "The storm drove the sea " + F(e.Magnitude, "0") + " m over the coast near " + place + ", flooding " + e.ArgA + " stretches of shore.";
                 case HistoryKind.Quake:
-                    return (e.Magnitude >= 7.5 ? "A great earthquake" : "An earthquake") + " (M " + F(e.Magnitude, "0.0") + ") shook the land near " + place + ".";
-                case HistoryKind.Landslides: return "Landslides scarred " + e.ArgA + (e.ArgA == 1 ? " slope" : " slopes") + " near " + place + ".";
+                    return (e.Magnitude >= 7.5 ? "A great earthquake" : "An earthquake") + " (magnitude " + F(e.Magnitude, "0.0") + ") shook " + (place == "the wilds" ? "the wilds" : place.StartsWith("the land", System.StringComparison.Ordinal) ? place : "the land near " + place) + ".";
+                case HistoryKind.Landslides: return "Landslides scarred " + e.ArgA + (e.ArgA == 1 ? " slope" : " slopes") + " " + Near(place) + ".";
                 case HistoryKind.StoresSpoiled: return "The earthquake spilled and spoiled " + F(e.Magnitude * 100.0, "0") + "% of the stores of " + subj + ".";
                 case HistoryKind.Tsunami: return "A great wave (" + F(e.Magnitude, "0") + " m) came over the coast near " + place + ", flooding " + e.ArgA + " stretches of shore.";
                 case HistoryKind.FieldsFlooded: return "The sea came over the fields of " + subj + " (" + F(e.Magnitude * 100.0, "0") + "% of the crop lost).";
                 case HistoryKind.AshFall: return "Ash fell on the fields of " + subj + " (" + F(e.Magnitude * 100.0, "0") + "% of the crop lost).";
                 case HistoryKind.IceAge: return "An age of ice began: the summers grew too cool to melt the snow, and ice spread over the land.";
                 case HistoryKind.IceAgeEnded: return "The age of ice ended: warmer summers are melting the ice sheets back.";
-                case HistoryKind.Harvest: return subj + " brought in its harvest (" + F(e.Magnitude, "0") + " food).";
+                case HistoryKind.Harvest: return subj + " brought in its harvest (" + Days(e.Magnitude, "food") + ").";   // ("(13874 food)" had stood)
                 case HistoryKind.HarvestFailed: return "The harvest failed at " + subj + " (" + F(e.Magnitude * 100.0, "0") + "% short).";
-                case HistoryKind.Hunger: return "Hunger came to " + subj + ": the granary is empty.";
-                case HistoryKind.Famine: return "Famine in " + subj + ": people are dying of hunger.";
+                case HistoryKind.Hunger: return "Hunger came to " + subj + ": the granary was empty.";
+                case HistoryKind.Famine: return "Famine came to " + subj + ": people were dying of hunger.";
                 case HistoryKind.Rationing: return subj + " began to ration its grain (" + F(e.Magnitude * 100.0, "0") + "% portions) to last until the harvest.";
                 case HistoryKind.WildFood: return "The people of " + subj + " turned to the woods and the shore for food.";
                 case HistoryKind.HomeBuilt: return "The " + Plural(subj) + " raised " + (e.ArgA >= 2 ? "a house" : "a hut") + " in " + place + ".";
@@ -185,7 +205,7 @@ namespace TC2.Core.History
                            e.ArgB + " people at their old work (" + F(100.0 * e.Magnitude, "0") + " % more hours a hectare).";
                 case HistoryKind.HeadmanRose:
                     return Cap(subj) + " became first among the people of " + place + (e.ArgB == 1 && !e.Other.IsNone ? ", after " + other + " of the same household" : e.ArgB == 2 && !e.Other.IsNone ? " in the place of " + other : "") +
-                           ": " + e.ArgA + (e.ArgA == 1 ? " household follows" : " households follow") + " the " + Plural(obj) + " - kin, those who owe them grain, those they fed or lent to lately.";
+                           ": " + (e.ArgA == 1 ? "one household follows" : e.ArgA + " households follow") + " the " + Plural(obj) + " - kin, those who owe them grain, those they fed or lent to lately.";
                 case HistoryKind.Sworn:
                     return Cap(subj) + " swore to " + obj + ", first among the people of " + place + (e.Other.IsNone ? "" : ": the " + Plural(other) + "' grain feeds him, a year's food at each harvest,") +
                            " and he practises arms at its ground every day and goes with its bands" + (e.ArgA > 1 ? " (" + e.ArgA + " men are sworn to " + obj + " now)" : "") + ".";
@@ -194,21 +214,22 @@ namespace TC2.Core.History
                            (e.ArgA == 1 ? ": the grain of " + obj + "'s household could keep no more men" : e.ArgA == 2 ? ": another is first among the people of " + place + " now" : e.ArgA == 3 ? ": he is past forty" :
                             e.ArgA == 4 ? ": he and " + obj + " no longer live in one village" : e.ArgA == 5 ? ": " + obj + " died" : "") + ".";
                 case HistoryKind.TributeDemanded:
-                    return Cap(subj) + ", whose first household keeps sworn men, asked " + obj + " a tenth of its harvest (" + F(e.Magnitude, "0") + " days' grain)" +
-                           (e.ArgA == 1 ? ": its people could neither stand against them nor go elsewhere, and bowed." : ": its people would not pay - a refusal " + subj + " holds against them.");
+                    return Cap(subj) + ", whose first household kept sworn men, asked " + obj + " a tenth of its harvest (" + Days(e.Magnitude) + ")" +
+                           (e.ArgA == 1 ? ": its people could neither stand against them nor go elsewhere, and bowed." : ": its people would not pay - a refusal " + subj + " held against them.");
                 case HistoryKind.CartMade:
                     return "The " + Plural(subj) + " of " + place + " made " + (e.ArgA == TC2.Core.Places.Carts.Ox ? "an ox cart" : "a handcart") + (e.Other.IsNone ? "" : ", " + other + " shaping its wheels") +
                            ": what they carried - their traders' loads along a worn way, wood and stone from far off - had been more than their backs could take.";
                 case HistoryKind.BoatLost:
-                    return "The " + TC2.Core.Places.Boats.NameOf((byte)e.ArgB) + " of the " + Plural(subj) + " of " + place + " overturned at sea in a rising wind (" + F(e.Magnitude, "0") + " m/s)" +
+                    return "The " + TC2.Core.Places.Boats.NameOf((byte)e.ArgB) + " of the " + Plural(subj) + " of " + place + " overturned at sea in a rising wind (" + Wind(e.Magnitude) + ")" +
                            (e.Other.IsNone ? "." : e.ArgA == 1 ? ": " + other + " drowned." : ": " + other + " clung to it and came ashore.");
                 case HistoryKind.HerdHuntedOut: return "The " + obj + " herd near " + place + " was hunted out (" + F(e.Magnitude, "0") + " at its most).";
-                case HistoryKind.HomeCleared when e.ArgA == 5: return "The ruins of " + (e.Subject.IsNone ? "an old house" : "the house of " + subj) + " were cleared for " + (e.Other.IsNone ? "a new home" : other + "'s new home") + (e.Magnitude > 0.5f ? ", the stone of its footings carried to the store" : "") + ".";   // (C13.4)
-                case HistoryKind.HomeCleared: return "The house of " + subj + (e.ArgA == 1 ? ", standing in a street, " : e.ArgA == 2 ? ", standing in the market place, " : e.ArgA == 4 ? ", standing in the river's way, " : ", standing across the ring, ") + (e.ArgB == 1 ? "was taken down when they moved out to build anew." : "was taken down when it stood empty.");
+                // (session 32: households by their family, "the house of Skorthoust ... for Kobo's new home" had stood)
+                case HistoryKind.HomeCleared when e.ArgA == 5: return "The ruins of " + (e.Subject.IsNone ? "an old house" : "the house of " + Family(e.Subject, subj)) + " were cleared for " + (e.Other.IsNone ? "a new home" : e.Other.Kind == EntityKind.Household ? "the new home of the " + Plural(other) : other + "'s new home") + (e.Magnitude > 0.5f ? ", the stone of its footings carried to the store" : "") + ".";   // (C13.4)
+                case HistoryKind.HomeCleared: return "The house of " + Family(e.Subject, subj) + (e.ArgA == 1 ? ", standing in a street, " : e.ArgA == 2 ? ", standing in the market place, " : e.ArgA == 4 ? ", standing in the river's way, " : ", standing across the ring, ") + (e.ArgB == 1 ? "was taken down when they moved out to build anew." : "was taken down when it stood empty.");
                 case HistoryKind.HomeRebuilt: return Cap(subj) + " rebuilt their house as a " + Places.Architecture.PlanName(e.ArgA) + (e.ArgB != e.ArgA ? " (it had been a " + Places.Architecture.PlanName(e.ArgB) + ")" : "") + ".";
                 case HistoryKind.ReliefReturned: return subj + " gave back to " + obj + (e.ArgA == 1 ? ", by sea," : "") + " the grain it was given in its famine (" + F(e.Magnitude, "0") + " days' food for one, the first of it).";
                 case HistoryKind.ReliefSent: return "In the famine " + subj + " sent grain to " + obj + (e.ArgA == 1 ? " by sea, a boatload along the coast" : "") + " (" + F(e.Magnitude, "0") + " days' food for one).";
-                case HistoryKind.Taken: return subj + " of " + other + " took " + F(e.Magnitude, "0") + " days' grain from the store of " + obj + " in the night.";
+                case HistoryKind.Taken: return subj + " of " + other + " took " + Days(e.Magnitude) + " from the store of " + obj + " in the night.";
                 case HistoryKind.TakingSeen: return subj + " of " + other + " was seen at the store of " + obj + " in the night and ran, leaving the grain.";
                 case HistoryKind.Struck:
                     return e.ArgA == 1 ? obj + " was caught at the store of " + place + " in the night and " + (e.Magnitude >= 0.6f ? "badly " : "") + "beaten by " + subj + "."
@@ -225,16 +246,16 @@ namespace TC2.Core.History
                     return "The people of " + subj + (e.ArgA == 1 ? " said they had no part in " : " would make no amends to " + obj + " for ") + (e.ArgB == 5 ? "a death" : "a wounding") +
                            (e.ArgA == 1 ? " that " + obj + " laid at their door" : "") + (e.Other.IsNone ? "" : " when " + other + " came to ask") + ".";
                 case HistoryKind.BandRaised:
-                    return subj + " raised a band of " + e.ArgA + " in " + place + " to fall on " + obj + (e.ArgB == 1 ? ": they hold a heavy wrong against it."
-                         : e.ArgB == 2 ? ": they answer the wrongs it did " + other + ", which pays them tribute." : ": they are starving and its store is full.");
+                    return subj + " raised a band of " + e.ArgA + " in " + place + " to fall on " + obj + (e.ArgB == 1 ? ": they held a heavy wrong against it."
+                         : e.ArgB == 2 ? ": they answered the wrongs it had done " + other + ", which paid them tribute." : ": they were starving and its store was full.");
                 case HistoryKind.Raid:
                     {
                         int outcome = e.ArgB / 100, blows = e.ArgB % 100;
                         string band = "A band of " + e.ArgA + " from " + subj + (e.Other.IsNone ? "" : ", led by " + other + ",") + " fell on the store of " + obj + " in the night";
                         // (session 29: an empty store said as such - "carried off 0 days' grain" had stood in the book)
                         bool none = e.Magnitude < 0.5f;
-                        if (outcome == 0) return band + (none ? " unseen, but found nothing in it to carry off." : " and carried off " + F(e.Magnitude, "0") + " days' grain unseen.");
-                        if (outcome == 1) return band + ", fought off its people (" + blows + (blows == 1 ? " blow" : " blows") + ")" + (none ? " but found nothing in it to carry off." : " and carried off " + F(e.Magnitude, "0") + " days' grain.");
+                        if (outcome == 0) return band + (none ? " unseen, but found nothing in it to carry off." : " and carried off " + Days(e.Magnitude) + " unseen.");
+                        if (outcome == 1) return band + ", fought off its people (" + blows + (blows == 1 ? " blow" : " blows") + ")" + (none ? " but found nothing in it to carry off." : " and carried off " + Days(e.Magnitude) + ".");
                         return band + " but was driven off (" + blows + (blows == 1 ? " blow" : " blows") + ").";
                     }
                 case HistoryKind.WallPlanned:
@@ -254,10 +275,10 @@ namespace TC2.Core.History
                                (e.ArgA > 1 ? " (" + obj + " now has " + e.ArgA + " villages paying)." : ".");
                     return "The people of " + subj + " bowed to " + obj + " and agreed to pay it a tenth of every harvest: they could neither stand against its bands nor go elsewhere" +
                            (e.ArgA > 1 ? " (" + obj + " now has " + e.ArgA + " villages paying)." : ".");
-                case HistoryKind.TributePaid: return subj + " paid " + obj + " its tribute (" + F(e.Magnitude, "0") + " days' grain).";
+                case HistoryKind.TributePaid: return subj + " paid " + obj + " its tribute (" + Days(e.Magnitude) + ").";
                 case HistoryKind.TributeEnded:
-                    if (e.ArgA == 1) return subj + " pays tribute no more: " + obj + " is gone.";
-                    if (e.ArgA == 2) return subj + " pays " + obj + " tribute no more: the one first among its people died, and " + subj + " owes the heir nothing until it has won it again.";   // (C10.9)
+                    if (e.ArgA == 1) return subj + " paid tribute no more: " + obj + " was gone.";
+                    if (e.ArgA == 2) return subj + " paid " + obj + " tribute no more: the first among the people of " + obj + " died, and " + subj + " owed the heir nothing until it was won again.";   // (C10.9; session 32: "the one first among its people" read as the payer's own)
                     return subj + " would pay " + obj + " tribute no more: " + obj + " is no longer the stronger" +
                            (e.Magnitude <= 0f ? "." : TC2.Core.Society.Conflict.MightArmsOff
                                ? " - it could bring " + F(e.Magnitude, "0") + " against them (its own people and those its call brings), and they have " + e.ArgB + " of fighting age."   // (C10.5)

@@ -480,9 +480,9 @@ namespace TC2.Core.History
             int places = 0, gone = 0;
             for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid)) { if (w.Settlements.Get(sid).Inhabited) places++; else gone++; }
             book.Preface.Add("This book tells what the ledger of the world keeps of its " + F(c.Years) + " years. " + F(w.LivingPeople()) + " people live now in " +
-                             Plural(places, "place", "places") + (gone > 0 ? "; " + Plural(gone, "place stands", "places stand") + " abandoned" : "") + ". In its years " + F(founded) + " villages were founded and " +
-                             F(abandoned) + " abandoned; " + F(hunger) + " people died of hunger, " + F(sick) + " of sickness, " + F(wounds) + " of wounds and " + F(disaster) +
-                             " in the violence of the earth and the sky; there were " + F(raids) + " raids.");
+                             Plural(places, "place", "places") + (gone > 0 ? "; " + Plural(gone, "place stands", "places stand") + " abandoned" : "") + ". In its years " + Plural(founded, "village was", "villages were") + " founded and " +
+                             Num(abandoned) + " abandoned; " + F(hunger) + " people died of hunger, " + F(sick) + " of sickness, " + F(wounds) + " of wounds and " + (disaster == 0 ? "none" : F(disaster)) +
+                             " in the violence of the earth and the sky; there " + (raids == 1 ? "was one raid." : "were " + F(raids) + " raids."));   // (session 32: "and 0 in the violence", "1 abandoned" had stood)
             if (c.RealmOrder.Count > 0)
             {
                 var r = c.Realms[c.RealmOrder[0]];
@@ -820,7 +820,7 @@ namespace TC2.Core.History
                         parts.Add("to " + Name(w, lords[i]) + ", " + (l.Count <= 4 ? Join(l) : string.Join(", ", l.GetRange(0, 3).ToArray()) + " and " + Num(l.Count - 3) + " more"));
                     }
                     notes.Add(Cap(Plural(bows, "bow", "bows")) + " to lords: " + string.Join("; ", parts.ToArray()) + (lords.Count > 4 ? "; and to " + Plural(lords.Count - 4, "lord", "lords") + " more" : "") + "." +
-                              (ended > 0 ? " " + Cap(Plural(ended, "bond", "bonds")) + " of tribute ended." : "") + (refused > 0 ? " " + Cap(Plural(refused, "asking was", "askings were")) + " refused." : ""));
+                              (ended > 0 ? " " + Cap(Plural(ended, "bond", "bonds")) + " of tribute ended." : "") + (refused > 0 ? " " + Cap(Plural(refused, "demand for a tenth was", "demands for a tenth were")) + " refused." : ""));
                 }
                 else if (ended > 0) notes.Add(Cap(Plural(ended, "bond", "bonds")) + " of tribute ended.");
             }
@@ -957,7 +957,7 @@ namespace TC2.Core.History
                 if (boats > 0) parts.Add(Plural(boats, "boat was", "boats were") + " built");
                 if (roads > 0) parts.Add(Plural(roads, "way was", "ways were") + " beaten into roads");
                 if (sworn > 0) parts.Add(Plural(sworn, "man swore", "men swore") + " to the first of their villages");
-                if (ore > 0 || stone > 0) parts.Add((ore > 0 ? Plural(ore, "body of ore", "bodies of ore") : "") + (ore > 0 && stone > 0 ? " and " : "") + (stone > 0 ? Plural(stone, "outcrop of stone", "outcrops of stone") : "") + " found");
+                if (ore > 0 || stone > 0) parts.Add((ore > 0 ? Plural(ore, "body of ore", "bodies of ore") : "") + (ore > 0 && stone > 0 ? " and " : "") + (stone > 0 ? Plural(stone, "outcrop of stone", "outcrops of stone") : "") + (ore + stone == 1 ? " was found" : " were found"));
                 if (moved > 0) parts.Add(Plural(moved, "household moved", "households moved") + " to another village");
                 if (parts.Count > 0) notes.Add(Cap(Join(parts)) + ".");
             }
@@ -1032,15 +1032,15 @@ namespace TC2.Core.History
         {
             switch (era.Sign)
             {
-                case Chronicle.SignHunger: return "Hunger marked these years: " + F(hunger) + " people died of want" + (worst > 0 ? ", the most in year " + worstY + " (" + F(worst) + ")" : "") + ".";
-                case Chronicle.SignSickness: return "Sickness marked these years: " + F(sick) + " people died of it" + (worst > 0 ? ", the most in year " + worstY + " (" + F(worst) + ")" : "") + ".";
+                case Chronicle.SignHunger: return "Hunger marked these years: " + (hunger == 1 ? "one person died" : F(hunger) + " people died") + " of want" + (worst > 1 ? ", the most in year " + worstY + " (" + F(worst) + ")" : "") + ".";   // ("the most in year 8 (1)" had stood)
+                case Chronicle.SignSickness: return "Sickness marked these years: " + F(sick) + " people died of it" + (worst > 1 ? ", the most in year " + worstY + " (" + F(worst) + ")" : "") + ".";
                 case Chronicle.SignStrife: return "Feuds and raids marked these years: " + Plural(raids, "raid", "raids") + ", and " + F(wounds) + " dead of their wounds.";
                 case Chronicle.SignGrowth: return "These were years of plenty: the people grew by " + F(100.0 * (after - before) / System.Math.Max(1, before)) + " %.";
-                case Chronicle.SignDecline: return "These were lean years: " + (after < before ? "the people fell by " + F(100.0 * (before - after) / System.Math.Max(1, before)) + " %" : F(abandoned) + " places were abandoned") + ".";
+                case Chronicle.SignDecline: return "These were lean years: " + (after < before ? "the people fell by " + F(100.0 * (before - after) / System.Math.Max(1, before)) + " %" : Plural(abandoned, "place was", "places were") + " abandoned") + ".";   // ("1 places were" had stood)
                 case Chronicle.SignFounding: return "It was an age of founders: " + Plural(founded, "new village", "new villages") + (abandoned > 0 ? ", and " + Num(abandoned) + " left" : "") + ".";
                 case Chronicle.SignWalls: return "Villages walled themselves in these years: " + Plural(walls, "palisade was", "palisades were") + " begun.";
                 case Chronicle.SignLords: return "Lords rose in these years: " + Plural(tributes, "village", "villages") + " bowed to pay tribute.";
-                case Chronicle.SignRuin: return "The earth and the sky marked these years: " + F(disaster) + " people died in their violence" + (worst > 0 ? ", the most in year " + worstY : "") + ".";
+                case Chronicle.SignRuin: return "The earth and the sky marked these years: " + (disaster == 1 ? "one person died" : F(disaster) + " people died") + " in their violence" + (worst > 0 && disaster > 1 ? ", the most in year " + worstY : "") + ".";
                 case Chronicle.SignCold: return "These were cold years.";
                 case Chronicle.SignWarm: return "These were warm years.";
                 default: return "These were quiet years.";
@@ -1092,7 +1092,7 @@ namespace TC2.Core.History
             {
                 int fy = YearOf(first.Time);
                 sb.Append(seat).Append(fy < r.From ? " first took tribute in year " : "'s lordship began in year ").Append(fy).Append(", when ").Append(w.History.NameOf(first.Subject))
-                  .Append(first.ArgB == 1 ? " bowed to it for the famine grain it could not give back" : first.ArgB == 2 ? " bowed when it asked a tenth" : " bowed to it after its bands came").Append(". ");
+                  .Append(first.ArgB == 1 ? " bowed to it for the famine grain it could not give back" : first.ArgB == 2 ? " bowed to its demand for a tenth" : " bowed to it after its bands came").Append(". ");
                 if (fy < r.From) sb.Append("It paid a lord of its own until year ").Append(r.From).Append(", when it came to stand at the head of its realm. ");
             }
             var marks = new List<string>();
@@ -1108,7 +1108,7 @@ namespace TC2.Core.History
             if (bread > 0) hows.Add(Num(bread) + " for famine grain");
             if (asked > 0) hows.Add(Num(asked) + " when it asked");
             if (hows.Count > 0) sb.Append(" (").Append(string.Join(", ", hows.ToArray())).Append(')');
-            sb.Append("; ").Append(Num(endedWeak)).Append(" ended when it was no longer the stronger").Append(endedDeath > 0 ? ", " + Num(endedDeath) + " lapsed at the deaths of the first among its people" : "").Append(endedGone > 0 ? ", " + Num(endedGone) + " when it was gone" : "").Append(endedEmpty > 0 ? ", " + Num(endedEmpty) + (endedEmpty == 1 ? " when the village paying it was abandoned" : " when the villages paying it were abandoned") : "").Append('.');
+            sb.Append("; ").Append(endedWeak == 0 ? "none" : Num(endedWeak)).Append(" ended when it was no longer the stronger").Append(endedDeath > 0 ? ", " + Num(endedDeath) + " lapsed at the deaths of the first among its people" : "").Append(endedGone > 0 ? ", " + Num(endedGone) + " when it was gone" : "").Append(endedEmpty > 0 ? ", " + Num(endedEmpty) + (endedEmpty == 1 ? " when the village paying it was abandoned" : " when the villages paying it were abandoned") : "").Append('.');
             if (present) sb.Append(" Today ").Append(Plural(r.SizeAt(c.Now), "village pays", "villages pay")).Append(" it.");
             else
             {
@@ -1155,7 +1155,7 @@ namespace TC2.Core.History
                 for (int i = 0; i < againOrder.Count && i < 6; i++)
                 {
                     var yl = again[againOrder[i]];
-                    parts.Add(Name(w, againOrder[i]) + " " + (yl.Count == 1 ? "once more (year " + yl[0] + ")" : Num(yl.Count) + " times more (" + Years(yl[0], yl[yl.Count - 1]) + ")"));
+                    parts.Add(Name(w, againOrder[i]) + " " + (yl.Count == 1 ? "once more (year " + yl[0] + ")" : (yl.Count == 2 ? "twice" : Num(yl.Count) + " times") + " more (" + Years(yl[0], yl[yl.Count - 1]) + ")"));
                 }
                 ch.Para("Won back after their bonds lapsed, these bowed again to " + seat + ": " + Join(parts) +
                         (againOrder.Count > 6 ? ", and " + Plural(againOrder.Count - 6, "village", "villages") + " more" : "") + ".", r.Seat);
@@ -1605,9 +1605,12 @@ namespace TC2.Core.History
                 for (int k = 0; k < famines.Count; k++)
                 {
                     var f = famines[k];
-                    ch.Heading((k == 0 ? "The Great Famine of " : "The famine of ") + Years(f.From, f.To));
+                    // (session 32) its span from its first record of famine, which comes before its dead ("The Great Famine of years 296-299 ... It came first
+                    // to X, in year 295" had stood)
+                    int from = f.Events.Count > 0 ? System.Math.Min(f.From, YearOf(f.Events[0].Time)) : f.From;
+                    ch.Heading((k == 0 ? "The Great Famine of " : "The famine of ") + Years(from, f.To));
                     var sb = new StringBuilder();
-                    sb.Append(F(f.Toll)).Append(" died of hunger in those years; ").Append(Plural(f.Places.Count, "village", "villages")).Append(" knew famine.");
+                    sb.Append(F(f.Toll)).Append(from == f.To ? " died of hunger that year; " : " died of hunger in those years; ").Append(Plural(f.Places.Count, "village", "villages")).Append(" knew famine.");
                     if (f.Events.Count > 0)
                     {
                         var first = f.Events[0];
@@ -1646,7 +1649,7 @@ namespace TC2.Core.History
                 double all = 0; foreach (var p in plagues) all += p.Toll;
                 long sickAll = 0; for (int i = 0; i < a.Count; i++) sickAll += a[i].Sick;
                 ch.Para(plagues.Count == 0 ? "No sickness has gone from village to village with deaths the ledger still keeps." :
-                        F(sickAll) + " people died of sickness in the world's years. Sicknesses went from village to village " + Plural(plagues.Count, "time", "times") + " that the ledger still keeps, killing " + F(all) + ". The worst:");
+                        F(sickAll) + " people died of sickness in the world's years. Sicknesses went from village to village " + (plagues.Count == 1 ? "once" : plagues.Count == 2 ? "twice" : Num(plagues.Count) + " times") + " that the ledger still keeps, killing " + F(all) + ". The worst:");
                 for (int k = 0; k < plagues.Count && k < 8; k++)
                 {
                     var p = plagues[k];
@@ -1674,7 +1677,8 @@ namespace TC2.Core.History
                 }
                 long dead = 0; int worstY = 0, worst = 0;
                 for (int i = 0; i < a.Count; i++) { dead += a[i].Disaster; if (a[i].Disaster > worst) { worst = a[i].Disaster; worstY = a[i].Year; } }
-                ch.Para(evs.Count == 0 ? "The earth and the sky have done little the ledger keeps." : F(dead) + " people died in the violence of the earth and the sky" + (worst > 0 ? ", the most in year " + worstY + " (" + F(worst) + ")" : "") + ". What the ledger keeps of it:");
+                // (session 32: "0 people died in the violence ..." had stood over a list of it)
+                ch.Para(evs.Count == 0 ? "The earth and the sky have done little the ledger keeps." : (dead == 0 ? "The earth and the sky have killed nobody the ledger remembers" : dead == 1 ? "One person died in the violence of the earth and the sky" : F(dead) + " people died in the violence of the earth and the sky") + (worst > 0 && dead > 1 ? ", the most in year " + worstY + " (" + F(worst) + ")" : "") + ". What the ledger keeps of it:");
                 Best(evs, 24);
                 foreach (var e in evs) ch.Line(w, e);
                 part.Chapters.Add(ch);
@@ -1800,8 +1804,8 @@ namespace TC2.Core.History
             if (order.Count == 0) return null;
             order.Sort((a, b) => lines[b].Count != lines[a].Count ? lines[b].Count.CompareTo(lines[a].Count) : a.CompareTo(b));
             var ch = new BookChapter { Title = "The Peoples", Sub = Plural(order.Count, "people of more than one village", "peoples of more than one village") };
-            ch.Para("A people here is the villages that descend, founding by founding, from one of the first: their founders carried its way of building and " +
-                    "its speech, each now and then a little changed.");
+            // (session 32: the part's own words had been said again here)
+            ch.Para(Cap(Plural(order.Count, "people has", "peoples have")) + " spread beyond a single village; each is told below by the villages its founders made, how it names its places and how it roofs its houses.");
             foreach (int l in order)
             {
                 var ll = lines[l];
@@ -1953,8 +1957,8 @@ namespace TC2.Core.History
                     shown++;
                     int y = YearOf(e.Time), until = best + 1 < l.Count ? YearOf(l[best + 1].Time) : c.Now;
                     ch.Heading(w.History.NameOf(e.Subject), seat, pid);
-                    ch.Para(Who(c, pid) + " First among the people of " + Name(w, seat) + " for " + F(until - y) + " years (" + Years(y, until) + "), while " + Plural(r.SizeAt(y), "village", "villages") + " paid it when it began and " +
-                            Plural(r.SizeAt(until), "village", "villages") + " when it ended.", seat);
+                    ch.Para(Who(c, pid) + " First among the people of " + Name(w, seat) + " for " + F(until - y) + " years (" + Years(y, until) + "): " + (r.SizeAt(y) == 0 ? "no village paid it" : Plural(r.SizeAt(y), "village", "villages") + " paid it") + " when they began, " +
+                            (r.SizeAt(until) == 0 ? "none" : Num(r.SizeAt(until))) + " when they ended.", seat);   // ("while no villages paid it when it began" had stood)
                     Deeds(c, ch, pid, 4);
                 }
                 if (ch.Blocks.Count > 0) part.Chapters.Add(ch);
@@ -2125,7 +2129,7 @@ namespace TC2.Core.History
                 var kinds = new List<string>();
                 for (int f = 1; f < FamilyNames.Length; f++) if ((mask[i] & (1 << f)) != 0) kinds.Add(FamilyNames[f]);
                 ch.Para("It began in " + (re.RootKind == RootKind.Nature ? "nature" : re.RootKind == RootKind.You ? "your hand" : "people's own choices") + ", " + F((le.Time - re.Time) / (double)SimTime.Year) +
-                        " years before its last link here, and passed through " + string.Join(", ", kinds.ToArray()) + ".");
+                        " years before its last link here, and passed through " + Join(kinds) + ".");
                 // the links shown: the root, each family's first link, the most important, the last two
                 var show = new bool[chain.Count];
                 show[0] = true; show[chain.Count - 1] = true; if (chain.Count > 1) show[chain.Count - 2] = true;
@@ -2516,7 +2520,7 @@ namespace TC2.Core.History
                     else sb.Append("Brought by the first settlers.");
                     if (learnedN[t] > 0) sb.Append(' ').Append(Cap(Plural(learnedN[t], "village", "villages"))).Append(" learned it from neighbours.");
                     if (lostN[t] > 0) sb.Append(' ').Append(Cap(Plural(lostN[t], "village", "villages"))).Append(" lost it again.");
-                    sb.Append(" Today the people of ").Append(knowNow[t] == living && living > 1 ? "every village " : Plural(knowNow[t], "village", "villages") + " of " + F(living) + " ").Append(law.Now).Append('.');
+                    sb.Append(" Today the people of ").Append(knowNow[t] == living && living > 1 ? "every village " : (knowNow[t] == 1 ? "one village of the " : Num(knowNow[t]) + " of the ") + F(living) + " ").Append(law.Now).Append('.');   // ("35 villages of 56" had stood)
                     ch.Para(sb.ToString(), hasFirst[t] ? firstFound[t].Settlement : 0);
                     if (hasFirst[t]) ch.Line(w, in firstFound[t]);
                 }
@@ -2548,7 +2552,7 @@ namespace TC2.Core.History
                     string name = TC2.Core.Places.Structures.Name((byte)k);
                     standing.TryGetValue(k, out int st);
                     var fe = first[k];
-                    ch.Note(Cap(PluralOf(name)) + ": the first at " + Name(w, fe.Settlement) + " in year " + YearOf(fe.Time) + "; " + Plural(raised[k], "raised", "raised") + " in all, " + F(st) + " standing in lived-in places today.", fe.Settlement);
+                    ch.Note(Cap(PluralOf(name)) + ": the first at " + Name(w, fe.Settlement) + " in year " + YearOf(fe.Time) + "; " + Plural(raised[k], "raised", "raised") + " in all, " + (st == raised[k] && st == 2 ? "both" : st == raised[k] && st > 2 ? "all" : Num(st)) + " standing in lived-in places today.", fe.Settlement);   // ("two raised in all, 2 standing" had stood)
                     ch.Line(w, in fe);
                 }
                 part.Chapters.Add(ch);
@@ -2645,7 +2649,8 @@ namespace TC2.Core.History
             {
                 if (!byCentury.TryGetValue(cen, out var l)) continue;
                 Best(l, 10);
-                var ch = new BookChapter { Title = "Years " + cen * 100 + " to " + (cen * 100 + 99 > c.Now ? c.Now : cen * 100 + 99) };
+                int toY = cen * 100 + 99 > c.Now ? c.Now : cen * 100 + 99;
+                var ch = new BookChapter { Title = toY == cen * 100 ? "Year " + toY : "Years " + cen * 100 + " to " + toY };   // ("Years 300 to 300" had stood)
                 foreach (var e in l) ch.Line(w, e);
                 part.Chapters.Add(ch);
             }

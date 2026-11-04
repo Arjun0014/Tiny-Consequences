@@ -24,6 +24,14 @@ namespace TC2.Core.History
         static string And(List<string> l) => l.Count == 1 ? l[0] : string.Join(", ", l.GetRange(0, l.Count - 1).ToArray()) + " and " + l[l.Count - 1];
 
         /// <summary>What its size makes it: a hamlet (under 50 people), a village, a town (300 and more); abandoned when nobody lives there.</summary>
+        /// <summary>(session 32) Its tenth set aside, in days of its people's food ("0 days' food" had stood for less than one).</summary>
+        static string TenthDays(World w, in Settlement s)
+        {
+            Places.Trade.DaysOfFood(w, in s, out double perDay);
+            double d = s.TributeDue / System.Math.Max(1e-6, perDay);
+            return d < 1.0 ? "less than a day's food" : d < 1.5 ? "a day's food" : F(d, "0") + " days' food";
+        }
+
         public static string Word(in Settlement s) => !s.Inhabited ? "an abandoned place" : s.Population < 50 ? "a hamlet" : s.Population < 300 ? "a village" : "a town";
 
         public static string Title(World w, int sid)
@@ -50,6 +58,7 @@ namespace TC2.Core.History
                 if (cause)
                 {
                     if (party && origin) sb.Append(", ").Append(fc.ArgA).Append(fc.ArgA == 1 ? " household that had" : " households who had").Append(" set out to make a new home");
+                    else if (fc.Kind == HistoryKind.PeopleArrived) { sb.Append(" by the first people to come to the land"); origin = true; }   // ("(People came to the place that would be X)" had stood)
                     else sb.Append(" (").Append(HistoryText.Describe(w, in fc).TrimEnd('.')).Append(')');
                     if (fc.Cause1 != 0 && w.History.TryGet(fc.Cause1, out var fs) && fs.Kind == HistoryKind.VillageSplit) sb.Append(": ").Append(HistoryText.Describe(w, in fs).TrimEnd('.'));   // (C10.3)
                 }
@@ -160,8 +169,8 @@ namespace TC2.Core.History
                     if (Streets.Facing(in s, b.X, b.Y, out _, out _)) fronting++;
                     if (b.Kind >= Structures.House && Architecture.Has(b.Form) && Architecture.PlanOf(b.Form) == Architecture.Row) rows++;
                 }
-                sb.Append(s.StreetN).Append(s.StreetN == 1 ? " street" : " streets").Append(", ").Append(fronting).Append(" homes along its streets and lanes");
-                if (s.CoreR > 0f) sb.Append("; its frontage divided into narrow plots ").Append(F((double)s.CoreR, "0")).Append(" m out from the green, ").Append(rows).Append(rows == 1 ? " narrow town house" : " narrow town houses");
+                sb.Append(s.StreetN).Append(s.StreetN == 1 ? " street" : " streets").Append(", ").Append(fronting == 0 ? "no homes along them yet" : fronting == 1 ? "one home along " + (s.StreetN == 1 ? "it" : "its streets and lanes") : fronting + " homes along " + (s.StreetN == 1 ? "it" : "its streets and lanes"));   // ("0 homes along" had stood)
+                if (s.CoreR > 0f) sb.Append("; its frontage divided into narrow plots ").Append(F((double)s.CoreR, "0")).Append(" m out from the green, ").Append(rows == 0 ? "no narrow town house on them yet" : rows == 1 ? "one narrow town house" : rows + " narrow town houses");
                 sb.Append(".\n");
             }
             if (s.MarketR > 0f) sb.Append("A market place ").Append(F(2.0 * (double)s.MarketR, "0")).Append(" m across, widened by the traders who came.\n");
@@ -190,9 +199,11 @@ namespace TC2.Core.History
             if (!Places.SettlementSystem.SoilOff && s.ArableHa > 0 && (heart < 0.95 || s.Rest > 0.01f))
                 sb.Append("Its fields are ").Append(heart < 0.6 ? "worn" : heart < 0.85 ? "tired" : "a little tired").Append(": a sown hectare bears ").Append(F(100.0 * heart, "0"))
                   .Append(" % of what new land would").Append(s.Rest > 0.01f ? "; " + F(100.0 * s.Rest, "0") + " % of its arable rests this year" : "").Append(".\n");
-            sb.Append("The store holds ").Append(F(s.Granary, "0")).Append(" days' food (").Append(F(days, "0")).Append(" days for its people), in ")
-              .Append(s.Granaries).Append(s.Granaries == 1 ? " granary" : " granaries").Append(s.Barns > 0 ? " and " + s.Barns + (s.Barns == 1 ? " barn" : " barns") : "")
-              .Append(" holding ").Append(F(Structures.StoreCapacity(in s), "0")).Append(s.Ration < 0.999 ? "; meals rationed to " + F(100 * s.Ration, "0") + " %" : "").Append(".\n");
+            // (session 32: "in 0 granaries holding 0" and "in 0 granaries and 1 barn holding 40000" had stood)
+            string stores = (s.Granaries == 0 ? "" : s.Granaries == 1 ? "a granary" : s.Granaries + " granaries") + (s.Granaries > 0 && s.Barns > 0 ? " and " : "") + (s.Barns == 0 ? "" : s.Barns == 1 ? "a barn" : s.Barns + " barns");
+            sb.Append("The store holds ").Append(F(s.Granary, "N0")).Append(" days' food (").Append(F(days, "0")).Append(" days for its people), ")
+              .Append(stores.Length == 0 ? "kept in its homes: it has no granary yet" : "in " + stores + " with room for " + F(Structures.StoreCapacity(in s), "N0"))
+              .Append(s.Ration < 0.999 ? "; meals rationed to " + F(100 * s.Ration, "0") + " %" : "").Append(".\n");
             if (!Places.Muck.Off && (s.Muck > 500.0 || s.Spread > 500.0))   // (C3.7c: its yards' muck)
                 sb.Append("Its yards hold ").Append(F(s.Muck / 1000.0, "0.0")).Append(" t of muck").Append(s.Spread > 500.0 ? "; " + F(s.Spread / 1000.0, "0.0") + " t spread on its fields since the harvest - carted out, and dropped by its herds on the stubble and the fallow (" + F(Places.Muck.TonnesPerHa(in s), "0.0") + " t a hectare sown)" : "").Append(".\n");
             if (!Places.Stubble.Off && s.Crop == Places.CropStage.Harvested && s.Stubble > 100.0)   // (C3.7d: its herds on its stubble)
@@ -200,7 +211,7 @@ namespace TC2.Core.History
             if (s.BurialCount > 0)   // (D2-151: its burial ground)
             {
                 Places.Burials.Read(in s, w.Now, out double marked, out double fresh);
-                sb.Append("Its burial ground: ").Append(s.BurialCount).Append(s.BurialCount == 1 ? " burial" : " burials").Append(" since it was founded, ~").Append(F(System.Math.Min(Places.Burials.Slots, marked), "0"))
+                sb.Append("Its burial ground: ").Append(s.BurialCount).Append(s.BurialCount == 1 ? " burial" : " burials").Append(" since it was founded, some ").Append(F(System.Math.Min(Places.Burials.Slots, marked), "0"))
                   .Append(" graves still marked").Append(fresh >= 0.5 ? ", " + F(fresh, "0") + " of them fresh earth" : "").Append(".\n");
             }
             if (s.Sheaves > 0.5)   // (C3.7b: the harvest stands in the sheaf until its people thresh it)
@@ -225,7 +236,7 @@ namespace TC2.Core.History
                   .Append(making > 0 ? " (" + making + " being made)" : "").Append(hulks > 0 ? "; " + hulks + " old hulks on the beach" : "")
                   .Append(s.Sea.A >= 0 ? "; an hour at sea is worth " + F(Boats.SeaExpect(w, in s), "0.0") + " days' food against " + F(s.Fish.Expect, "0.0") + " on the shore" : "").Append(".\n");
             }
-            if (s.FamineAt != 0) sb.Append("Last famine: ").Append(Year(s.FamineAt)).Append(" (").Append(F(100 * s.Memory, "0")).Append(" % of its grown people lived through it).\n");
+            if (s.FamineAt != 0) sb.Append("Last famine: ").Append(Year(s.FamineAt)).Append(" (").Append(F(100 * s.Memory, "0")).Append(" % of its grown people have known famine).\n");
             return sb.ToString();
         }
 
@@ -275,7 +286,7 @@ namespace TC2.Core.History
             double share = Tech.ToolShare(in s);
             if (share < 0.005 && s.Metal < 0.5 && s.Iron < 0.5) sb.Append("Tools: of wood and stone");
             else sb.Append("Tools: metal for ").Append(F(100 * share, "0")).Append(" % of its people (").Append(s.Metal >= 0.5 ? F(s.Metal, "0") + " kg of copper" : "no copper").Append(s.Iron >= 0.5 ? ", " + F(s.Iron, "0") + " kg of iron" : "").Append(")");
-            if (s.Arms > 0.5) sb.Append("; arms ").Append(F(s.Arms, "0")).Append(s.IronArms > 0.5 ? " (" + F(s.IronArms, "0") + " of iron)" : "");
+            if (s.Arms > 0.5) sb.Append("; arms for ").Append(F(s.Arms, "0")).Append(s.IronArms > 0.5 ? " (" + F(s.IronArms, "0") + " of iron)" : "");
             sb.Append(".\n");
             if (Forge.Smithy(w, sid) != 0)
             {
@@ -313,7 +324,8 @@ namespace TC2.Core.History
                 double held = System.Math.Min(s.Granary, Structures.StoreCapacity(in s));
                 bool clay = w.Learning.Clay(s.Cell);
                 sb.Append("Pots and jars: ").Append(clay ? "clay within reach" : "no clay within reach");
-                if (s.Jars >= 0.5) sb.Append("; ").Append(F(s.Jars, "0")).Append(" kg of jars in its granaries keep ").Append(F(100 * Pottery.Sealed(in s), "0")).Append(" % of the ").Append(F(held, "0")).Append(" days' grain there sealed");
+                if (s.Jars >= 0.5 && held < 0.5) sb.Append("; ").Append(F(s.Jars, "0")).Append(" kg of jars in its granaries, empty");   // ("keep 100 % of the 0 days' grain" had stood)
+                else if (s.Jars >= 0.5) sb.Append("; ").Append(F(s.Jars, "0")).Append(" kg of jars in its granaries keep ").Append(F(100 * Pottery.Sealed(in s), "0")).Append(" % of the ").Append(F(held, "0")).Append(" days' grain there sealed");
                 else sb.Append("; no jars in its granaries");
                 if (s.Pots >= 0.5) sb.Append("; ").Append(F(s.Pots, "0")).Append(" kg of ware in store");
                 int own = 0, kiln = 0, none = 0; var hl = w.HouseholdsOf(sid);
@@ -359,7 +371,7 @@ namespace TC2.Core.History
                 else if (owner != 0) sb.Append(", worked by ").Append(Name(w, owner));
                 sb.Append("; ");
             }
-            sb.Append(F(store, "0")).Append(" kg of ore in store.\n");
+            sb.Append(store < 0.5 ? "no ore in store.\n" : F(store, "0") + " kg of ore in store.\n");
         }
 
         /// <summary>The techniques its people carry, by its best practitioner.</summary>
@@ -406,12 +418,12 @@ namespace TC2.Core.History
                 if (st < 2) continue;
                 sb.Append(st >= 3 ? "A road" : "A path").Append(" to ").Append(Name(w, wy.A == sid ? wy.B : wy.A)).Append(".\n");
             }
-            if (s.TradeIn >= 1f) sb.Append("Traders come ").Append(F(s.TradeIn, "0")).Append(" times a year").Append(s.Market != 0 ? " to its market" : "").Append(".\n");
+            if (s.TradeIn >= 1f) sb.Append("Traders come ").Append(s.TradeIn < 1.5f ? "once" : s.TradeIn < 2.5f ? "twice" : F(s.TradeIn, "0") + " times").Append(" a year").Append(s.Market != 0 ? " to its market" : "").Append(".\n");   // ("1 times a year" had stood)
             if (s.Lord != 0)
             {
                 // why: its raiders' bands (D2-075), the grain of its famines it could not give back (C10.4), or the lord's asking (C10.8)
                 int why = s.LordEvent != 0 && w.History.TryGet(s.LordEvent, out var le) && le.Kind == HistoryKind.TributeAgreed ? le.ArgB : 0;
-                sb.Append("It pays tribute to ").Append(Name(w, s.Lord)).Append(" since ").Append(Year(s.LordSince))
+                sb.Append("It has paid tribute to ").Append(Name(w, s.Lord)).Append(" since ").Append(Year(s.LordSince))
                   .Append(why == 1 ? ": its grain kept it through its famines, and it could not give it back.\n"
                         : why == 2 ? ": when it asked a tenth, its people could neither stand against its men nor go elsewhere.\n"
                         : ": it could neither stand against its bands nor go elsewhere.\n");
@@ -424,11 +436,11 @@ namespace TC2.Core.History
                 else if (!TC2.Core.Society.Conflict.CarryOff && w.Routes.Get(w, sid, s.Lord) == null)   // (C9.5a: by boat)
                     sb.Append("No way on foot leads from it to ").Append(Name(w, s.Lord))
                       .Append(ownBoats ? ": its tenth goes over the sea in its own boats" + (lordBoats ? ", or " + Name(w, s.Lord) + "'s come for it" : "") : ": " + Name(w, s.Lord) + "'s boats come over the sea for its tenth")
-                      .Append(s.TributeDue >= 1.0 ? " - " + F(s.TributeDue, "0") + " FU of it still set aside" : "").Append(".\n");
+                      .Append(s.TributeDue >= 1.0 ? " - " + TenthDays(w, in s) + " of it still set aside" : "").Append(".\n");   // (session 32: "FU", the tool's unit, had stood)
                 else if (s.TributeDue >= 1.0)   // (C10.6: set aside at its harvest, carried by its people)
                 {
-                    Places.Trade.DaysOfFood(w, in s, out double perDay);
-                    sb.Append(F(s.TributeDue / perDay, "0")).Append(" days' food of its tenth stands set aside for ").Append(Name(w, s.Lord))
+                    string td = TenthDays(w, in s);
+                    sb.Append(char.ToUpperInvariant(td[0]) + td.Substring(1)).Append(" of its tenth stands set aside for ").Append(Name(w, s.Lord))
                       .Append(", its people carrying it there load by load").Append(s.CarryToday > 0 ? " (" + s.CarryToday + " loads today)" : "").Append(".\n");
                 }
                 // why it still pays (C10.5): the weighing at its last harvest, as history keeps it

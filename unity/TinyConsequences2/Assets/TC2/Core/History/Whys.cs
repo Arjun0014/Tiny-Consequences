@@ -232,7 +232,7 @@ namespace TC2.Core.History
             if (s.HungerEvent != 0) l.Add("Hungry now: its people are going short.");
             if (s.RationEvent != 0 && s.Ration < 0.999) l.Add("Rationing its grain: " + (s.Ration * 100.0).ToString("0", CultureInfo.InvariantCulture) + " % of full meals until the next harvest.");
             if (s.Epidemic != 0 && s.EpiPath != 0) l.Add(Cap(w.History.NameOf(new EntityRef(EntityKind.Pathogen, s.EpiPath))) + " is in it: " + s.EpiDead + " dead so far.");
-            if (s.FamineAt != 0 && w.Now - s.FamineAt < 3 * SimTime.Year) l.Add("A famine struck it in year " + SimTime.YearOf(s.FamineAt) + "; " + (s.Memory * 100.0).ToString("0", CultureInfo.InvariantCulture) + " % of its grown people lived through one.");
+            if (s.FamineAt != 0 && w.Now - s.FamineAt < 3 * SimTime.Year) l.Add("A famine struck it in year " + SimTime.YearOf(s.FamineAt) + "; " + (s.Memory * 100.0).ToString("0", CultureInfo.InvariantCulture) + " % of its grown people have known famine.");
             if (s.ColdEvent != 0) l.Add("Its homes are cold.");
             if (s.Foe != 0 && w.Settlements.Exists(s.Foe)) l.Add("It holds a wrong against " + Name(w, s.Foe) + ".");
             if (s.TilthEvent != 0) l.Add("Its land within reach no longer feeds its people at the old work: it ploughs and hoes harder.");
