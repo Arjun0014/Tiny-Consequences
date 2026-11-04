@@ -26,6 +26,7 @@ namespace TC2.Core.History
         public int SumA, SumB;                // its records' ArgA and ArgB summed (households that set out, buildings flattened ...)
         public long Event;                    // the weightiest of its records
         public long First, Last;              // when the first and the last of them came
+        public long Reach;                    // (session 32, final) when the latest record in it or under it came - how far on its thread runs
         public double Weight;                 // the importance of it and what is under it
         public ConsequenceTier Tier;
         public byte Family;                   // what it was, for its colour (Consequences.Families)
@@ -53,9 +54,10 @@ namespace TC2.Core.History
     /// <summary>
     /// (session 32: what came of it) A cast's consequences as a tree, for the HUD's "What came of it": every record whose root is the cast, each under the
     /// record its first cause names (its second where the first is gone; the cast where both are), the records of one kind under one card told together,
-    /// the biggest few branches of each card kept and the rest folded into one. (session 32, final) The cards are opened biggest first - the card with the
-    /// most records under it before the rest - so the long threads (a sickness carried village to village for years, a famine that emptied a place) are
-    /// followed to their ends, years and decades on, before the room goes to small branches; to a depth of 24. An observer: reads the ledger, writes nothing.
+    /// the biggest few branches of each card kept and the rest folded into one. (session 32, final) The cards are opened furthest-reaching first - the card
+    /// whose thread runs latest, then the one with the most records under it - so the long threads (a sickness carried village to village for years, a
+    /// famine that emptied a place and the village its people founded decades on) are followed to their ends before the room goes to the branches of a
+    /// single day; to a depth of 24. An observer: reads the ledger, writes nothing.
     /// </summary>
     public static class Consequences
     {
@@ -113,19 +115,21 @@ namespace TC2.Core.History
                 if (parent[j] < 0) { nextSib[j] = rootFirst; rootFirst = j; }
                 else { nextSib[j] = firstKid[parent[j]]; firstKid[parent[j]] = j; }
             }
-            var size = new int[n]; var imp = new double[n];
+            var size = new int[n]; var imp = new double[n]; var reach = new long[n];
             for (int j = n - 1; j >= 0; j--)
             {
                 ref var e = ref h.RefAt(idx[j]);
                 size[j] += 1; imp[j] += (double)e.Importance;
                 if (e.Time > t.LastTime) t.LastTime = e.Time;
                 t.TierRecords[(int)TierOf(e.Time - t.CastTime)]++;
-                if (parent[j] >= 0) { size[parent[j]] += size[j]; imp[parent[j]] += imp[j]; }
+                if (e.Time > reach[j]) reach[j] = e.Time;
+                if (parent[j] >= 0) { size[parent[j]] += size[j]; imp[parent[j]] += imp[j]; if (reach[j] > reach[parent[j]]) reach[parent[j]] = reach[j]; }
             }
             // the cast's card
             var root = new ConsequenceNode { Index = 0, Depth = 0, Kind = HistoryKind.GodCommand, Settlement = cast.Settlement, Count = 1, Total = n + 1, Event = castId,
                                              First = cast.Time, Last = t.LastTime, Tier = ConsequenceTier.Cast, Family = FamCast, When = "year " + SimTime.YearOf(cast.Time).ToString(CultureInfo.InvariantCulture) };
             root.Members.Add(castId);
+            root.Reach = t.LastTime;
             string what = HistoryText.Describe(w, in cast).TrimEnd('.');
             if (what.StartsWith("You ", System.StringComparison.Ordinal)) what = char.ToUpperInvariant(what[4]) + what.Substring(5);
             root.Title = what;
@@ -133,9 +137,9 @@ namespace TC2.Core.History
             for (int j = 0; j < n; j++) root.Weight += parent[j] < 0 ? imp[j] : 0.0;
             t.Nodes.Add(root);
             var recs = new List<List<int>> { new List<int> { -1 } };
-            // each card's records' children, grouped; the biggest branches kept, the rest folded. The cards opened biggest first (the most records under
-            // them, the earliest card of equals): the room goes to the long threads before the small branches (breadth first, a wide first day had spent
-            // it all and a sickness's years were cut at its fourth village)
+            // each card's records' children, grouped; the biggest branches kept, the rest folded. The cards opened furthest-reaching first (the latest record
+            // under them, then the most records, the earliest card of equals): the room goes to the threads that run years and decades on before the
+            // branches of one day (breadth first, a wide first day could spend it all and cut a famine's decades at its first card)
             var kids = new List<int>();
             var groups = new List<ConsequenceNode>(); var groupRecs = new List<List<int>>(); var groupBest = new List<double>();
             var byKey = new Dictionary<long, int>();
@@ -146,7 +150,8 @@ namespace TC2.Core.History
                 for (int k = 1; k < open.Count; k++)
                 {
                     var na = t.Nodes[open[k]]; var nb = t.Nodes[open[bi]];
-                    int x = (na.Total - na.Count).CompareTo(nb.Total - nb.Count);
+                    int x = na.Reach.CompareTo(nb.Reach);
+                    if (x == 0) x = (na.Total - na.Count).CompareTo(nb.Total - nb.Count);
                     if (x > 0 || (x == 0 && na.Index < nb.Index)) bi = k;
                 }
                 int q = open[bi]; open.RemoveAt(bi);
@@ -180,6 +185,7 @@ namespace TC2.Core.History
                     var gn = groups[g];
                     groupRecs[g].Add(j);
                     gn.Count++; gn.Total += size[j]; gn.Weight += imp[j]; gn.SumA += e.ArgA; gn.SumB += e.ArgB;
+                    if (reach[j] > gn.Reach) gn.Reach = reach[j];
                     gn.Members.Add(e.Id);
                     if (e.Time < gn.First) gn.First = e.Time;
                     if (e.Time > gn.Last) gn.Last = e.Time;

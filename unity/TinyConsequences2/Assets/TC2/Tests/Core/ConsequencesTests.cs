@@ -273,7 +273,25 @@ namespace TC2.Tests.Core
             Assert.AreEqual(ConsequenceTier.Decades, fd.Tier); Assert.AreEqual("34 years on", fd.When);
             Assert.AreEqual(now + SimTime.Years(34), t2.LastTime);
             Assert.AreEqual(3, t2.TierRecords[(int)ConsequenceTier.Decades]);
+            Assert.AreEqual(now + SimTime.Years(34), t2.Root.Reach, "the cast's thread runs 34 years on");
             foreach (var n in t2.Nodes) if (n.Index > 0 && !n.More) Assert.GreaterOrEqual((int)n.Tier, (int)t2.Nodes[n.Parent].Tier);
+            // with little room, the thread that runs furthest is followed first: four bushy branches of the cast's first hour (each with more records under it
+            // than the abandoned village has) do not take the room from the founding decades on - opened biggest first, they had
+            var bushy = new[] { HistoryKind.FireStarted, HistoryKind.Quake, HistoryKind.RainBrought, HistoryKind.WarmAir };
+            var under = new[] { HistoryKind.FledDanger, HistoryKind.DangerNoticed, HistoryKind.JourneyInterrupted };
+            foreach (var k in bushy)
+            {
+                long bk = Rec(k, cast, now + SimTime.Hours(1), a, EntityRef.Settlement(a));
+                foreach (var u in under) Rec(u, bk, now + SimTime.Hours(2), a, EntityRef.Person(91200));
+            }
+            var t3 = Consequences.Build(w, cast, 14);
+            Print(t3, 0);
+            Traces(w, t3);
+            Assert.LessOrEqual(t3.Nodes.Count, 14);
+            var fd3 = t3.Nodes.Find(n => n.Kind == HistoryKind.SettlementFounded);
+            Assert.IsNotNull(fd3, "the founding 34 years on, followed first");
+            Assert.AreEqual("34 years on", fd3.When);
+            Assert.IsNotNull(t3.Nodes.Find(n => n.Below > 0 && n.Tier == ConsequenceTier.Immediate), "the first hour's branches counted, not drawn");
         }
     }
 }

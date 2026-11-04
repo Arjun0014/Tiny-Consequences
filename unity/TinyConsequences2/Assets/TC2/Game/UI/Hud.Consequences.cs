@@ -526,6 +526,7 @@ namespace TC2.Game
                 if (nd.Members.Count > shown) tip.Append(dead ? "; " : "\n").Append("and ").Append(nd.Members.Count - shown).Append(" more");
             }
             if (nd.Below > 0) tip.Append("\n<i>").Append(nd.Below).Append(nd.Below == 1 ? " record more" : " records more").Append(" came of it, beyond what the tree draws</i>");
+            if (i > 0 && !nd.More && nd.Reach - nd.Last >= SimTime.Year) tip.Append("\n<i>What came of it runs on to ").Append(Consequences.Offset(nd.Reach - _tree.CastTime)).Append(" from your hand</i>");   // (session 32, final)
             tip.Append("\n<color=#f2c35f>Click: ").Append(_treeGoWords[i]).Append("</color>");
             return tip.ToString();
         }
