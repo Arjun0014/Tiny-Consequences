@@ -18,7 +18,11 @@ Shader "TC2/Instanced"
         // The person's body (the kit's figure: legs below the hip at 0.88 m, arms beside the tunic from the shoulder at 1.5 m to the hands
         // at 0.92 m, |x| over 0.215 and within 0.09 of the body's plane) posed by what the simulation says they do (TC2.Core.Agents.Presence:
         // _Anim is the pose's code). A limb or the trunk turns about the body's x axis through a joint's height: a > 0 swings what hangs below
-        // the joint forward (+z), a < 0 leans what stands above it forward.
+        // the joint forward (+z), a < 0 leans what stands above it forward. (session 32, Arjun: "most people I'm looking at are standing still and
+        // doing nothing") the strokes are larger, so that they read from the village view (120-300 m, where a body is ten to twenty-five pixels
+        // tall): the hoe and the axe raised high and brought down with the body, the reaper's bent trunk sweeping, a walker's step dipping the body
+        // so the planted foot keeps the ground; and those in place at leisure are astir (codes 18-24): the weight shifted, a look round, a hand to
+        // the hip or the brow, a stretch, an arm out toward what they face, a child hopping and clapping.
         float3 TC2Rot(float3 p, float py, float a)
         {
             float dy = p.y - py, s = sin(a), c = cos(a);
@@ -29,12 +33,32 @@ Shader "TC2/Instanced"
             float s = sin(a), c = cos(a);
             return float3(n.x, n.y * c + n.z * s, n.z * c - n.y * s);
         }
+        // a turn about the body's upright through its middle (the trunk turned on the hips, the whole body turned to someone); also for normals
+        float3 TC2Yaw(float3 p, float a)
+        {
+            float s = sin(a), c = cos(a);
+            return float3(p.x * c + p.z * s, p.y, p.z * c - p.x * s);
+        }
+        // a tilt to a side about the z axis through (x0, py) (the weight shifted over a foot; an arm raised out to the side at the shoulder)
+        float3 TC2Roll(float3 p, float x0, float py, float a)
+        {
+            float dx = p.x - x0, dy = p.y - py, s = sin(a), c = cos(a);
+            return float3(x0 + dx * c - dy * s, py + dx * s + dy * c, p.z);
+        }
+        float3 TC2RollN(float3 n, float a)
+        {
+            float s = sin(a), c = cos(a);
+            return float3(n.x * c - n.y * s, n.x * s + n.y * c, n.z);
+        }
         // a stroke: slow up for `up` of the cycle, then a quick fall (an axe, a pick, a hammer): 0 struck .. 1 raised
         float TC2Stroke(float ph, float up)
         {
             float f = frac(ph);
             return f < up ? smoothstep(0.0, 1.0, f / up) : 1.0 - smoothstep(0.0, 1.0, (f - up) / (1.0 - up));
         }
+        // a spell's own draw (which gesture a few seconds of leisure take) and its swell in and out (0 at its ends, 1 through its middle)
+        float TC2Hash(float v) { return frac(sin(v * 12.9898 + 4.1414) * 43758.5453); }
+        float TC2Swell(float f) { return smoothstep(0.0, 0.18, f) * (1.0 - smoothstep(0.82, 1.0, f)); }
         void TC2Pose(inout float3 lp, inout float3 n, float anim, float ph)
         {
             int code = (int)round(anim);
@@ -43,98 +67,148 @@ Shader "TC2/Instanced"
             bool leg = lp.y < 0.88 && !arm;
             float side = lp.x >= 0 ? 1.0 : -1.0;
             float armL = 0.0, armR = 0.0;   // arm swings (left x < 0, right x > 0)
+            float outL = 0.0, outR = 0.0;   // arms raised out to the side at the shoulder (radians)
             float legA = 0.0;                // this leg's swing
             float lean = 0.0;                // the trunk's lean forward (radians, < 0)
+            float twist = 0.0;               // the trunk turned on the hips (radians)
+            float turn = 0.0;                // the whole body turned about its upright
+            float sway = 0.0;                // the whole body tilted over its feet (the weight shifted)
             float down = 0.0;                // the whole figure lowered (sitting)
             float bob = 0.0;
-            if (code == 1 || code == 8 || code == 13)
+            if (code == 1 || code == 8 || code == 13 || code == 23)
             {
-                // walking (8: with a load held before them; 13: running)
-                float run = code == 13 ? 1.6 : 1.0;
-                float t = ph * 7.0 * (code == 13 ? 1.5 : 1.0);
-                legA = sin(t) * 0.42 * run * side;
-                armL = -sin(t) * 0.35 * run; armR = sin(t) * 0.35 * run;
+                // walking (8: with a load held before them; 13: running at play; 23: running in alarm - hard, bent to it, the arms pumping, now
+                // and then a hand flung up and a look back)
+                float run = code == 13 ? 1.5 : code == 23 ? 1.85 : 1.0;
+                float t = ph * 7.0 * (code == 13 ? 1.45 : code == 23 ? 1.7 : 1.0);
+                float st = sin(t);
+                float amp = 0.55 * min(run, 1.45);
+                legA = st * amp * side;
+                armL = -st * 0.5 * run; armR = st * 0.5 * run;
                 if (code == 8) { armL = 1.15; armR = 1.15; }
-                bob = abs(sin(t)) * 0.035 * run;
-                lean = code == 13 ? -0.12 : 0.0;
+                // a walk dips as the legs part (the planted foot keeps the ground) and rises as they pass; a run springs off the ground
+                float dip = 0.85 * (1.0 - cos(amp * st));   // (how far the parted legs bring the hips down)
+                bob = code == 1 || code == 8 ? -dip : max(abs(st) * 0.11 * run - 0.5 * dip, -dip);
+                lean = code == 13 ? -0.18 : code == 23 ? -0.32 : code == 8 ? -0.06 : -0.03;
+                sway = st * 0.035;
+                if (code == 23)
+                {
+                    float fl = frac(ph / 4.3);
+                    float up = smoothstep(0.70, 0.78, fl) * (1.0 - smoothstep(0.90, 0.98, fl));
+                    armR = lerp(armR, 2.85, up);
+                    twist = 0.55 * up;
+                }
             }
             else if (code == 2)
             {
-                // hoeing: the hoe raised and brought down before the feet, bent to it
+                // hoeing: the hoe raised high over the shoulder and brought down before the feet, the body bending into the stroke
                 float s = TC2Stroke(ph * 0.55, 0.6);
-                armL = 0.5 + 1.5 * s; armR = armL;
-                lean = -(0.30 + 0.18 * (1.0 - s));
-                legA = 0.12 * side;
+                armL = 0.2 + 2.2 * s; armR = armL;
+                lean = -(0.22 + 0.38 * (1.0 - s));
+                legA = 0.14 * side;
+                bob = -0.025 * (1.0 - s);
             }
             else if (code == 3)
             {
-                // reaping, gathering: bent low, the hands working at the crop by turns
+                // reaping, gathering: bent low, the hands working at the crop by turns, the bent trunk sweeping from side to side with the sickle;
+                // every few seconds up straight with the handful, laid by
                 float t = ph * 2.6;
-                lean = -(0.85 + 0.08 * sin(t * 0.5));
-                armL = 0.45 + 0.35 * sin(t); armR = 0.45 - 0.35 * sin(t);
+                lean = -(0.78 + 0.12 * sin(t * 0.5));
+                armR = 0.55 + 0.6 * sin(t); armL = 0.7 - 0.35 * sin(t);
+                twist = 0.38 * sin(t);
                 legA = 0.15 * side;
+                float g = frac(ph / 9.0);
+                float up = smoothstep(0.80, 0.86, g) * (1.0 - smoothstep(0.94, 1.0, g));
+                lean = lerp(lean, -0.12, up); twist *= 1.0 - up;
+                armR = lerp(armR, 1.25, up); armL = lerp(armL, 1.25, up);
+                bob = -0.02 * (1.0 - up);
             }
             else if (code == 4)
             {
-                // an axe or a pick swung from overhead
+                // an axe or a pick swung from high overhead, the body coming down with it
                 float s = TC2Stroke(ph * 0.7, 0.7);
-                armL = 0.35 + 2.55 * s; armR = armL;
-                lean = -(0.08 + 0.32 * (1.0 - s));
-                legA = 0.16 * side;
+                armL = 0.3 + 2.75 * s; armR = armL;
+                lean = -(0.04 + 0.44 * (1.0 - s));
+                legA = 0.18 * side;
+                bob = -0.03 * (1.0 - s);
             }
             else if (code == 5)
             {
-                // hammering: the right hand strikes, the left holds the work
+                // hammering: the right hand strikes from high, the left holds the work
                 float s = TC2Stroke(ph * 1.5, 0.55);
-                armR = 0.5 + 1.4 * s; armL = 0.95;
-                lean = -0.22;
+                armR = 0.4 + 1.9 * s; armL = 0.95;
+                lean = -0.22 - 0.1 * (1.0 - s);
+                twist = 0.12 * s;
             }
-            else if (code == 6 || code == 9 || code == 15 || code == 16)
+            else if (code == 6 || code == 9 || code == 15 || code == 16 || code == 19)
             {
-                // sitting on the ground or a step (9: rowing; 15: work in the lap - spinning, mending, a pot on the wheel; 16: talking)
+                // sitting on the ground or a step (9: rowing; 15: work in the lap - spinning, mending, a pot on the wheel; 16: talking; 19: at
+                // leisure - spells of leaning back on the hands, hugging the knees, a look round, a hand raised to a neighbour)
                 legA = 1.45;
                 down = 0.80;
                 armL = 0.35; armR = 0.35;
                 if (code == 9) { float t = ph * 2.2; armL = 0.9 + 0.6 * sin(t); armR = armL; lean = -0.25 * sin(t); }
-                if (code == 15) { float t = ph * 3.0; armL = 0.95 + 0.12 * sin(t); armR = 0.95 - 0.12 * sin(t * 1.3); lean = -0.18; }
-                if (code == 16) { float t = ph * 0.9; armR = 0.35 + 0.7 * max(0.0, sin(t)) * (0.6 + 0.4 * sin(t * 2.7)); lean = -0.05 * sin(t * 0.5); }
+                if (code == 15) { float t = ph * 3.0; armL = 0.95 + 0.18 * sin(t); armR = 0.95 - 0.18 * sin(t * 1.3); lean = -0.2 - 0.05 * sin(t * 0.4); }
+                if (code == 16)
+                {
+                    float t = ph * 0.9;
+                    armR = 0.35 + 1.05 * max(0.0, sin(t)) * (0.6 + 0.4 * sin(t * 2.7));
+                    lean = -0.08 * sin(t * 0.5);
+                    twist = 0.3 * sin(t * 0.31);
+                }
+                if (code == 19)
+                {
+                    float blk = floor(ph / 7.0), e = TC2Swell(frac(ph / 7.0)), g = TC2Hash(blk + 0.37);
+                    float sg = TC2Hash(blk + 5.1) < 0.5 ? -1.0 : 1.0;
+                    if (g < 0.3) { armL = lerp(0.35, -0.65, e); armR = armL; lean = 0.24 * e; }        // leaning back on the hands
+                    else if (g < 0.55) { armL = 0.35 + 0.85 * e; armR = armL; lean = -0.28 * e; }      // hugging the knees
+                    else if (g < 0.8) { twist = 0.75 * e * sg; lean = -0.05; }                          // a look round
+                    else { armR = 0.35 + 1.4 * e * (0.8 + 0.2 * sin(ph * 3.0)); twist = 0.25 * e * sg; } // a hand raised to a neighbour
+                }
             }
             else if (code == 7)
             {
-                // talking: a hand that comes up as they speak, a weight shifted
+                // talking: a hand that comes up as they speak, the other now and then, the trunk turned to those about them, a weight shifted
                 float t = ph * 0.9;
-                armR = 0.25 + 0.75 * max(0.0, sin(t)) * (0.6 + 0.4 * sin(t * 2.7));
-                armL = 0.1;
-                lean = -0.04 * sin(t * 0.5);
+                armR = 0.25 + 1.1 * max(0.0, sin(t)) * (0.6 + 0.4 * sin(t * 2.7));
+                armL = 0.1 + 0.55 * max(0.0, sin(t * 0.63 + 2.0));
+                lean = -0.05 * sin(t * 0.5);
+                twist = 0.28 * sin(t * 0.37);
+                sway = 0.04 * sin(t * 0.5 + 1.0);
             }
             else if (code == 10)
             {
                 // at the loom: the hands before them, the shuttle thrown from side to side
                 float t = ph * 2.4;
-                armL = 1.15 + 0.3 * sin(t); armR = 1.15 - 0.3 * sin(t);
+                armL = 1.15 + 0.35 * sin(t); armR = 1.15 - 0.35 * sin(t);
                 lean = -0.1;
+                twist = 0.12 * sin(t);
             }
             else if (code == 11)
             {
                 // drawing water: hand over hand on the rope
                 float t = ph * 2.0;
                 armL = 1.6 + 0.8 * sin(t); armR = 1.6 - 0.8 * sin(t);
-                lean = -0.12;
+                lean = -0.12 - 0.08 * sin(t);
             }
             else if (code == 12)
             {
                 // sparring: thrusts, the front foot forward
                 float t = ph * 2.5;
-                armL = 1.25 + 0.45 * max(0.0, sin(t)); armR = armL;
+                armL = 1.25 + 0.55 * max(0.0, sin(t)); armR = armL;
                 legA = 0.38 * side;
-                lean = -0.1 - 0.12 * max(0.0, sin(t));
-                bob = 0.02 * abs(sin(t));
+                lean = -0.1 - 0.15 * max(0.0, sin(t));
+                twist = 0.2 * sin(t * 0.5);
+                bob = 0.03 * abs(sin(t));
             }
             else if (code == 14)
             {
-                // fishing from the shore: the rod held out, a twitch now and then
-                armL = 1.0 + 0.06 * sin(ph * 1.3); armR = armL;
-                lean = -0.06;
+                // fishing from the shore: the rod held out, a twitch now and then, and every ten seconds or so the line cast again (the rod
+                // swept up and back over the shoulder and flicked out)
+                float c = frac(ph / 10.0);
+                float back = smoothstep(0.0, 0.06, c) * (1.0 - smoothstep(0.06, 0.12, c));
+                armL = 1.0 + 0.08 * sin(ph * 1.3) + 1.6 * back; armR = armL;
+                lean = -0.06 + 0.12 * back;
             }
             else if (code == 17)
             {
@@ -142,12 +216,70 @@ Shader "TC2/Instanced"
                 // upright, to the beat of the others on the floor
                 float s = TC2Stroke(ph * 1.2, 0.45);
                 armL = 0.75 + 2.1 * s; armR = armL;
-                lean = -(0.10 + 0.22 * (1.0 - s));
+                lean = -(0.10 + 0.26 * (1.0 - s));
                 legA = 0.18 * side;
+            }
+            else if (code == 18)
+            {
+                // standing at leisure: the weight shifted from foot to foot, and spells of a look round, the hands to the hips, a hand to the head,
+                // the arms folded, a stretch, turned to someone near
+                float blk = floor(ph / 6.0), e = TC2Swell(frac(ph / 6.0)), g = TC2Hash(blk + 0.71);
+                float sg = TC2Hash(blk + 3.3) < 0.5 ? -1.0 : 1.0;
+                sway = 0.05 * sin(ph * 0.8);
+                legA = 0.08 * side * sin(ph * 0.8);
+                if (g < 0.22) { twist = 0.75 * sg * e; turn = 0.3 * sg * e; }
+                else if (g < 0.4) { outL = 0.6 * e; outR = 0.6 * e; armL = -0.3 * e; armR = armL; }
+                else if (g < 0.55) { if (sg > 0.0) armR = 2.6 * e; else armL = 2.6 * e; }
+                else if (g < 0.72) { armL = 0.9 * e; armR = 0.9 * e; lean = -0.04 * e; }
+                else if (g < 0.84) { armL = 2.9 * e; armR = armL; lean = 0.12 * e; }
+                else { turn = 0.95 * sg * e; armR = 0.6 * e * max(0.0, sin(ph * 2.2)); }
+            }
+            else if (code == 20)
+            {
+                // pointing: an arm out toward what they face, held with a jab or two, then lowered to turn and speak to the others; again
+                float blk = floor(ph / 5.0), e = TC2Swell(frac(ph / 5.0)), g = TC2Hash(blk + 1.9);
+                float talks = step(0.55, g);
+                armR = 0.15 + (1.6 + 0.1 * sin(ph * 4.5)) * e * (1.0 - 0.6 * talks);
+                armL = 0.15 + 0.7 * talks * e * max(0.0, sin(ph * 1.7));
+                twist = -0.5 * talks * e;
+                lean = -0.06 * e;
+                sway = 0.03 * sin(ph * 0.9);
+            }
+            else if (code == 21)
+            {
+                // looking out: a hand to the brow, the trunk turning slowly across what they watch, the weight shifted; now an arm out at what they
+                // see, now the hands to the hips
+                float blk = floor(ph / 8.0), e = TC2Swell(frac(ph / 8.0)), g = TC2Hash(blk + 2.3);
+                twist = 0.6 * sin(ph * 0.45);
+                sway = 0.04 * sin(ph * 0.3 + 1.0);
+                lean = -0.05;
+                if (g < 0.5) armR = 0.15 + 2.45 * e;
+                else if (g < 0.75) armL = 0.15 + 1.5 * e;
+                else { outL = 0.6 * e; outR = 0.6 * e; armL = -0.3 * e; armR = armL; }
+            }
+            else if (code == 22)
+            {
+                // stoking a fire or a clamp: bent to it, a pole worked in with both hands - thrust and drawn back
+                float s = TC2Stroke(ph * 0.8, 0.5);
+                armL = 0.65 + 0.7 * s; armR = armL;
+                lean = -(0.32 + 0.22 * s);
+                legA = 0.22 * side;
+                bob = -0.015 * s;
+            }
+            else if (code == 24)
+            {
+                // a child at play hopping and clapping
+                float t = ph * 6.0;
+                bob = abs(sin(t)) * 0.24;
+                legA = -0.3 * abs(sin(t));
+                armL = 1.25 + 0.3 * sin(t * 2.0); armR = armL;
+                outL = 0.2 + 0.25 * (0.5 + 0.5 * sin(t * 2.0)); outR = outL;
             }
             if (arm)
             {
                 float a = lp.x < 0 ? armL : armR;
+                float o = lp.x < 0 ? outL : outR;
+                lp = TC2Roll(lp, side * 0.215, 1.5, side * o); n = TC2RollN(n, side * o);
                 lp = TC2Rot(lp, 1.5, a); n = TC2RotN(n, a);
             }
             if (leg)
@@ -157,7 +289,10 @@ Shader "TC2/Instanced"
             else
             {
                 lp = TC2Rot(lp, 0.9, lean); n = TC2RotN(n, lean);
+                lp = TC2Yaw(lp, twist); n = TC2Yaw(n, twist);
             }
+            lp = TC2Yaw(lp, turn); n = TC2Yaw(n, turn);
+            lp = TC2Roll(lp, 0.0, 0.0, sway); n = TC2RollN(n, sway);
             lp.y += bob - down;
         }
         ENDHLSL
