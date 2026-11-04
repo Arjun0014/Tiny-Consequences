@@ -5,8 +5,9 @@ using TC2.Core.Simulation;
 
 namespace TC2.Core.History
 {
-    /// <summary>When a consequence came, from the cast: the cast itself, within a day, within a year, beyond.</summary>
-    public enum ConsequenceTier : byte { Cast = 0, Immediate = 1, Secondary = 2, LongTerm = 3 }
+    /// <summary>When a consequence came, from the cast: the cast itself; at once (within a day); the days after (within a season); that year (within a
+    /// year); years on (within ten); decades on. In this order: a card never comes in an earlier tier than the card it hangs from.</summary>
+    public enum ConsequenceTier : byte { Cast = 0, Immediate = 1, Days = 2, Secondary = 3, LongTerm = 4, Decades = 5 }
 
     /// <summary>
     /// One card of a cast's tree: the records of one kind (and place, and way of dying) that followed from the same card, told together - "7 people killed
@@ -43,6 +44,8 @@ namespace TC2.Core.History
         public bool Capped;       // more than the scan's cap: the rest not read
         public int MaxDepth;
         public int CastsAfter;    // casts since (its chapter in the book's Your Actions: newest first)
+        /// <summary>(session 32) The records rooted in the cast by when they came (indexed by ConsequenceTier; Cast: 0) - every one, drawn or not.</summary>
+        public readonly int[] TierRecords = new int[Consequences.Tiers];
         public readonly List<ConsequenceNode> Nodes = new List<ConsequenceNode>();
         public ConsequenceNode Root => Nodes[0];
     }
@@ -50,11 +53,13 @@ namespace TC2.Core.History
     /// <summary>
     /// (session 32: what came of it) A cast's consequences as a tree, for the HUD's "What came of it": every record whose root is the cast, each under the
     /// record its first cause names (its second where the first is gone; the cast where both are), the records of one kind under one card told together,
-    /// the biggest few branches of each card kept and the rest folded into one, to a depth of ten. An observer: reads the ledger, writes nothing.
+    /// the biggest few branches of each card kept and the rest folded into one. (session 32, final) The cards are opened biggest first - the card with the
+    /// most records under it before the rest - so the long threads (a sickness carried village to village for years, a famine that emptied a place) are
+    /// followed to their ends, years and decades on, before the room goes to small branches; to a depth of 24. An observer: reads the ledger, writes nothing.
     /// </summary>
     public static class Consequences
     {
-        public const int ScanCap = 60000, MaxDepth = 10, MaxBranches = 5, MaxNodes = 160;
+        public const int ScanCap = 60000, MaxDepth = 24, MaxBranches = 5, MaxNodes = 240, Tiers = 6;
 
         /// <summary>The families a card's kind falls in (its colour and its word in the view).</summary>
         public const byte FamOther = 0, FamDeath = 1, FamFire = 2, FamEarth = 3, FamSky = 4, FamFood = 5, FamSickness = 6, FamPeople = 7, FamPower = 8, FamWorks = 9, FamCast = 10;
@@ -114,6 +119,7 @@ namespace TC2.Core.History
                 ref var e = ref h.RefAt(idx[j]);
                 size[j] += 1; imp[j] += (double)e.Importance;
                 if (e.Time > t.LastTime) t.LastTime = e.Time;
+                t.TierRecords[(int)TierOf(e.Time - t.CastTime)]++;
                 if (parent[j] >= 0) { size[parent[j]] += size[j]; imp[parent[j]] += imp[j]; }
             }
             // the cast's card
@@ -127,12 +133,23 @@ namespace TC2.Core.History
             for (int j = 0; j < n; j++) root.Weight += parent[j] < 0 ? imp[j] : 0.0;
             t.Nodes.Add(root);
             var recs = new List<List<int>> { new List<int> { -1 } };
-            // breadth first: each card's records' children, grouped; the biggest branches kept, the rest folded
+            // each card's records' children, grouped; the biggest branches kept, the rest folded. The cards opened biggest first (the most records under
+            // them, the earliest card of equals): the room goes to the long threads before the small branches (breadth first, a wide first day had spent
+            // it all and a sickness's years were cut at its fourth village)
             var kids = new List<int>();
             var groups = new List<ConsequenceNode>(); var groupRecs = new List<List<int>>(); var groupBest = new List<double>();
             var byKey = new Dictionary<long, int>();
-            for (int q = 0; q < t.Nodes.Count; q++)
+            var open = new List<int> { 0 };
+            while (open.Count > 0)
             {
+                int bi = 0;
+                for (int k = 1; k < open.Count; k++)
+                {
+                    var na = t.Nodes[open[k]]; var nb = t.Nodes[open[bi]];
+                    int x = (na.Total - na.Count).CompareTo(nb.Total - nb.Count);
+                    if (x > 0 || (x == 0 && na.Index < nb.Index)) bi = k;
+                }
+                int q = open[bi]; open.RemoveAt(bi);
                 var node = t.Nodes[q];
                 if (node.More || node.Detail) continue;
                 int below = node.Total - node.Count;
@@ -202,6 +219,7 @@ namespace TC2.Core.History
                     gn.Place = gn.Settlement > 0 ? h.NameOf(EntityRef.Settlement(gn.Settlement)) : rep.Cell >= 0 && rep.Cell < w.Planet.Cells ? w.PlaceName(rep.Cell) : "the world";
                     gn.Title = Title(w, gn, in rep);
                     Add(t, node, gn, recs, groupRecs[g]);
+                    open.Add(gn.Index);
                 }
                 if (order.Count > keep)
                 {
@@ -277,8 +295,23 @@ namespace TC2.Core.History
             return 0;
         }
 
-        /// <summary>When a card came, from the cast: at once (a day), in the following days and seasons (a year), years on.</summary>
-        public static ConsequenceTier TierOf(long dt) => dt <= SimTime.Day ? ConsequenceTier.Immediate : dt <= SimTime.Year ? ConsequenceTier.Secondary : ConsequenceTier.LongTerm;
+        /// <summary>When a card came, from the cast: at once (a day), the days after (a season), that year, years on (under ten), decades on.</summary>
+        public static ConsequenceTier TierOf(long dt) => dt <= SimTime.Day ? ConsequenceTier.Immediate : dt <= SimTime.Season ? ConsequenceTier.Days : dt <= SimTime.Year ? ConsequenceTier.Secondary
+                                                       : dt < 10 * SimTime.Year ? ConsequenceTier.LongTerm : ConsequenceTier.Decades;
+
+        /// <summary>A tier in a few words: "At once", "Days after", "That year", "Years on", "Decades on" ("Your action" the cast's).</summary>
+        public static string TierWords(ConsequenceTier k)
+        {
+            switch (k)
+            {
+                case ConsequenceTier.Immediate: return "At once";
+                case ConsequenceTier.Days: return "Days after";
+                case ConsequenceTier.Secondary: return "That year";
+                case ConsequenceTier.LongTerm: return "Years on";
+                case ConsequenceTier.Decades: return "Decades on";
+                default: return "Your action";
+            }
+        }
 
         /// <summary>How long after the cast, in words: "the same hour", "5 hours on", "the next day", "12 days on", "a year on", "12 years on".</summary>
         public static string Offset(long dt)

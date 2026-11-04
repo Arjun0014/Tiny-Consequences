@@ -103,11 +103,11 @@ namespace TC2.Game
             if (GUI.Button(x, GUIContent.none, GUIStyle.none)) { _follow = 0; AudioView.Ui("tick"); }
         }
 
-        /// <summary>The seals at the top right: the History Book, the realms, the world now, recent history, the sound, the menu.</summary>
+        /// <summary>The seals at the top right: the History Book, what came of your last cast, the realms, the world now, recent history, the sound, the menu.</summary>
         void SealBar(float sw)
         {
             const float size = 42f, step = 46f, bookSize = 52f;
-            float total = bookSize + 5f * step + 8f;
+            float total = bookSize + 6f * step + 8f;
             float x = sw - 12f - total, y = 10f;
             _toggles = new Rect(x, y, total, bookSize);
             var cream = new Color(0.97f, 0.90f, 0.72f);
@@ -116,6 +116,8 @@ namespace TC2.Game
             if (hb) TipAt(_bookBtn, "<b>The History Book</b>  (B)\nEverything that has happened, and why", false);
             x += bookSize + 8f;
             float ry = y + (bookSize - size) * 0.5f;
+            TreeSeal(new Rect(x, ry, size, size), cream);   // (session 32, final: what came of your last cast, at the top - Hud.Consequences.cs)
+            x += step;
             _realmsBtn = new Rect(x, ry, size, size);
             if (Seal(_realmsBtn, "banner", RealmsView.On, false, cream, out bool hr)) RealmsView.On = !RealmsView.On;
             if (hr) TipAt(_realmsBtn, "<b>The realms</b>  (R)\nWho pays whom, on the land itself; wars as dark spears", false);

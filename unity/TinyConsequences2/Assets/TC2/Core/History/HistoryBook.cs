@@ -2292,12 +2292,12 @@ namespace TC2.Core.History
         {
             var tree = Consequences.Build(w, ce.Id);
             if (tree == null || tree.Nodes.Count < 2) return;
-            var byTier = new List<ConsequenceNode>[4];
-            for (int k = 0; k < 4; k++) byTier[k] = new List<ConsequenceNode>();
+            var byTier = new List<ConsequenceNode>[Consequences.Tiers];
+            for (int k = 0; k < byTier.Length; k++) byTier[k] = new List<ConsequenceNode>();
             foreach (var n in tree.Nodes) if (n.Index > 0 && !n.More) byTier[(int)n.Tier].Add(n);
             bool any = false;
-            string[] names = { "", "At once", "In the days and seasons after", "Years on" };
-            for (int k = 1; k < 4; k++)
+            string[] names = { "", "At once", "In the days after", "In the seasons after, that year", "Years on", "Decades on" };
+            for (int k = 1; k < byTier.Length; k++)
             {
                 var l = byTier[k];
                 if (l.Count == 0) continue;
