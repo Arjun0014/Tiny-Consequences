@@ -74,6 +74,7 @@ namespace TC2.Game
                         ref var st = ref w.Settlements.Get(sid);
                         int hh = st.HeadHh, bid = hh != 0 && w.Households.Exists(hh) ? w.Households.Get(hh).Building : 0;
                         if (bid != 0 && w.Buildings.Exists(bid)) { ref var b = ref w.Buildings.Get(bid); Rig.LookAt(st.LocalToSphere(b.X, b.Y, w.Planet.Radius), a.Length > 2 ? double.Parse(a[2], inv) : 120); }
+                        else Rig.LookAt(st.Anchor, a.Length > 2 ? double.Parse(a[2], inv) : 120);   // (session 32: its first household homeless - a stone took it - the place's heart)
                         break;
                     }
                 case "new": Host.NewWorld(ulong.Parse(a[1], inv)); break;

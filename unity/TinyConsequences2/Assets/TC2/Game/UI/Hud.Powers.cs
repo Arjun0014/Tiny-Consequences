@@ -308,6 +308,7 @@ namespace TC2.Game
                     sb.Append(string.Join(" - ", bits.ToArray())).Append("</color></size>");
                 }
                 sb.Append("\n<size=13><i><color=#c9c3b4>Click to see what came of it</color></i></size>");
+                if (_impactText == null) AudioView.Ui("story");   // (session 32: the card heard as it comes)
                 _impactText = sb.ToString();
             }
             if (_impactText == null) return;
