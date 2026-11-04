@@ -425,12 +425,17 @@ namespace TC2.Core.Simulation
             });
             for (int i = 0; i < _meteorDie.Count; i++) { ref var p = ref People.Get(_meteorDie[i]); if (p.Alive) Agents.Kill(ref p, ev, 14); }
             for (int i = 0; i < _meteorHurt.Count; i++) { ref var p = ref People.Get(_meteorHurt[i]); if (p.Alive) p.Hurt = (float)DMath.Max(p.Hurt, 0.5); }
+            // (review, session 32) two passes, as a quake's: what stood empty or was a work is flattened first, then the homes lived in - so no household
+            // whose home is flattened takes for its own an empty home the same stone is yet to flatten
+            for (int pass = 0; pass < 2; pass++)
             for (int i = 0; i < _meteorFall.Count; i++)
             {
                 int bid = _meteorFall[i];
                 if (!Buildings.Exists(bid)) continue;
                 ref var b = ref Buildings.Get(bid);
-                if (Places.Structures.IsHome(b.Kind) && b.Household != 0 && Households.Exists(b.Household) && Households.Get(b.Household).Building == bid) { Places.Homes.Burnt(this, b.Household, ev); continue; }
+                bool lived = Places.Structures.IsHome(b.Kind) && b.Household != 0 && Households.Exists(b.Household) && Households.Get(b.Household).Building == bid;
+                if (lived != (pass == 1)) continue;
+                if (lived) { Places.Homes.Burnt(this, b.Household, ev); continue; }
                 ref var b2 = ref Buildings.Get(bid);
                 b2.Household = 0; b2.Left = Now - DMath.ToLong(Places.Homes.FallYears(in b2) * SimTime.Year) - 1;   // (fallen at once)
                 if (!Places.Structures.IsHome(b2.Kind)) Places.Structures.Lost(this, bid);
@@ -1207,6 +1212,9 @@ namespace TC2.Core.Simulation
             if (_quakeFallOrder.Count > 0)
             {
                 _quakeHomes.Clear();
+                // (review, session 32) two passes: the works and the empty homes come down first, then the homes lived in - a household whose home fell had
+                // taken an empty home the same quake was yet to bring down, and lost it in the same moment
+                for (int pass = 0; pass < 2; pass++)
                 for (int i = 0; i < _quakeFallOrder.Count; i++)
                 {
                     int bid = _quakeFallOrder[i];
@@ -1214,10 +1222,12 @@ namespace TC2.Core.Simulation
                     ref var b = ref Buildings.Get(bid);
                     int sid = b.Settlement;
                     bool home = Places.Structures.IsHome(b.Kind);
+                    bool lived = home && b.Household != 0 && Households.Exists(b.Household) && Households.Get(b.Household).Building == bid;
+                    if (lived != (pass == 1)) continue;
                     int k = _quakeHomes.IndexOf(sid);
                     if (k < 0) { _quakeHomes.Add(sid); _quakeHomeN.Add(0); _quakeWorkN.Add(0); k = _quakeHomes.Count - 1; }
                     if (home) _quakeHomeN[k]++; else _quakeWorkN[k]++;
-                    if (home && b.Household != 0 && Households.Exists(b.Household) && Households.Get(b.Household).Building == bid) { Places.Homes.Fell(this, b.Household, Cause()); continue; }
+                    if (lived) { Places.Homes.Fell(this, b.Household, Cause()); continue; }
                     ref var b2 = ref Buildings.Get(bid);
                     b2.Household = 0; b2.Left = Now - DMath.ToLong(Places.Homes.FallYears(in b2) * SimTime.Year) - 1;   // (fallen at once)
                     if (!home) Places.Structures.Lost(this, bid);
@@ -1557,11 +1567,11 @@ namespace TC2.Core.Simulation
             if (bestHh == 0) return;
             double pr = root == RootKind.You ? 0.8 : 0.25;
             if (KeyedRng.Unit(Seed, RngStream.FireSpread, (ulong)bestHh, (ulong)Now, 81) >= pr) return;
-            Places.Homes.Burnt(this, bestHh, strike);
             long burn = Record(new HistoryEvent
             {
                 Kind = HistoryKind.BuildingBurned, Time = Now, Cell = cell, Settlement = bestSid, Subject = EntityRef.Household(bestHh), Cause1 = strike, Rel1 = CauseRel.CausedBy, ArgA = 2,
             });
+            Places.Homes.Burnt(this, bestHh, burn);   // (the home its household takes, or the lot it clears, follows from the burning: review, session 32)
             Fire.TryIgnite(this, cell, burn, root, 4.0);
         }
 
