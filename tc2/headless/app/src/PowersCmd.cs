@@ -16,7 +16,7 @@ namespace TC2.Headless
     /// </summary>
     public static class PowersCmd
     {
-        static string Timeline;
+        static string Timeline; static bool AnyPlace;
         static readonly string[] Names ={ "lightning", "storm", "rain", "drought", "warmth", "cold", "quake", "eruption", "meteor", "plague", "blight", "bounty", "cull", "bring", "ore" };
 
         public static int Run(Args a)
@@ -119,7 +119,7 @@ namespace TC2.Headless
                         State(w, near, at, null); Ledger(w, cast);
                     }
                 }
-                if (a.Has("timeline")) Timeline = "," + a.Get("timeline") + ",";
+                if (a.Has("timeline")) Timeline = "," + a.Get("timeline") + ","; AnyPlace = a.Has("anyplace");
                 if (a.Has("place")) Place(w, cast, sid);
             }
             catch (Exception e) { Console.WriteLine("THROWN after the cast: " + e); return 1; }
@@ -202,7 +202,7 @@ namespace TC2.Headless
                 for (int i = ci + 1; i < h.Count; i++)
                 {
                     ref var e = ref h.RefAt(i);
-                    if (e.Settlement != sid || Timeline.IndexOf("," + e.Kind + ",") < 0) continue;
+                    if ((e.Settlement != sid && !AnyPlace) || Timeline.IndexOf("," + e.Kind + ",") < 0) continue;
                     if (e.Kind == HistoryKind.PersonDied) { long day = e.Time / SimTime.Day; if (day == lastDay) { deaths++; continue; } if (deaths > 0) Console.WriteLine("      (+" + deaths + " more deaths that day)"); deaths = 0; lastDay = day; }
                     string c1 = "-"; if (e.Cause1 != 0 && h.TryGet(e.Cause1, out var ce)) c1 = ce.Kind + "#" + ce.Id; else if (e.Cause1 != 0) c1 = "gone#" + e.Cause1;
                     Console.WriteLine("    " + SimTime.Format(e.Time) + " " + e.Kind + "#" + e.Id + " cause " + c1 + " root " + e.RootKind + (e.Root == cast ? " (the cast)" : "") + " argA " + e.ArgA);

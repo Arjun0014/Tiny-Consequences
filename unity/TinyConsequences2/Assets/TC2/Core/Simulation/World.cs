@@ -348,6 +348,16 @@ namespace TC2.Core.Simulation
         /// <summary>Whether the god's drought withholds the rain from a cell today (any drought held over it).</summary>
         public bool RainWithheld(int cell) => Spell(cell, 0);
 
+        /// <summary>(session 32: every power checked) The record of the god's drought withholding the rain from a cell today (the first held over it), 0 none.</summary>
+        public long DroughtOver(int cell)
+        {
+            if (DrySpells.Count == 0) return 0;
+            Vec3d p = Planet.Grid.Center[cell];
+            for (int i = 0; i < DrySpells.Count; i++)
+                if (DrySpells[i].Kind == 0 && Now < DrySpells[i].Until && Vec3d.ArcDistance(p, Planet.Grid.Center[DrySpells[i].Cell], Planet.Radius) <= DrySpells[i].Reach) return DrySpells[i].Event;
+            return 0;
+        }
+
         /// <summary>(F9.5) Whether the god's rain falls on a cell today (any rain brought over it).</summary>
         public bool RainBrought(int cell) => Spell(cell, 1);
 

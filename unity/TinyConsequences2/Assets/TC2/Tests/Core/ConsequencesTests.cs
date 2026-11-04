@@ -390,5 +390,43 @@ namespace TC2.Tests.Core
             Assert.AreEqual(famineAt, w.Settlements.Get(sid).FamineAt, "its memory still dates from its start");
             Console.WriteLine("famine told anew #" + told + ", cause2 " + fe.Cause2 + " (the rationing #" + ration + "), its deaths so far " + dead);
         }
+
+        [Test]
+        public void AFireTheSkyLightsInTheGodsDroughtIsTheDroughts()
+        {
+            var w = TestWorlds.Make(615);
+            w.AdvanceTo(w.Now + SimTime.Days(2) + SimTime.Hours(4));
+            int sid = w.Settlements.First();
+            int at = w.Settlements.Get(sid).Cell;
+            long mark = w.History.LastId;
+            w.Issue(new Command { Time = w.Now, Kind = CommandKind.GodDrought, Cell = at });
+            w.AdvanceTo(w.Now + SimTime.Days(3));
+            long cast = 0, drought = 0;
+            for (int i = w.History.FirstIndexAfter(mark); i < w.History.Count; i++) { var e = w.History.At(i); if (e.Kind == HistoryKind.GodCommand) cast = e.Id; if (e.Kind == HistoryKind.Drought) drought = e.Id; }
+            Assert.AreNotEqual(0L, drought);
+            // a cell with fuel under the drought, and one beyond it
+            var P = w.Planet; int inside = -1, outside = -1;
+            for (int c = 0; c < P.Cells; c++)
+            {
+                if (!P.IsLand(c) || P.Fuel(c) < 0.3 || w.Fire.IsBurning(c)) continue;
+                double d = TC2.Core.Foundation.Vec3d.ArcDistance(P.Grid.Center[c], P.Grid.Center[at], P.Radius);
+                if (inside < 0 && d <= World.DroughtReach * 0.8 && w.DroughtOver(c) == drought) inside = c;
+                if (outside < 0 && d > World.DroughtReach * 2 && w.DroughtOver(c) == 0) outside = c;
+            }
+            Assume.That(inside >= 0 && outside >= 0, "land with fuel under the drought and beyond it");
+            long m2 = w.History.LastId;
+            Assert.AreNotEqual(0, w.Fire.TryIgnite(w, inside, 0, RootKind.Nature, 50.0), "the sky lights the dried land");
+            Assert.AreNotEqual(0, w.Fire.TryIgnite(w, outside, 0, RootKind.Nature, 50.0), "and land beyond it");
+            int seen = 0;
+            for (int i = w.History.FirstIndexAfter(m2); i < w.History.Count; i++)
+            {
+                var e = w.History.At(i);
+                if (e.Kind != HistoryKind.FireStarted) continue;
+                seen++;
+                if (e.Cell == inside) { Assert.AreEqual(drought, e.Cause1, "caught for the drought"); Assert.AreEqual(cast, e.Root, "the cast's"); }
+                if (e.Cell == outside) Assert.AreNotEqual(cast, e.Root, "beyond it, the sky's own");
+            }
+            Assert.AreEqual(2, seen);
+        }
     }
 }
