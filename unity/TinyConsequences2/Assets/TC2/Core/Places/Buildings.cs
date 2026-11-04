@@ -508,6 +508,45 @@ namespace TC2.Core.Places
             if (!TakeEmpty(w, hid, cause)) { FreeLot(w, sid, hid, out float x, out float y, cause); ref var h3 = ref w.Households.Get(hid); h3.HomeX = x; h3.HomeY = y; }
         }
 
+        /// <summary>How far back a household's loss of its home is looked for when it raises one again (years).</summary>
+        public const double LossYears = 8.0;
+
+        /// <summary>
+        /// (session 32: every power checked) The record of the loss a household is building again after, 0 none: of its own records (the ledger's index of
+        /// it, newest first, within `LossYears`), the lot cleared for it or the home it took when a cause took its own (a quake, a stone, a fire) - or the
+        /// loss its last raising was in answer to; none where its last word is a home raised, rebuilt or taken without a cause, or a move. Reads the ledger
+        /// only (kept in the save: a world loaded continues alike).
+        /// </summary>
+        public static long LossCause(World w, int hid)
+        {
+            var h = w.History;
+            var me = EntityRef.Household(hid);
+            var list = h.EventsOf(me);
+            if (list == null) return 0;
+            for (int i = list.Count - 1; i >= 0; i--)
+            {
+                if (!h.TryGet(list[i], out var e)) continue;   // (a record let go: as a loaded world, whose index holds none)
+                if (w.Now - e.Time > (long)(LossYears * SimTime.Year)) return 0;
+                switch (e.Kind)
+                {
+                    case HistoryKind.HomeCleared:
+                        if (e.Other.Packed == me.Packed) return e.Cause1 != 0 ? e.Id : 0;   // (a ruin cleared for its lot)
+                        break;   // (its old home cleared for another)
+                    case HistoryKind.HomeTaken:
+                        if (e.Subject.Packed == me.Packed) return e.Cause1 != 0 ? e.Id : 0;
+                        break;
+                    case HistoryKind.HomeBuilt:
+                        if (e.Subject.Packed == me.Packed) return e.Cause1;   // (its hut raised after the loss: its house after it too)
+                        break;
+                    case HistoryKind.HomeRebuilt:
+                    case HistoryKind.HouseholdMoved:
+                        if (e.Subject.Packed == me.Packed) return 0;
+                        break;
+                }
+            }
+            return 0;
+        }
+
         static readonly System.Collections.Generic.List<int> _gone = new System.Collections.Generic.List<int>();
 
         /// <summary>Ruins gone into the land leave the table (yearly housekeeping).</summary>
