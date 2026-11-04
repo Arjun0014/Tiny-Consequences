@@ -88,7 +88,14 @@ try {
         await clickRect(s.gt);
         await wait(1500);
         break;
-      case G.life:   // their life: follow them
+      case G.life: {   // their life: follow them (once - a second click would let them go), and the guide goes on by itself
+        if (s.gt[2] > 0) await clickRect(s.gt); else await clickRect(s.gn);
+        const on = await until((x) => x.guide !== G.life, 8000);
+        check('following someone brings the guide on', !!on, on ? `step ${on.guide}` : 'timed out');
+        if (!on) await clickRect((await st()).gn);
+        await wait(600);
+        break;
+      }
       case G.place:   // the place's page: its Why?
       case G.book:   // the book's seal
         if (s.gt[2] > 0) await clickRect(s.gt); else await clickRect(s.gn);
@@ -123,11 +130,9 @@ try {
         await wait(1500);
         break;
       }
-      case G.tree: {   // the tree, the guide's card over it: Next closes it and goes on
-        trees++;
-        check(`the guide speaks over the tree (${trees})`, s.gn[2] > 0, `next ${s.gn}`);
-        await wait(1500);
-        await snap(`step_21_tree_${trees}`);
+      case G.tree: {   // the tree, the guide's card over it: Next closes it and goes on (from the impact card, then from Your hand)
+        if (trees < visits[G.tree]) { trees = visits[G.tree]; check(`the guide speaks over the tree (${trees})`, s.gn[2] > 0, `next ${s.gn}`); }
+        await wait(1200);
         await clickRect((await st()).gn);
         await wait(1200);
         break;

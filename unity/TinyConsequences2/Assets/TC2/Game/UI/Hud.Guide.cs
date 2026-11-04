@@ -48,7 +48,11 @@ namespace TC2.Game
             _guide = -1; _guideTarget = Rect.zero; _guideCard = Rect.zero; _guidePid = 0; _guideSkipYearRect = Rect.zero;
             Settings.GuideSeen = true; Settings.Save();
             if (!finished) { AudioView.Ui("click"); }
+            else foreach (string k in GuideTaught) if (!Settings.HintSaid(k)) Settings.SayHint(k);   // (walked to its end: the small hints it taught are not said again)
         }
+
+        /// <summary>The small hints (HintsTick) whose lessons the whole guide gives.</summary>
+        static readonly string[] GuideTaught = { "zoom", "person", "why", "book", "hand", "skip", "power" };
 
         /// <summary>The realms layer as it was before the guide's realms step (the step shows it; the powers want the plain land).</summary>
         void GuideRealmsBack() { if (_guideRealmsHeld) { RealmsView.On = _guideRealmsWas; _guideRealmsHeld = false; } }
@@ -140,6 +144,7 @@ namespace TC2.Game
                     _guideText = "Nobody placed " + name + ". Its people chose this ground, and raised every house, field and road you see for reasons of their own.";
                     break;
                 case GEye:
+                    _placeSid = 0; _personPage = false; _selected = 0; _guidePid = 0; _book = false;   // (come back to from a page: the land again)
                     _guideTitleText = "Your eye on the world";
                     _guideText = "Drag to turn the world under you; the wheel brings you down or lifts you up. Double-click the ground to fly down to it.";
                     break;
