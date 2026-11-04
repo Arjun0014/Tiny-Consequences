@@ -142,6 +142,7 @@ namespace TC2.Game
         {
             _ticker = Rect.zero;
             if (_news.Length == 0 || _newsAge >= 12f || lapse || _book) return;
+            if (_castNote != null && Time.unscaledTime - _castNoteAt < 4f) return;   // (session 32: the cast's word holds that line while it shows - the two had been drawn one over the other)
             float left = Mathf.Max(8f, Mathf.Max(_handRect.xMax, _bottom.xMax) + 8f), right = (_pageRect.width > 0f ? _pageRect.x : sw) - 8f;
             float width = Mathf.Min(760f, right - left);
             if (width < 200f) return;
