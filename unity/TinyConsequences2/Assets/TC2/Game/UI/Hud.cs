@@ -1569,7 +1569,12 @@ namespace TC2.Game
             if (tl.Marks.Count > 0)
             {
                 GUILayout.Label("Its greatest moments", _inkHead);
-                foreach (var m in tl.Marks) GUILayout.Label("Year " + m.Year + ": " + m.Text + ".", _ink);
+                foreach (var m in tl.Marks)
+                {
+                    // (session 32) your casts in gold, each opening its tree
+                    if (m.Kind == 5) { if (GUILayout.Button("<color=#9a6608>Year " + m.Year + ": " + m.Text + ".  <i>its tree  ›</i></color>", _bkWhy)) OpenConsequences(m.Event, true); }
+                    else GUILayout.Label("Year " + m.Year + ": " + m.Text + ".", _ink);
+                }
             }
             GUILayout.EndScrollView();
         }
@@ -1618,7 +1623,12 @@ namespace TC2.Game
                 foreach (var m in tl.Marks)
                 {
                     int x = Mathf.Clamp(Mathf.RoundToInt((m.Year - tl.From) / (float)(n - 1) * (TW - 1)), 0, TW - 1);
-                    for (int j = TH - 10; j < TH; j++) px[j * TW + x] = new Color32(120, 30, 20, 255);
+                    if (m.Kind == 5)
+                    {
+                        // (session 32) your cast: a gold mark, tall at the top and dotted down the chart
+                        for (int j = 0; j < TH; j++) if (j >= TH - 22 || j % 4 == 0) { px[j * TW + x] = new Color32(214, 160, 40, 255); if (x + 1 < TW) px[j * TW + x + 1] = new Color32(214, 160, 40, 255); }
+                    }
+                    else for (int j = TH - 10; j < TH; j++) px[j * TW + x] = new Color32(120, 30, 20, 255);
                 }
             }
             tex.SetPixels32(px);
