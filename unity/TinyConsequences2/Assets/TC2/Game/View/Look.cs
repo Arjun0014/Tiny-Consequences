@@ -32,8 +32,8 @@ namespace TC2.Game
         public static float GradeExposure = 0.06f;
         public static float GradeGreen = 0.34f;  // how far greens' saturation is taken down (0.5 none): the living green of leaves, not a screen's
         public static float LandVary = 1f;       // x the land's broad warm and cool drift (0 none)
-        public static float StandFar = 45f;      // (session 32) the metres a pixel spans where the woods' stands and glades begin to give way to their share (gone at x2.4): from orbit they read as camouflage
-        public static float StandGrain = 1f;     // (session 32) x the far woods' stand grain (older darker, younger lighter, ~1.7 km)
+        public static float StandFar = 8f;       // (session 32: 45 before - s32look2: stands from orbit read as camouflage, at 8 the woods a living green and the boreal snow clean) the metres a pixel spans where the woods' stands and glades begin to give way to their share (gone at x2.4): from orbit they read as camouflage
+        public static float StandGrain = 0.35f;  // (session 32: 1 before) x the far woods' stand grain (older darker, younger lighter, ~1.7 km)
         public static float SeaTrue = 1f;        // (session 30) the sea drawn where its true sphere is (0: on its mesh's faces, as before - a shot's "before")
 
         static readonly float[] Defaults = { AtmoH, AtmoTop, AtmoTau, AtmoMie, AtmoSun, AtmoGround, CloudDeck, CloudCu, CloudStretch, CloudShade, CloudTile, CloudShadow, NightFar, SeaTrue };
