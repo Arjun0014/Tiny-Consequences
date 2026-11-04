@@ -284,8 +284,68 @@ def wither(seconds=2.4):
     return norm((out * flutter + sigh) * shape, 0.5)
 
 
+
+# (session 32, Arjun: the selection and the guide's sounds read as machine-made - "more like a small bell") small bells: a struck bell's inharmonic partials,
+# each dying at its own pace (the high ones first), a soft 1.5 ms strike, a faint shimmer of a twin a little out of tune; the tail faded to nothing
+BELL = ((1.0, 1.0, 1.0), (2.0, 0.42, 0.55), (2.76, 0.26, 0.40), (5.40, 0.10, 0.22), (8.93, 0.04, 0.12))
+
+
+def bell(f, seconds, peak, partials=BELL, attack=0.0015, seed=7, detune=0.0022, strike=0.06):
+    n = int(seconds * SR)
+    t = np.arange(n) / SR
+    x = np.zeros(n)
+    for ratio, amp, dec in partials:
+        fr = f * ratio
+        if fr > SR * 0.45:
+            continue
+        e = np.minimum(t / attack, 1.0) * np.exp(-t / (seconds * dec * 0.42))
+        x += amp * e * (np.sin(2 * np.pi * fr * t) + 0.3 * np.sin(2 * np.pi * fr * (1.0 + detune) * t + 1.3))
+    x += strike * band(noise(n, seed), 2500, 9000) * env(n, 0.0003, 0.003)
+    tail = int(0.03 * SR)
+    x[-tail:] *= np.linspace(1.0, 0.0, tail)
+    return norm(x, peak)
+
+
+def mix(parts, seconds, peak):
+    """Bells laid one after another (each (delay s, sound))."""
+    n = int(seconds * SR)
+    x = np.zeros(n)
+    for delay, y in parts:
+        i = int(delay * SR)
+        m = min(len(y), n - i)
+        if m > 0:
+            x[i:i + m] += y[:m]
+    tail = int(0.03 * SR)
+    x[-tail:] *= np.linspace(1.0, 0.0, tail)
+    return norm(x, peak)
+
+
+def bell_tick():
+    """A pointer over a word: the faintest tiny bell."""
+    return bell(2637.0, 0.22, 0.20, partials=BELL[:3], strike=0.03)
+
+
+def bell_click():
+    """A button pressed (Next, Skip, a seal): one small bell, bright and short."""
+    return bell(1568.0, 0.70, 0.40)
+
+
+def bell_leaf():
+    """A step of the guide, a tab of a page: a small bell, a little softer."""
+    return bell(1760.0, 0.55, 0.30, seed=9)
+
+
+def bell_select():
+    """Someone chosen: two small bells, the second a fourth above."""
+    return mix([(0.0, bell(1174.7, 0.9, 1.0, seed=3)), (0.075, 0.8 * bell(1568.0, 0.85, 1.0, seed=4))], 1.0, 0.44)
+
+
+def bell_story():
+    """A cast's word arriving (the impact card): a soft bell and its fifth, a little apart."""
+    return mix([(0.0, bell(880.0, 1.4, 1.0, seed=5)), (0.09, 0.6 * bell(1318.5, 1.2, 1.0, seed=6))], 1.5, 0.48)
+
 SOUNDS = dict(
-    ui_tick=tick, ui_select=select, ui_page=page, ui_leaf=leaf, ui_cast=cast, ui_enter=enter, ui_chime=chime,
+    ui_tick=bell_tick, ui_select=bell_select, ui_page=page, ui_leaf=bell_leaf, ui_click=bell_click, ui_story=bell_story, ui_cast=cast, ui_enter=enter, ui_chime=chime,
     lapse_rise=lambda: whoosh(3.2, True, 31), lapse_fall=lambda: whoosh(3.8, False, 32),
     amb_stillness=stillness,
     quake_rumble_1=lambda: quake_rumble(81), quake_rumble_2=lambda: quake_rumble(91, 13.0),
