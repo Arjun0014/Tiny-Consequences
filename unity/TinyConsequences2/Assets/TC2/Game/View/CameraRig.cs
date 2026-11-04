@@ -16,7 +16,8 @@ namespace TC2.Game
         public double Distance = 30000;       // from the planet centre (m)
         public Vector3 FocusPoint;            // surface point under the view's centre
         Vector3 _lastMouse;
-        bool _dragging, _grab;
+        bool _dragging, _grab, _dragPending;
+        float _pinch;   // (session 32, phones) the two fingers' spread last frame (0: no pinch)
         Vec3d _grabDir;
 
         /// <summary>(session 32) The ground's direction under a screen point (the sphere at the planet's radius), from the camera as last placed; false over the sky.</summary>
@@ -48,12 +49,34 @@ namespace TC2.Game
             double lat0 = Lat, lon0 = Lon, dist0 = Distance;
             if (Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1))
             {
-                _lastMouse = Input.mousePosition; _dragging = !Hud.PointerOverUi;
-                // (session 32) the ground under the pointer is held: the drag keeps it under the hand
+                _lastMouse = Input.mousePosition;
+                // (session 32, phones) a finger lands with no hover before it: whether it is on the interface is known a frame later (the HUD's rects
+                // read at its own drawing), so a touch's drag waits that frame - a tap on a seal had turned the world a little under it
+                if (Input.touchCount > 0) { _dragPending = true; _dragging = false; }
+                else
+                {
+                    _dragging = !Hud.PointerOverUi;
+                    // (session 32) the ground under the pointer is held: the drag keeps it under the hand
+                    _grab = _dragging && GroundRay(Input.mousePosition, out _grabDir);
+                }
+            }
+            else if (_dragPending && Input.GetMouseButton(0))
+            {
+                _dragPending = false; _lastMouse = Input.mousePosition; _dragging = !Hud.PointerOverUi;
                 _grab = _dragging && GroundRay(Input.mousePosition, out _grabDir);
             }
-            if (Input.GetMouseButtonUp(0) || Input.GetMouseButtonUp(1)) _dragging = false;
+            if (Input.GetMouseButtonUp(0) || Input.GetMouseButtonUp(1)) { _dragging = false; _dragPending = false; }
             bool hand = false;   // (session 31: the player's hand on the camera this frame cancels a flight)
+            // (session 32, phones) two fingers pinch the view in and out, as far as the fingers spread (a notch is 0.85 of the height: ln r / 0.1625
+            // notches for a spread r); the one-finger drag is let go while they do, so the world is not turned under a pinch
+            if (Input.touchCount >= 2)
+            {
+                Vector2 p0 = Input.GetTouch(0).position, p1 = Input.GetTouch(1).position;
+                float d = Vector2.Distance(p0, p1);
+                if (_pinch > 1f && d > 1f && !held && !_title && !Hud.PointerOverUi) { float r = d / _pinch; if (Mathf.Abs(r - 1f) > 0.002f) { Zoom(Mathf.Log(r) / 0.1625f); hand = true; } }
+                _pinch = d; _dragging = false; _dragPending = false; _velLat = 0; _velLon = 0;
+            }
+            else _pinch = 0f;
             HandTurned = false;
             float dtFeel = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
             if (_dragging && (Input.GetMouseButton(0) || Input.GetMouseButton(1)))

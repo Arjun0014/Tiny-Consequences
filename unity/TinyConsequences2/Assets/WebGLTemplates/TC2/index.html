@@ -15,6 +15,13 @@
       @font-face { font-family: 'IM FELL English'; src: url('TemplateData/IMFellEnglish.ttf') format('truetype'); font-display: swap; }
       :root { --u: 1px; --lw: 620px; --pd: 220px; --gold: #f2d38c; --cream: #ede5d1; --dim: #b9b2a1; }
       html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #04060c; }
+      /* (session 32, phones) the game takes every touch: no scrolling, page zoom, text selection or long-press menu over it */
+      html, body, #tc2-canvas { touch-action: none; overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+      #tc2-rotate { display: none; position: fixed; inset: 0; z-index: 30; background: #04060c; color: #ede5d1; flex-direction: column; align-items: center; justify-content: center;
+                    text-align: center; font: 18px/1.5 Georgia, 'Times New Roman', serif; padding: 24px; box-sizing: border-box; }
+      #tc2-rotate .ph { width: 54px; height: 90px; border: 3px solid #f2d38c; border-radius: 10px; margin-bottom: 22px; animation: tc2-turn 2.4s ease-in-out infinite; }
+      @keyframes tc2-turn { 0%, 30% { transform: rotate(0deg); } 60%, 100% { transform: rotate(-90deg); } }
+      @media (orientation: portrait) and (pointer: coarse) { #tc2-rotate { display: flex; } }
       #tc2-canvas { width: 100%; height: 100%; display: block; background: #04060c; outline: none; }
 
       #tc2-loading { position: fixed; inset: 0; z-index: 2; pointer-events: none; overflow: hidden; opacity: 1; transition: opacity 1.1s ease;
@@ -124,6 +131,22 @@
     </style>
   </head>
   <body>
+    <div id="tc2-rotate"><div class="ph"></div><div>Turn your phone sideways:<br>A Tiny World is played in landscape.</div></div>
+    <script>
+      // (session 32, phones) a touch screen draws at most twice its CSS pixels (three times was too many pixels for the world's frame); the loading page and
+      // the canvas read the same; the first touch asks for the whole screen and holds it in landscape where the browser allows (Android)
+      window.tc2Touch = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+      window.tc2Dpr = window.tc2Touch ? Math.min(window.devicePixelRatio || 1, 2) : (window.devicePixelRatio || 1);
+      if (window.tc2Touch) {
+        var tc2Full = function () {
+          window.removeEventListener('touchend', tc2Full);
+          var de = document.documentElement, rq = de.requestFullscreen || de.webkitRequestFullscreen;
+          try { var p = rq && rq.call(de); var lock = function () { try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(function () {}); } catch (e) {} };
+                if (p && p.then) p.then(lock).catch(function () {}); else lock(); } catch (e) {}
+        };
+        window.addEventListener('touchend', tc2Full);
+      }
+    </script>
     <div id="tc2-intro" aria-label="Fractured Sanity Studios presents"><video id="tc2-intro-video" src="TemplateData/intro.mp4" playsinline preload="auto"></video>
       <div class="tc2-intro-btn" id="tc2-intro-sound">&#9834; click for sound</div><div class="tc2-intro-btn" id="tc2-intro-skip">Skip &#8250;</div></div>
     <script>
@@ -168,8 +191,8 @@
       (function () {
         var root = document.documentElement.style;
         function layout() {
-          var W = window.innerWidth, H = window.innerHeight, d = window.devicePixelRatio || 1;
-          var u = Math.max(1 / d, H / 900), lw = Math.min(620 * u, W * 0.6), lh = lw * 157 / 1100;
+          var W = window.innerWidth, H = window.innerHeight, d = window.tc2Dpr || window.devicePixelRatio || 1;
+          var u = Math.max(1 / d, H / 900), lw = Math.min(620 * u, W * 0.6), lh = lw * 224 / 1100;
           var room = H * 0.5 - lh - 34 * u - H * 0.06;
           root.setProperty('--u', u + 'px');
           root.setProperty('--lw', lw + 'px');
@@ -266,6 +289,7 @@
         productName: {{{ JSON.stringify(PRODUCT_NAME) }}},
         productVersion: {{{ JSON.stringify(PRODUCT_VERSION) }}},
         showBanner: tc2Banner,
+        devicePixelRatio: window.tc2Dpr,   // (session 32, phones: at most twice the CSS pixels on a touch screen)
       };
 
       tc2ProbeWebGPU().then(function () {
