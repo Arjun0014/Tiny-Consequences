@@ -312,7 +312,7 @@ namespace TC2.Game
                     if (hurt > 0) bits.Add(hurt + " abed with wounds");
                     sb.Append(string.Join(" - ", bits.ToArray())).Append("</color></size>");
                 }
-                sb.Append("\n<size=13><i><color=#c9c3b4>Click to see what came of it</color></i></size>");
+                sb.Append("\n<size=13><i><color=#c9c3b4>Click to see what came of it - its tree, kept at the top right for as long as it grows</color></i></size>");   // (session 32, final: the seal beside the book - Hud.Consequences.cs)
                 if (_impactText == null) AudioView.Ui("story");   // (session 32: the card heard as it comes)
                 _impactText = sb.ToString();
             }

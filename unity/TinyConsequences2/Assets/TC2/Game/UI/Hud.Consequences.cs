@@ -7,10 +7,13 @@ using UnityEngine;
 namespace TC2.Game
 {
     /// <summary>
-    /// (session 32: what came of it) A cast's consequences as a tree on a leaf of the book: the cast at the left in its power's colour, then what came of it
-    /// at once, in the days and seasons after and years on, column by column, each card what followed from the card it hangs from (Core/History/Consequences),
-    /// elbowed lines between them, the thread back to the cast lit under the pointer. A card opens what it is about - a life, a place's page, a work, the
-    /// record and its why in the book. The tree is read from the ledger on opening and once a second while it grows; nothing here writes the world.
+    /// (session 32: what came of it) A cast's consequences as a tree on a leaf of the book: the cast at the top left in its power's colour, then what came of
+    /// it - at once, the days after, that year, years on, decades on - column by column, each card what followed from the card it hangs from
+    /// (Core/History/Consequences), elbowed lines between them, the thread back to the cast lit under the pointer. Over the columns, every record the cast has
+    /// led to counted by when it came, and "the latest" goes to the card that came last. A card opens what it is about - a life, a place's page, a work, the
+    /// record and its why in the book. The tree is read from the ledger on opening and once a second while it grows (it follows the cast for as long as the
+    /// world records what came of it); nothing here writes the world. Opened from the seal at the top right (the last cast), the impact card, Your hand and
+    /// the book.
     /// </summary>
     public sealed partial class Hud
     {
@@ -27,12 +30,17 @@ namespace TC2.Game
         readonly string[] _treeColHead = new string[Consequences.MaxDepth + 1], _treeColSpan = new string[Consequences.MaxDepth + 1];
         readonly int[] _treeColMask = new int[Consequences.MaxDepth + 1];
         int _treePower = -1, _treeHover = -1;
-        string _treeSub = "";
-        GUIStyle _tcKick, _tcTitle, _tcKickCast, _tcTitleCast, _tcHead, _tcSpan, _tcBadge, _tcBeyond;
+        string _treeSub = "", _treeWhen = "";
+        int _treeLatestCard = -1;
+        float _treeLatestLit = -99f;
+        GUIStyle _tcKick, _tcTitle, _tcKickCast, _tcTitleCast, _tcHead, _tcSpan, _tcBadge, _tcBeyond, _tcWhen;
+        TC2.Core.Simulation.World _treeLatestW;
+        long _treeLatest, _treeLatestThrough;
 
         const float TcCardW = 252f, TcCardH = 92f, TcGapX = 60f, TcGapY = 12f, TcPad = 14f;
         const int ActNone = 0, ActPerson = 1, ActPlace = 2, ActBuilding = 3, ActRecord = 4, ActGo = 5, ActChapter = 6;
-        static readonly Color TierNow = new Color(0.70f, 0.20f, 0.10f), TierDays = new Color(0.80f, 0.56f, 0.12f), TierYears = new Color(0.20f, 0.35f, 0.62f);
+        static readonly Color TierNow = new Color(0.70f, 0.20f, 0.10f), TierDays = new Color(0.80f, 0.56f, 0.12f), TierYear = new Color(0.36f, 0.52f, 0.16f),
+                              TierYears = new Color(0.20f, 0.35f, 0.62f), TierDecades = new Color(0.44f, 0.20f, 0.56f);
         static readonly Color[] FamilyInk =
         {
             new Color(0.48f, 0.40f, 0.30f),   // other
@@ -50,6 +58,33 @@ namespace TC2.Game
 
         /// <summary>(session 32) Opens "What came of it" for a cast (its GodCommand record's id): the tree of what followed from it.</summary>
         public void OpenConsequences(long castId) => OpenConsequences(castId, false);
+
+        /// <summary>(session 32, final) The newest cast the ledger keeps (0 none), for the seal at the top: read on from where it last looked, so a frame costs
+        /// nothing (a cast is a Historical record: the memory pass never drops one).</summary>
+        long LatestCastSeen(TC2.Core.Simulation.World w)
+        {
+            if (w == null) return 0;
+            var h = w.History;
+            if (!ReferenceEquals(w, _treeLatestW)) { _treeLatestW = w; _treeLatest = Consequences.LatestCast(w); _treeLatestThrough = h.LastId; return _treeLatest; }
+            if (h.LastId == _treeLatestThrough) return _treeLatest;
+            for (int i = h.FirstIndexAfter(_treeLatestThrough); i < h.Count; i++) if (h.RefAt(i).Kind == HistoryKind.GodCommand) _treeLatest = h.RefAt(i).Id;
+            _treeLatestThrough = h.LastId;
+            return _treeLatest;
+        }
+
+        /// <summary>(session 32, final) The seal at the top right for the tree of the last cast: dim before any cast, lit while the tree is open.</summary>
+        void TreeSeal(Rect r, Color cream)
+        {
+            var w = Host != null ? Host.World : null;
+            long last = LatestCastSeen(w);
+            if (Seal(r, "why", _treeOn, last == 0, cream, out bool hover))
+            {
+                if (_treeOn) CloseConsequences();
+                else if (last != 0) OpenConsequences(last);
+            }
+            if (hover) TipAt(r, last == 0 ? "<b>What came of it</b>\nCast a power: the tree of everything it leads to grows here, from that hour to decades on"
+                                          : "<b>What came of it</b>\nThe tree of your last cast: everything it has led to - at once, that year, years and decades on", false);
+        }
 
         void OpenConsequences(long castId, bool fromBook)
         {
@@ -110,6 +145,7 @@ namespace TC2.Game
             _tcSpan = S(_serif, 12, Faded, FontStyle.Italic, wrap: false);
             _tcBadge = S(_display, 12, new Color(1f, 0.95f, 0.85f), a: TextAnchor.MiddleCenter, wrap: false);
             _tcBeyond = S(_serif, 12, Faded, FontStyle.Italic, a: TextAnchor.MiddleLeft, wrap: false);
+            _tcWhen = S(_display, 12, Ink, wrap: false);
         }
 
         /// <summary>The leaf: the cast's words, the columns' tiers, the cards and their lines, panned by a drag, the wheel or the arrows.</summary>
@@ -126,25 +162,37 @@ namespace TC2.Game
             }
             if (Event.current.type == EventType.Repaint) { Binding(new Rect(r.x - 8f, r.y - 7f, r.width + 16f, r.height + 14f)); GUI.DrawTexture(r, _leaf); }
             bool close = false, book = false;
-            GUILayout.BeginArea(new Rect(r.x + 26f, r.y + 14f, r.width - 46f, 104f));
+            GUILayout.BeginArea(new Rect(r.x + 26f, r.y + 14f, r.width - 46f, 108f));
             GUILayout.BeginHorizontal();
             Kicker("What came of it");
             GUILayout.FlexibleSpace();
+            bool latest = false;
+            if (_tree != null && _treeLatestCard > 0 && GUILayout.Button("the latest  ›", _bkNav, GUILayout.ExpandWidth(false))) latest = true;
             if (_tree != null && GUILayout.Button("every record, in the book  ›", _bkNav, GUILayout.ExpandWidth(false))) book = true;
             if (GUILayout.Button("close  ×", _bkNav, GUILayout.Width(84))) close = true;
             GUILayout.EndHorizontal();
             GUILayout.Label(_tree != null ? _tree.Root.Title : "A cast the world no longer remembers", _pgTitle);
             GUILayout.Label(_tree != null ? _treeSub : "Its record has gone from the ledger, and what came of it with it.", _pgSub);
+            if (_tree != null && _treeWhen.Length > 0) GUILayout.Label(_treeWhen, _tcWhen);
             GUILayout.EndArea();
             if (close) { CloseConsequences(); AudioView.Ui("click"); return; }
             if (book) { TreeGo(w, -1); return; }
             if (_tree == null) return;
 
-            var strip = new Rect(r.x + 18f, r.y + 118f, r.width - 36f, 38f);
+            var strip = new Rect(r.x + 18f, r.y + 122f, r.width - 36f, 38f);
             var view = new Rect(strip.x, strip.yMax + 2f, strip.width, r.yMax - 30f - strip.yMax - 2f);
             float maxX = Mathf.Max(0f, _treeW - view.width), maxY = Mathf.Max(0f, _treeH - view.height);
-            float oy = _treeH < view.height ? Mathf.Floor((view.height - _treeH) * 0.5f) : 0f;   // (a small tree in the middle of the leaf)
-            if (_treeFresh && _tree.Nodes.Count > 0) { _treeFresh = false; _treeScroll = new Vector2(0f, Mathf.Clamp(_treeCards[0].center.y - view.height * 0.5f, 0f, maxY)); }
+            // (session 32, final) laid from the top: the cast at the top left, its threads down and to the right - it had stood in the middle of the leaf's
+            // height with the empty paper above and below it (s32pow4)
+            const float oy = 0f;
+            if (_treeFresh && _tree.Nodes.Count > 0) { _treeFresh = false; _treeScroll = Vector2.zero; }
+            if (latest && _treeLatestCard > 0 && _treeLatestCard < _treeCards.Length)
+            {
+                var lc = _treeCards[_treeLatestCard];
+                _treeScroll = new Vector2(Mathf.Clamp(lc.x - 40f, 0f, maxX), Mathf.Clamp(lc.y - 40f, 0f, maxY));
+                _treeLatestLit = Time.unscaledTime;
+                AudioView.Ui("tick");
+            }
             // panning: a drag over the leaf, the wheel (with shift, or where it cannot go down, along), the arrows
             var ev = Event.current;
             bool inView = view.Contains(ev.mousePosition);
@@ -177,8 +225,8 @@ namespace TC2.Game
                 if (ev.type == EventType.Repaint)
                 {
                     int m = _treeColMask[d], k = 0, tiers = 0;
-                    for (int b = 0; b < 4; b++) if ((m & (1 << b)) != 0) tiers++;
-                    for (int b = 0; b < 4; b++)
+                    for (int b = 0; b < Consequences.Tiers; b++) if ((m & (1 << b)) != 0) tiers++;
+                    for (int b = 0; b < Consequences.Tiers; b++)
                     {
                         if ((m & (1 << b)) == 0) continue;
                         float seg = TcCardW / Mathf.Max(1, tiers);
@@ -270,7 +318,8 @@ namespace TC2.Game
 
         static Color TierColour(int tier, float a)
         {
-            var c = tier == (int)ConsequenceTier.Immediate ? TierNow : tier == (int)ConsequenceTier.Secondary ? TierDays : tier == (int)ConsequenceTier.LongTerm ? TierYears : FamilyInk[Consequences.FamCast];
+            var c = tier == (int)ConsequenceTier.Immediate ? TierNow : tier == (int)ConsequenceTier.Days ? TierDays : tier == (int)ConsequenceTier.Secondary ? TierYear
+                  : tier == (int)ConsequenceTier.LongTerm ? TierYears : tier == (int)ConsequenceTier.Decades ? TierDecades : FamilyInk[Consequences.FamCast];
             return new Color(c.r, c.g, c.b, a);
         }
 
@@ -311,7 +360,7 @@ namespace TC2.Game
         void TreeCard(int i, Rect c)
         {
             var nd = _tree.Nodes[i];
-            bool cast = i == 0, hover = i == _treeHover, path = _treePath[i] == 1;
+            bool cast = i == 0, hover = i == _treeHover, path = _treePath[i] == 1 || (i == _treeLatestCard && Time.unscaledTime - _treeLatestLit < 3f);   // ("the latest" lit a while)
             var ev = Event.current;
             Color fam = FamilyInk[nd.Family < FamilyInk.Length ? nd.Family : 0];
             Color power = _treePower >= 0 ? Powers[_treePower].Col : FamilyInk[Consequences.FamCast];
@@ -380,9 +429,9 @@ namespace TC2.Game
                 if (nd.Children.Count == 0) { y = next; next += TcCardH + TcGapY; }
                 else
                 {
-                    float a = Lay(nd.Children[0]), b = a;
-                    for (int k = 1; k < nd.Children.Count; k++) b = Lay(nd.Children[k]);
-                    y = Mathf.Round((a + b) * 0.5f);
+                    // (session 32, final) level with its first child: the tree reads from the top, each card at the head of its branch
+                    y = Lay(nd.Children[0]);
+                    for (int k = 1; k < nd.Children.Count; k++) Lay(nd.Children[k]);
                 }
                 _treeCards[i] = new Rect(TcPad + nd.Depth * (TcCardW + TcGapX), y, TcCardW, TcCardH);
                 return y;
@@ -397,6 +446,20 @@ namespace TC2.Game
             int years = (int)((t.LastTime - t.CastTime) / SimTime.Year);
             _treeSub = "year " + SimTime.YearOf(t.CastTime).ToString(CultureInfo.InvariantCulture) + "  ·  " + (t.Records == 0 ? "nothing yet that the world remembers" : t.Records.ToString("N0", CultureInfo.InvariantCulture) + (t.Records == 1 ? " record" : " records") + " so far" +
                        (years > 0 ? ", the latest " + years + (years == 1 ? " year" : " years") + " on" : "")) + (t.Capped ? " (the first " + Consequences.ScanCap.ToString("N0", CultureInfo.InvariantCulture) + " read)" : "");
+            // (session 32, final) every record it has led to by when it came, in the tiers' colours; and the card that came last
+            var wb = new StringBuilder();
+            for (int k = 1; k < Consequences.Tiers; k++)
+            {
+                int c = t.TierRecords[k];
+                if (c == 0) continue;
+                wb.Append(wb.Length > 0 ? "      " : "").Append("<color=#").Append(ColorUtility.ToHtmlStringRGB(TierColour(k, 1f))).Append('>')
+                  .Append(Consequences.TierWords((ConsequenceTier)k).ToUpperInvariant()).Append("  ").Append(c.ToString("N0", CultureInfo.InvariantCulture)).Append("</color>");
+            }
+            _treeWhen = wb.ToString();
+            _treeLatestCard = -1;
+            long lastFirst = long.MinValue;
+            for (int i = 1; i < n; i++) { var nd = t.Nodes[i]; if (!nd.More && nd.First > lastFirst) { lastFirst = nd.First; _treeLatestCard = i; } }
+            if (_treeLatestCard > 0 && t.Nodes[_treeLatestCard].Tier < ConsequenceTier.Secondary) _treeLatestCard = -1;   // (a tree of one hour needs no way to its end)
             // the columns: the tiers each holds, from when to when
             for (int d = 0; d < _treeColMask.Length; d++) _treeColMask[d] = 0;
             var from = new long[_treeColMask.Length]; var to = new long[_treeColMask.Length];
@@ -412,10 +475,8 @@ namespace TC2.Game
             {
                 int m = _treeColMask[d];
                 var sb = new StringBuilder();
-                if ((m & 1) != 0) sb.Append("Your action");
-                if ((m & 2) != 0) sb.Append(sb.Length > 0 ? "  ·  " : "").Append("At once");
-                if ((m & 4) != 0) sb.Append(sb.Length > 0 ? "  ·  " : "").Append("Days after");
-                if ((m & 8) != 0) sb.Append(sb.Length > 0 ? "  ·  " : "").Append("Years on");
+                for (int b = 0; b < Consequences.Tiers; b++)
+                    if ((m & (1 << b)) != 0) sb.Append(sb.Length > 0 ? "  ·  " : "").Append(Consequences.TierWords((ConsequenceTier)b));
                 _treeColHead[d] = sb.ToString().ToUpperInvariant();
                 if (d > 0 && _treeColHead[d] == _treeColHead[d - 1].Replace("AND THEN - ", "")) _treeColHead[d] = "AND THEN - " + _treeColHead[d];   // (session 32: two columns "at once" read as one step)
                 string a = from[d] == long.MaxValue ? "" : Consequences.Offset(from[d]), z = from[d] == long.MaxValue ? "" : Consequences.Offset(to[d]);
@@ -465,6 +526,7 @@ namespace TC2.Game
                 if (nd.Members.Count > shown) tip.Append(dead ? "; " : "\n").Append("and ").Append(nd.Members.Count - shown).Append(" more");
             }
             if (nd.Below > 0) tip.Append("\n<i>").Append(nd.Below).Append(nd.Below == 1 ? " record more" : " records more").Append(" came of it, beyond what the tree draws</i>");
+            if (i > 0 && !nd.More && nd.Reach - nd.Last >= SimTime.Year) tip.Append("\n<i>What came of it runs on to ").Append(Consequences.Offset(nd.Reach - _tree.CastTime)).Append(" from your hand</i>");   // (session 32, final)
             tip.Append("\n<color=#f2c35f>Click: ").Append(_treeGoWords[i]).Append("</color>");
             return tip.ToString();
         }

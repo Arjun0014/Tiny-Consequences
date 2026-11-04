@@ -69,6 +69,8 @@ namespace TC2.Headless
                         return Commands.Planet(args);
                     case "climate":
                         return Commands.ClimateRun(args);
+                    case "tree":
+                        return TreeCmd.Run(args);   // (session 32) a cast's tree of consequences on a saved world, year by year
                     case "cells":
                         return Commands.Cells(args);   // (session 29) the ground's cells along lines out of a place
                     default:

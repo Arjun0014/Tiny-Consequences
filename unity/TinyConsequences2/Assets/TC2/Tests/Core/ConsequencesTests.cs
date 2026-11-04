@@ -171,7 +171,8 @@ namespace TC2.Tests.Core
             var others = new[] { HistoryKind.FireStarted, HistoryKind.Quake, HistoryKind.Landslides, HistoryKind.Drought, HistoryKind.RainBrought, HistoryKind.WarmAir, HistoryKind.ColdAir };
             foreach (var k in others) Rec(k, cast, now + SimTime.Hours(1), a, EntityRef.Settlement(a), argA: 1, mag: 6);
             long link = strike;
-            for (int k = 0; k < 14; k++) link = Rec(HistoryKind.WildFood, link, now + SimTime.Hours(2 + k), a, EntityRef.Settlement(a));
+            int thread = Consequences.MaxDepth + 4;   // (a thread longer than the tree is deep)
+            for (int k = 0; k < thread; k++) link = Rec(HistoryKind.WildFood, link, now + SimTime.Hours(2) + k * SimTime.Minutes(30), a, EntityRef.Settlement(a));
             long hunger = Rec(HistoryKind.Hunger, strike, now + SimTime.Days(5), a, EntityRef.Settlement(a));
             for (int k = 0; k < 3; k++) Rec(HistoryKind.HouseholdMoved, hunger, now + SimTime.Years(2) + k * SimTime.Day, a, EntityRef.Household(90200 + k), EntityRef.Settlement(b));
             Rec(HistoryKind.TributeAgreed, hunger, now + SimTime.Years(12), a, EntityRef.Settlement(a), EntityRef.Settlement(b), mag: 0.1);
@@ -180,7 +181,7 @@ namespace TC2.Tests.Core
             var t = Consequences.Build(w, cast);
             Print(t, 0);
             Traces(w, t);
-            Assert.AreEqual(1 + 7 + 2 + others.Length + 14 + 1 + 3 + 1, t.Records);
+            Assert.AreEqual(1 + 7 + 2 + others.Length + thread + 1 + 3 + 1, t.Records);
             // under the cast: the five biggest branches, the rest one card
             Assert.AreEqual(Consequences.MaxBranches + 1, t.Root.Children.Count);
             var more = t.Nodes[t.Root.Children[t.Root.Children.Count - 1]];
@@ -197,7 +198,7 @@ namespace TC2.Tests.Core
             StringAssert.StartsWith("7 people killed by the stone at ", deadA.Title);
             Assert.AreEqual(ConsequenceTier.Immediate, deadA.Tier);
             var hu = t.Nodes.Find(n => n.Kind == HistoryKind.Hunger);
-            Assert.AreEqual(hit.Index, hu.Parent); Assert.AreEqual(ConsequenceTier.Secondary, hu.Tier); Assert.AreEqual("5 days on", hu.When);
+            Assert.AreEqual(hit.Index, hu.Parent); Assert.AreEqual(ConsequenceTier.Days, hu.Tier); Assert.AreEqual("5 days on", hu.When);
             StringAssert.StartsWith("Hunger in ", hu.Title);
             // years on: the households that left, the bow
             var left = t.Nodes.Find(n => n.Kind == HistoryKind.HouseholdMoved);
@@ -205,16 +206,92 @@ namespace TC2.Tests.Core
             StringAssert.StartsWith("2 years on, over 2 days", left.When);
             StringAssert.StartsWith("3 households left ", left.Title);
             var bow = t.Nodes.Find(n => n.Kind == HistoryKind.TributeAgreed);
-            Assert.AreEqual(hu.Index, bow.Parent); Assert.AreEqual(ConsequenceTier.LongTerm, bow.Tier); Assert.AreEqual("12 years on", bow.When);
+            Assert.AreEqual(hu.Index, bow.Parent); Assert.AreEqual(ConsequenceTier.Decades, bow.Tier); Assert.AreEqual("12 years on", bow.When);
             StringAssert.Contains(" bowed to ", bow.Title);
             Assert.IsNull(t.Nodes.Find(n => n.Kind == HistoryKind.Hunger && n.Settlement == b), "nothing that is not the cast's");
             // the long thread: as deep as the tree goes, the rest counted below it
             Assert.AreEqual(Consequences.MaxDepth, t.MaxDepth);
             var deepest = t.Nodes.Find(n => n.Depth == Consequences.MaxDepth);
-            Assert.AreEqual(HistoryKind.WildFood, deepest.Kind); Assert.AreEqual(14 - (Consequences.MaxDepth - 1), deepest.Below);
+            Assert.AreEqual(HistoryKind.WildFood, deepest.Kind); Assert.AreEqual(thread - (Consequences.MaxDepth - 1), deepest.Below);
             // later cards never come before their parents'
             foreach (var n in t.Nodes) if (n.Index > 0 && !n.More) Assert.GreaterOrEqual((int)n.Tier, (int)t.Nodes[n.Parent].Tier);
             Assert.AreEqual(0, t.CastsAfter);
+        }
+
+        [Test]
+        public void ACastIsFollowedYearsAndDecadesOnAndItsTreeGrowsAsTheLedgerDoes()
+        {
+            // (session 32, final: "track what changed because of my action years ago, decades ago") a drought's records laid by hand, as the ledger links
+            // them: the harvests it failed that year, the hunger, a famine and its dead years on, a village abandoned and its households gone a decade on;
+            // then, decades on, a village founded by those who left - the tree read again holds it, by when it came, under what it came of
+            var w = TestWorlds.Make(611);
+            int a = w.Settlements.First(), b = w.Settlements.Next(a);
+            int cell = w.Settlements.Get(a).Cell;
+            long now = w.Now;
+            long Rec(HistoryKind k, long cause, long time, int at, EntityRef subj = default, EntityRef obj = default, int argA = 0) =>
+                w.Record(new HistoryEvent { Kind = k, Time = time, Cell = cell, Settlement = at, Subject = subj, Object = obj, Cause1 = cause, ArgA = argA, RootKind = RootKind.You });
+            long cast = Rec(HistoryKind.GodCommand, 0, now, a, argA: (int)CommandKind.GodDrought);
+            long dry = Rec(HistoryKind.Drought, cast, now, a, EntityRef.Settlement(a));
+            long failed = Rec(HistoryKind.HarvestFailed, dry, now + SimTime.Days(20), a, EntityRef.Settlement(a));
+            long hunger = Rec(HistoryKind.Hunger, failed, now + SimTime.Days(22), a, EntityRef.Settlement(a));
+            long famine = Rec(HistoryKind.Famine, hunger, now + SimTime.Years(2), a, EntityRef.Settlement(a));
+            for (int k = 0; k < 4; k++) Rec(HistoryKind.PersonDied, famine, now + SimTime.Years(2) + k * SimTime.Day, a, EntityRef.Person(91000 + k), argA: 2);
+            long gone = Rec(HistoryKind.SettlementAbandoned, famine, now + SimTime.Years(11), a, EntityRef.Settlement(a));
+            long moved = Rec(HistoryKind.HouseholdMoved, gone, now + SimTime.Years(11), a, EntityRef.Household(91100), EntityRef.Settlement(b));
+            Rec(HistoryKind.Famine, 0, now + SimTime.Years(11), b, EntityRef.Settlement(b));   // (nature's, not the cast's)
+
+            ulong before = w.StateHash();
+            var t = Consequences.Build(w, cast);
+            Assert.AreEqual(before, w.StateHash(), "reading the tree writes nothing");
+            Print(t, 0);
+            Traces(w, t);
+            Assert.AreEqual(10, t.Records);
+            // by when they came: at once the drought, that year the harvest and the hunger, years on the famine and its dead, decades on the rest
+            Assert.AreEqual(1, t.TierRecords[(int)ConsequenceTier.Immediate]);
+            Assert.AreEqual(0, t.TierRecords[(int)ConsequenceTier.Days]);
+            Assert.AreEqual(2, t.TierRecords[(int)ConsequenceTier.Secondary]);
+            Assert.AreEqual(5, t.TierRecords[(int)ConsequenceTier.LongTerm]);
+            Assert.AreEqual(2, t.TierRecords[(int)ConsequenceTier.Decades]);
+            var fam = t.Nodes.Find(n => n.Kind == HistoryKind.Famine);
+            Assert.IsNotNull(fam, "the famine years on"); Assert.AreEqual(ConsequenceTier.LongTerm, fam.Tier); Assert.AreEqual("2 years on", fam.When);
+            Assert.AreEqual(HistoryKind.Hunger, t.Nodes[fam.Parent].Kind, "under the hunger it came of");
+            var ab = t.Nodes.Find(n => n.Kind == HistoryKind.SettlementAbandoned);
+            Assert.IsNotNull(ab, "the village abandoned a decade on"); Assert.AreEqual(fam.Index, ab.Parent);
+            Assert.AreEqual(ConsequenceTier.Decades, ab.Tier); Assert.AreEqual("11 years on", ab.When);
+            Assert.AreEqual("Decades on", Consequences.TierWords(ab.Tier));
+            Assert.IsNull(t.Nodes.Find(n => n.Kind == HistoryKind.Famine && n.Settlement == b), "nothing that is not the cast's");
+            // the ledger grows: decades on, a village founded by those who left - and a hunger of nature's that is not the cast's
+            int c = w.Settlements.Next(b);
+            long founded = Rec(HistoryKind.SettlementFounded, moved, now + SimTime.Years(34), c != 0 ? c : b, EntityRef.Settlement(c != 0 ? c : b));
+            Rec(HistoryKind.Hunger, 0, now + SimTime.Years(35), a, EntityRef.Settlement(a));
+            var t2 = Consequences.Build(w, cast);
+            Traces(w, t2);
+            Assert.AreEqual(t.Records + 1, t2.Records, "read again, it holds what came of it since");
+            var fd = t2.Nodes.Find(n => n.Kind == HistoryKind.SettlementFounded);
+            Assert.IsNotNull(fd); Assert.IsTrue(fd.Members.Contains(founded));
+            Assert.AreEqual(HistoryKind.HouseholdMoved, t2.Nodes[fd.Parent].Kind, "under the leaving it came of");
+            Assert.AreEqual(ConsequenceTier.Decades, fd.Tier); Assert.AreEqual("34 years on", fd.When);
+            Assert.AreEqual(now + SimTime.Years(34), t2.LastTime);
+            Assert.AreEqual(3, t2.TierRecords[(int)ConsequenceTier.Decades]);
+            Assert.AreEqual(now + SimTime.Years(34), t2.Root.Reach, "the cast's thread runs 34 years on");
+            foreach (var n in t2.Nodes) if (n.Index > 0 && !n.More) Assert.GreaterOrEqual((int)n.Tier, (int)t2.Nodes[n.Parent].Tier);
+            // with little room, the thread that runs furthest is followed first: four bushy branches of the cast's first hour (each with more records under it
+            // than the abandoned village has) do not take the room from the founding decades on - opened biggest first, they had
+            var bushy = new[] { HistoryKind.FireStarted, HistoryKind.Quake, HistoryKind.RainBrought, HistoryKind.WarmAir };
+            var under = new[] { HistoryKind.FledDanger, HistoryKind.DangerNoticed, HistoryKind.JourneyInterrupted };
+            foreach (var k in bushy)
+            {
+                long bk = Rec(k, cast, now + SimTime.Hours(1), a, EntityRef.Settlement(a));
+                foreach (var u in under) Rec(u, bk, now + SimTime.Hours(2), a, EntityRef.Person(91200));
+            }
+            var t3 = Consequences.Build(w, cast, 14);
+            Print(t3, 0);
+            Traces(w, t3);
+            Assert.LessOrEqual(t3.Nodes.Count, 14);
+            var fd3 = t3.Nodes.Find(n => n.Kind == HistoryKind.SettlementFounded);
+            Assert.IsNotNull(fd3, "the founding 34 years on, followed first");
+            Assert.AreEqual("34 years on", fd3.When);
+            Assert.IsNotNull(t3.Nodes.Find(n => n.Below > 0 && n.Tier == ConsequenceTier.Immediate), "the first hour's branches counted, not drawn");
         }
     }
 }
