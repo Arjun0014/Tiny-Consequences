@@ -272,6 +272,37 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void AWoundIsToldByWhatDealtIt()
+        {
+            // (QA) a great quake wounds people under its falling roofs: abed, their wounds are the quake's; a wound a blow dealt (its deed kept until it
+            // heals) is a fight's though a shock is on their mind; a wound neither dealt is not told as a fight's
+            var w = TestWorlds.Make(616);
+            w.AdvanceTo(w.Now + SimTime.Days(2) + SimTime.Hours(4));
+            int sid = w.Settlements.First();
+            w.Issue(new Command { Time = w.Now, Kind = CommandKind.GodQuake, Cell = w.Settlements.Get(sid).Cell, Arg = 7 });
+            w.AdvanceTo(w.Now + SimTime.Minutes(30));
+            int hurt = 0;
+            for (int id = w.People.First(); id != 0 && hurt == 0; id = w.People.Next(id))
+            {
+                var q = w.People.Get(id);
+                if (q.Alive && q.Hurt > 0f && q.HurtDeed == 0 && w.History.TryGet(q.Alarm, out var qa) && qa.Kind == HistoryKind.Quake) hurt = id;
+            }
+            Assume.That(hurt != 0, "someone the quake wounded");
+            var p = w.People.Get(hurt);
+            p.Act = ActivityKind.Ill; p.Why = WhyCode.Hurt;   // (as they lie abed: the words read from state)
+            StringAssert.Contains("the ground shook", HistoryText.Doing(w, in p), "the quake's wound is the quake's");
+            // the same, struck in a fight (a blow's deed): a fight's wound
+            p.HurtDeed = w.DeedBook.Record(TC2.Core.Society.DeedKind.Wound, 0, sid, p.Household, p.Home, 0, 0.5, 1.0, 0);
+            StringAssert.Contains("a fight", HistoryText.Doing(w, in p), "a blow's wound is a fight's");
+            // no blow and only a bolt on their mind: not a fight's
+            p.HurtDeed = 0;
+            long bolt = w.Record(new HistoryEvent { Kind = HistoryKind.LightningStrike, Time = w.Now, Cell = w.Settlements.Get(sid).Cell, Settlement = sid, RootKind = RootKind.Nature });
+            p.Alarm = bolt; p.AlarmT = w.Now;
+            string t = HistoryText.Doing(w, in p);
+            StringAssert.DoesNotContain("fight", t); StringAssert.DoesNotContain("lightning", t);
+        }
+
+        [Test]
         public void DeepTimeFeelsNoShock()
         {
             var w = TestWorlds.Make(615);

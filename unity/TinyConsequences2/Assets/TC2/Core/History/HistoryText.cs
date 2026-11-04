@@ -327,9 +327,12 @@ namespace TC2.Core.History
                 case ActivityKind.Ill:
                     if (p.Why == WhyCode.Hurt)
                     {
-                        // (session 32) hurt by a shock felt where they were - told by it, not by a fight
-                        if (p.Alarm != 0 && w.Now - p.AlarmT < 20 * SimTime.Day && w.History.TryGet(p.Alarm, out var ae) && TC2.Core.Agents.Hazards.ShockHold(ae.Kind) > 0)
+                        // (session 32) hurt by a shock felt where they were - told by it, not by a fight: only a wound no blow is behind (a blow's wound keeps its
+                        // deed until it heals) and a shock that wounds (a stone's blast, a falling roof in a quake) - a gale or a bolt felt later had told a
+                        // fight's wound as theirs (QA, session 32)
+                        if (p.HurtDeed == 0 && p.Alarm != 0 && w.Now - p.AlarmT < 20 * SimTime.Day && w.History.TryGet(p.Alarm, out var ae) && (ae.Kind == HistoryKind.MeteorStruck || ae.Kind == HistoryKind.Quake))
                             return "abed with wounds: " + ShockWords((int)ae.Kind) + " - they must heal";
+                        if (p.HurtDeed == 0) return "abed at home with wounds: they must heal";   // (no blow behind it, and no shock that wounds on their mind)
                         return "abed at home with wounds from a fight in the night: they must heal";
                     }
                     return "abed at home with " + w.History.NameOf(new EntityRef(EntityKind.Pathogen, p.Sick)) + ": it must run its course";
