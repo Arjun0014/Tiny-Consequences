@@ -121,12 +121,20 @@ Shader "TC2/Terrain"
                 // whole, furlong by furlong as a fire runs on from strip to strip: black stubble streaked with grey ash, the spared strips standing
                 // (strip by strip more or less burned to ash, the furrows' streaks faint and fading with distance as the furrows do: s29v3's close and
                 // village views had strong 1.45 m streaks as a grey moire)
+                // (session 32) a blight's share comes negative (TerrainLod.CropOf): its strips wither where a fire's char - yellowed straw gone grey-brown
+                // in patches, dark rot in spots close to (the spots fade with the furrows), a dun straw from afar
+                half blight = burnt < 0.0h ? 1.0h : 0.0h;
+                burnt = abs(burnt);
                 half3 ash = lerp(half3(0.016h, 0.013h, 0.010h), half3(0.105h, 0.092h, 0.078h), saturate(0.15h + h * 0.55h + (fur - 0.5h) * furAmp * 0.2h));
+                half patchy = (half)Hash21(floor(q / 9.0) + blk * 1.7);
+                half spot = (half)step(Hash21(floor(q / 2.6) + cell * 1.31), 0.2) * furAmp;
+                half3 wither = lerp(half3(0.30h, 0.24h, 0.10h), half3(0.19h, 0.16h, 0.10h), saturate(patchy * 0.8h + h * 0.3h + (fur - 0.5h) * furAmp * 0.2h));
+                wither = lerp(wither, half3(0.05h, 0.045h, 0.03h), spot * 0.85h);
                 half charred = worked * ((burnt > 0.01h && Hash21(blk + 5.3) * 0.6 + h * 0.4 < burnt) ? 1.0h : 0.0h);
-                plot = lerp(plot, ash, charred);
+                plot = lerp(plot, lerp(ash, wither, blight), charred);
                 plot = lerp(plot, plot * 0.52h + half3(0.008h, 0.016h, 0.004h), hedge * 0.75h);   // (a hedge's shade, of the field's own colour)
                 // a pixel wider than a strip sees the field's average, not a moire of strips (px: metres per pixel)
-                half3 mean = lerp(fallow, lerp(crop * 0.99h, half3(0.045h, 0.039h, 0.032h), burnt), saturate(farm.z));
+                half3 mean = lerp(fallow, lerp(crop * 0.99h, lerp(half3(0.045h, 0.039h, 0.032h), half3(0.22h, 0.18h, 0.09h), blight), burnt), saturate(farm.z));
                 return lerp(plot, mean, smoothstep(0.18, 0.45, px / sz.x));
             }
 

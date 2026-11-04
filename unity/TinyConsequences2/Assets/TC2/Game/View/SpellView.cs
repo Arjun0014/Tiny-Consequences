@@ -375,7 +375,7 @@ namespace TC2.Game
                 int sid = _blighted[i];
                 if (!w.Settlements.Exists(sid)) continue;
                 var f = FieldsOf(w, sid, now);
-                Wash(f, BlightCol, 0.42f, now, lift, 0.45f);
+                Wash(f, BlightCol, 0.25f, now, lift, 0.45f);   // (light: the ground itself withers now - Terrain.shader)
                 ref var s = ref w.Settlements.Get(sid);
                 int pct = (int)System.Math.Round(s.CropBurnt * 100.0);
                 if (!_blightWords.TryGetValue(sid, out var bw) || bw.pct != pct) { bw = (pct, "Blight - " + pct.ToString(CultureInfo.InvariantCulture) + "% of the crop spoiled"); _blightWords[sid] = bw; }

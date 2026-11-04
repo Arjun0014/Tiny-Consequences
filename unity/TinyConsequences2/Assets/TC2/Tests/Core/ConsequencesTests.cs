@@ -115,6 +115,42 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void TheBooksFirstPageAndYourActionsTellTheCastAndWhatCameOfItByWhen()
+        {
+            // (session 32) the book's first page: a line for each part, your newest cast with what came of it; its chapter in Your Actions tells it by when
+            var w = TestWorlds.Make(615);
+            Coarse(w);
+            w.AdvanceTo(w.Now + SimTime.Days(2));
+            int sid = w.Settlements.First();
+            w.Issue(new Command { Time = w.Now, Kind = CommandKind.GodMeteor, Cell = w.Settlements.Get(sid).Cell });
+            w.AdvanceTo(w.Now + SimTime.Days(3));
+            long cast = Consequences.LatestCast(w);
+            Assert.AreNotEqual(0L, cast);
+            ulong before = w.StateHash();
+            var bw = new HistoryBook.Writer(w);
+            Assert.AreEqual(HistoryBook.PartTitles.Length, bw.Book.Contents.Count, "a line for every part");
+            StringAssert.Contains("1 cast", bw.Book.Contents[HistoryBook.YourActionsPart].Replace("one cast", "1 cast"));
+            var hand = HistoryBook.YourHand(w, 4);
+            Assert.AreEqual(1, hand.Count); Assert.AreEqual(cast, hand[0].Id); Assert.AreEqual(0, hand[0].Chapter);
+            HistoryBook.CameOf(w, cast, out int n);
+            Assert.AreEqual(n, hand[0].Count, "what came of it, as your hand counts it");
+            StringAssert.StartsWith("Threw down a stone", hand[0].Title);
+            var ch = bw.Part(HistoryBook.YourActionsPart).Chapters[0];
+            Assert.AreEqual(cast, ch.Blocks[0].Event);
+            bool heading = false; string atOnce = null;
+            foreach (var b in ch.Blocks)
+            {
+                if (b.Kind == BookKind.Heading && b.Text == "What came of it, by when") heading = true;
+                if (b.Kind == BookKind.Note && b.Text.StartsWith("At once: ", StringComparison.Ordinal)) atOnce = b.Text;
+            }
+            Console.WriteLine(atOnce);
+            Assert.IsTrue(heading, "told by when");
+            Assert.IsNotNull(atOnce);
+            StringAssert.Contains("people killed by the stone", atOnce);
+            Assert.AreEqual(before, w.StateHash(), "the book writes nothing");
+        }
+
+        [Test]
         public void ItsCardsAreGroupedToldWhenTheyCameAndWhatTheyCannotShowIsFolded()
         {
             // a cast's records laid in the ledger by hand: a stone, its dead in two places, a hunger days on and what it led to years on, seven things more

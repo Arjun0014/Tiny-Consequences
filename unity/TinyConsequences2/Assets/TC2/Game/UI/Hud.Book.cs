@@ -17,6 +17,7 @@ namespace TC2.Game
     {
         Font _serif, _display;
         Texture2D _leaf, _gutter, _leather;
+        GUIStyle _bkCall, _bkNavLong, _bkHandBox, _bkGist;   // (session 32: the contents page and Your Actions)
         GUIStyle _bkBook, _bkBookSub, _bkKicker, _bkTitle, _bkSub, _bkBody, _bkHead, _bkGreat, _bkGreatSel, _bkLine, _bkLineSel, _bkMinor, _bkMinorSel, _bkNote, _bkTally,
                  _bkYear, _bkToc, _bkTocSel, _bkTocPart, _bkTocPartSel, _bkNav, _bkFolio, _bkWhy;
         GUIStyle _pgTitle, _pgSub, _pgBody, _pgLine, _pgYear, _pgHead, _pgTab, _pgTabSel, _pgDot;   // (session 27: the person and place pages as leaves of the book)
@@ -71,6 +72,14 @@ namespace TC2.Game
             _bkTocPartSel = new GUIStyle(_bkTocPart); _bkTocPartSel.normal.textColor = Rubric;
             _bkNav = S(_display, 17, Rubric, a: TextAnchor.MiddleCenter, l: 6, rt: 6, t: 2, b: 2); _bkNav.hover.textColor = Ink; _bkNav.hover.background = hover;
             _bkFolio = S(_display, 15, Faded, a: TextAnchor.MiddleCenter);
+            // (session 32) a call to the tree of a cast: rubric with letters of the page's cream, warmer under the pointer
+            _bkCall = S(_display, 17, new Color(0.99f, 0.94f, 0.82f), a: TextAnchor.MiddleCenter, l: 12, rt: 12, t: 4, b: 5);
+            _bkCall.normal.background = Solid(new Color(0.55f, 0.15f, 0.08f, 0.92f)); _bkCall.hover.background = Solid(new Color(0.68f, 0.22f, 0.10f, 1f));
+            _bkCall.hover.textColor = Color.white; _bkCall.margin = new RectOffset(0, 0, 4, 4);
+            _bkNavLong = new GUIStyle(_bkNav) { wordWrap = false, clipping = TextClipping.Clip };
+            _bkHandBox = new GUIStyle(GUIStyle.none) { padding = new RectOffset(14, 14, 10, 10), margin = new RectOffset(0, 0, 6, 10) };
+            _bkHandBox.normal.background = Solid(new Color(0.55f, 0.15f, 0.08f, 0.07f));
+            _bkGist = S(_serif, 14, Faded, FontStyle.Italic, l: 30, b: 4);
             _pgTitle = S(_display, 26, Ink);
             _pgSub = S(_serif, 15, Faded, FontStyle.Italic, b: 4);
             _pgBody = S(_serif, 16, Ink, t: 2, b: 5);
@@ -133,6 +142,7 @@ namespace TC2.Game
         void BookSpread(Rect r, TC2.Core.Simulation.World w)
         {
             BookStyles();
+            if (Event.current.type == EventType.Layout) BookFresh(w);   // (session 32: a cast made since the book was written, and your hand on its first page)
             if (Event.current.type == EventType.Repaint)
             {
                 GUI.color = new Color(0f, 0f, 0f, 0.35f); GUI.DrawTexture(new Rect(r.x - 9f, r.yMax + 9f, r.width + 18f, 5f), _dot); GUI.color = Color.white;
@@ -152,7 +162,7 @@ namespace TC2.Game
             GUILayout.Label(_writer.Book.Sub, _bkBookSub);
             Rule(0.0f, 0.65f);
             _listScroll = GUILayout.BeginScrollView(_listScroll, GUIStyle.none, GUI.skin.verticalScrollbar);
-            if (GUILayout.Button("Preface", _bookPart == -1 ? _bkTocPartSel : _bkTocPart)) { _bookPart = -1; _bookScroll = Vector2.zero; _line = 0; }
+            if (GUILayout.Button("Contents and Preface", _bookPart == -1 ? _bkTocPartSel : _bkTocPart)) { _bookPart = -1; _bookScroll = Vector2.zero; _line = 0; }
             if (GUILayout.Button("A Timeline of the World", _bookPart == TimelinePart ? _bkTocPartSel : _bkTocPart)) { _bookPart = TimelinePart; _bookScroll = Vector2.zero; _line = 0; }
             for (int i = 0; i < HistoryBook.PartTitles.Length; i++)
             {
@@ -178,21 +188,20 @@ namespace TC2.Game
             if (_bookPart == TimelinePart) { Kicker("A Timeline"); TimelinePage(w, r); }
             else if (_bookPart < 0)
             {
-                Kicker("The Preface");
-                GUILayout.Label("Preface", _bkTitle);
-                GUILayout.Label("the world in year " + _writer.Book.Year, _bkSub);
+                Kicker("The book of the world");
+                GUILayout.Label("Contents", _bkTitle);
+                GUILayout.Label("the world in year " + _writer.Book.Year + "  ·  " + _writer.Book.Sub, _bkSub);
                 OrnRule();
                 // (session 29: room for a chosen line's why under it - a line opened from the History panel lands here and its story had a sliver at the foot)
                 _bookScroll = GUILayout.BeginScrollView(_bookScroll, GUIStyle.none, GUI.skin.verticalScrollbar, GUILayout.Height(Mathf.Max(120f, right.height - 200f) * (_line != 0 ? 0.4f : 1f)));
-                bool first = true;
-                foreach (var para in _writer.Book.Preface) { if (first) LeadParagraph(para, _bkBody, right.width - 72f - 14f); else GUILayout.Label(para, _bkBody); first = false; }
+                FrontPage(w, right.width - 72f - 14f);   // (session 32: the preface's first words, your hand, the parts)
                 GUILayout.EndScrollView();
             }
             else
             {
                 var part = _parts[_bookPart];
                 if (_bookChapter >= part.Chapters.Count) _bookChapter = part.Chapters.Count - 1;
-                Kicker("Part " + HistoryBook.Roman(_bookPart + 1) + "  ·  " + HistoryBook.PartTitles[_bookPart]);
+                Kicker("Part " + HistoryBook.Roman(_bookPart + 1) + "  ·  " + HistoryBook.PartTitles[_bookPart] + (_bookChapter >= 0 && part.Chapters.Count > 1 ? "  ·  chapter " + (_bookChapter + 1) + " of " + part.Chapters.Count : ""));
                 if (_bookChapter < 0)
                 {
                     GUILayout.Label(HistoryBook.PartTitles[_bookPart], _bkTitle);
@@ -213,7 +222,7 @@ namespace TC2.Game
                     }
                     GUILayout.EndHorizontal();
                     if (!string.IsNullOrEmpty(ch.Sub)) GUILayout.Label(ch.Sub, _bkSub);
-                    if (_bookPart == HistoryBook.YourActionsPart && ch.Blocks.Count > 0 && ch.Blocks[0].Kind == BookKind.Line && GUILayout.Button("what came of it, as a tree  ›", _bkNav, GUILayout.ExpandWidth(false))) { OpenConsequences(ch.Blocks[0].Event, true); }   // (session 32: Hud.Consequences.cs)
+                    if (_bookPart == HistoryBook.YourActionsPart && ch.Blocks.Count > 0 && ch.Blocks[0].Kind == BookKind.Line && GUILayout.Button("See what came of it: its tree of consequences  ›", _bkCall, GUILayout.ExpandWidth(false))) { OpenConsequences(ch.Blocks[0].Event, true); }   // (session 32: Hud.Consequences.cs)
                     OrnRule();
                     _bookScroll = GUILayout.BeginScrollView(_bookScroll, GUIStyle.none, GUI.skin.verticalScrollbar, GUILayout.Height(Mathf.Max(120f, right.height - 200f) * (_line != 0 ? 0.62f : 1f)));   // (room left for the leaf's foot: it was clipped at 720 px)
                     if (_bookChapter == 0 && !string.IsNullOrEmpty(part.Intro)) GUILayout.Label(part.Intro, _bkNote);
@@ -266,18 +275,121 @@ namespace TC2.Game
             }
             GUILayout.FlexibleSpace();
             // the foot of the leaf: back, the folio, on
+            // (session 32) each way named - the chapter it leads to - and the contents a click away
             GUILayout.BeginHorizontal();
-            if (_bookPart >= 0 || _bookPart == TimelinePart) { if (GUILayout.Button("‹  previous", _bkNav, GUILayout.Width(120))) Turn(-1); }
-            else GUILayout.Space(120);
+            float navW = Mathf.Clamp((right.width - 72f - 200f) * 0.5f, 120f, 300f);
+            if (_bookPart >= 0 || _bookPart == TimelinePart) { if (GUILayout.Button("‹  " + TurnTitle(-1), _bkNavLong, GUILayout.Width(navW))) Turn(-1); }
+            else GUILayout.Space(navW);
             GUILayout.FlexibleSpace();
+            if (_bookPart != -1) { if (GUILayout.Button("contents", _bkNav, GUILayout.ExpandWidth(false))) { _bookPart = -1; _bookScroll = Vector2.zero; _line = 0; AudioView.Ui("page"); } }
             GUILayout.Label("—  " + Folio() + "  —", _bkFolio);
             GUILayout.FlexibleSpace();
-            if (GUILayout.Button("next  ›", _bkNav, GUILayout.Width(120))) Turn(1);
+            string nextT = TurnTitle(1);
+            if (nextT.Length > 0) { if (GUILayout.Button(nextT + "  ›", _bkNavLong, GUILayout.Width(navW))) Turn(1); }
+            else GUILayout.Space(navW);
             GUILayout.EndHorizontal();
             GUILayout.EndArea();
         }
 
         void Kicker(string text) => GUILayout.Label(text.ToUpperInvariant(), _bkKicker);
+
+        // (session 32) your hand on the book's first page (newest casts and what came of each), read when the book is opened or a cast is made while it is
+        System.Collections.Generic.List<HistoryBook.CastLine> _front = new System.Collections.Generic.List<HistoryBook.CastLine>();
+        int _frontFrame = -10; long _frontSeen; object _frontWriter; float _frontAt;
+
+        /// <summary>At a frame's layout: the book opened again or written anew reads your hand afresh; once a second, a cast made since (the ledger's new
+        /// records only) has Your Actions written again and your hand read again.</summary>
+        void BookFresh(TC2.Core.Simulation.World w)
+        {
+            bool reopened = Time.frameCount - _frontFrame > 2 || !ReferenceEquals(_frontWriter, _writer);
+            _frontFrame = Time.frameCount;
+            var H = w.History;
+            bool cast = false;
+            if (!reopened && Time.unscaledTime - _frontAt > 1f && H.LastId != _frontSeen)
+            {
+                _frontAt = Time.unscaledTime;
+                for (int i = H.FirstIndexAfter(_frontSeen); i < H.Count && !cast; i++) if (H.RefAt(i).Kind == HistoryKind.GodCommand) cast = true;
+                if (!cast) _frontSeen = H.LastId;
+            }
+            if (!reopened && !cast) return;
+            _frontWriter = _writer; _frontSeen = H.LastId; _frontAt = Time.unscaledTime;
+            _front = HistoryBook.YourHand(w, 4);
+            if (_parts != null && HistoryBook.YourActionsPart < _parts.Length)
+            {
+                _parts[HistoryBook.YourActionsPart] = null;   // (written again when read: a new cast its first chapter, what came of each as it stands)
+                if (_bookPart == HistoryBook.YourActionsPart) Part(HistoryBook.YourActionsPart);
+            }
+        }
+
+        /// <summary>The book's first page: the preface's first words, your hand in the world (each cast, what came of it, its tree and its chapter), the parts
+        /// with what each holds (and the chapters of those already read), then the rest of the preface.</summary>
+        void FrontPage(TC2.Core.Simulation.World w, float width)
+        {
+            var book = _writer.Book;
+            if (book.Preface.Count > 0) LeadParagraph(book.Preface[0], _bkBody, width);
+            // your hand
+            GUILayout.BeginVertical(_bkHandBox);
+            GUILayout.Label("YOUR HAND IN THIS WORLD", _bkKicker);
+            if (_front.Count == 0) GUILayout.Label("You have not reached into the world yet. Choose a power at the foot of the screen and cast it on the land: what comes of it - at once, in the seasons after, years on - will be told here, as a tree you can follow.", _bkNote);
+            else
+            {
+                GUILayout.Label("What you did, and what came of it: each cast's consequences as a tree, from the first hour to the years after.", _bkTally);
+                for (int k = 0; k < _front.Count; k++)
+                {
+                    var c = _front[k];
+                    GUILayout.BeginHorizontal();
+                    GUILayout.Label("<b>" + c.Title + "</b>\n<size=14><color=#6b5640><i>year " + c.Year + "  ·  " + (c.Count > 0 ? c.Came : "nothing yet that the world remembers") + "</i></color></size>", _bkLine);
+                    GUILayout.FlexibleSpace();
+                    GUILayout.BeginVertical(GUILayout.Width(150));
+                    if (GUILayout.Button("its tree  ›", _bkCall, GUILayout.Width(150))) OpenConsequences(c.Id, true);
+                    if (c.Chapter >= 0 && GUILayout.Button("its chapter  ›", _bkNav, GUILayout.Width(150))) { OpenBookAt(HistoryBook.YourActionsPart, c.Chapter); AudioView.Ui("page"); }
+                    GUILayout.EndVertical();
+                    GUILayout.EndHorizontal();
+                }
+            }
+            GUILayout.EndVertical();
+            // the parts
+            GUILayout.Label("In this book", _bkHead);
+            if (GUILayout.Button("A Timeline of the World", _bkTocPart)) { _bookPart = TimelinePart; _bookScroll = Vector2.zero; _line = 0; AudioView.Ui("page"); }
+            GUILayout.Label("the world's years at a glance: its people, its ages, its greatest realms and moments", _bkGist);
+            for (int i = 0; i < HistoryBook.PartTitles.Length; i++)
+            {
+                string label = "<color=#8c2614>" + HistoryBook.Roman(i + 1) + ".</color>  " + HistoryBook.PartTitles[i];
+                if (i == HistoryBook.YourActionsPart && _front.Count > 0) label = "<b>" + label + "</b>";
+                if (GUILayout.Button(label, _bkTocPart)) { Part(i); _bookPart = i; _bookChapter = 0; _bookScroll = Vector2.zero; _line = 0; AudioView.Ui("page"); }
+                string gist = i < book.Contents.Count ? book.Contents[i] : "";
+                if (_parts[i] != null && _parts[i].Chapters.Count > 0)
+                {
+                    var chs = _parts[i].Chapters;
+                    var sb = new System.Text.StringBuilder(gist);
+                    sb.Append(gist.Length > 0 ? ". " : "").Append(chs.Count == 1 ? "One chapter: " : chs.Count + " chapters: ");
+                    for (int k = 0; k < chs.Count && k < 5; k++) sb.Append(k > 0 ? "; " : "").Append(chs[k].Title);
+                    if (chs.Count > 5) sb.Append("; ...");
+                    gist = sb.ToString();
+                }
+                if (gist.Length > 0) GUILayout.Label(gist, _bkGist);
+            }
+            // the rest of the preface
+            if (book.Preface.Count > 1)
+            {
+                GUILayout.Label("Preface", _bkHead);
+                for (int k = 1; k < book.Preface.Count; k++) GUILayout.Label(book.Preface[k], _bkBody);
+            }
+        }
+
+        /// <summary>Where the leaf's foot leads (-1 back, 1 on): the chapter's title, a part's when it is not yet written, "" nowhere.</summary>
+        string TurnTitle(int d)
+        {
+            if (_bookPart == -1) return d > 0 ? "A Timeline of the World" : "";
+            if (_bookPart == TimelinePart) return d > 0 ? HistoryBook.PartTitles[0] : "Contents";
+            int k = _bookChapter + d;
+            if (_parts[_bookPart] != null && k >= 0 && k < _parts[_bookPart].Chapters.Count) return _parts[_bookPart].Chapters[k].Title;
+            int p = _bookPart + d;
+            if (p < 0) return "A Timeline of the World";
+            if (p >= _parts.Length) return "";
+            if (_parts[p] != null && _parts[p].Chapters.Count > 0) return _parts[p].Chapters[d > 0 ? 0 : _parts[p].Chapters.Count - 1].Title;
+            return HistoryBook.Roman(p + 1) + ". " + HistoryBook.PartTitles[p];
+        }
 
         /// <summary>(session 29) The people and places a record names, as links to their pages (the book closes for them).</summary>
         void BookLinks(TC2.Core.Simulation.World w, in HistoryEvent e)
