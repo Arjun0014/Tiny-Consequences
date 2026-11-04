@@ -16,7 +16,24 @@ namespace TC2.Game
         public double Distance = 30000;       // from the planet centre (m)
         public Vector3 FocusPoint;            // surface point under the view's centre
         Vector3 _lastMouse;
-        bool _dragging;
+        bool _dragging, _grab;
+        Vec3d _grabDir;
+
+        /// <summary>(session 32) The ground's direction under a screen point (the sphere at the planet's radius), from the camera as last placed; false over the sky.</summary>
+        bool GroundRay(Vector3 screen, out Vec3d dir)
+        {
+            dir = default;
+            if (Host == null || Host.World == null || Cam == null) return false;
+            double R = Host.World.Planet.Radius;
+            Ray ray = Cam.ScreenPointToRay(screen);
+            double ox = ray.origin.x, oy = ray.origin.y, oz = ray.origin.z, dx = ray.direction.x, dy = ray.direction.y, dz = ray.direction.z;
+            double b = ox * dx + oy * dy + oz * dz, c = ox * ox + oy * oy + oz * oz - R * R, disc = b * b - c;
+            if (disc <= 0) return false;
+            double t = -b - System.Math.Sqrt(disc);
+            if (t <= 0) return false;
+            dir = new Vec3d(ox + t * dx, oy + t * dy, oz + t * dz).Normalized;
+            return true;
+        }
         int _framedVersion = -1;
 
         void Update()
@@ -29,7 +46,12 @@ namespace TC2.Game
             // is drawn while a span is lived at speed
             bool held = LapseHoldsCamera;
             double lat0 = Lat, lon0 = Lon, dist0 = Distance;
-            if (Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1)) { _lastMouse = Input.mousePosition; _dragging = !Hud.PointerOverUi; }
+            if (Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1))
+            {
+                _lastMouse = Input.mousePosition; _dragging = !Hud.PointerOverUi;
+                // (session 32) the ground under the pointer is held: the drag keeps it under the hand
+                _grab = _dragging && GroundRay(Input.mousePosition, out _grabDir);
+            }
             if (Input.GetMouseButtonUp(0) || Input.GetMouseButtonUp(1)) _dragging = false;
             bool hand = false;   // (session 31: the player's hand on the camera this frame cancels a flight)
             HandTurned = false;
@@ -43,6 +65,15 @@ namespace TC2.Game
                 // (session 32: the ground follows the hand - Lon grows toward the screen's left here (Unity's left-handed frame), so a drag to the right
                 // turns Lon up; it had carried the world against the hand, Arjun's report)
                 double dLon = dm.x * k * (1.0 / System.Math.Max(0.2, System.Math.Cos(Lat))), dLat = -dm.y * k;
+                // (session 32) the held ground kept under the pointer: the camera turned by what lies between the ground held and the ground now under the
+                // hand (a frame behind, converging), never further than the plain rule's twice (near the horizon a pixel is kilometres); the sky: the rule
+                if (_grab && dm.sqrMagnitude > 0f && GroundRay(Input.mousePosition, out Vec3d under))
+                {
+                    double gLat = _grabDir.Latitude - under.Latitude, gLon = Wrap(_grabDir.Longitude - under.Longitude);
+                    double cap = 2.0 * System.Math.Sqrt(dLat * dLat + dLon * dLon) + 1e-9, mag = System.Math.Sqrt(gLat * gLat + gLon * gLon);
+                    if (mag > cap) { gLat *= cap / mag; gLon *= cap / mag; }
+                    dLat = gLat; dLon = gLon;
+                }
                 Lon += dLon; Lat += dLat;
                 HandTurned = false;
                 if (dm.sqrMagnitude > 4f) HandTurned = true;

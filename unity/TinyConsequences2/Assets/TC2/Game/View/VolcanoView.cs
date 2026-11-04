@@ -111,7 +111,7 @@ namespace TC2.Game
             {
                 var l = _live[i];
                 float age = now - l.Real;
-                float life = l.Fx.Kind == TC2.Core.Simulation.FxKind.Lava ? 25f : (l.Fx.Kind == TC2.Core.Simulation.FxKind.Wave ? 10f : l.Fx.Kind == TC2.Core.Simulation.FxKind.Bolt ? 0.9f : l.Fx.Kind == TC2.Core.Simulation.FxKind.Stone ? 16f : 12f);
+                float life = l.Fx.Kind == TC2.Core.Simulation.FxKind.Lava ? 25f : (l.Fx.Kind == TC2.Core.Simulation.FxKind.Wave ? 10f : l.Fx.Kind == TC2.Core.Simulation.FxKind.Bolt ? 0.9f : l.Fx.Kind == TC2.Core.Simulation.FxKind.Stone ? 40f : 12f);   // (session 32: a stone's dust hangs 40 s)
                 if (age > life) { _live.RemoveAt(i); continue; }
                 float s = Mathf.Clamp01((life - age) / (life * 0.4f));
                 Vec3d dir = P.Grid.Center[l.Fx.Cell];
@@ -140,17 +140,11 @@ namespace TC2.Game
                     case TC2.Core.Simulation.FxKind.Bolt:
                         {
                             // (F9.4) the bolt: a jagged line of light from the cloud to the ground, a flash where it strikes - under a second
+                            // (session 32: the bolt itself is AimView's, from the ledger's strike - the puffs here had stood as a column of pink beads)
+                            // the ground lit where it struck, and a puff of smoke from what it hit
                             float a = Mathf.Clamp01(1f - age / life);
-                            Vector3 prev = at + up * 700f;
-                            for (int k = 1; k <= 16; k++)
-                            {
-                                float h = 700f * (1f - k / 16f);
-                                Vector3 p = at + up * h + (k < 16 ? Jitter(seed + k * 0.37f, 18f + 0.04f * h) : Vector3.zero);
-                                Add(Vector3.Lerp(prev, p, 0.5f), 10f, 0.9f * a, 0f, 2.6f * a, Mathf.Repeat(seed + k * 0.13f, 1f), 0f);
-                                Add(p, 9f, 0.9f * a, 0f, 2.6f * a, Mathf.Repeat(seed + k * 0.29f, 1f), 0f);
-                                prev = p;
-                            }
-                            Add(at + up * 4f, 60f, 0.5f * a, 0f, 1.8f * a, seed, 0f);
+                            Add(at + up * 4f, 70f, 0.55f * a, 0f, 2.2f * a, seed, 0f);
+                            if ((at - Rig.Cam.transform.position).magnitude < 2500f && age < 0.05f) AimView.Flash(0.3f);
                             break;
                         }
                     case TC2.Core.Simulation.FxKind.Stone:
@@ -172,6 +166,37 @@ namespace TC2.Game
                             {
                                 float g = age - fall, ph = Mathf.Clamp01(g / (life - fall));
                                 if (g < 0.8f) Add(at + up * 20f, 260f * (0.6f + g), 0.9f * (1f - g / 0.8f), 0f, 3f * (1f - g / 0.8f), seed, 0f);   // the flash
+                                // (session 32: a stone should feel like a stone) the picture whitened as it lands; a fireball rising off the ground; earth and
+                                // stone thrown up in arcs and falling back; a wall of dust running out along the ground
+                                if (g < 0.06f && (at - Rig.Cam.transform.position).magnitude < 9000f) AimView.Flash(0.85f);
+                                if (g < 2.2f)
+                                {
+                                    float fb = g / 2.2f;
+                                    for (int k = 0; k < 7; k++)
+                                        Add(at + up * (25f + 160f * Mathf.Sqrt(fb) * (0.5f + 0.1f * k)) + Jitter(seed + k * 0.71f, 40f + 70f * fb), 70f + 110f * fb, 0.85f * (1f - fb), 0.35f, 2.4f * (1f - fb) * (1f - fb), Mathf.Repeat(seed + k * 0.19f, 1f), 0f);
+                                }
+                                if (g < 3.2f)
+                                    for (int k = 0; k < 22; k++)
+                                    {
+                                        Vector3 dirk = Jitter(seed * 3.1f + k * 0.83f, 1f); dirk -= up * Vector3.Dot(dirk, up); dirk = dirk.normalized;
+                                        float vh = 40f + 70f * Mathf.Repeat(seed * 5f + k * 0.37f, 1f), vu = 90f + 90f * Mathf.Repeat(seed * 9f + k * 0.53f, 1f);
+                                        float h = vu * g - 55f * g * g;
+                                        if (h < -5f) continue;
+                                        Add(at + up * (Mathf.Max(0f, h) + 3f) + dirk * (vh * g), 9f, 0.95f, 1f, g < 0.6f ? 1.2f * (1f - g / 0.6f) : 0f, Mathf.Repeat(seed + k * 0.07f, 1f), 0.6f);
+                                    }
+                                if (g < 4f)
+                                {
+                                    float rr = 360f * Mathf.Sqrt(g / 4f), fr = 1f - g / 4f;
+                                    Vec3d cd = P.Grid.Center[l.Fx.Cell];
+                                    Vec3d ce = Vec3d.Cross(new Vec3d(0, 1, 0), cd); if (ce.Length < 1e-6) ce = new Vec3d(1, 0, 0); ce = ce.Normalized;
+                                    Vec3d cn = Vec3d.Cross(cd, ce).Normalized;
+                                    for (int k = 0; k < 30; k++)
+                                    {
+                                        double a2 = 2 * System.Math.PI * k / 30, ang = rr / P.Radius;
+                                        Vec3d d2 = (cd * System.Math.Cos(ang) + (ce * System.Math.Cos(a2) + cn * System.Math.Sin(a2)) * System.Math.Sin(ang)).Normalized;
+                                        Add(Ground.Surface(P, d2, 6f + 10f * g), 30f + 0.12f * rr, 0.55f * fr, 0.7f, 0f, Mathf.Repeat(seed + k * 0.31f, 1f), 0.85f);
+                                    }
+                                }
                                 // (session 27: s27book4 - the cloud, every puff lit orange by the fire, had glowed salmon over a quarter of the screen in the
                                 // dawn's dark for 16 s, hiding the burning town under it) grey-brown dust and smoke, thinner and smaller, the crater's fire
                                 // lighting only its lowest puffs and only at first

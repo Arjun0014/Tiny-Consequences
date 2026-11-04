@@ -24,8 +24,19 @@ namespace TC2.Game
         public static Color AimColor = Color.white;
         static int _aimFrame = -10;
 
-        /// <summary>The power aimed this frame: its point, reach (m) and colour.</summary>
-        public static void Aim(Vec3d dir, double reach, Color col) { AimDir = dir; AimReach = reach; AimColor = col; _aimFrame = Time.frameCount; }
+        /// <summary>The power aimed this frame: its point, reach (m) and colour. (session 32) The ring drawn eases to it (it steps from cell to cell).</summary>
+        public static void Aim(Vec3d dir, double reach, Color col)
+        {
+            if (Time.frameCount - _aimFrame > 2 || Vec3d.Dot(_shownDir, dir) < 0.99) _shownDir = dir;   // (a new aim, or far: at once)
+            AimDir = dir; AimReach = reach; AimColor = col; _aimFrame = Time.frameCount;
+        }
+        static Vec3d _shownDir = new Vec3d(0, 1, 0);
+
+        /// <summary>(session 32) A flash over the whole picture (0..1): a bolt's, a stone's landing - the HUD draws it, fading in a quarter second.</summary>
+        public static void Flash(float strength) { FlashStrength = Mathf.Max(FlashAlpha, Mathf.Clamp01(strength)); FlashAt = Time.unscaledTime; }
+        public static float FlashStrength, FlashAt = -99f;
+        /// <summary>The flash's opacity now.</summary>
+        public static float FlashAlpha { get { float a = Time.unscaledTime - FlashAt; return a < 0f || a > 0.35f ? 0f : FlashStrength * (1f - a / 0.35f) * (1f - a / 0.35f); } }
 
         /// <summary>A mark is drawn while the HUD renewed it this frame or the last (the HUD draws after the views' LateUpdate).</summary>
         public static bool Aiming => Pinned || Time.frameCount - _aimFrame <= 1;
@@ -100,6 +111,10 @@ namespace TC2.Game
             double minR = Mathf.Max(4f, alt * 0.012f);   // (a mark is never smaller than the eye can find)
             if (Aiming)
             {
+                // (eased toward where it strikes)
+                double ek = 1.0 - System.Math.Exp(-Time.unscaledDeltaTime / 0.06);
+                _shownDir = new Vec3d(_shownDir.X + (AimDir.X - _shownDir.X) * ek, _shownDir.Y + (AimDir.Y - _shownDir.Y) * ek, _shownDir.Z + (AimDir.Z - _shownDir.Z) * ek).Normalized;
+                Vec3d aimAt = _shownDir;
                 double r = System.Math.Max(minR, AimReach);
                 float breathe = 0.5f + 0.5f * Mathf.Sin(now * 3.2f);
                 Color fill = AimColor; fill.a = 0.10f + 0.04f * breathe;
@@ -108,10 +123,10 @@ namespace TC2.Game
                 // the band and the mark at its heart sized for the eye (the camera's height), not by the reach: a 900 m reach had laid a 50 m opaque
                 // ring over the village at its heart and a band as wide as a field at its edge
                 double wid = System.Math.Min(r * 0.03, System.Math.Max(1.0, alt * 0.0045));
-                Disc(w, AimDir, r - wid * 0.5, fill, lift);
-                Band(w, AimDir, r - wid * 0.5, r + wid * 0.5, edge, edge, lift);
-                Band(w, AimDir, r + wid * 0.5, r + wid * 2.0, edge, clear, lift);
-                Band(w, AimDir, minR * 0.30, minR * 0.42, edge, edge, lift);
+                Disc(w, aimAt, r - wid * 0.5, fill, lift);
+                Band(w, aimAt, r - wid * 0.5, r + wid * 0.5, edge, edge, lift);
+                Band(w, aimAt, r + wid * 0.5, r + wid * 2.0, edge, clear, lift);
+                Band(w, aimAt, minR * 0.30, minR * 0.42, edge, edge, lift);
             }
             for (int k = 0; k < Marks.Length; k++)
             {

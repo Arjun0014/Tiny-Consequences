@@ -120,8 +120,10 @@ namespace TC2.Game
             AudioView.Ui("cast");
             float shake = pw.Kind == CommandKind.GodMeteor ? 1f : pw.Kind == CommandKind.GodQuake ? 0.85f : pw.Kind == CommandKind.GodEruption ? 0.7f : pw.Kind == CommandKind.GodStorm ? 0.3f : pw.Kind == CommandKind.GodLightning ? 0.25f : 0.1f;
             bool meteor = pw.Kind == CommandKind.GodMeteor;
+            // (session 32) where the world strikes: the heart of the cell aimed at (the world knows cells) - the burst, the stone's fall and the ring all there
             if (meteor) { AimView.Cast(w.Planet.Grid.Center[cell], pw.Reach, pw.Col, shake, true); AudioView.MeteorFall(AimView.FallTime); }
-            else if (GroundUnder(Input.mousePosition, out var at, out _)) AimView.Cast(at, pw.Reach, pw.Col, shake);
+            else AimView.Cast(w.Planet.Grid.Center[cell], pw.Reach, pw.Col, shake);
+            if (pw.Kind == CommandKind.GodLightning) AimView.Flash(0.55f);
             _aim = -1;
         }
 
@@ -363,7 +365,9 @@ namespace TC2.Game
             // (session 27) its reach laid on the ground (AimView), and the villages it would reach named
             var P = w.Planet; var pwr = Powers[_aim];
             string nothing = Refused(w, dir, pwr);
-            AimView.Aim(dir, pwr.Reach, nothing != null ? new Color(0.62f, 0.60f, 0.58f) : pwr.Col);   // (grey: it would touch nothing here)
+            // (session 32) the ring where the world will strike: the heart of the cell under the pointer (a meteor aimed at a house had come down 100 m off
+            // behind the town, at its cell's heart; the ring now steps from cell to cell, eased)
+            AimView.Aim(P.Grid.Center[cell], pwr.Reach, nothing != null ? new Color(0.62f, 0.60f, 0.58f) : pwr.Col);   // (grey: it would touch nothing here)
             string reach = nothing != null ? "<color=#e6b8a0>" + nothing + "</color>" : InReach(w, dir, pwr);
             Vector2 m = Event.current.mousePosition;
             string where = TC2.Core.History.HistoryText.At(w.PlaceName(cell));

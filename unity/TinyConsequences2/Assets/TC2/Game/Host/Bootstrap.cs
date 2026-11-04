@@ -59,6 +59,8 @@ namespace TC2.Game
             objects.Host = host; objects.Rig = rig;
             var volcanoes = views.AddComponent<VolcanoView>();
             volcanoes.Host = host; volcanoes.Rig = rig;
+            var shocks = views.AddComponent<ShockView>();   // (session 32: a quake's wave and fallen buildings' dust)
+            shocks.Host = host; shocks.Rig = rig;
             var puffs = views.AddComponent<PuffRenderer>();
             puffs.Rig = rig;
             var rain = views.AddComponent<RainView>();

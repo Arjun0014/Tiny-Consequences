@@ -861,6 +861,9 @@ namespace TC2.Game
             // (session 29) a catch-up or a skip is watched from orbit, the years in large type and the headlines as they come (Hud.Lapse.cs)
             if (Host.CatchingUp) { LapseOverlay(w, sw, sh, 16f); _uiRects.Clear(); LapseRects(); return; }   // (only the overlay is drawn: its rects alone keep names off it)
             if (Title(sw, sh)) { KeepSettings(); return; }   // (the opening: F11.1)
+            // (session 32) a bolt's or a stone's flash over the whole picture, under the HUD
+            float flash = AimView.FlashAlpha;
+            if (flash > 0f && Event.current.type == EventType.Repaint) { var fo = GUI.color; GUI.color = new Color(1f, 0.97f, 0.9f, flash); GUI.DrawTexture(new Rect(0f, 0f, sw, sh), Texture2D.whiteTexture); GUI.color = fo; }
 
             if (_hidden) { PointerOverUi = false; WorldObjectsView.Chosen = WorldObjectsView.Pointed = WorldObjectsView.ChosenHome = WorldObjectsView.PointedHome = 0; return; }
             // (the names take no input: laid out and drawn on the repaint only - session 27, context 4: every IMGUI event had placed and measured them all
