@@ -156,6 +156,8 @@ namespace TC2.Game
             if (right - left >= Mathf.Min(tw, 320f)) { tw = Mathf.Min(tw, right - left); x = Mathf.Clamp(x, left, right - tw); }
             else floor = Mathf.Min(floor, Mathf.Min(_handRect.width > 0f ? _handRect.y : floor, _bottom.width > 0f ? _bottom.y : floor));   // (no room beside them)
             float th = _tipStyle.CalcHeight(c, tw);
+            // (session 32 QA, s32first3) the guide's card stands over the bar's middle in the first minutes: the word goes above it, not under it
+            if (_guideCard.width > 0f && x < _guideCard.xMax && x + tw > _guideCard.x && floor - th - 6f < _guideCard.yMax && floor - 6f > _guideCard.y) floor = _guideCard.y;
             _noteRect = new Rect(x, floor - th - 6f, tw, th);
             GUI.color = new Color(1f, 1f, 1f, a);
             GUI.Box(_noteRect, c, _tipStyle);
