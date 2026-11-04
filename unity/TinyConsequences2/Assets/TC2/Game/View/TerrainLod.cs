@@ -1272,7 +1272,7 @@ namespace TC2.Game
         TC2.Core.Simulation.World _impactWorld;
         long _impactSeen;
         /// <summary>m: a strike's bowl, its rim's outer edge and how far its thrown earth and scorch reach; years until its scar has grown over.</summary>
-        const float ScarBowl = 20f, ScarRim = 29f, ScarThrow = 75f, ScarYears = 200f;
+        const float ScarBowl = 40f, ScarRim = 56f, ScarThrow = 150f, ScarYears = 200f;   // (session 32: the scar to the blast's size - a 20 m bowl was under two of the ground's vertices, never seen: s32pow2)
 
         /// <summary>The meteors' strikes the ledger holds, kept up as it grows (each record read once; a new world read whole).</summary>
         void UpdateImpacts(TC2.Core.Simulation.World w)
@@ -1698,7 +1698,7 @@ namespace TC2.Game
                     // (session 27) a meteor's scar over all: thrown earth and scorch, the pale rim, the dark bowl; no wood over the bowl and rim while fresh
                     if (scarBowl + scarRim + scarThrow > 0f)
                     {
-                        col = Color.Lerp(col, ScarScorch, scarThrow * 0.5f);
+                        col = Color.Lerp(col, ScarScorch, scarThrow * 0.8f);
                         col = Color.Lerp(col, ScarRimCol, scarRim * 0.7f);
                         col = Color.Lerp(col, ScarBowlCol, scarBowl * 0.85f);
                         clear = Mathf.Max(clear, Mathf.Max(scarBowl, scarRim));
