@@ -9,7 +9,8 @@ namespace TC2.Game
     /// (session 31: the first minutes) A short walk through the living world, shown rather than told: the whole planet; down to a real village; a real person, drawn where
     /// they are, to point at and click; their life; why their place is as it is; the book; time and the skip from orbit; the powers last. It never stops the world, a line
     /// or two at a time in a small card, and whatever it points at is ringed; what the player does moves it on, and Next always does. Skip at any time, again from the menu.
-    /// And the small hints after it, each said once: "Click a person to follow their life", "Open Why? to trace how this happened", "Skip decades and read what changed".
+    /// And the small hints after it, each said once: "Click a person to follow their life", "Open Why? to trace how this place came to be", "Skip decades, then read
+    /// what changed". (session 32: every step's words cut to a line or two; the last points at Your hand and its tree of consequences.)
     /// Reads the world and moves the camera; writes nothing in the world.
     /// </summary>
     public sealed partial class Hud
@@ -80,34 +81,34 @@ namespace TC2.Game
                     _book = false; _personPage = false; _placeSid = 0; _building = 0; _selected = 0;
                     _guideSid = GreatestPlace(w);
                     Rig.FlyTo(_guideSid != 0 ? PlaceCentres.Of(w, _guideSid, Host.WorldVersion) : Vec3d.FromLatLon(Rig.Lat, Rig.Lon), w.Planet.Radius * 2.2, 2.8f);
-                    _guideTitleText = "This world is not waiting for you";
-                    _guideText = "Its weather, its woods, its beasts and its people all live by the same rules, and go on whether you watch or not. Nobody gives them orders - not even you.";
+                    _guideTitleText = "This world does not wait for you";
+                    _guideText = "Its people farm, build, marry and quarrel for their own reasons, whether you watch or not. Nobody gives them orders - not even you.";
                     break;
                 case 1:
                     _guideSid = GreatestPlace(w);
                     string name = _guideSid != 0 ? w.History.NameOf(EntityRef.Settlement(_guideSid)) : "A village";
                     if (_guideSid != 0) Rig.FlyTo(PlaceCentres.Of(w, _guideSid, Host.WorldVersion), 900.0, 3.6f);
                     _guideTitleText = name;
-                    _guideText = "Nobody placed " + name + ". People chose this ground, and every field, road and house you see was raised by someone, for a reason.";
+                    _guideText = "Nobody placed " + name + ". Its people chose this ground, and raised every house, field and road you see for reasons of their own.";
                     break;
                 case 2:
                     _guidePid = 0;
-                    _guideTitleText = "Everyone down there has a life";
-                    _guideText = "Each figure is one person, with a family, a trade and their own reasons for what they are doing today. Point at the one ringed in gold.";
+                    _guideTitleText = "Everyone here has a life";
+                    _guideText = "Each figure is one person, with a family, a trade and a reason for what they are doing. Point at the one ringed in gold.";
                     _guideGround = true;
                     break;
                 case 3:
                     _guideTitleText = "Now click them";
-                    _guideText = "Pointing tells you what they are doing and why. Clicking opens who they are.";
+                    _guideText = "Pointing shows what they are doing, and why. A click opens who they are.";
                     _guideGround = true;
                     break;
                 case 4:
                     _guideTitleText = "A person, not a unit";
-                    _guideText = "Their card says what they are doing, and why - from the same choice the world itself made. Open their life.";
+                    _guideText = "Their card shows their day and the real reason behind it - the choice the world itself made. Open their life.";
                     break;
                 case 5:
-                    _guideTitleText = "Their family, their work, their life";
-                    _guideText = "Nothing on this page was written for show: it is what the world remembers of them. Every name opens that person. Try Family, or Life.";
+                    _guideTitleText = "A real life";
+                    _guideText = "Family, work, the years behind them: all of it is what the world remembers, nothing written for show. Every name opens that person.";
                     break;
                 case 6:
                     {
@@ -116,35 +117,35 @@ namespace TC2.Game
                         int home = _guideSid;
                         if (home != 0) ShowPlace(home, PlaceWhyTab);
                         _guideTitleText = "Why?";
-                        _guideText = "Places, works and people can all say why they are as they are. Each answer is a chain of real records, back to where it began: nature, people's choices - or you.";
+                        _guideText = (home != 0 ? "This is " + w.History.NameOf(EntityRef.Settlement(home)) + "'s page: click any village to open its own. " : "Click any village to open its page. ") + "Why? traces how it came to be, link by real link - back to nature, people's choices, or you.";
                         break;
                     }
                 case 7:
                     _placeSid = 0;
                     _guideTitleText = "The History Book";
-                    _guideText = "The world writes its own chronicle as it ages: ages, rulers, wars, plagues, great lives. Open it.";
+                    _guideText = "The world writes its own chronicle as it ages: rulers, wars, plagues, great lives. Open it.";
                     break;
                 case 8:
                     _guideTitleText = "Everything in it happened";
-                    _guideText = "Click any line and the book tells what caused it. Its pages grow as the years pass, and they are worth reading after a long skip.";
+                    _guideText = "Click any line to see what caused it. The book grows with the years - read it after a long skip.";
                     break;
                 case 9:
                     _book = false;
                     _guideTitleText = "Time is yours";
-                    _guideText = "Hold the world still, or let it run. At a day a second and faster the camera rises to orbit, because the days pass too fast to watch from the ground.";
+                    _guideText = "Pause it (Space) or speed it up (1-8). From a day a second, the camera rises to orbit: the days pass too fast to watch from the ground.";
                     break;
                 case 10:
                     _guideWaitsLapse = false;
-                    _guideTitleText = "Watch the years go by";
-                    _guideText = "Skip leaps ahead, watched from orbit, and brings you back to where you were. Try a year now: when you come back, a leaf tells what the year did.";
+                    _guideTitleText = "Skip the years";
+                    _guideText = "Skip leaps years ahead, watched from orbit, then brings you back. Try one year now - a leaf will tell you what it did.";
                     break;
                 case 11:
-                    _guideTitleText = "And you may reach in";
-                    _guideText = "You cannot command anyone. You can only change the world they live in, and see what they do about it. Choose a power, then click the ground.";
+                    _guideTitleText = "Reach in";
+                    _guideText = "You cannot command anyone - only change the world they live in. Choose a power below, then click the ground.";
                     break;
                 default:
-                    _guideTitleText = "The rest is theirs";
-                    _guideText = "What follows from your hand is their own doing. Your Actions, the book's last part, traces each thing you do across the decades. That is all: the world is yours to watch.";
+                    _guideTitleText = "What came of it";
+                    _guideText = "What follows is the world's own doing. Your hand, at the lower left, gathers it - open it for the tree of consequences, link by link, across the years.";
                     break;
             }
         }
@@ -173,7 +174,7 @@ namespace TC2.Game
                         {
                             Host.SpeedIndex = 5;
                             _guideTitleText = "Night has fallen";
-                            _guideText = "Its people are abed. The hours run on to morning.";
+                            _guideText = "Its people are asleep. The hours run on to morning.";
                         }
                     }
                     else
@@ -299,11 +300,11 @@ namespace TC2.Game
             if (Host.Skipping) _everSkipped = true;
             Hint("zoom", !_everZoomed, 10f, "Scroll to come down from orbit to a village.");
             Hint("person", alt < 400.0 && !_everPicked, 8f, "Click a person to follow their life.");
-            Hint("why", _placeSid != 0 && _placeTab != PlaceWhyTab, 6f, "Open Why? to trace how this came about.");
+            Hint("why", _placeSid != 0 && _placeTab != PlaceWhyTab, 6f, "Open Why? to trace how this place came to be.");
             Hint("book", _lapseSummary != null && _lapseSummary.Count > 0, 4f, "The years you skipped are written down: open the History Book.");
-            Hint("hand", _hand.Count > 0, 3f, "Your hand shows what came of what you did. Give it time: the book's Your Actions follows it for decades.");
+            Hint("hand", _hand.Count > 0, 3f, "Your hand shows what came of what you did - open it to follow it.");
             Hint("skip", _playedFor > 150f && !_everSkipped, 0f, "Skip decades, then read what changed.");
-            Hint("power", _playedFor > 240f && !_everCast, 0f, "Choose a power below, then click the ground. See what the world does about it.");
+            Hint("power", _playedFor > 240f && !_everCast, 0f, "Choose a power below, then click the ground - and see what the world does.");
         }
 
         /// <summary>The hint now said: a line in the book's italic above the power bar, with a small gold mark.</summary>

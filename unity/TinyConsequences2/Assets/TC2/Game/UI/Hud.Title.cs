@@ -14,9 +14,9 @@ namespace TC2.Game
         bool _titleAsked, _titleOn;
         int _titleSpeed = 3;
         float _titleBorn, _titleLeft = -1f;
-        GUIStyle _titleTag, _titleWorld, _menuWord, _menuWordOn, _menuSub, _pageTitle2, _mnText, _mnTextDim, _pageCap, _busyWord;
+        GUIStyle _titleTag, _titleWorld, _menuWord, _menuWordOn, _menuWordOff, _menuWordBig, _menuWordBigOn, _menuSub, _pageTitle2, _mnText, _mnTextDim, _pageCap, _busyWord;
         int _titleHover = -1;
-        readonly float[] _titleLit = new float[8];
+        readonly float[] _titleLit = new float[8], _titlePress = { -9f, -9f, -9f, -9f, -9f, -9f, -9f, -9f };
         bool _newWorldBusy; int _newWorldFrames; ulong _newWorldSeed;
 
         static readonly string[] Skips = { "speed", "fresh", "seed", "absence", "view", "book", "test", "menu" };
@@ -60,8 +60,11 @@ namespace TC2.Game
             }
             _titleTag = L(_serif, 21, new Color(0.95f, 0.92f, 0.84f), FontStyle.Italic);
             _titleWorld = L(_serif, 15, new Color(0.82f, 0.80f, 0.74f), FontStyle.Italic);
-            _menuWord = L(_display, 31, new Color(0.93f, 0.90f, 0.82f), a: TextAnchor.MiddleLeft, wrap: false);
-            _menuWordOn = L(_display, 31, new Color(1f, 0.87f, 0.58f), a: TextAnchor.MiddleLeft, wrap: false);
+            _menuWord = L(_display, 30, new Color(0.93f, 0.90f, 0.82f), a: TextAnchor.MiddleLeft, wrap: false);
+            _menuWordOn = L(_display, 30, new Color(1f, 0.87f, 0.58f), a: TextAnchor.MiddleLeft, wrap: false);
+            _menuWordOff = L(_display, 30, new Color(0.62f, 0.60f, 0.56f, 0.55f), a: TextAnchor.MiddleLeft, wrap: false);
+            _menuWordBig = L(_display, 38, new Color(0.96f, 0.93f, 0.85f), a: TextAnchor.MiddleLeft, wrap: false);
+            _menuWordBigOn = L(_display, 38, new Color(1f, 0.87f, 0.58f), a: TextAnchor.MiddleLeft, wrap: false);
             _menuSub = L(_serif, 15, new Color(0.80f, 0.77f, 0.70f), FontStyle.Italic, a: TextAnchor.MiddleLeft, wrap: false);
             _pageTitle2 = L(_display, 30, new Color(1f, 0.87f, 0.58f));
             _mnText = L(_serif, 17, new Color(0.94f, 0.91f, 0.84f));
@@ -70,32 +73,47 @@ namespace TC2.Game
             _busyWord = new GUIStyle(_menuWordOn) { alignment = TextAnchor.MiddleCenter };
         }
 
-        /// <summary>A word of a menu: lit, with a lozenge and a small step to the right, under the pointer; a line under it if given. True when clicked.</summary>
-        bool MenuWord(Rect r, int id, string word, string sub = null)
+        /// <summary>A word of a menu: under the pointer lit gold, a step to the right with a lozenge before it, a soft glow and a gold rule drawn out under
+        /// it; held lit while its page is open (<paramref name="open"/>); a flash when clicked. A word with a line under it is the menu's first, in larger
+        /// type. One that cannot be chosen now (<paramref name="can"/> false) is drawn faint with why beside it, and takes no click. True when clicked.</summary>
+        bool MenuWord(Rect r, int id, string word, string sub = null, bool open = false, bool can = true, string why = null)
         {
             var e = Event.current;
-            bool over = r.Contains(e.mousePosition) && GUI.enabled;
+            bool live = GUI.enabled && can;
+            bool over = live && r.Contains(e.mousePosition);
+            bool has = id >= 0 && id < _titleLit.Length;
             if (e.type == EventType.Repaint)
             {
-                if (id >= 0 && id < _titleLit.Length) _titleLit[id] = Mathf.MoveTowards(_titleLit[id], over ? 1f : 0f, Time.unscaledDeltaTime * 7f);
-                float lit = id >= 0 && id < _titleLit.Length ? _titleLit[id] : (over ? 1f : 0f);
+                if (has) _titleLit[id] = Mathf.MoveTowards(_titleLit[id], over || (open && live) ? 1f : 0f, Time.unscaledDeltaTime * 7f);
+                float lit = has ? _titleLit[id] : (over ? 1f : 0f);
+                float flash = has ? Mathf.Clamp01(1f - (Time.unscaledTime - _titlePress[id]) / 0.4f) : 0f;
                 float dx = 18f * lit;
-                if (lit > 0.01f)
+                bool big = sub != null;
+                var st = !live ? _menuWordOff : over || open || flash > 0f ? (big ? _menuWordBigOn : _menuWordOn) : (big ? _menuWordBig : _menuWord);
+                float wh = big ? 44f : r.height, cy = r.y + wh * 0.5f;
+                float tw = st.CalcSize(new GUIContent(word)).x;
+                var old = GUI.color;
+                if (lit > 0.01f || flash > 0f)
                 {
-                    var old = GUI.color;
+                    // the glow behind the word, brighter for a moment when it is clicked
+                    GUI.color = new Color(1f, 0.80f, 0.42f, (0.20f * lit + 0.45f * flash) * old.a);
+                    GUI.DrawTexture(new Rect(r.x + dx - 34f, cy - wh * 0.62f, tw + 68f, wh * 1.24f), Ui("glow"), ScaleMode.StretchToFill, true);
                     GUI.color = new Color(1f, 0.82f, 0.45f, lit * old.a * 0.9f);
-                    float cy = r.y + (sub != null ? 19f : r.height * 0.5f);
                     GUI.DrawTexture(new Rect(r.x - 2f, cy - 7f, 14f, 14f), Ui("thumb"));
+                    // the rule drawn out under it from the left
+                    GUI.color = new Color(0.97f, 0.80f, 0.45f, lit * old.a * 0.85f);
+                    GUI.DrawTexture(new Rect(r.x + dx + 1f, cy + st.fontSize * 0.52f + 2f, tw * lit, 1.5f), _dot);
                     GUI.color = old;
                 }
-                var st = over ? _menuWordOn : _menuWord;
-                Edged(new Rect(r.x + dx, r.y, r.width - dx, sub != null ? 38f : r.height), word, st);
-                if (sub != null) Edged(new Rect(r.x + dx + 1f, r.y + 36f, r.width - dx, 20f), sub, _menuSub);
+                Edged(new Rect(r.x + dx, r.y, r.width - dx, wh), word, st);
+                if (sub != null) Edged(new Rect(r.x + dx + 1f, r.y + wh + 2f, r.width - dx, 20f), sub, _menuSub);
+                if (!live && why != null && GUI.enabled) Edged(new Rect(r.x + tw + 14f, r.y, r.width, wh), why, _menuSub);
             }
             if (id != _titleHover && over && id >= 0) { _titleHover = id; AudioView.Ui("tick"); }
             else if (_titleHover == id && !over) _titleHover = -1;
+            if (!live) return false;
             bool click = GUI.Button(r, GUIContent.none, GUIStyle.none);
-            if (click) AudioView.Ui("click");
+            if (click) { AudioView.Ui("click"); if (has) _titlePress[id] = Time.unscaledTime; }
             return click;
         }
 
@@ -148,34 +166,36 @@ namespace TC2.Game
             y += lh + 2f;
             Ornament(new Rect(colX, y, colW * 0.82f, 26f));
             y += 34f;
-            Edged(new Rect(colX + 2f, y, colW, 58f), "A tiny living world that lives and ages without you.\nYou may watch it, read its history - and reach in.", _titleTag);
-            y += 74f;
-            // the words
+            Edged(new Rect(colX + 2f, y, colW, 58f), "A tiny world that lives and remembers without you.\nWatch it, read its history - and reach in.", _titleTag);
+            y += 78f;
+            // the words: the way in first and larger, then the rest
             float itemW = Mathf.Min(colW, 420f), itemH = 44f;
             string worldLine = w != null ? (Host.Continued ? "Your world, " : "A new world, ") + YearAndSeason(w.Now) + ": " + w.LivingPeople().ToString("N0", System.Globalization.CultureInfo.InvariantCulture) + " people in " + w.InhabitedSettlements() + " places" : null;
             bool busy = _newWorldBusy || w == null;
             GUI.enabled = !busy;
-            _titleBeginRect = new Rect(colX, y, itemW, 58f);
-            if (MenuWord(_titleBeginRect, 0, Host.Continued ? "Continue" : "Begin", worldLine)) TitleLeave();
-            y += 64f;
-            if (MenuWord(new Rect(colX, y, itemW, itemH), 1, "A New World")) { _menuPage = _menuPage == MenuNew ? MenuMain : MenuNew; if (_seedText == null) _seedText = NextSeed(); _copyNote = null; }
+            _titleBeginRect = new Rect(colX, y, itemW, 68f);
+            if (MenuWord(_titleBeginRect, 0, Host.Continued ? "Continue" : "Begin", worldLine ?? "")) TitleLeave();
+            y += 80f;
+            if (MenuWord(new Rect(colX, y, itemW, itemH), 1, "A New World", open: _menuPage == MenuNew)) { _menuPage = _menuPage == MenuNew ? MenuMain : MenuNew; if (_seedText == null) _seedText = NextSeed(); _copyNote = null; }
             y += itemH;
             bool anyKept = Settings.AnyKept();
-            if (anyKept) { if (MenuWord(new Rect(colX, y, itemW, itemH), 2, "Worlds Kept")) _menuPage = _menuPage == MenuWorlds ? MenuMain : MenuWorlds; y += itemH; }
-            if (MenuWord(new Rect(colX, y, itemW, itemH), 3, "How to Play")) _menuPage = _menuPage == MenuHow ? MenuMain : MenuHow;
+            if (MenuWord(new Rect(colX, y, itemW, itemH), 2, "Worlds Kept", open: _menuPage == MenuWorlds, can: anyKept, why: "none kept yet")) _menuPage = _menuPage == MenuWorlds ? MenuMain : MenuWorlds;
             y += itemH;
-            if (MenuWord(new Rect(colX, y, itemW, itemH), 4, "Settings")) _menuPage = _menuPage == MenuSettings ? MenuMain : MenuSettings;
+            if (MenuWord(new Rect(colX, y, itemW, itemH), 3, "How to Play", open: _menuPage == MenuHow)) _menuPage = _menuPage == MenuHow ? MenuMain : MenuHow;
             y += itemH;
-            if (MenuWord(new Rect(colX, y, itemW, itemH), 5, "Credits")) _menuPage = _menuPage == MenuCredits ? MenuMain : MenuCredits;
+            if (MenuWord(new Rect(colX, y, itemW, itemH), 4, "Settings", open: _menuPage == MenuSettings)) _menuPage = _menuPage == MenuSettings ? MenuMain : MenuSettings;
+            y += itemH;
+            if (MenuWord(new Rect(colX, y, itemW, itemH), 5, "Credits", open: _menuPage == MenuCredits)) _menuPage = _menuPage == MenuCredits ? MenuMain : MenuCredits;
             GUI.enabled = true;
             // the page beside the words, over the planet's side of the screen
             if (_menuPage != MenuMain)
             {
                 float pw = Mathf.Min(620f, sw - (colX + itemW + 34f) - 24f);
-                float ph = Mathf.Min(sh - 72f, _menuPage == MenuSettings ? 620f : _menuPage == MenuHow ? 736f : _menuPage == MenuCredits ? 560f : 420f);
+                float ph = Mathf.Min(sh - 56f, MenuPageHeight());
                 if (pw < 360f) pw = Mathf.Min(sw - 40f, 620f);
                 MenuPageDraw(new Rect(sw - pw - 28f, Mathf.Max(24f, (sh - ph) * 0.5f), pw, ph), w, true);
             }
+            else _menuScrollPage = -1;
             if (_newWorldBusy)
             {
                 var o = GUI.color; GUI.color = new Color(0f, 0f, 0f, 0.55f); GUI.DrawTexture(new Rect(0, 0, sw, sh), _dot); GUI.color = o;
