@@ -85,6 +85,44 @@ namespace TC2.Tests.Core
             Assert.Greater(records, 0);
         }
 
+        /// <summary>(session 32) No name reads as a word of a sentence ("The Trilouk became first ...", "Ten Kobo raised a band"): not among many draws
+        /// of the generator in many tongues and under the old rules, nor in whole worlds as they are made and after a season of births.</summary>
+        [Test]
+        public void NoNameReadsAsAWord()
+        {
+            int drawn = 0;
+            var hits = new List<string>();
+            void Look(string n) { drawn++; if (Names.IsWord(n.ToLowerInvariant())) hits.Add(n); }
+            for (ulong seed = 1; seed <= 4; seed++)
+                for (int key = 1; key <= 30; key++)
+                {
+                    long t = Names.NewTongue(seed, key);
+                    for (int id = 1; id <= 300; id++) { Look(Names.Person(seed, id + key * 1000, id % 2 == 0, t)); Look(Names.Family(seed, id + key * 1000, t)); Look(Names.Place(seed, id + key * 1000, t)); }
+                }
+            for (int id = 1; id <= 5000; id++) { Look(Names.Person(9, id, id % 2 == 0)); Look(Names.Family(9, id)); Look(Names.Place(9, id)); }
+            Assert.IsEmpty(hits, drawn + " names drawn");
+            foreach (ulong seed in new ulong[] { 631, 12 })
+            {
+                var w = TestWorlds.Make(seed);
+                Assert.IsEmpty(Wordlike(w), "seed " + seed + " as it is made");
+                w.AdvanceTo(SimTime.Days(60));
+                Assert.IsEmpty(Wordlike(w), "seed " + seed + " after a season");
+            }
+        }
+
+        /// <summary>Every name of a world's people (each of its words), households and places that reads as a word.</summary>
+        static List<string> Wordlike(World w)
+        {
+            var l = new List<string>();
+            for (int id = w.People.First(); id != 0; id = w.People.Next(id))
+                foreach (var part in w.History.NameOf(EntityRef.Person(id)).Split(' ')) if (Names.IsWord(part.ToLowerInvariant())) l.Add(w.History.NameOf(EntityRef.Person(id)));
+            for (int id = w.Households.First(); id != 0; id = w.Households.Next(id))
+                if (Names.IsWord(w.History.NameOf(EntityRef.Household(id)).ToLowerInvariant())) l.Add(w.History.NameOf(EntityRef.Household(id)));
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+                if (Names.IsWord(w.History.NameOf(EntityRef.Settlement(sid)).ToLowerInvariant())) l.Add(w.History.NameOf(EntityRef.Settlement(sid)));
+            return l;
+        }
+
         [Test]
         public void UnderTheOldRulesNamesAreAsBefore()
         {

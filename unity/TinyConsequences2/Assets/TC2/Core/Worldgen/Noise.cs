@@ -59,21 +59,52 @@ namespace TC2.Core.Worldgen
 
         static string Cap(string s) => s.Length == 0 ? s : char.ToUpperInvariant(s[0]) + s.Substring(1);
 
+        /// <summary>
+        /// (session 32) Words a name must not be, read in a sentence of the book ("The Trilouk became first among the people of Thindford", "Ten Kobo
+        /// raised a band"): articles, pronouns, little words, numbers and a few words the book uses of people and land. A name drawn as one of these is
+        /// drawn again from its own keyed sequence (the draws after it), so every other name is as before; only new names change - a save keeps its own.
+        /// Text only: nothing the world decides reads a name.
+        /// </summary>
+        static readonly System.Collections.Generic.HashSet<string> Words = new System.Collections.Generic.HashSet<string>(System.StringComparer.Ordinal)
+        {
+            "the", "a", "an", "and", "of", "to", "in", "on", "at", "by", "no", "so", "he", "she", "it", "is", "as", "or", "if", "we", "us", "me", "my",
+            "be", "do", "go", "up", "its", "her", "his", "him", "has", "had", "was", "were", "are", "for", "nor", "not", "but", "yet", "all", "any", "our",
+            "out", "off", "too", "now", "then", "than", "them", "they", "this", "that", "here", "there", "from", "into", "onto", "over", "with", "when",
+            "who", "one", "two", "ten", "nine", "five", "four", "six", "none", "some", "each", "both", "more", "most", "less", "last", "first", "own",
+            "old", "new", "men", "man", "son", "sons", "kin", "born", "dead", "died", "lord", "land", "sea", "fire", "rain", "home", "hold", "lost",
+        };
+
+        /// <summary>Whether a drawn name (in lower case) reads as a word (tests).</summary>
+        public static bool IsWord(string lower) => Words.Contains(lower);
+
+        /// <summary>How many times a name that reads as a word is drawn again before a syllable is added to it instead.</summary>
+        const int Redraws = 8;
+
         public static string Person(ulong seed, int id, bool female)
         {
             var r = new RandomSequence(KeyedRng.Hash(seed, RngStream.Names, (ulong)id, 1));
+            string s = PersonDraw(ref r, female);
+            for (int k = 0; k < Redraws && Words.Contains(s); k++) s = PersonDraw(ref r, female);
+            if (Words.Contains(s)) s += Syllable(ref r);
+            return Cap(s);
+        }
+
+        static string PersonDraw(ref RandomSequence r, bool female)
+        {
             int n = 1 + r.NextBelow(2);
             string s = "";
             for (int i = 0; i < n; i++) s += Syllable(ref r);
             if (s.Length < 3) s += Syllable(ref r);
             if (female && r.Chance(0.6)) s += r.Chance(0.5) ? "a" : "e";
-            return Cap(s);
+            return s;
         }
 
         public static string Family(ulong seed, int householdKey)
         {
             var r = new RandomSequence(KeyedRng.Hash(seed, RngStream.Names, (ulong)householdKey, 2));
             string s = Syllable(ref r) + Syllable(ref r);
+            for (int k = 0; k < Redraws && Words.Contains(s); k++) s = Syllable(ref r) + Syllable(ref r);
+            if (Words.Contains(s)) s += Syllable(ref r);
             return Cap(s);
         }
 
@@ -178,11 +209,19 @@ namespace TC2.Core.Worldgen
             return on + vo + co;
         }
 
-        /// <summary>A person's given name in their people's tongue.</summary>
+        /// <summary>A person's given name in their people's tongue (never one that reads as a word: drawn again from its own sequence).</summary>
         public static string Person(ulong seed, int id, bool female, long tongue)
         {
             if (tongue == 0) return Person(seed, id, female);
             var r = new RandomSequence(KeyedRng.Hash(seed, RngStream.Names, (ulong)id, 1));
+            string s = PersonDraw(ref r, female, tongue);
+            for (int k = 0; k < Redraws && Words.Contains(s); k++) s = PersonDraw(ref r, female, tongue);
+            if (Words.Contains(s)) s += Syllable(ref r, tongue);
+            return Cap(s);
+        }
+
+        static string PersonDraw(ref RandomSequence r, bool female, long tongue)
+        {
             int len = (int)((tongue >> LenBit) & 3L);
             int n = len == 1 ? (r.Chance(0.75) ? 1 : 2) : len == 2 ? (r.Chance(0.75) ? 2 : 1) : 1 + r.NextBelow(2);
             string s = "";
@@ -193,7 +232,7 @@ namespace TC2.Core.Worldgen
                 int fem = (int)((tongue >> FemBit) & 3L);
                 s += fem == 0 ? "a" : fem == 1 ? "e" : fem == 2 ? "i" : (r.Chance(0.5) ? "a" : "e");
             }
-            return Cap(s);
+            return s;
         }
 
         /// <summary>A family's name in its first people's tongue.</summary>
@@ -201,7 +240,10 @@ namespace TC2.Core.Worldgen
         {
             if (tongue == 0) return Family(seed, householdKey);
             var r = new RandomSequence(KeyedRng.Hash(seed, RngStream.Names, (ulong)householdKey, 2));
-            return Cap(Syllable(ref r, tongue) + Syllable(ref r, tongue));
+            string s = Syllable(ref r, tongue) + Syllable(ref r, tongue);
+            for (int k = 0; k < Redraws && Words.Contains(s); k++) s = Syllable(ref r, tongue) + Syllable(ref r, tongue);
+            if (Words.Contains(s)) s += Syllable(ref r, tongue);
+            return Cap(s);
         }
 
         /// <summary>A place's name in its founders' tongue: one or two syllables and one of its endings.</summary>
