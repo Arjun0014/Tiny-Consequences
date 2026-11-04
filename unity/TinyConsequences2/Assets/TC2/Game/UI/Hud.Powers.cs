@@ -32,7 +32,7 @@ namespace TC2.Game
                         Help = "a summer 5 C colder on the land round it: crops grow slowly or fail where it is cool, homes burn more wood, frost keeps the herds in" },
             new Power { Name = "Quake", Col = new Color(0.80f, 0.58f, 0.36f), Doing = "Shake the ground", Kind = CommandKind.GodQuake, Arg = 65, Recharge = 2 * SimTime.Year, Reach = 1200,
                         Help = "a magnitude-6.5 quake, hardest within the ring: homes may fall, slopes slide; it is felt further off" },
-            new Power { Name = "Eruption", Col = new Color(1.00f, 0.38f, 0.15f), Doing = "Split the earth", Kind = CommandKind.GodEruption, Arg = 3, Recharge = 10 * SimTime.Year, Reach = 900,
+            new Power { Name = "Eruption", Col = new Color(1.00f, 0.38f, 0.15f), Doing = "Split the earth", Kind = CommandKind.GodEruption, Arg = 3, Recharge = 10 * SimTime.Year, Reach = 300,
                         Help = "the nearest vent within the ring wakes, or the ground opens a new one where you point" },
             new Power { Name = "Meteor", Col = new Color(1.00f, 0.62f, 0.22f), Doing = "Throw down a stone", Kind = CommandKind.GodMeteor, Recharge = 20 * SimTime.Year, Reach = World.BlastM,
                         Help = "a stone from the sky: what stands near it falls, those at home there die, it burns and the ground shakes" },

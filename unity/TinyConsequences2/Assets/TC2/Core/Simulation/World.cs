@@ -980,7 +980,7 @@ namespace TC2.Core.Simulation
         void GodEruption(int cell, long cause, int vei = 0)
         {
             var P = Planet;
-            int best = -1; double bd = 1500.0;   // (geo-lengths: 900 m on the drawn world - the aim's ring; session 32, 2,500 before)
+            int best = -1; double bd = 500.0;   // (geo-lengths: 300 m on the drawn world - the aim's ring: it splits the earth where it is pointed, or wakes a vent beside it; session 32, 2,500 before)
             Vec3d at = P.Grid.Center[cell];
             for (int v = 0; v < P.Vents.Count; v++)
             {
