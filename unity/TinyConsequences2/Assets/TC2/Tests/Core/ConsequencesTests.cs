@@ -147,6 +147,9 @@ namespace TC2.Tests.Core
             Assert.IsTrue(heading, "told by when");
             Assert.IsNotNull(atOnce);
             StringAssert.Contains("people killed by the stone", atOnce);
+            // (session 32) the timeline marks your cast in gold
+            var tl = HistoryBook.Timeline(w);
+            Assert.IsTrue(tl.Marks.Exists(m => m.Kind == 5 && m.Event == cast), "your cast on the timeline");
             Assert.AreEqual(before, w.StateHash(), "the book writes nothing");
         }
 

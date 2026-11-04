@@ -241,12 +241,21 @@ namespace TC2.Game
                                     GUILayout.EndHorizontal();
                                     if (open) ShowPerson(b.Person, 5);
                                 }
+                                else if (b.Settlement > 0 && b.Settlement != ch.Settlement && w.Settlements.Exists(b.Settlement))
+                                {
+                                    // (session 32) a heading that names another place opens its page
+                                    GUILayout.BeginHorizontal(); GUILayout.Label(b.Text, _bkHead, GUILayout.ExpandWidth(false)); GUILayout.FlexibleSpace();
+                                    bool open = GUILayout.Button("its page  ›", _bkNav, GUILayout.ExpandWidth(false));
+                                    GUILayout.EndHorizontal();
+                                    if (open) ShowPlace(b.Settlement, 8);
+                                }
                                 else GUILayout.Label(b.Text, _bkHead);
                                 break;
                             case BookKind.Fact: Rule(0.0f, 0.3f); GUILayout.Label(b.Text, _bkTally); break;
-                            case BookKind.Note: GUILayout.Label("–  " + b.Text, _bkNote); break;
-                            case BookKind.Line: Entry(in b); break;
-                            default: if (lead) LeadParagraph(b.Text, _bkBody, right.width - 72f - 14f); else GUILayout.Label(b.Text, _bkBody); lead = false; break;
+                            case BookKind.Note: GUILayout.Label("–  " + b.Text, _bkNote); PlaceLink(w, in b, ch.Settlement); break;
+                            case BookKind.Line: case BookKind.Row: Entry(in b); break;   // (session 32: a row - a ruler, a realm's rise or fall - reads as a line)
+                            case BookKind.Card: CardBlock(w, in b); break;
+                            default: if (lead) LeadParagraph(b.Text, _bkBody, right.width - 72f - 14f); else GUILayout.Label(b.Text, _bkBody); lead = false; PlaceLink(w, in b, ch.Settlement); break;
                         }
                     }
                     GUILayout.EndScrollView();
@@ -525,7 +534,34 @@ namespace TC2.Game
             int ys = b.Weight >= 2 ? 18 : b.Weight == 1 ? 16 : 14;
             GUILayout.Label("<size=" + ys + ">" + year + "</size>" + (season.Length > 0 && b.Weight > 0 ? "\n<size=12><i>" + season + "</i></size>" : ""), _bkYear, GUILayout.Width(86));
             if (GUILayout.Button(text, st)) { _line = sel ? 0 : b.Event; _whyScroll = Vector2.zero; }
+            // (session 32) a ruler's row opens their life
+            var ww = Host.World;
+            if (b.Person != 0 && ww != null && ww.People.Exists(b.Person) && GUILayout.Button("life  ›", _bkNav, GUILayout.ExpandWidth(false))) ShowPerson(b.Person, 5);
             GUILayout.EndHorizontal();
+            // (session 32) the line chosen: the people and places its record names, a click away under it
+            if (sel && ww != null && ww.History.TryGet(b.Event, out var be)) { GUILayout.BeginHorizontal(); GUILayout.Space(86); GUILayout.BeginVertical(); BookLinks(ww, in be); GUILayout.EndVertical(); GUILayout.EndHorizontal(); }
+        }
+
+        /// <summary>(session 32) A paragraph or a note about another place than its chapter's: that place a click away, at its foot.</summary>
+        void PlaceLink(TC2.Core.Simulation.World w, in BookBlock b, int chapterPlace)
+        {
+            if (b.Settlement <= 0 || b.Settlement == chapterPlace || !w.Settlements.Exists(b.Settlement)) return;
+            GUILayout.BeginHorizontal(); GUILayout.FlexibleSpace();
+            if (GUILayout.Button(w.History.NameOf(EntityRef.Settlement(b.Settlement)) + "  ›", _bkNav, GUILayout.ExpandWidth(false))) ShowPlace(b.Settlement, 8);
+            GUILayout.EndHorizontal();
+        }
+
+        /// <summary>(session 32) A war at a glance: its card on a tinted ground (a click opens its first raid's why), its two sides' pages under it.</summary>
+        void CardBlock(TC2.Core.Simulation.World w, in BookBlock b)
+        {
+            GUILayout.BeginVertical(_bkHandBox);
+            if (GUILayout.Button(b.Text, _line == b.Event ? _bkLineSel : _bkLine)) { _line = _line == b.Event ? 0 : b.Event; _whyScroll = Vector2.zero; }
+            GUILayout.BeginHorizontal();
+            if (b.Settlement > 0 && w.Settlements.Exists(b.Settlement) && GUILayout.Button(w.History.NameOf(EntityRef.Settlement(b.Settlement)) + "  ›", _bkNav, GUILayout.ExpandWidth(false))) ShowPlace(b.Settlement, 7);
+            if (b.Other > 0 && w.Settlements.Exists(b.Other) && GUILayout.Button(w.History.NameOf(EntityRef.Settlement(b.Other)) + "  ›", _bkNav, GUILayout.ExpandWidth(false))) ShowPlace(b.Other, 7);
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+            GUILayout.EndVertical();
         }
 
         /// <summary>

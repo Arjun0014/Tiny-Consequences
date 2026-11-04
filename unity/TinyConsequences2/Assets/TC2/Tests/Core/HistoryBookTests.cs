@@ -86,8 +86,11 @@ namespace TC2.Tests.Core
             Years(w, 2);
             int a = 1, b = 2, c = 3, d = 4;
             foreach (int sid in new[] { a, b, c, d }) Assert.IsTrue(w.Settlements.Exists(sid), "the premise's villages");
-            Rec(w, HistoryKind.TributeAgreed, b, a);
+            long firstBow = Rec(w, HistoryKind.TributeAgreed, b, a);
             Years(w, 3);
+            // (session 32) a ruler of A's on record in its realm's years
+            int ruler = w.Residents(a)[0], rulerHh = w.People.Get(ruler).Household;
+            long rose = w.Record(new HistoryEvent { Kind = HistoryKind.HeadmanRose, Time = w.Now, Settlement = a, Cell = -1, Subject = EntityRef.Person(ruler), Object = EntityRef.Household(rulerHh) });
             Rec(w, HistoryKind.TributeAgreed, c, b);
             Years(w, 5);
             Rec(w, HistoryKind.TributeAgreed, d, a, argB: 1);
@@ -101,7 +104,16 @@ namespace TC2.Tests.Core
             var ra = realms.Chapters.Find(x => x.Title == "The Realm of " + an);
             Assert.IsNotNull(ra, "A's realm is told");
             StringAssert.Contains("at its height four villages", ra.Sub, "at its height B, B's own tributary C and D paid A: four villages with A");
-            StringAssert.Contains("ended when it was no longer the stronger", ra.Blocks[0].Text, "B's bond ended");
+            StringAssert.Contains("ended when it was no longer the stronger", ra.Blocks.Find(x => x.Kind == BookKind.Para).Text, "B's bond ended");
+            // (session 32) it opens at a glance: its rise and fall and its line of rulers, each row on its record
+            Assert.AreEqual(BookKind.Heading, ra.Blocks[0].Kind); Assert.AreEqual("Its rise and fall", ra.Blocks[0].Text);
+            var bowRow = ra.Blocks.Find(x => x.Kind == BookKind.Row && x.Event == firstBow);
+            StringAssert.Contains("its first tributary", bowRow.Text, "B's bow, its first tributary");
+            Assert.IsTrue(ra.Blocks.Exists(x => x.Kind == BookKind.Heading && x.Text == "Its line of rulers"));
+            var rulerRow = ra.Blocks.Find(x => x.Kind == BookKind.Row && x.Event == rose);
+            Assert.AreEqual(ruler, rulerRow.Person, "the ruler's row opens their life");
+            StringAssert.StartsWith("Year ", rulerRow.Text);
+            foreach (var bl in ra.Blocks) if (bl.Kind == BookKind.Row) Assert.IsTrue(w.History.TryGet(bl.Event, out _), "every row stands on a record");
             var lesser = realms.Chapters.Find(x => x.Title == "Lesser Lordships");
             Assert.IsNotNull(lesser, "B, paying nobody after it stopped, is a lordship of one village paying it");
             Assert.IsTrue(lesser.Blocks.Exists(x => x.Text.StartsWith(bn + " - ")), "B's own lordship");
@@ -229,8 +241,15 @@ namespace TC2.Tests.Core
                 var second = wars.Chapters.Find(x => x.Title == "The War of " + an + " and " + bn);
                 Assert.IsNotNull(first, "the first two raids, one way: raids");
                 Assert.IsNotNull(second, "after the quiet years, raids both ways: a war");
-                StringAssert.Contains("one band was driven off", first.Blocks[0].Text);
-                StringAssert.Contains("bowed to " + an, second.Blocks[0].Text, "the bow ends it");
+                StringAssert.Contains("one band was driven off", first.Blocks.Find(x => x.Kind == BookKind.Para).Text);
+                StringAssert.Contains("bowed to " + an, second.Blocks.Find(x => x.Kind == BookKind.Para).Text, "the bow ends it");
+                // (session 32) each war opens with its card: its sides, its raids, its outcome - on its first raid's record, its two places
+                var card = second.Blocks[0];
+                Console.WriteLine(card.Text);
+                Assert.AreEqual(BookKind.Card, card.Kind);
+                Assert.IsTrue(w.History.TryGet(card.Event, out var ce) && ce.Kind == HistoryKind.Raid, "on its first raid");
+                Assert.IsTrue((card.Settlement == a && card.Other == b) || (card.Settlement == b && card.Other == a), "its two sides' places");
+                StringAssert.Contains(" against ", card.Text); StringAssert.Contains("two raids", card.Text); StringAssert.Contains("Outcome: " + bn + " bowed to " + an, card.Text);
             }
             finally { Conflict.DemandOff = false; }
         }

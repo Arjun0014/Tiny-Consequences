@@ -8,7 +8,7 @@ namespace TC2.Core.History
 {
     /// <summary>What a block of the book is: prose, a line standing on one record, the numbers of a span, a heading within a chapter, a note
     /// (session 27: the lesser records of a span told together, in the margin of the story).</summary>
-    public enum BookKind : byte { Para = 0, Line = 1, Fact = 2, Heading = 3, Note = 4 }
+    public enum BookKind : byte { Para = 0, Line = 1, Fact = 2, Heading = 3, Note = 4, Row = 5, Card = 6 }   // (session 32: Row a dated line in the historian's words on a record - a ruler, a realm's rise or fall; Card a war at a glance)
 
     /// <summary>A block of a chapter. A line stands on its record (`Event`, whose causes the reader can walk); prose, numbers and headings
     /// are the historian's words over the records and the annals; `Settlement` is the place a reader may go to (0 none). `Weight` (session 27):
@@ -22,6 +22,7 @@ namespace TC2.Core.History
         public int Settlement;
         public byte Weight;
         public int Person;   // (session 29) the person a heading names - the reader opens their life (0 none)
+        public int Other;    // (session 32) a second place (a war's other side; 0 none)
     }
 
     public sealed class BookChapter
@@ -34,6 +35,10 @@ namespace TC2.Core.History
         internal void Fact(string t) { if (!string.IsNullOrEmpty(t)) Blocks.Add(new BookBlock { Kind = BookKind.Fact, Text = t }); }
         internal void Note(string t, int sid = 0) { if (!string.IsNullOrEmpty(t)) Blocks.Add(new BookBlock { Kind = BookKind.Note, Text = t, Settlement = sid }); }
         internal void Heading(string t, int sid = 0, int pid = 0) { Blocks.Add(new BookBlock { Kind = BookKind.Heading, Text = t, Settlement = sid, Person = pid }); }
+        /// <summary>(session 32) A dated row in the historian's words, standing on a record (its causes walked like a line's): "Year 12: ...".</summary>
+        internal void Row(int year, string words, long ev, int sid = 0, int pid = 0, byte weight = 1) { Blocks.Add(new BookBlock { Kind = BookKind.Row, Text = "Year " + year + ": " + words, Event = ev, Settlement = sid, Person = pid, Weight = weight }); }
+        /// <summary>(session 32) A war at a glance: its sides, years, raids and dead, outcome (lines of text), on its first record; its two places.</summary>
+        internal void Card(string text, long ev, int sid, int other) { Blocks.Add(new BookBlock { Kind = BookKind.Card, Text = text, Event = ev, Settlement = sid, Other = other, Weight = 2 }); }
         internal void Line(World w, in HistoryEvent e)
         {
             byte wt = HistoryBook.Weigh(w, in e);
@@ -75,7 +80,7 @@ namespace TC2.Core.History
         public int Year;
         public string Text;
         public long Event;
-        public byte Kind;                    // 0 a realm's height, 1 a great famine, 2 a plague, 3 the earth and the sky, 4 a founding or an end
+        public byte Kind;                    // 0 a realm's height, 1 a great famine, 2 a plague, 3 the earth and the sky, 4 a founding or an end, 5 your cast (session 32)
     }
 
     public sealed class WorldBook
@@ -156,7 +161,16 @@ namespace TC2.Core.History
             for (int i = 0; i < a.Count; i++) { if (a[i].Sick > sickMax) { sickMax = a[i].Sick; sickPeak = i; } if (a[i].Disaster > ruinMax) { ruinMax = a[i].Disaster; ruinPeak = i; } }
             if (sickPeak >= 0 && sickMax >= 5) t.Marks.Add(new TimelineMark { Year = a[sickPeak].Year, Kind = 2, Text = "the worst year of sickness: " + F(sickMax) + " dead" });
             if (ruinPeak >= 0 && ruinMax >= 3) t.Marks.Add(new TimelineMark { Year = a[ruinPeak].Year, Kind = 3, Text = "the earth's and the sky's worst year: " + F(ruinMax) + " dead" });
-            t.Marks.Sort((p, q) => p.Year.CompareTo(q.Year));
+            // (session 32) your casts, in gold on the page: the newest dozen, each with what came of it
+            for (int i = System.Math.Max(0, c.CastList.Count - 12); i < c.CastList.Count; i++)
+            {
+                var ce = c.CastList[i];
+                string what = HistoryText.Describe(w, ce).TrimEnd('.');
+                if (what.StartsWith("You ", System.StringComparison.Ordinal)) what = "you " + what.Substring(4);
+                CameOf(w, ce.Id, out int came);
+                t.Marks.Add(new TimelineMark { Year = YearOf(ce.Time), Kind = 5, Event = ce.Id, Text = what + (came > 0 ? " - " + Plural(came, "record", "records") + " came of it" : "") });
+            }
+            t.Marks.Sort((p, q) => { int x = p.Year.CompareTo(q.Year); return x != 0 ? x : p.Event.CompareTo(q.Event); });
             return t;
         }
 
@@ -239,7 +253,7 @@ namespace TC2.Core.History
             public readonly List<HistoryEvent> Refusals = new List<HistoryEvent>();              // askings refused (C10.8)
             public readonly List<HistoryEvent> Judgments = new List<HistoryEvent>();             // amends made at a lord's judgment (C10.10)
             public List<War> WarList;
-            public int Casts;   // (session 32) the god's casts the ledger keeps
+            public readonly List<HistoryEvent> CastList = new List<HistoryEvent>();   // (session 32) the god's casts the ledger keeps, oldest first
 
             public Ctx(World w)
             {
@@ -292,7 +306,7 @@ namespace TC2.Core.History
                         case HistoryKind.AmendsMade:
                             if (e.ArgB != 0) Judgments.Add(e);
                             break;
-                        case HistoryKind.GodCommand: Casts++; break;
+                        case HistoryKind.GodCommand: CastList.Add(e); break;
                     }
                 }
                 YearByYear();
@@ -504,7 +518,7 @@ namespace TC2.Core.History
                 "The lives that shaped it: rulers, founders, war leaders, finders",
                 "The longest chains of cause, from their root to their last effect",
                 "The years in order, century by century",
-                c.Casts == 0 ? "What you have done to the world - nothing yet" : "What you did to the world and what came of it - " + Plural(c.Casts, "cast", "casts") + ", each with its tree of consequences",
+                c.CastList.Count == 0 ? "What you have done to the world - nothing yet" : "What you did to the world and what came of it - " + Plural(c.CastList.Count, "cast", "casts") + ", each with its tree of consequences",
             };
             book.Contents.AddRange(lines);
         }
@@ -1069,6 +1083,10 @@ namespace TC2.Core.History
             var ch = new BookChapter { Title = "The Realm of " + seat, Sub = Span(r.From, r.To, present) + "; at its height " + Plural(r.Peak + 1, "village", "villages") + " (year " + r.PeakYear + ")", Settlement = r.Seat, MapSeat = r.Seat, MapYear = r.PeakYear };
             var mine = new List<Bond>();
             for (int i = 0; i < c.Bonds.Count; i++) if (c.Bonds[i].Lord == r.Seat) mine.Add(c.Bonds[i]);
+            // (session 32) at a glance first: its rise and fall as dated rows, its line of rulers, each on its record; then its story
+            RiseAndFall(c, r, ch, mine, present);
+            LineOfRulers(c, r, ch, present);
+            ch.Heading("Its story");
             var sb = new StringBuilder();
             if (mine.Count > 0 && w.History.TryGet(mine[0].Made, out var first))
             {
@@ -1209,6 +1227,111 @@ namespace TC2.Core.History
             return ch;
         }
 
+        /// <summary>(session 32) A realm's rise and fall at a glance, each row on its record and in time order: its first tributary, the lord it ceased to pay
+        /// when it came to lead its own realm, its height (on the last bow before it), its two worst years' losses (each on a bond of its that ended then), its
+        /// end. Nothing is told that has no record.</summary>
+        static void RiseAndFall(Ctx c, Realm r, BookChapter ch, List<Bond> mine, bool present)
+        {
+            var w = c.W; var H = w.History;
+            string seat = Name(w, r.Seat);
+            var rows = new List<(int y, string words, long id, byte wt)>();
+            if (mine.Count > 0 && H.TryGet(mine[0].Made, out var f0)) rows.Add((YearOf(f0.Time), H.NameOf(f0.Subject) + " bowed to " + seat + ": its first tributary", f0.Id, (byte)2));
+            for (int i = 0; i < c.Bonds.Count; i++)
+            {
+                var b = c.Bonds[i];
+                if (b.Payer != r.Seat || b.Ended == 0 || YearOf(b.To) < r.From - 1 || YearOf(b.To) > r.From) continue;
+                if (H.TryGet(b.Ended, out var fe)) rows.Add((YearOf(fe.Time), seat + " paid " + Name(w, b.Lord) + " no more, and stood at the head of its own realm", fe.Id, (byte)1));
+                break;
+            }
+            long peakEnd = (r.PeakYear + 1L) * SimTime.Year, lastT = long.MinValue, lastId = 0;
+            for (int i = 0; i < mine.Count; i++) if (mine[i].From < peakEnd && mine[i].From >= lastT) { lastT = mine[i].From; lastId = mine[i].Made; }
+            if (lastId != 0 && H.TryGet(lastId, out var he))
+                rows.Add((r.PeakYear, "at its height, " + Plural(r.Peak + 1, "village", "villages") + " with " + seat + (r.PeakDepth > 1 ? ", in " + Num(r.PeakDepth + 1) + " tiers" : "") + " (the last bow before it, " + H.NameOf(he.Subject) + "'s)", lastId, (byte)2));
+            var drops = new List<(int y, int from, int to)>();
+            for (int i = 1; i < r.Sizes.Count; i++)
+            {
+                int a = r.Sizes[i - 1].Value, b = r.Sizes[i].Value;
+                if (r.Sizes[i].Key == r.Sizes[i - 1].Key + 1 && b > 0 && a - b >= 2) drops.Add((r.Sizes[i].Key, a, b));
+            }
+            drops.Sort((p, q) => { int x = (q.from - q.to).CompareTo(p.from - p.to); return x != 0 ? x : p.y.CompareTo(q.y); });
+            int told = 0;
+            for (int k = 0; k < drops.Count && told < 2; k++)
+            {
+                var d = drops[k];
+                long ended = 0;
+                for (int i = 0; i < mine.Count && ended == 0; i++) if (mine[i].Ended != 0 && YearOf(mine[i].To) == d.y) ended = mine[i].Ended;
+                if (ended == 0 || !H.TryGet(ended, out _)) continue;
+                rows.Add((d.y, "it lost " + Plural(d.from - d.to, "village", "villages") + ", from " + F(d.from + 1) + " to " + F(d.to + 1), ended, (byte)1));
+                told++;
+            }
+            if (!present)
+            {
+                long endId = 0; int endY = r.To + 1; string words = null;
+                for (int i = 0; i < c.Bonds.Count && endId == 0; i++)
+                    if (c.Bonds[i].Payer == r.Seat && YearOf(c.Bonds[i].From) >= r.To && YearOf(c.Bonds[i].From) <= r.To + 1) { endId = c.Bonds[i].Made; endY = YearOf(c.Bonds[i].From); words = seat + " itself bowed to " + Name(w, c.Bonds[i].Lord) + ": the end of its realm"; }
+                if (endId == 0 && c.Abandoned.TryGetValue(r.Seat, out var ab) && YearOf(ab.Time) <= r.To + 2) { endId = ab.Id; endY = YearOf(ab.Time); words = seat + " was abandoned: the end of its realm"; }
+                if (endId == 0)
+                {
+                    long t = long.MinValue;
+                    for (int i = 0; i < mine.Count; i++) if (mine[i].Ended != 0 && mine[i].To >= t) { t = mine[i].To; endId = mine[i].Ended; endY = YearOf(mine[i].To); }
+                    words = "the last village paying it stopped: the end of its realm";
+                }
+                if (endId != 0 && H.TryGet(endId, out _)) rows.Add((endY, words, endId, (byte)2));
+            }
+            if (rows.Count == 0) return;
+            rows.Sort((p, q) => { int x = p.y.CompareTo(q.y); return x != 0 ? x : p.id.CompareTo(q.id); });
+            ch.Heading("Its rise and fall");
+            foreach (var row in rows) ch.Row(row.y, Cap(row.words), row.id, r.Seat, 0, row.wt);
+        }
+
+        /// <summary>(session 32) A realm's line of rulers: each first among its seat's people in its years - name and house, the years held, how the rule ended
+        /// (a death on record, another risen, abandoned, or ruling today) - each row on the record of their rising (the last ten; the rest counted).</summary>
+        static void LineOfRulers(Ctx c, Realm r, BookChapter ch, bool present)
+        {
+            if (!c.Rulers.TryGetValue(r.Seat, out var l) || l.Count == 0) return;
+            var w = c.W; var H = w.History;
+            string seat = Name(w, r.Seat);
+            var idx = new List<int>();
+            for (int i = 0; i < l.Count; i++)
+            {
+                int y0 = YearOf(l[i].Time), y1 = i + 1 < l.Count ? YearOf(l[i + 1].Time) : c.Now;
+                if (y1 >= r.From && y0 <= r.To) idx.Add(i);
+            }
+            if (idx.Count == 0) return;
+            ch.Heading("Its line of rulers");
+            int skip = idx.Count > 10 ? idx.Count - 10 : 0;
+            if (skip > 0) ch.Note(Cap(Plural(skip, "ruler", "rulers")) + " before these, from year " + YearOf(l[idx[0]].Time) + ".", r.Seat);
+            for (int k = skip; k < idx.Count; k++)
+            {
+                int i = idx[k];
+                var e = l[i];
+                int y0 = YearOf(e.Time), y1;
+                string who = H.NameOf(e.Subject) + (e.Object.IsNone ? "" : " of the " + House(w, e.Object)), end;
+                bool today = false;
+                if (i + 1 < l.Count)
+                {
+                    var nx = l[i + 1];
+                    y1 = YearOf(nx.Time);
+                    bool died = H.TryGet(nx.Cause1, out var de) && de.Kind == HistoryKind.PersonDied && de.Subject == e.Subject;
+                    end = died ? "died, aged " + F(de.Magnitude, "0") : "gave way to " + H.NameOf(nx.Subject);
+                    if (nx.ArgB == 2 && !nx.Object.IsNone) end += "; the " + House(w, nx.Object) + " rose";
+                }
+                else
+                {
+                    y1 = c.Now;
+                    int pid = e.Subject.Kind == EntityKind.Person ? e.Subject.Id : 0;
+                    bool alive = pid != 0 && w.People.Exists(pid) && w.People.Get(pid).Alive;
+                    if (alive && present) { today = true; end = "rules today"; }
+                    else if (c.Abandoned.TryGetValue(r.Seat, out var ab)) { y1 = YearOf(ab.Time); end = "until " + seat + " was abandoned"; }
+                    else if (pid != 0 && w.People.Exists(pid) && !alive && H.TryGet(w.People.Get(pid).DeathEvent, out var dd)) { y1 = YearOf(dd.Time); end = "died, aged " + F(dd.Magnitude, "0"); }
+                    else end = alive ? "first among its people still" : "no successor on record";
+                }
+                int len = y1 - y0;
+                ch.Row(y0, who + " - " + (len < 1 ? "less than a year" : Plural(len, "year", "years")) + (today ? ", to this day" : " (to year " + y1 + ")") + "; " + end,
+                       e.Id, r.Seat, e.Subject.Kind == EntityKind.Person ? e.Subject.Id : 0, 1);
+            }
+        }
+
         /// <summary>The houses that led a place: each run with its years and heads (the longest first if there are many), and the longest-serving first.</summary>
         static string HousesText(Ctx c, List<HouseRun> runs, int from, int to)
         {
@@ -1336,6 +1459,7 @@ namespace TC2.Core.History
                 shown++;
                 var ch = new BookChapter { Title = x.Title, Sub = Span(x.From, x.To, false), Settlement = x.A };
                 string a = Name(w, x.A), b = Name(w, x.B);
+                WarCard(c, x, ch);   // (session 32: the war at a glance)
                 var sb = new StringBuilder();
                 int raids = x.RaidsA + x.RaidsB;
                 sb.Append(Cap(Plural(raids, "raid", "raids"))).Append(" in ").Append(x.To - x.From + 1 == 1 ? "one year" : F(x.To - x.From + 1) + " years");
@@ -1382,10 +1506,20 @@ namespace TC2.Core.History
         /// <summary>(session 29) What a war's years cost a village, from its own records: its dead of wounds and its homes burned in them ("" if nothing).</summary>
         static string WarCost(World w, int sid, int from, int to)
         {
+            WarLosses(w, sid, from, to, out int dead, out int burnt);
+            var parts = new List<string>();
+            if (dead > 0) parts.Add(Plural(dead, "dead of wounds", "dead of wounds"));
+            if (burnt > 0) parts.Add(Plural(burnt, "home burned", "homes burned"));
+            return parts.Count == 0 ? "" : Join(parts);
+        }
+
+        /// <summary>(session 32) A village's dead of wounds and homes burned by people in a war's years, from its own records.</summary>
+        static void WarLosses(World w, int sid, int from, int to, out int dead, out int burnt)
+        {
+            dead = 0; burnt = 0;
             var at = w.History.RecordsAt(sid);
-            if (at == null) return "";
+            if (at == null) return;
             long t0 = (long)from * SimTime.Year, t1 = (long)(to + 1) * SimTime.Year;
-            int dead = 0, burnt = 0;
             for (int i = 0; i < at.Count; i++)
             {
                 if (!w.History.TryGet(at[i], out var e) || e.Time < t0) continue;
@@ -1393,11 +1527,32 @@ namespace TC2.Core.History
                 if (e.Kind == HistoryKind.PersonDied && e.ArgA == 11) dead++;
                 else if (e.Kind == HistoryKind.BuildingBurned && e.RootKind == RootKind.People) burnt++;
             }
-            var parts = new List<string>();
-            if (dead > 0) parts.Add(Plural(dead, "dead of wounds", "dead of wounds"));
-            if (burnt > 0) parts.Add(Plural(burnt, "home burned", "homes burned"));
-            return parts.Count == 0 ? "" : Join(parts);
         }
+
+        /// <summary>(session 32) A war at a glance, on its first raid's record: who against whom, its years, the raids each way, the dead and the homes burned on
+        /// each side (their own records in its years), how it ended (the bow that ended it, or none).</summary>
+        static void WarCard(Ctx c, War x, BookChapter ch)
+        {
+            var w = c.W;
+            if (x.Events.Count == 0) return;
+            string a = Name(w, x.A), b = Name(w, x.B);
+            WarLosses(w, x.A, x.From, x.To, out int deadA, out int burntA);
+            WarLosses(w, x.B, x.From, x.To, out int deadB, out int burntB);
+            int years = x.To - x.From + 1;
+            var sb = new StringBuilder();
+            sb.Append("<b>").Append(a).Append("  against  ").Append(b).Append("</b>\n");
+            sb.Append(x.From == x.To ? "Year " + x.From : "Years " + x.From + " to " + x.To).Append("  (").Append(Plural(years, "year", "years")).Append(")  ·  ")
+              .Append(Plural(x.RaidsA + x.RaidsB, "raid", "raids"))
+              .Append(x.RaidsA > 0 && x.RaidsB > 0 ? ": " + Num(x.RaidsA) + " by " + a + ", " + Num(x.RaidsB) + " by " + b : (x.RaidsA + x.RaidsB == 1 ? ", by " : x.RaidsA + x.RaidsB == 2 ? ", both by " : ", all by ") + (x.RaidsA > 0 ? a : b)).Append("\n");
+            sb.Append("The cost: ").Append(Losses(a, deadA, burntA)).Append("; ").Append(Losses(b, deadB, burntB))
+              .Append(x.Loot >= 0.5 ? "; " + F(x.Loot) + " days' grain carried off" : "").Append("\n");
+            if (x.Peace != 0 && w.History.TryGet(x.Peace, out var pe)) sb.Append("Outcome: ").Append(w.History.NameOf(pe.Subject)).Append(" bowed to ").Append(w.History.NameOf(pe.Object)).Append(" in year ").Append(YearOf(pe.Time));
+            else sb.Append("Outcome: no bow - ").Append(x.To >= c.Now - WarGap ? "it may not be over" : "the raids stopped after year " + x.To);
+            ch.Card(sb.ToString(), x.Events[0].Id, x.A, x.B);
+        }
+
+        static string Losses(string who, int dead, int burnt) =>
+            dead == 0 && burnt == 0 ? who + " lost nobody" : who + " " + (dead > 0 ? Plural(dead, "dead", "dead") : "") + (dead > 0 && burnt > 0 ? ", " : "") + (burnt > 0 ? Plural(burnt, "home", "homes") + " burned" : "");
 
         // ================================================================== IV. famine, plague and disaster
         sealed class Episode
@@ -2523,13 +2678,15 @@ namespace TC2.Core.History
                     bool inList = false;
                     foreach (var b in ch.Blocks)
                     {
-                        if (b.Kind != BookKind.Line && inList) { sb.Append('\n'); inList = false; }
+                        if (b.Kind != BookKind.Line && b.Kind != BookKind.Row && inList) { sb.Append('\n'); inList = false; }
                         switch (b.Kind)
                         {
                             case BookKind.Heading: sb.Append("#### ").Append(b.Text).Append("\n\n"); break;
                             case BookKind.Fact: sb.Append("> ").Append(b.Text).Append("\n\n"); break;
                             case BookKind.Note: sb.Append('*').Append(b.Text).Append("*\n\n"); break;
                             case BookKind.Line: sb.Append("- ").Append(b.Weight >= 2 ? "**" + b.Text + "**" : b.Text).Append(b.Weight == 0 ? " _(minor)_" : "").Append(ids ? " `[" + b.Event + "]`" : "").Append('\n'); inList = true; break;
+                            case BookKind.Row: sb.Append("- ").Append(b.Text).Append(ids ? " `[" + b.Event + "]`" : "").Append('\n'); inList = true; break;
+                            case BookKind.Card: sb.Append("> ").Append(b.Text.Replace("<b>", "**").Replace("</b>", "**").Replace("\n", "\n> ")).Append("\n\n"); break;
                             default: sb.Append(b.Text).Append("\n\n"); break;
                         }
                     }
