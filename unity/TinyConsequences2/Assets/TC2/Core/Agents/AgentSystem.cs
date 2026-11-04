@@ -376,7 +376,7 @@ namespace TC2.Core.Agents
         /// clear of where it struck - the village's green, or past it when it struck near the green - and keep together there until it has passed, then
         /// go back to their day. The badly hurt are left to the step that takes them abed. False when no shock holds them.
         /// </summary>
-        bool ShockStep(ref Person p, RandomSequence rs)
+        bool ShockStep(ref Person p, RandomSequence rs, bool night)
         {
             var w = _w;
             long now = w.Now;
@@ -386,11 +386,14 @@ namespace TC2.Core.Agents
             if (e.Kind == HistoryKind.Storm && p.Hurt >= TC2.Core.Society.Conflict.AbedHurt) return false;
             if (hold == 0 || now - p.AlarmT >= hold || e.Cell < 0) return false;
             if (p.Hurt >= TC2.Core.Society.Conflict.AbedHurt) return false;
+            if (p.SickPhase == TC2.Core.Health.Disease.Infectious && p.At == p.Home) return false;   // (review, session 32: the sick abed stay abed - they had run to the crowd)
             ref var s = ref w.Settlements.Get(p.At);
             long left0 = p.AlarmT + hold - now;
             if (e.Kind == HistoryKind.Storm)
             {
-                // a gale: in, and keep in while it blows - home if this is home, else the green's shelter of the village they are in
+                // a gale: in, and keep in while it blows - home if this is home, else the green's shelter of the village they are in; at night those at home are
+                // in already: they sleep (review, session 32: they had stood up all night to keep in)
+                if (night && p.At == p.Home) return false;
                 double hx, hy;
                 if (p.At == p.Home && w.Households.Exists(p.Household)) { ref var hh = ref w.Households.Get(p.Household); hx = hh.HomeX; hy = hh.HomeY; }
                 else Green(p.At, out hx, out hy);
@@ -1004,7 +1007,7 @@ namespace TC2.Core.Agents
 
             // 0'. (session 32) a shock felt here a little while ago - a stone from the sky, the ground shaking, a bolt at the door: run clear of where it
             //     struck, then keep together on open ground with the others until it has passed; the badly hurt are taken in (abed, below)
-            if (p.Alarm != 0 && now - p.AlarmT < 4 * SimTime.Hour && ShockStep(ref p, rs)) return;
+            if (p.Alarm != 0 && now - p.AlarmT < 4 * SimTime.Hour && ShockStep(ref p, rs, night)) return;
 
             // 0. danger seen and still burning near this place: keep to shelter
             if (p.Alarm != 0 && now - p.AlarmT < 8 * SimTime.Hour && w.FireNearSettlement(p.At, w.Config.FirePerceptionRange))
