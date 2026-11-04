@@ -383,9 +383,22 @@ namespace TC2.Core.Agents
             if (p.At == 0 || !w.Settlements.Exists(p.At) || p.Voyage != 0 || p.Act == ActivityKind.Infant) return false;
             if (!w.History.TryGet(p.Alarm, out var e)) return false;
             long hold = Hazards.ShockHold(e.Kind);
+            if (e.Kind == HistoryKind.Storm && p.Hurt >= TC2.Core.Society.Conflict.AbedHurt) return false;
             if (hold == 0 || now - p.AlarmT >= hold || e.Cell < 0) return false;
             if (p.Hurt >= TC2.Core.Society.Conflict.AbedHurt) return false;
             ref var s = ref w.Settlements.Get(p.At);
+            long left0 = p.AlarmT + hold - now;
+            if (e.Kind == HistoryKind.Storm)
+            {
+                // a gale: in, and keep in while it blows - home if this is home, else the green's shelter of the village they are in
+                double hx, hy;
+                if (p.At == p.Home && w.Households.Exists(p.Household)) { ref var hh = ref w.Households.Get(p.Household); hx = hh.HomeX; hy = hh.HomeY; }
+                else Green(p.At, out hx, out hy);
+                LocalAt(p, now, out double sx, out double sy);
+                if ((sx - hx) * (sx - hx) + (sy - hy) * (sy - hy) > 25.0 * 25.0) BeginLocal(ref p, ActivityKind.Flee, WhyCode.Shock, (int)e.Kind, hx, hy, Math.Min(left0, 10 * SimTime.Minute), 0, 1.6);
+                else BeginLocal(ref p, ActivityKind.Idle, WhyCode.Shock, (int)e.Kind, hx, hy, Math.Max(60L, left0));
+                return true;
+            }
             s.SphereToLocal(w.Planet.Grid.Center[e.Cell], w.Planet.Radius, out double ix, out double iy);
             Green(p.At, out double gx, out double gy);
             double dx = gx - ix, dy = gy - iy, d = DMath.Sqrt(dx * dx + dy * dy);

@@ -303,7 +303,8 @@ namespace TC2.Core.History
         /// <summary>(session 32) What a shock felt was, for those it startled (WhyArg: the record's kind).</summary>
         static string ShockWords(int kind) =>
             kind == (int)HistoryKind.MeteorStruck ? "a stone fell from the sky close by" : kind == (int)HistoryKind.Quake ? "the ground shook and may shake again" :
-            kind == (int)HistoryKind.Eruption ? "the mountain is spewing fire" : kind == (int)HistoryKind.LightningStrike ? "lightning struck close by" : "something struck close by";
+            kind == (int)HistoryKind.Eruption ? "the mountain is spewing fire" : kind == (int)HistoryKind.LightningStrike ? "lightning struck close by" :
+            kind == (int)HistoryKind.Storm ? "a gale is blowing" : "something struck close by";
 
         public static string Doing(World w, in Person p)
         {
@@ -339,6 +340,7 @@ namespace TC2.Core.History
                     return "on the square with the neighbours, the day's work done";
                 case ActivityKind.Idle:
                     {
+                        if (p.Why == WhyCode.Shock) return "keeping in out of the wind: " + ShockWords(p.WhyArg) + " - they wait until it drops";
                         // rest has its why too: a long day's work behind them, or nothing pressing in the fields or at home
                         if (p.Worked >= 6f) return "resting at home after a long day's work";
                         if (p.Why != WhyCode.Leisure || !w.Settlements.Exists(p.Home)) return "resting at home";

@@ -156,7 +156,7 @@ namespace TC2.Core.Agents
         /// quake two (the ground may shake again), an eruption four, a bolt at the door half an hour.</summary>
         public static long ShockHold(HistoryKind k) =>
             k == HistoryKind.MeteorStruck ? 3 * SimTime.Hour : k == HistoryKind.Quake ? 2 * SimTime.Hour : k == HistoryKind.Eruption ? 4 * SimTime.Hour :
-            k == HistoryKind.LightningStrike ? 30 * SimTime.Minute : 0;
+            k == HistoryKind.LightningStrike ? 30 * SimTime.Minute : k == HistoryKind.Storm ? 200 * SimTime.Minute : 0;   // (a gale: renewed at each of the storm's three-hourly steps while it blows)
 
         /// <summary>When a new travel leg begins, it may pass near fires already burning (the traveller will see them).</summary>
         public void CheckNewLeg(World w, int pid, List<(int cell, long tEnter)> legCells)

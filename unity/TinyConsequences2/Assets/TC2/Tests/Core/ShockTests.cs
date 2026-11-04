@@ -80,6 +80,21 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void AGaleOverAVillageSendsItsPeopleIn()
+        {
+            var w = TestWorlds.Make(617);
+            w.AdvanceTo(w.Now + SimTime.Days(2) + SimTime.Hours(4));
+            int sid = w.Settlements.First();
+            w.Issue(new Command { Time = w.Now, Kind = CommandKind.GodStorm, Cell = w.Settlements.Get(sid).Cell, Arg = 50 });
+            int most = 0;
+            for (int k = 0; k < 40; k++) { w.AdvanceTo(w.Now + SimTime.Minutes(15)); most = Math.Max(most, Count(w, sid, p => p.Why == WhyCode.Shock)); }
+            Console.WriteLine("keeping in at most " + most + " of " + Count(w, sid, p => true));
+            Assert.Greater(most, 0, "a gale over the village sends its people in");
+            var any = 0; for (int id = w.People.First(); id != 0; id = w.People.Next(id)) { var p = w.People.Get(id); if (p.Alive && p.At == sid && p.Why == WhyCode.Shock && p.Act == ActivityKind.Idle) { StringAssert.Contains("a gale is blowing", HistoryText.Doing(w, in p)); any++; break; } }
+            Assert.IsNull(TestWorlds.Audit(w));
+        }
+
+        [Test]
         public void DeepTimeFeelsNoShock()
         {
             var w = TestWorlds.Make(615);

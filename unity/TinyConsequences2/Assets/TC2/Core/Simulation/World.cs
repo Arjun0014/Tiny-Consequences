@@ -342,6 +342,8 @@ namespace TC2.Core.Simulation
         /// <summary>(session 32) How far round a stone's fall the villages feel it (m: they see it, hear it and feel the ground jump) and round a bolt
         /// (a strike at the door).</summary>
         public const double ShockM = 1200.0, BoltShockM = 260.0;
+        /// <summary>(session 32) The wind (m/s) at a village above which its people go in and keep in.</summary>
+        public const double StormCoverWind = 24.0;
 
         /// <summary>Whether the god's drought withholds the rain from a cell today (any drought held over it).</summary>
         public bool RainWithheld(int cell) => Spell(cell, 0);
@@ -1429,6 +1431,14 @@ namespace TC2.Core.Simulation
                         double wv = TC2.Core.Planet.Storms.WindAt(st, Vec3d.ArcDistance(at, st.At, PlanetState.GeoRadius));
                         if (wv <= 40.0) continue;
                         if (KeyedRng.Unit(Seed, RngStream.Death, (ulong)id, (ulong)Now, 64) < 0.0003 * (wv - 40.0)) { Agents.Kill(ref p, Cause(), 7); Metrics.StormDeaths++; }
+                    }
+                // (session 32) villages in a gale take cover: those there go in and keep in while it blows (Decide's shock step, a storm's way)
+                if (st.Wind > StormCoverWind && Resolution != Resolution.Coarse)
+                    for (int sid = Settlements.First(); sid != 0; sid = Settlements.Next(sid))
+                    {
+                        ref var sv = ref Settlements.Get(sid);
+                        if (!sv.Inhabited || TC2.Core.Planet.Storms.WindAt(st, Vec3d.ArcDistance(sv.Anchor, st.At, PlanetState.GeoRadius)) <= StormCoverWind) continue;
+                        Hazards.ShockAt(this, sv.Anchor, 1.0, Cause());
                     }
                 P.Storms[i] = st;
             }
