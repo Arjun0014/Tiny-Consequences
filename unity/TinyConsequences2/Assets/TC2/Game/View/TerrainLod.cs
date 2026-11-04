@@ -906,6 +906,9 @@ namespace TC2.Game
                             float age = Frac(num * 11.37f);
                             float snagChance = (type == ForestTypes.Boreal || type == ForestTypes.Treeline ? 0.035f : type == ForestTypes.Rain ? 0.012f : 0.018f) + (sinceFire < 30f ? 0.16f * (1f - sinceFire / 30f) : 0f);
                             int kind = TreeKindFor(type, v, u, con, dryHere, p.Rel[a], tHere);
+                            // (session 32 QA, s32pages1/s32pow5) an emergent rises over a closed canopy: where the woods thin out to fields and glades
+                            // it stood alone, a 40 m pale pole under a flat crown five times a house in the farmland - there it is a canopy tree
+                            if (kind == ProcMeshes.TreeEmergent && wd.x < 0.5f) kind = ProcMeshes.TreeRainCanopy;
                             if (Frac(num * 23.9f) < snagChance) kind = ProcMeshes.TreeSnag;
                             float r = Canopy.Radius[k] * Canopy.Spacing * (ProcMeshes.Needles(kind) ? 1f / 1.32f : kind == ProcMeshes.TreePoplar ? 0.85f : 1f);
                             float h = r * Canopy.Top(num) * (ProcMeshes.Needles(kind) ? 1.05f : 1.1f) * ForestTypes.Stature(type);
