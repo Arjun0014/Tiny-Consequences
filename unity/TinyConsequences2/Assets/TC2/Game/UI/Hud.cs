@@ -755,7 +755,7 @@ namespace TC2.Game
                 if (how.Length > 110) how = how.Substring(0, 107) + "...";
                 return "\n<color=#e6b8a0>" + how + "</color> <size=13>(year " + SimTime.YearOf(e.Time).ToString(CultureInfo.InvariantCulture) + ")</size>\n<size=13><i><color=#b3aa96>click for its page</color></i></size>";
             }
-            return "\nfallen in" + (b.Left != 0 ? " - left in year " + SimTime.YearOf(b.Left).ToString(CultureInfo.InvariantCulture) : "") + "\n<size=13><i><color=#b3aa96>click for its page</color></i></size>";
+            return "\nfallen in" + (b.Left != 0 && SimTime.YearOf(b.Left) >= 0 ? " - left in year " + SimTime.YearOf(b.Left).ToString(CultureInfo.InvariantCulture) : "") + "\n<size=13><i><color=#b3aa96>click for its page</color></i></size>";
         }
 
         /// <summary>(session 29) A work's tag under its name: being raised, fallen in, or standing since its year; how many of its village are at

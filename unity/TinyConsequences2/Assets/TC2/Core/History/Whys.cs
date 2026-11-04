@@ -298,7 +298,7 @@ namespace TC2.Core.History
                 {
                     if (!w.History.TryGet(at[i], out var e)) continue;
                     if (e.Time < fell) break;
-                    if (e.Time == fell && (e.Kind == HistoryKind.BuildingBurned || e.Kind == HistoryKind.MeteorStruck)) return e.Id;
+                    if (e.Time == fell && (e.Kind == HistoryKind.BuildingBurned || e.Kind == HistoryKind.MeteorStruck || e.Kind == HistoryKind.HomesShaken)) return e.Id;   // (session 32: a quake's too)
                 }
             // (a stone's record names the village nearest its fall; the buildings it flattened may be another's) - by its moment, the ledger in time order
             int lo = 0, hi = w.History.Count - 1;

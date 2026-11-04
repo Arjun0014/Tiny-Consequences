@@ -1526,6 +1526,43 @@ namespace TC2.Core.Simulation
             Fire.TryIgnite(this, cell, strike, root, strength);
             Fx.Add(Now, cell, FxKind.Bolt, (float)strength);   // (for the view: the bolt)
             Hazards.ShockAt(this, Planet.Grid.Center[cell], BoltShockM, strike);   // (session 32: a bolt at the door startles those there)
+            LightningRoof(cell, strike, root);
+        }
+
+        /// <summary>
+        /// (session 32) A bolt that falls among a village's homes strikes the roof nearest where it falls (within 45 m): its thatch or shingle takes fire -
+        /// more often than not for the god's bolt, a quarter of the time for the sky's - and the home burns down (its household takes an empty home or camps,
+        /// as after any burning), the fire it starts kindling the ground round it.
+        /// </summary>
+        void LightningRoof(int cell, long strike, RootKind root)
+        {
+            var P = Planet;
+            Vec3d at = P.Grid.Center[cell];
+            int bestHh = 0, bestSid = 0; double bd = 45.0;
+            for (int sid = Settlements.First(); sid != 0; sid = Settlements.Next(sid))
+            {
+                ref var s = ref Settlements.Get(sid);
+                if (!s.Inhabited || Vec3d.ArcDistance(s.Anchor, at, P.Radius) > 900.0) continue;
+                var hl = HouseholdsOf(sid);
+                for (int i = 0; i < hl.Count; i++)
+                {
+                    ref var hh = ref Households.Get(hl[i]);
+                    if (hh.Building == 0 || !Buildings.Exists(hh.Building)) continue;
+                    ref var b = ref Buildings.Get(hh.Building);
+                    if (Places.Homes.Fallen(in b, Now)) continue;
+                    double d = Vec3d.ArcDistance(at, s.LocalToSphere(b.X, b.Y, P.Radius), P.Radius);
+                    if (d < bd) { bd = d; bestHh = hl[i]; bestSid = sid; }
+                }
+            }
+            if (bestHh == 0) return;
+            double pr = root == RootKind.You ? 0.8 : 0.25;
+            if (KeyedRng.Unit(Seed, RngStream.FireSpread, (ulong)bestHh, (ulong)Now, 81) >= pr) return;
+            Places.Homes.Burnt(this, bestHh, strike);
+            long burn = Record(new HistoryEvent
+            {
+                Kind = HistoryKind.BuildingBurned, Time = Now, Cell = cell, Settlement = bestSid, Subject = EntityRef.Household(bestHh), Cause1 = strike, Rel1 = CauseRel.CausedBy, ArgA = 2,
+            });
+            Fire.TryIgnite(this, cell, burn, root, 4.0);
         }
 
         // ------------------------------------------------------------- time

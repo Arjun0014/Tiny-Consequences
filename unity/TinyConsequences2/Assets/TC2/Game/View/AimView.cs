@@ -63,7 +63,7 @@ namespace TC2.Game
         readonly List<Bolt> _bolts = new List<Bolt>();
         long _boltSeen = -1;
         TC2.Core.Simulation.World _boltWorld;
-        const float BoltTime = 0.38f;
+        const float BoltTime = 0.75f;   // (session 32: three strokes, long enough to be seen at a low frame rate)
 
         struct Mark { public Vec3d Dir; public double R; public Color Col; public int Frame; }
         static readonly Mark[] Marks = new Mark[2];
@@ -164,11 +164,11 @@ namespace TC2.Game
                 float age = now - b.Born;
                 if (age > BoltTime) { _bolts.RemoveAt(i); continue; }
                 // two strokes and their afterglow: lit at once, dark a moment, lit again, fading
-                float lit = age < 0.07f ? 1f : age < 0.13f ? 0.15f : age < 0.22f ? 0.9f : 0.9f * (1f - (age - 0.22f) / (BoltTime - 0.22f));
+                float lit = age < 0.10f ? 1f : age < 0.16f ? 0.15f : age < 0.30f ? 1f : age < 0.36f ? 0.2f : age < 0.46f ? 0.9f : 0.9f * (1f - (age - 0.46f) / (BoltTime - 0.46f));
                 Vector3 up = b.At.normalized;
                 Vector3 east = Vector3.Cross(Vector3.up, up); if (east.sqrMagnitude < 1e-6f) east = Vector3.right; east.Normalize();
                 Vector3 north = Vector3.Cross(up, east);
-                float H = Mathf.Clamp(alt * 0.55f, 220f, 900f), wid = Mathf.Max(1.2f, alt * 0.0035f);
+                float H = Mathf.Clamp(alt * 0.55f, 220f, 900f), wid = Mathf.Max(2.2f, alt * 0.006f);
                 Color core = new Color(0.86f, 0.91f, 1f, lit), glow = new Color(0.55f, 0.65f, 1f, 0.35f * lit);
                 ulong h = b.Seed;
                 Vector3 prev = b.At + up * H;
@@ -257,7 +257,8 @@ namespace TC2.Game
                 ulong h = KeyedRng.Mix((ulong)e.Id * 0x9E3779B97F4A7C15UL);
                 Vec3d east = Vec3d.Cross(new Vec3d(0, 1, 0), c); if (east.Length < 1e-9) east = new Vec3d(1, 0, 0); east = east.Normalized;
                 Vec3d north = Vec3d.Cross(c, east).Normalized;
-                double ox = (KeyedRng.Unit(h) - 0.5) * 90.0, oy = (KeyedRng.Unit(KeyedRng.Mix(h)) - 0.5) * 90.0;
+                double spread = e.RootKind == TC2.Core.History.RootKind.You ? 0.0 : 90.0;   // (session 32: the god's bolt falls where it was aimed - the heart of its ring - on the roof that burns)
+                double ox = (KeyedRng.Unit(h) - 0.5) * spread, oy = (KeyedRng.Unit(KeyedRng.Mix(h)) - 0.5) * spread;
                 Vec3d at = (c * P.Radius + east * ox + north * oy).Normalized;
                 _bolts.Add(new Bolt { At = PlanetGeo.Surface(P, at, 0f), Born = now, Seed = h });
                 added++;

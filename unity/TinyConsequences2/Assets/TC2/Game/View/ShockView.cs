@@ -89,7 +89,7 @@ namespace TC2.Game
                         double a = 2 * System.Math.PI * (k + 0.5f * pulse) / n;
                         Vec3d d = OnGround(wv.At, e, nn, r, a, P.Radius);
                         Vector3 p = Ground.Surface(P, d, 3f + 6f * t);
-                        Puffs.Add(p, 18f + r * 0.08f, 0.45f * fade, 0.55f, 0f, Mathf.Repeat(k * 0.37f + pulse * 0.11f, 1f), 0.85f);
+                        Puffs.Add(p, 26f + r * 0.10f, 0.65f * fade, 0.55f, 0f, Mathf.Repeat(k * 0.37f + pulse * 0.11f, 1f), 0.85f);
                     }
                 }
             }
@@ -107,7 +107,7 @@ namespace TC2.Game
                     float sk = Mathf.Repeat(fl.Seed * 7.3f + k * 0.29f, 1f);
                     Vector3 off = Jitter(fl.Seed + k * 0.41f, (5f + 16f * Mathf.Sqrt(ph)) * fl.Size);
                     Vector3 p = fl.At + up * ((2f + 18f * Mathf.Sqrt(ph)) * fl.Size * (0.6f + 0.6f * sk)) + off - up * Vector3.Dot(off, up) * 0.6f;
-                    Puffs.Add(p, (7f + 16f * Mathf.Sqrt(ph)) * fl.Size, 0.7f * s * (age < 0.4f ? age / 0.4f : 1f), 0.6f, 0f, sk, 0.85f);
+                    Puffs.Add(p, (10f + 24f * Mathf.Sqrt(ph)) * fl.Size, 0.8f * s * (age < 0.4f ? age / 0.4f : 1f), 0.6f, 0f, sk, 0.85f);
                 }
             }
         }

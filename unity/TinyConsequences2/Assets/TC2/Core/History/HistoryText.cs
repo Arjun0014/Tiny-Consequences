@@ -73,6 +73,7 @@ namespace TC2.Core.History
                 case HistoryKind.OreRevealed: return "Copper ore lay bare " + At(place) + ": green and blue stone where the rock breaks, " + F(e.Magnitude / 1000.0, "0") + " tonnes of it, for whoever comes to see it.";
                 case HistoryKind.Drought: return "A drought came over the land round " + place + (e.ArgA > 0 ? ": no rain for " + e.ArgA + " days" : "") + ".";
                 case HistoryKind.BuildingBurned:   // (C8.0: a band's burning-in)
+                    if (e.ArgA == 2 && e.Subject.Kind == EntityKind.Household) return "Lightning struck the roof of the " + Plural(subj) + "' home in " + place + ": it burned down.";   // (session 32)
                     if (e.Subject.Kind == EntityKind.Household)
                         return "The band from " + obj + " burned the home of the " + Plural(subj) + " in " + place + (e.Other.IsNone ? "" : ", for a killing by " + other) + ".";
                     return "A building of " + place + " burned.";
