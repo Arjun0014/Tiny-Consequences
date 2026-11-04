@@ -240,6 +240,14 @@ namespace TC2.Core.Agents
                     // at leisure on the green, or visiting: those near each other turn to each other and talk; some sit on the grass
                     Group(w, in p, sid, t, ref x, ref y, ref fx, ref fy, 1.1);
                     pose = u1 < 0.3 ? Sit : Talk;
+                    // (session 32, Arjun: the reactions read cheap - crowds idling every way) kept together by a shock felt: on their feet, turned to
+                    // where it struck, talking it over with a hand toward it - read from the alarm they hold (its record's place); no state written
+                    if (p.Why == WhyCode.Shock && p.Alarm != 0 && w.History.TryGet(p.Alarm, out var shock) && shock.Cell >= 0 && shock.Cell < w.Planet.Cells)
+                    {
+                        s.SphereToLocal(w.Planet.Grid.Center[shock.Cell], w.Planet.Radius, out double sx, out double sy);
+                        if ((sx - x) * (sx - x) + (sy - y) * (sy - y) > 1.0) { fx = sx - x; fy = sy - y; }
+                        pose = u1 < 0.6 ? Talk : Stand;
+                    }
                     break;
                 case ActivityKind.Watch:
                     pose = Stand;
