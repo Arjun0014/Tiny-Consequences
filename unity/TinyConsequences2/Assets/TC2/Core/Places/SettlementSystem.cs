@@ -1341,6 +1341,9 @@ namespace TC2.Core.Places
         /// longitude), the southern seasons half a year on. Every use of the village's calendar goes through here (a garden kept the north's days
         /// in southern villages: D2-144).
         /// </summary>
+        /// <summary>(session 32) The crop's law of warmth: how well it grows at a day's mean air (C) - from nothing at 3 C to full from 13 C, falling off from 31 C to nothing at 39 C (the growth step's own factor).</summary>
+        public static double CropWarmth(double t) => DMath.SmoothStep(3, 13, t) * (1.0 - DMath.SmoothStep(31, 39, t));
+
         public static int DayOfYear(in Settlement s, long t) => DayOfYear(s.Anchor, t);
 
         /// <summary>The same for a place's anchor (a village being founded).</summary>

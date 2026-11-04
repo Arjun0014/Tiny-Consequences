@@ -438,13 +438,19 @@ namespace TC2.Tests.Core
             int sid = w.Settlements.First(), cell = w.Settlements.Get(sid).Cell;
             w.Settlements.Get(sid).CropCause = 0;
             double season = PlanetSystems.Season(w.Now), t0 = w.PlanetSys.DayMean(cell, season);
+            double tField = w.Planet.Temp[w.Settlements.Get(sid).FieldCell];   // (session 32: the air names itself only where it slows the crop)
+            bool slows = TC2.Core.Places.SettlementSystem.CropWarmth(tField - World.AirBy) < TC2.Core.Places.SettlementSystem.CropWarmth(tField) - 0.02;
             w.Issue(new Command { Time = w.Now, Kind = CommandKind.GodCold, Cell = cell });
             w.AdvanceTo(w.Now + SimTime.Hours(1));
             Assert.AreEqual(t0 - World.AirBy, w.PlanetSys.DayMean(cell, season), 1e-9, "colder by its degrees");
             long aev = 0;
             for (int i = 0; i < w.History.Count; i++) { var e = w.History.At(i); if (e.Kind == HistoryKind.ColdAir) { aev = e.Id; StringAssert.StartsWith("Cold air came over the land", HistoryText.Describe(w, in e)); } }
             Assert.AreNotEqual(0L, aev, "told");
-            Assert.AreEqual(aev, w.Settlements.Get(sid).CropCause, "its standing crop names the cold as its harm, as under a drought");
+            // (session 32, every power checked) its standing crop names the cold as its harm where the cold slows it by the crop's law of warmth - not
+            // where it stays on the crop's plateau (this world's fields at ~21 C, 16 C under the cold: no harm, so not named)
+            Assert.AreEqual(slows ? aev : 0L, w.Settlements.Get(sid).CropCause, "the cold names itself only where it slows the crop (" + tField.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " C)");
+            Assert.IsFalse(TC2.Core.Places.SettlementSystem.CropWarmth(10.0 - World.AirBy) >= TC2.Core.Places.SettlementSystem.CropWarmth(10.0) - 0.02, "at 10 C the cold slows a crop");
+            Assert.IsTrue(TC2.Core.Places.SettlementSystem.CropWarmth(36.0 + World.AirBy) < TC2.Core.Places.SettlementSystem.CropWarmth(36.0) - 0.02, "at 36 C warmth slows a crop");
         }
 
         [Test]

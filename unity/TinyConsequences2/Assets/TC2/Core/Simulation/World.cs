@@ -780,13 +780,18 @@ namespace TC2.Core.Simulation
                         long ev = Record(new HistoryEvent { Kind = HistoryKind.GodCommand, Time = Now, Cell = c.Cell, Settlement = VillageNear(c.Cell, GodReach), RootKind = RootKind.You, ArgA = (int)c.Kind });
                         long aev = Record(new HistoryEvent { Kind = warm ? HistoryKind.WarmAir : HistoryKind.ColdAir, Time = Now, Cell = c.Cell, Settlement = VillageNear(c.Cell, AirReach), Cause1 = ev, Rel1 = CauseRel.CausedBy, ArgA = AirDays, Magnitude = (float)AirBy, RootKind = RootKind.You });
                         DrySpells.Add(new DrySpell { Kind = (byte)(warm ? 2 : 3), Cell = c.Cell, Reach = AirReach, Until = Now + AirDays * SimTime.Day, Event = aev });
-                        if (!warm)
                         {
+                            // (session 32, every power checked: the cold had named itself the harm of every crop in reach, also where it quickened them,
+                            // and the warmth never, also where it slowed them) the air names itself only where its 5 C slows the crop at the village's
+                            // fields by the crop's own law of warmth (SettlementSystem.CropWarmth): cold where it is cool, warmth where it is hot
                             Vec3d at = Planet.Grid.Center[c.Cell];
+                            double by = warm ? AirBy : -AirBy;
                             for (int sid = Settlements.First(); sid != 0; sid = Settlements.Next(sid))
                             {
                                 ref var s = ref Settlements.Get(sid);
-                                if (s.Inhabited && s.CropCause == 0 && Vec3d.ArcDistance(at, s.Anchor, Planet.Radius) <= AirReach) s.CropCause = aev;
+                                if (!s.Inhabited || s.CropCause != 0 || s.FieldCell < 0 || s.FieldCell >= Planet.Cells || Vec3d.ArcDistance(at, s.Anchor, Planet.Radius) > AirReach) continue;
+                                double t = Planet.Temp[s.FieldCell];
+                                if (TC2.Core.Places.SettlementSystem.CropWarmth(t + by) < TC2.Core.Places.SettlementSystem.CropWarmth(t) - 0.02) s.CropCause = aev;
                             }
                         }
                         break;
