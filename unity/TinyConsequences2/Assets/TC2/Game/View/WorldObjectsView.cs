@@ -2069,7 +2069,7 @@ namespace TC2.Game
                     _rings.Add(0, ring, Matrix4x4.TRS(pos + pos.normalized * 0.04f * sc, rot, Vector3.one * sc * (me ? 1.15f : 0.9f)), me ? 0.95f : 0.55f);
                 }
                 PeopleDrawn++;
-                if (Presence.Busy(pose) || moving) PeopleBusy++;
+                if (Presence.Busy(pose) && !Presence.Astir(pose) || moving) PeopleBusy++;   // (astir at leisure is not at work)
                 if (pose == Presence.Flail && p.At != 0 && w.Settlements.Exists(p.At) && _floorsUsed.Add(p.At))
                 {
                     // the floor they thresh on: its sheaves laid out between them (C3.7b - drawn while someone threshes there, never ahead of it)

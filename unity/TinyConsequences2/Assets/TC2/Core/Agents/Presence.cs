@@ -107,19 +107,20 @@ namespace TC2.Core.Agents
                     bool speaks = Roll(p.Id, DMath.ToLong(DMath.Floor((since + 40.0 * u2) / 40.0)), 0x7A1) < 0.6;
                     double sitShare = 0.35 + 0.35 * u1;   // (some sit most of their leisure, some stand)
                     if (f < sitShare) pose = grp && speaks ? SitTalk : SitIdle;
-                    else if (f < 0.82 || p.Why == WhyCode.Shock) pose = grp && speaks ? Talk : Loiter;
+                    else if (f < 0.75 || p.Why == WhyCode.Shock) pose = grp && speaks ? Talk : Loiter;
                     else
                     {
                         // a few steps out (5 m) and back, then stood there; the way out turned a little each time
-                        double g = (f - 0.82) / 0.18;
+                        double g = (f - 0.75) / 0.25;   // (75 s: 9 s out at a stroll, a look, 9 s back)
                         double a = (Roll(p.Id, slot, 0x57E) - 0.5) * 1.4, l = DMath.Sqrt(fx * fx + fy * fy);
                         double ox = l > 1e-9 ? fx / l : 1.0, oy = l > 1e-9 ? fy / l : 0.0;
                         double bx = ox * DMath.Cos(a) - oy * DMath.Sin(a), by = ox * DMath.Sin(a) + oy * DMath.Cos(a);
-                        double outM = g < 0.2 ? g / 0.2 : g < 0.8 ? 1.0 : (1.0 - g) / 0.2;
-                        x += bx * 5.0 * outM; y += by * 5.0 * outM;
-                        if (g < 0.2) { fx = bx; fy = by; pose = Walk; moving = true; }
-                        else if (g >= 0.8) { fx = -bx; fy = -by; pose = Walk; moving = true; }
-                        else { fx = bx; fy = by; pose = Look; }
+                        double outM = g < 0.12 ? g / 0.12 : g < 0.88 ? 1.0 : (1.0 - g) / 0.12;
+                        double reach = grp ? DMath.Min(5.0, 0.6 * DMath.Sqrt((mx - x) * (mx - x) + (my - y) * (my - y))) : 5.0;   // (over toward the neighbours)
+                        x += bx * reach * outM; y += by * reach * outM;
+                        if (g < 0.12) { fx = bx; fy = by; pose = Walk; moving = true; }
+                        else if (g >= 0.88) { fx = -bx; fy = -by; pose = Walk; moving = true; }
+                        else { fx = bx; fy = by; pose = grp ? (speaks ? Talk : Loiter) : Look; }
                     }
                     break;
                 }
@@ -287,8 +288,10 @@ namespace TC2.Core.Agents
                     fx = x - s.SquareX; fy = y - s.SquareY;   // (out from the village: toward the water's side)
                     break;
                 case ActivityKind.Haul:
-                    // (session 32: walked on the spot before) at the load: stooped to it, then carrying it the few metres to where it goes and back
+                    // (session 32: walked on the spot before) at the load: stooped to it, then carrying it the few metres to where it goes and back;
+                    // bringing it home, at their own door - out to the load and in with it
                     fx = DMath.Cos(u1 * DMath.TwoPi); fy = DMath.Sin(u1 * DMath.TwoPi);
+                    if (sid == p.Home && Roofed(w, in p, sid)) { Door(w, in p, sid, u0, ref x, ref y, ref fx, ref fy); fx = -fx; fy = -fy; }
                     if (Cycle(since + 80.0 * u0, 80.0, 25.0)) pose = Reap;
                     else Fetch(since + 80.0 * u0, 80.0, 25.0, 5.0, ref x, ref y, ref fx, ref fy, out pose, out moving);
                     break;
@@ -408,7 +411,7 @@ namespace TC2.Core.Agents
 
         /// <summary>
         /// Those kept together by a shock (session 32), closed in round the refuge they ran to (AgentSystem.ShockStep's: the green, or 220 m past the
-        /// point it struck when that was near the green): each their own spot of the 30 m patch drawn in to a third, a child beside the first grown-up
+        /// point it struck when that was near the green): each their own spot of the 30 m patch drawn in to a third (as tight as a body to 1.2 m2 allows), a child beside the first grown-up
         /// of its household kept together there - closing in over their first 25 s at it (`closing`, a walk). The refuge is reckoned once a moment for
         /// each shock and village; nothing written.
         /// </summary>
@@ -427,7 +430,9 @@ namespace TC2.Core.Agents
                 if (d < 180.0) { double ux = d > 1.0 ? dx / d : 1.0, uy = d > 1.0 ? dy / d : 0.0; rf = (sx + ux * 220.0, sy + uy * 220.0); }
                 _refuge[key] = rf;
             }
-            const double In = 0.33;
+            // (drawn in to a third - but never packed tighter than a body to 1.2 m2: a great village's crowd fills its 30 m patch)
+            int crowd = _crowdN.TryGetValue(key, out int cn) ? cn : 1;
+            double In = DMath.Min(1.0, DMath.Max(0.33, DMath.Sqrt(crowd / 750.0)));
             double tx = rf.x + (p.ToX - rf.x) * In, ty = rf.y + (p.ToY - rf.y) * In;
             if (child && p.Household != 0 && _crowdAdult.TryGetValue((sid, p.Alarm, p.Household), out int ad) && ad != p.Id && w.People.Exists(ad))
             {
@@ -588,6 +593,7 @@ namespace TC2.Core.Agents
         static readonly Dictionary<(int sid, long alarm), (double x, double y)> _refuge = new Dictionary<(int, long), (double, double)>();
         static readonly Dictionary<(int sid, long alarm, int hh), int> _crowdAdult = new Dictionary<(int, long, int), int>();
         static readonly Dictionary<int, int> _fireAt = new Dictionary<int, int>();
+        static readonly Dictionary<(int sid, long alarm), int> _crowdN = new Dictionary<(int, long), int>();
         const double Cell = 9.0;
 
         static long GroupKey(int sid, int act, double x, double y) => ((long)sid * 64 + act) * 4194304L + ((long)DMath.Floor(x / Cell) + 1024) * 2048 + ((long)DMath.Floor(y / Cell) + 1024);
@@ -613,13 +619,18 @@ namespace TC2.Core.Agents
         static void Moment(World w, double t)
         {
             if (ReferenceEquals(_gw, w) && _gt == t) return;
-            _gw = w; _gt = t; _groups.Clear(); _rank.Clear(); _refuge.Clear(); _crowdAdult.Clear(); _fireAt.Clear();
+            _gw = w; _gt = t; _groups.Clear(); _rank.Clear(); _refuge.Clear(); _crowdAdult.Clear(); _fireAt.Clear(); _crowdN.Clear();
             for (int id = w.People.First(); id != 0; id = w.People.Next(id))
             {
                 ref var q = ref w.People.Get(id);
                 if (!q.Alive || q.Step != StepKind.Local || t < q.TA) continue;
                 if (q.Act != ActivityKind.Social && q.Act != ActivityKind.Visit && q.Act != ActivityKind.Train && q.Act != ActivityKind.Idle) continue;
                 int qs = q.At != 0 ? q.At : q.Home;
+                if (q.Act == ActivityKind.Social && q.Why == WhyCode.Shock && q.Alarm != 0)
+                {
+                    var ck = (qs, q.Alarm);
+                    _crowdN[ck] = (_crowdN.TryGetValue(ck, out int cn) ? cn : 0) + 1;
+                }
                 if (q.Act == ActivityKind.Social && q.Why == WhyCode.Shock && q.Alarm != 0 && q.Household != 0 && q.AgeYears((long)t) >= 16.0)
                 {
                     var ak = (qs, q.Alarm, q.Household);

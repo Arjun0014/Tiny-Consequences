@@ -20,6 +20,7 @@ namespace TC2.Headless
         /// </summary>
         static void StillAudit(World w, Args a)
         {
+            if (a.Has("shock")) { ShockLook(w, a); return; }
             long next0 = SimTime.StartOfDay(w.Now) + SimTime.Day;
             if (w.StepDays > 1) w.RequestStepDays(1, next0);
             if (w.Resolution != Resolution.Activity) w.RequestResolution(Resolution.Activity, next0);
@@ -132,6 +133,91 @@ namespace TC2.Headless
                                   (100.0 * inside[k] / st).ToString("0").PadLeft(14) + (100.0 * door[k] / st).ToString("0").PadLeft(9) + (100.0 * village[k] / st).ToString("0").PadLeft(9) + (100.0 * land[k] / st).ToString("0").PadLeft(6) +
                                   (100.0 * hid[k] / seen[k]).ToString("0").PadLeft(12) + (100.0 * statue[k] / seen[k]).ToString("0").PadLeft(7) + (" (" + (100.0 * sitting[k] / seen[k]).ToString("0") + ")").PadLeft(6) + (100.0 * astir[k] / seen[k]).ToString("0").PadLeft(7) + (100.0 * quick[k] / seen[k]).ToString("0").PadLeft(7) + "  " + wsb);
             }
+        }
+
+        /// <summary>
+        /// `place --load SAVE --still --shock meteor|quake [--hours H] [--every S]` (session 32: the reaction as it is drawn): the saved world lived in
+        /// ACTIVITY to mid-morning in its most peopled village, a stone cast two cells off its heart (a quake under it), then every S seconds those
+        /// the shock holds there as Presence draws them: their poses, how many face where it struck, how close the crowd keeping together stands
+        /// (drawn against the spots the simulation gives them) and how many of its children stand beside a grown-up of their household. Reads only
+        /// after the cast.
+        /// </summary>
+        static void ShockLook(World w, Args a)
+        {
+            long next0 = SimTime.StartOfDay(w.Now) + SimTime.Day;
+            if (w.StepDays > 1) w.RequestStepDays(1, next0);
+            if (w.Resolution != Resolution.Activity) w.RequestResolution(Resolution.Activity, next0);
+            w.AdvanceTo(next0 + SimTime.Hour);
+            int sid = 0, most = 0;
+            var count = new Dictionary<int, int>();
+            for (int id = w.People.First(); id != 0; id = w.People.Next(id)) { ref var q = ref w.People.Get(id); if (q.Alive && q.Home != 0) count[q.Home] = (count.TryGetValue(q.Home, out int n) ? n : 0) + 1; }
+            int size = a.Int("size", 0);   // (--size N: the village nearest N people, else the most peopled)
+            foreach (var kv in count)
+                if (w.Settlements.Exists(kv.Key) && (size > 0 ? sid == 0 || Math.Abs(kv.Value - size) < Math.Abs(most - size) : kv.Value > most)) { most = kv.Value; sid = kv.Key; }
+            if (sid == 0) { Console.WriteLine("no village"); return; }
+            {
+                ref var s0 = ref w.Settlements.Get(sid);
+                long lt = SimTime.FloorMod(w.Now + PlanetState.LocalOffset(s0.Anchor), SimTime.Day);
+                w.AdvanceTo(w.Now + SimTime.FloorMod(10 * SimTime.Hour - lt, SimTime.Day));
+            }
+            ref var s = ref w.Settlements.Get(sid);
+            bool quake = a.Get("shock", "meteor") == "quake";
+            int c = s.Cell;
+            if (!quake) { c = w.Planet.Grid.Nbr4[c * 4]; c = w.Planet.Grid.Nbr4[c * 4]; }
+            w.Issue(new Command { Time = w.Now, Kind = quake ? CommandKind.GodQuake : CommandKind.GodMeteor, Cell = c, Arg = quake ? 7 : 0 });
+            Console.WriteLine("village " + sid + " (" + most + " living there), " + (quake ? "a quake under it" : "a stone two cells off its heart") + " at " + SimTime.FormatShort(w.Now));
+            long end = w.Now + SimTime.Hours(a.Double("hours", 2));
+            long every = a.Int("every", 60);
+            var poses = new Dictionary<(int act, int pose), int>();
+            double held = 0, drawnN = 0, facing = 0, crowdRms = 0, simRms = 0, crowdN = 0, kids = 0, kidsBeside = 0;
+            while (w.Now < end)
+            {
+                w.AdvanceTo(Math.Min(end, w.Now + every));
+                double t = w.Now;
+                var at = new List<(int id, double x, double y, double sx, double sy, int hh, bool adult)>();
+                for (int id = w.People.First(); id != 0; id = w.People.Next(id))
+                {
+                    ref var p = ref w.People.Get(id);
+                    if (!p.Alive || p.At != sid || p.Why != WhyCode.Shock) continue;
+                    held++;
+                    if (!Presence.Of(w, in p, t, out Vec3d d, out Vec3d face, out byte pose, out bool mv)) continue;
+                    drawnN++;
+                    var key = ((int)p.Act, (int)pose);
+                    poses[key] = (poses.TryGetValue(key, out int pn) ? pn : 0) + 1;
+                    if (w.History.TryGet(p.Alarm, out var e) && e.Cell >= 0 && e.Cell < w.Planet.Cells)
+                    {
+                        Vec3d to = w.Planet.Grid.Center[e.Cell]; to = to - d * Vec3d.Dot(to, d);
+                        double l = to.Length;
+                        if (l > 1e-12 && face.Length > 0.5 && Vec3d.Dot(face, to * (1.0 / l)) > 0.7) facing++;
+                    }
+                    if (p.Act == ActivityKind.Social && p.Step == StepKind.Local && t >= p.TA)
+                    {
+                        s.SphereToLocal(d, w.Planet.Radius, out double x, out double y);
+                        at.Add((id, x, y, p.ToX, p.ToY, p.Household, p.AgeYears(w.Now) >= 16.0));
+                        if (p.AgeYears(w.Now) < 12.0) kids++;
+                    }
+                }
+                if (at.Count >= 2)
+                {
+                    double mx = 0, my = 0, ux = 0, uy = 0;
+                    foreach (var q in at) { mx += q.x; my += q.y; ux += q.sx; uy += q.sy; }
+                    mx /= at.Count; my /= at.Count; ux /= at.Count; uy /= at.Count;
+                    foreach (var q in at) { crowdRms += (q.x - mx) * (q.x - mx) + (q.y - my) * (q.y - my); simRms += (q.sx - ux) * (q.sx - ux) + (q.sy - uy) * (q.sy - uy); crowdN++; }
+                }
+                foreach (var q in at)
+                {
+                    ref var p = ref w.People.Get(q.id);
+                    if (p.AgeYears(w.Now) >= 12.0) continue;
+                    bool near = false;
+                    foreach (var o in at) if (o.adult && o.hh == q.hh && o.id != q.id && (o.x - q.x) * (o.x - q.x) + (o.y - q.y) * (o.y - q.y) < 1.5 * 1.5) near = true;
+                    if (near) kidsBeside++;
+                }
+            }
+            Console.WriteLine("held by the shock (samples) " + held.ToString("0") + ", drawn " + drawnN.ToString("0") + "; facing where it struck " + (100.0 * facing / Math.Max(1, drawnN)).ToString("0") + " %");
+            Console.WriteLine("  keeping together: drawn spread (rms from their middle) " + Math.Sqrt(crowdRms / Math.Max(1, crowdN)).ToString("0.0") + " m against the simulation's spots " + Math.Sqrt(simRms / Math.Max(1, crowdN)).ToString("0.0") + " m; children beside a grown-up of their household " + kidsBeside.ToString("0") + " of " + kids.ToString("0"));
+            var list = new List<KeyValuePair<(int act, int pose), int>>(poses);
+            list.Sort((x, y) => y.Value.CompareTo(x.Value));
+            foreach (var kv in list) Console.WriteLine("  " + ((ActivityKind)kv.Key.act).ToString().PadRight(8) + " pose " + kv.Key.pose.ToString().PadLeft(2) + "  " + (100.0 * kv.Value / Math.Max(1, drawnN)).ToString("0.0").PadLeft(5) + " %");
         }
     }
 }
