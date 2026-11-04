@@ -302,6 +302,7 @@ namespace TC2.Tests.Core
             System.Func<Species, bool> game = sp => sp.Habitat == 0 && sp.Gone == 0 && sp.Prey == 0;
             double h0 = Within(w, cell, hunters), g0 = Within(w, cell, game);
             Assert.Greater(h0, 1.0, "premise: hunting beasts round the village");
+            Assert.AreEqual(h0 * World.CullShare, w.CullWouldTake(cell), h0 * 0.01 + 1e-6, "what the bar reads before a cull: what it would take");
             w.Issue(new Command { Time = w.Now, Kind = CommandKind.GodCull, Cell = cell });
             w.AdvanceTo(w.Now + SimTime.Hours(1));
             double h1 = Within(w, cell, hunters);

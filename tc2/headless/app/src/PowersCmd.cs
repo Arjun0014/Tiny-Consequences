@@ -23,7 +23,35 @@ namespace TC2.Headless
         {
             string p = a.Get("power", "meteor");
             if (p == "all") { foreach (var n in Names) { One(a, n); Console.WriteLine(); } return 0; }
+            if (p == "scan") return Scan(a);
             return One(a, p);
+        }
+
+        /// <summary>`--power scan`: for each inhabited village, the hunting beasts within a god's reach of its square (what a cull there could take), the most
+        /// peopled first; and how many villages have any.</summary>
+        static int Scan(Args a)
+        {
+            var w = SaveFile.Load(File.ReadAllBytes(a.Get("load")), out _);
+            var P = w.Planet; int n = P.Cells;
+            var vs = new List<int>();
+            for (int v = w.Settlements.First(); v != 0; v = w.Settlements.Next(v)) if (w.Settlements.Get(v).Inhabited) vs.Add(v);
+            vs.Sort((x, y) => w.Settlements.Get(y).Population.CompareTo(w.Settlements.Get(x).Population));
+            int with = 0; double all = 0;
+            for (int s = 0; s < P.Species.Count; s++) if (P.Species[s].Prey != 0 && P.Species[s].Gone == 0) for (int q = 0; q < n; q++) if (P.Abund[s * n + q] > 0) all += P.Abund[s * n + q];
+            foreach (int v in vs)
+            {
+                Vec3d at = P.Grid.Center[w.Settlements.Get(v).Cell];
+                double hunt = 0;
+                for (int q = 0; q < n; q++)
+                {
+                    if (P.IsLand(q) != P.IsLand(w.Settlements.Get(v).Cell) || Vec3d.ArcDistance(at, P.Grid.Center[q], P.Radius) > World.GodReach) continue;
+                    for (int s = 0; s < P.Species.Count; s++) if (P.Species[s].Prey != 0 && P.Species[s].Gone == 0 && P.Abund[s * n + q] > 0) hunt += P.Abund[s * n + q];
+                }
+                if (hunt >= 0.5) with++;
+                Console.WriteLine(w.History.NameOf(EntityRef.Settlement(v)) + " pop " + w.Settlements.Get(v).Population + ": hunters within " + World.GodReach + " m " + Math.Round(hunt, 1));
+            }
+            Console.WriteLine(with + " of " + vs.Count + " villages have hunters a cull could take (0.5 or more); hunters on the whole planet " + Math.Round(all, 1));
+            return 0;
         }
 
         static int One(Args a, string p)
