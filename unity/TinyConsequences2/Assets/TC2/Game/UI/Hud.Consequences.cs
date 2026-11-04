@@ -21,6 +21,7 @@ namespace TC2.Game
         Vector2 _treeScroll;
         Rect[] _treeCards = new Rect[0];
         string[] _treeKick = new string[0], _treeTip = new string[0], _treeGoWords = new string[0];
+        string[] _treeFitK = new string[0], _treeFitT = new string[0];   // (session 32 QA) each card's kicker and words fitted to its space, at their first drawing
         int[] _treeAct = new int[0], _treeTab = new int[0], _treePath = new int[0];
         long[] _treeTo = new long[0];
         readonly string[] _treeColHead = new string[Consequences.MaxDepth + 1], _treeColSpan = new string[Consequences.MaxDepth + 1];
@@ -29,7 +30,7 @@ namespace TC2.Game
         string _treeSub = "";
         GUIStyle _tcKick, _tcTitle, _tcKickCast, _tcTitleCast, _tcHead, _tcSpan, _tcBadge, _tcBeyond;
 
-        const float TcCardW = 252f, TcCardH = 80f, TcGapX = 60f, TcGapY = 12f, TcPad = 14f;
+        const float TcCardW = 252f, TcCardH = 92f, TcGapX = 60f, TcGapY = 12f, TcPad = 14f;
         const int ActNone = 0, ActPerson = 1, ActPlace = 2, ActBuilding = 3, ActRecord = 4, ActGo = 5, ActChapter = 6;
         static readonly Color TierNow = new Color(0.70f, 0.20f, 0.10f), TierDays = new Color(0.80f, 0.56f, 0.12f), TierYears = new Color(0.20f, 0.35f, 0.62f);
         static readonly Color[] FamilyInk =
@@ -281,6 +282,31 @@ namespace TC2.Game
             GUI.color = o;
         }
 
+        /// <summary>(session 32 QA) Words fitted to a space in a style: as they are when they fit; else a line cut a letter at a time (`oneLine`), or
+        /// whole words kept while their lines fit the height, then "…". Words with rich-text marks are left as they are.</summary>
+        static string FitWords(string s, GUIStyle st, float w, float h, bool oneLine)
+        {
+            if (string.IsNullOrEmpty(s) || st == null || w <= 4f || s.IndexOf('<') >= 0) return s ?? "";
+            bool Fits(string x) => oneLine ? st.CalcSize(new GUIContent(x)).x <= w : st.CalcHeight(new GUIContent(x), w) <= h;
+            if (Fits(s)) return s;
+            const string Tail = "…";
+            if (oneLine)
+            {
+                for (int cut = s.Length - 1; cut > 0; cut--)
+                {
+                    string t = s.Substring(0, cut).TrimEnd(' ', '·', ',', ';', ':', '-') + Tail;
+                    if (Fits(t)) return t;
+                }
+                return Tail;
+            }
+            for (int cut = s.LastIndexOf(' '); cut > 0; cut = s.LastIndexOf(' ', cut - 1))
+            {
+                string t = s.Substring(0, cut).TrimEnd(' ', ',', ';', ':', '-', '(') + Tail;
+                if (Fits(t)) return t;
+            }
+            return s;
+        }
+
         /// <summary>A card: a leaf of lighter paper, its family's colour down its edge and its tier's along its top, when and where, what (and how many).</summary>
         void TreeCard(int i, Rect c)
         {
@@ -319,8 +345,14 @@ namespace TC2.Game
             bool badge = !cast && !nd.More && !nd.Detail && nd.Count > 1;
             float bw = badge ? 34f : 0f;
             if (ev.type != EventType.Repaint) return;   // (words take no input: drawn on the repaint only)
-            GUI.Label(new Rect(textX, c.y + 7f, c.xMax - textX - 8f - bw, 14f), _treeKick[i], cast ? _tcKickCast : _tcKick);
-            GUI.Label(new Rect(textX, c.y + 23f, c.xMax - textX - 8f, c.height - 27f), nd.More ? "<i>" + nd.Title + "</i>" : nd.Title, cast ? _tcTitleCast : _tcTitle);
+            // (session 32 QA, s32pow4) the words fitted to the card - whole words then "…", the kicker's place shortened - where a third line had been drawn
+            // cut through its middle ("their households dug out what t") and the place cut at the badge; the card's tip keeps every word
+            float kw = c.xMax - textX - 8f - bw, tw = c.xMax - textX - 8f, th = c.height - 27f;
+            GUIStyle ks = cast ? _tcKickCast : _tcKick, ts = cast ? _tcTitleCast : _tcTitle;
+            if (_treeFitK[i] == null) _treeFitK[i] = FitWords(_treeKick[i], ks, kw, 0f, true);
+            if (_treeFitT[i] == null) _treeFitT[i] = FitWords(nd.Title, ts, tw, th, false);
+            GUI.Label(new Rect(textX, c.y + 7f, kw, 14f), _treeFitK[i], ks);
+            GUI.Label(new Rect(textX, c.y + 23f, tw, th), nd.More ? "<i>" + _treeFitT[i] + "</i>" : _treeFitT[i], ts);
             if (badge)
             {
                 var br = new Rect(c.xMax - bw - 6f, c.y + 6f, bw, 16f);
@@ -337,7 +369,7 @@ namespace TC2.Game
             var t = _tree; int n = t.Nodes.Count;
             if (_treeCards.Length != n)
             {
-                _treeCards = new Rect[n]; _treeKick = new string[n]; _treeTip = new string[n]; _treeGoWords = new string[n];
+                _treeCards = new Rect[n]; _treeKick = new string[n]; _treeTip = new string[n]; _treeGoWords = new string[n]; _treeFitK = new string[n]; _treeFitT = new string[n];
                 _treeAct = new int[n]; _treeTab = new int[n]; _treePath = new int[n]; _treeTo = new long[n];
             }
             float next = TcPad;
@@ -409,7 +441,7 @@ namespace TC2.Game
                     go = "open " + nd.Place + "'s page, its " + PlaceTabs[tab].ToLowerInvariant();
                 }
                 else go = "the record and why, in the book";
-                _treeAct[i] = act; _treeTab[i] = tab; _treeTo[i] = to1; _treeGoWords[i] = go; _treeTip[i] = null;
+                _treeAct[i] = act; _treeTab[i] = tab; _treeTo[i] = to1; _treeGoWords[i] = go; _treeTip[i] = null; _treeFitK[i] = null; _treeFitT[i] = null;
             }
         }
 
