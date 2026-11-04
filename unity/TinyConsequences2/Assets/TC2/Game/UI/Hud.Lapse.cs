@@ -79,7 +79,7 @@ namespace TC2.Game
             _headNew.Clear(); _headQueue.Clear(); _headQueuedAt.Clear(); _headShown.Clear(); _headShownAt.Clear(); _headAll.Clear();
             _headNext = Time.unscaledTime + 1.2f;
             _lapseSummary = null; _lostNote = null; _skipMenu = false;
-            if (_guide == 10) _guideWaitsLapse = true;   // (session 31: the guide waits for it to end)
+            if (_guide == GSkip) _guideWaitsLapse = true;   // (session 31: the guide waits for it to end; session 32: the new guide's skip step)
             // (what the player watched: the person followed, else the one chosen; the place whose page is open)
             _watchPid = _follow != 0 ? _follow : _selected;
             _watchSid = _placeSid;
