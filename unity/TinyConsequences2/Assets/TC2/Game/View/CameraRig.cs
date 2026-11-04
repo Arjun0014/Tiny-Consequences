@@ -40,7 +40,9 @@ namespace TC2.Game
                 _lastMouse = Input.mousePosition;
                 double altitude = Distance - R;
                 double k = (altitude / R * 0.0022 + 0.00002) * Settings.CamSpeed;
-                double dLon = -dm.x * k * (1.0 / System.Math.Max(0.2, System.Math.Cos(Lat))), dLat = -dm.y * k;
+                // (session 32: the ground follows the hand - Lon grows toward the screen's left here (Unity's left-handed frame), so a drag to the right
+                // turns Lon up; it had carried the world against the hand, Arjun's report)
+                double dLon = dm.x * k * (1.0 / System.Math.Max(0.2, System.Math.Cos(Lat))), dLat = -dm.y * k;
                 Lon += dLon; Lat += dLat;
                 HandTurned = false;
                 if (dm.sqrMagnitude > 4f) HandTurned = true;
@@ -54,8 +56,8 @@ namespace TC2.Game
             if (!held && menuKeys && Input.GetKey(KeyCode.Q)) { WheelZoom(w, Time.unscaledDeltaTime * 4f); hand = true; }
             if (!held && menuKeys && Input.GetKey(KeyCode.E)) { WheelZoom(w, -Time.unscaledDeltaTime * 4f); hand = true; }
             double kk = (Distance - R) / R * 0.9 + 0.01;
-            if (menuKeys && Input.GetKey(KeyCode.A)) { Lon -= Time.unscaledDeltaTime * kk; hand = true; HandTurned = true; }
-            if (menuKeys && Input.GetKey(KeyCode.D)) { Lon += Time.unscaledDeltaTime * kk; hand = true; HandTurned = true; }
+            if (menuKeys && Input.GetKey(KeyCode.A)) { Lon += Time.unscaledDeltaTime * kk; hand = true; HandTurned = true; }
+            if (menuKeys && Input.GetKey(KeyCode.D)) { Lon -= Time.unscaledDeltaTime * kk; hand = true; HandTurned = true; }
             if (menuKeys && Input.GetKey(KeyCode.W)) { Lat += Time.unscaledDeltaTime * kk; hand = true; HandTurned = true; }
             if (menuKeys && Input.GetKey(KeyCode.S)) { Lat -= Time.unscaledDeltaTime * kk; hand = true; HandTurned = true; }
             FeelUpdate(w, hand, dtFeel);
