@@ -70,7 +70,8 @@ Shader "TC2/Clouds"
                 // the heaps: a convective deck's cauliflower and a layer's lumps in their own light and shade, the sunward lumps brighter
                 // (session 31: from the region view a deck was one flat white shape) its body in its own light and shade, deeper where it is thick, its rim lit through
                 half heaped = saturate(body * (0.80h + 0.45h * cov.a));
-                lit *= lerp(1.0h, 0.60h + 0.52h * billow + 0.22h * (billow - billowS), heaped);
+                lit *= lerp(1.0h, 0.50h + 0.66h * billow + 0.26h * (billow - billowS), heaped);   // (session 32: deeper - a deck's heaps had clipped to flat white)
+                lit *= lerp(1.0h, 0.90h, saturate(body * 1.2h));
                 lit *= lerp(half3(0.86h, 0.90h, 0.98h), half3(1.0h, 1.0h, 1.0h), smoothstep(0.30h, 0.95h, billow));   // (the valleys between its heaps take the sky's blue)
                 // by night only the moon's light, where it is up, as the ground below takes it (session 27: a fixed grey had drawn the night side's
                 // clouds as pale shapes over a black sea, moon or none - s27p3 orbit_21)

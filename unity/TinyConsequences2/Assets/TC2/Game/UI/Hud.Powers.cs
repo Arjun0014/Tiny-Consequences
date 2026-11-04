@@ -114,6 +114,8 @@ namespace TC2.Game
             if (refused != null) { CastNote(refused, false); AudioView.Ui("tick"); return; }
             // (session 32) a stone strikes when it is seen to land: the world applies it the fall's real seconds later at the speed the world runs (the town had
             // fallen while the stone was still in the sky)
+            // (session 32) a cast made while the world is held still sets it going (at a minute a second): a cast never waits unseen
+            if (Host.SpeedIndex == 0 && !Host.MaxSpeed) Host.SpeedIndex = 3;
             long lead = 0;
             if (pw.Kind == CommandKind.GodMeteor)
             {

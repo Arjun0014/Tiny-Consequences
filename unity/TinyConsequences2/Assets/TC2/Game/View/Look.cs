@@ -20,15 +20,15 @@ namespace TC2.Game
         // the clouds: the weather's cover (where it rains today; storms) as decks with ragged edges, the moist climate's air as fields of
         // fair-weather cumulus, both drawn out along the latitude bands' winds (D2-027's cover, its form elaborated)
         public static float CloudDeck = 1.0f;    // x the decks' density where it rains
-        public static float CloudCu = 1.3f;      // x the cumulus fields' cover where the air is moist
+        public static float CloudCu = 1.6f;      // x the cumulus fields' cover where the air is moist
         public static float CloudStretch = 1.4f; // the forms drawn out east-west, along the bands' winds (1 = round)
         public static float CloudShade = 1.0f;   // their relief from the sun's side (0 = flat)
         public static float CloudTile = 3600f;   // (session 27) the forms' noise tile (m): its large shapes ~ a quarter of it, the cumulus' puffs ~ a thirtieth
         public static float CloudShadow = 0.6f;  // (session 27) the share of the sun a thick cloud takes from the ground, the sea and what stands there
         public static float NightFar = 0.16f;    // (session 27) the night's sky and moon light on the ground seen from orbit (x the near view's)
         // (session 31: the world look) the picture's grade and the land's broad variation; a shot may set them for its view
-        public static float GradeSat = 5f;       // saturation over all (was +14: fields read lime)
-        public static float GradeContrast = 12f;
+        public static float GradeSat = 9f;       // saturation over all (was +14: fields read lime)
+        public static float GradeContrast = 14f;   // (session 32: a little more life from orbit, s32look1 o4)
         public static float GradeExposure = 0.06f;
         public static float GradeGreen = 0.34f;  // how far greens' saturation is taken down (0.5 none): the living green of leaves, not a screen's
         public static float LandVary = 1f;       // x the land's broad warm and cool drift (0 none)

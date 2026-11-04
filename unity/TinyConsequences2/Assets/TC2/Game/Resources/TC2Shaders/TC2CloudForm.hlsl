@@ -58,7 +58,10 @@ half TC2CloudDensity(float3 dir, half4 cover, float lod, float t, out half thick
     // the edges' softness: a pixel's share of the forms' finest scale - soft from orbit, crisp near
     half soft = (half)clamp(0.02 + 0.03 * (lod + 3.0), 0.02, 0.13);
     // decks: the rain's cover with ragged, billowing edges; where the air is warm the deck is heaped into clusters of towers
-    half dk = smoothstep(0.44h - soft * 2.0h, 0.44h + soft * 2.0h, deck + (shape - 0.5h) * 0.80h);
+    half dk = smoothstep(0.42h - soft * 2.4h, 0.50h + soft * 2.4h, deck + (shape - 0.5h) * 1.05h);
+    // (session 32) a deck from above is not one sheet: its body broken into masses with thinner lanes between where the billows part (s32look1: the
+    // rain's decks had read as flat white paint from the region view)
+    dk *= 0.52h + 0.48h * smoothstep(0.22h, 0.66h, a.g * 0.55h + b.g * 0.45h + (deck - 0.75h) * 0.45h);
     dk *= lerp(1.0h, 0.45h + 0.75h * a.g, conv * 0.85h);
     // layers: thinner sheets round the rain - a damp day's grey - torn at their edges
     half ly = smoothstep(0.55h - soft * 2.2h, 0.55h + soft * 2.2h, layer + (shape - 0.5h) * 0.95h);

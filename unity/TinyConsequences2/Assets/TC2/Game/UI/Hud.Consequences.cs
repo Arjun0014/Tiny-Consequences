@@ -385,6 +385,7 @@ namespace TC2.Game
                 if ((m & 4) != 0) sb.Append(sb.Length > 0 ? "  ·  " : "").Append("Days after");
                 if ((m & 8) != 0) sb.Append(sb.Length > 0 ? "  ·  " : "").Append("Years on");
                 _treeColHead[d] = sb.ToString().ToUpperInvariant();
+                if (d > 0 && _treeColHead[d] == _treeColHead[d - 1].Replace("AND THEN - ", "")) _treeColHead[d] = "AND THEN - " + _treeColHead[d];   // (session 32: two columns "at once" read as one step)
                 string a = from[d] == long.MaxValue ? "" : Consequences.Offset(from[d]), z = from[d] == long.MaxValue ? "" : Consequences.Offset(to[d]);
                 if (a != z && a.EndsWith(" on", System.StringComparison.Ordinal)) a = a.Substring(0, a.Length - 3);   // ("5 days to 2 years on")
                 _treeColSpan[d] = d == 0 ? "year " + SimTime.YearOf(t.CastTime).ToString(CultureInfo.InvariantCulture) : a == z ? a : a + " to " + z;

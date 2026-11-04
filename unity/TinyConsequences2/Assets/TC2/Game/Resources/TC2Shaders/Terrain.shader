@@ -116,7 +116,10 @@ Shader "TC2/Terrain"
                 fallow = lerp(fallow, half3(0.30h, 0.22h, 0.13h), ploughed * 0.85h);
                 // (session 31) each strip its own hand: a little warmer or cooler than its neighbours, as a season's sowing is
                 half3 stripTone = lerp(half3(1.05h, 0.99h, 0.88h), half3(0.95h, 1.02h, 1.04h), (half)frac(h * 7.31));
-                half3 plot = lerp(fallow, crop * stripTone * (0.86h + 0.26h * h) * (1.0h - 0.16h * furAmp + 0.16h * furAmp * fur), worked);
+                // (session 32) from the region view the strips' tones quieten: a village's fields read as one patchwork, not a dark quilt of squares (s32look1)
+                half farS = (half)smoothstep(1200.0, 4000.0, dist);
+                stripTone = lerp(stripTone, half3(1.0h, 1.0h, 1.0h), farS * 0.8h);
+                half3 plot = lerp(fallow, crop * stripTone * lerp(0.86h + 0.26h * h, 0.99h, farS * 0.7h) * (1.0h - 0.16h * furAmp + 0.16h * furAmp * fur), worked);
                 // (session 29) the crop burned this season (Settlement.CropBurnt: a band's torches, a wildfire) - that share of the sown strips charred
                 // whole, furlong by furlong as a fire runs on from strip to strip: black stubble streaked with grey ash, the spared strips standing
                 // (strip by strip more or less burned to ash, the furrows' streaks faint and fading with distance as the furrows do: s29v3's close and
@@ -258,6 +261,12 @@ Shader "TC2/Terrain"
                 half3 albedo = i.color.rgb;
                 float px = max(length(fwidth(i.farm.xy)), 1e-3), px2 = max(length(fwidth(i.farm2.xy)), 1e-3);
                 float pk = fwidth(i.slot.y) + fwidth(i.slot.z);   // (the crops' colours packed: 0 where the triangle's vertices hold the same villages)
+                // (session 32) from afar the fields' edge wanders with the land's own noise instead of the triangles' cell staircase (s32look1: the farmland
+                // a dark block with stepped edges from the region view)
+                half farF = (half)smoothstep(900.0, 3500.0, dist);
+                half nzF = (half)Tri(i.positionWS, bw, 1.0 / 340.0);
+                half aF = saturate((half)i.color.a + (nzF - 0.5h) * 0.8h * farF);
+                aF = lerp(aF, smoothstep(0.30h, 0.70h, aF), farF);
                 if (i.color.a > 0.002h)
                 {
                     // (session 30) two villages' fields meeting: each furlong of the first village goes whole to the second where the second's share
@@ -276,7 +285,7 @@ Shader "TC2/Terrain"
                         half3 c1 = CropSrgb(i.slot.y), c2 = CropSrgb(i.slot.z);
                         crop = max(crop + SrgbLin(two ? c2 : c1) - SrgbLin(lerp(c1, c2, (half)i.slot.w)), 0.0h);
                     }
-                    half fw; half3 fc = Farmland(crop, two ? i.farm2 : i.farm, dist, two ? px2 : px, two ? (half)i.slot.x : i.realmS.y, i.color.a, fw);
+                    half fw; half3 fc = Farmland(crop, two ? i.farm2 : i.farm, dist, two ? px2 : px, two ? (half)i.slot.x : i.realmS.y, aF, fw);
                     albedo = lerp(albedo, fc, fw);
                 }
                 albedo *= (1.0h + d1 * 0.32h * (0.35h + 0.65h * near) + d2 * 0.30h * near + d3 * 0.26h);
