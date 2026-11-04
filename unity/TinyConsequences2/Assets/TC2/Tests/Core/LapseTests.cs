@@ -70,7 +70,7 @@ namespace TC2.Tests.Core
             Assert.AreEqual(2, end.ArgA, "for its lord's death");
             Assert.AreEqual(s.HeadEvent, end.Cause1, "caused by the heir's rising at the death");
             Assert.IsTrue(w.History.TryGet(end.Cause1, out var rose) && rose.Cause1 != 0, "whose cause is the death");
-            StringAssert.Contains("owes the heir nothing until it has won it again", HistoryText.Describe(w, end));
+            StringAssert.Contains("owed the heir nothing until it was won again", HistoryText.Describe(w, end));   // (session 32 text QA: told in the past like every other line)
             System.Console.WriteLine(HistoryText.Dated(w, end));
             // no refusal: nobody holds a lapse a wrong
             Assert.AreEqual(known0, w.DeedBook.KnownCount(lord), "a lapse is no refusal: the lord village learns no deed of it");
