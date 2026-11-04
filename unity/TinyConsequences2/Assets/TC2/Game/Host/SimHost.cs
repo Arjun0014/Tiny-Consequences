@@ -105,6 +105,14 @@ namespace TC2.Game
                     long elapsed = Math.Max(0, now - hdr.SavedRealUtcMs) + extraMs;
                     long target = hdr.CatchUpTarget > w.Now ? hdr.CatchUpTarget : w.Now + OfflineProgress.WorldSecondsFor(elapsed, Offline);
                     if (target > w.Now) BeginCatchUp(target, hdr.CatchUpTarget > w.Now);
+                    // (session 32) a world saved while it ran in deep time with nothing left to catch up goes back to lived days at its next midnight, as
+                    // LoadWorld does - it had stayed in COARSE for ever: nobody out and about, no shock ever felt (a tools' year-300 save in s32pow3/pow4)
+                    else if (w.Resolution != TC2.Core.Simulation.Resolution.Activity)
+                    {
+                        long next = SimTime.StartOfDay(w.Now) + SimTime.Day;
+                        if (w.StepDays > 1) w.RequestStepDays(1, next);
+                        w.RequestResolution(TC2.Core.Simulation.Resolution.Activity, next);
+                    }
                     Debug.Log("[TC2] loaded world seed " + w.Seed + " at " + SimTime.Format(w.Now) + "; away " + (elapsed / 3600000.0).ToString("0.0", CultureInfo.InvariantCulture) + " h");
                 }
                 catch (Exception e)
