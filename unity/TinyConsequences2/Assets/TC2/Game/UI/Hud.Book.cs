@@ -71,7 +71,8 @@ namespace TC2.Game
             _bkTocPart = S(_display, 18, Ink, t: 6, b: 1); _bkTocPart.hover.textColor = Rubric; _bkTocPart.hover.background = hover;
             _bkTocPartSel = new GUIStyle(_bkTocPart); _bkTocPartSel.normal.textColor = Rubric;
             _bkNav = S(_display, 17, Rubric, a: TextAnchor.MiddleCenter, l: 6, rt: 6, t: 2, b: 2); _bkNav.hover.textColor = Ink; _bkNav.hover.background = hover;
-            _bkFolio = S(_display, 15, Faded, a: TextAnchor.MiddleCenter);
+            _bkNav.wordWrap = false;   // (session 32, Arjun: "their village" and the book's "contents" broke onto a second line a row's height cut off - a way's name is one line)
+            _bkFolio = S(_display, 15, Faded, a: TextAnchor.MiddleCenter); _bkFolio.wordWrap = false;
             // (session 32) a call to the tree of a cast: rubric with letters of the page's cream, warmer under the pointer
             _bkCall = S(_display, 17, new Color(0.99f, 0.94f, 0.82f), a: TextAnchor.MiddleCenter, l: 12, rt: 12, t: 4, b: 5);
             _bkCall.normal.background = Solid(new Color(0.55f, 0.15f, 0.08f, 0.92f)); _bkCall.hover.background = Solid(new Color(0.68f, 0.22f, 0.10f, 1f));

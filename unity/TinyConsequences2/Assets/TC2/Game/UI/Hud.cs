@@ -1562,10 +1562,14 @@ namespace TC2.Game
                     Event.current.Use();
                 }
             }
+            // (session 32, Arjun: the first days' timeline stood empty over "the world's people (at most 0)") with no year behind it yet, it says what it will hold
+            if (n <= 1 && Event.current.type == EventType.Repaint)
+                GUI.Label(new Rect(chart.x + 20f, chart.y + ch * 0.35f, cw - 40f, 70f), "The timeline is drawn year by year: when this world has a year behind it, its ages, its realms and its people appear here.", _ink);
             // the realms' inks, the people's line
             GUILayout.Space(6);
-            GUILayout.Label("Each band is a realm: the villages of its lord and of every tier under it, year by year; the whole height is the world's places. The dark line is the world's people (at most " +
-                            tl.MaxPeople.ToString("N0", CultureInfo.InvariantCulture) + ").", _ink);
+            if (n > 1)
+                GUILayout.Label("Each band is a realm: the villages of its lord and of every tier under it, year by year; the whole height is the world's places. The dark line is the world's people (at most " +
+                                tl.MaxPeople.ToString("N0", CultureInfo.InvariantCulture) + ").", _ink);
             for (int i = 0; i < tl.Realms.Count; i++)
             {
                 var rr = tl.Realms[i];
