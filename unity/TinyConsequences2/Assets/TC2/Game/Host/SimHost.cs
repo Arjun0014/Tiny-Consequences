@@ -25,7 +25,7 @@ namespace TC2.Game
 
         public World World { get; private set; }
         public int WorldVersion { get; private set; }
-        public int SpeedIndex = 3;
+        public int SpeedIndex = 1;   // (session 32, Arjun: the world starts as it is lived - one bar)
         public bool MaxSpeed;
         public float WatchBudgetMs = 6f;
         public float CatchUpBudgetMs = 90f;   // (the catch-up screen needs ~10 frames a second: the rest of each is the world's, D2-082)

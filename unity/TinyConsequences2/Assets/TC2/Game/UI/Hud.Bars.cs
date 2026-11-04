@@ -36,7 +36,7 @@ namespace TC2.Game
             bool paused = !Host.MaxSpeed && Host.SpeedIndex == 0;
             _pauseRect = new Rect(x, y + 12f, 34f, 34f);
             if (!paused && Host.SpeedIndex > 0) _resumeSpeed = Host.SpeedIndex;
-            if (Seal(_pauseRect, paused ? "play" : "pause", paused, false, new Color(0.97f, 0.90f, 0.72f), out bool hp)) { Host.MaxSpeed = false; Host.SpeedIndex = paused ? (_resumeSpeed > 0 ? _resumeSpeed : 3) : 0; }
+            if (Seal(_pauseRect, paused ? "play" : "pause", paused, false, new Color(0.97f, 0.90f, 0.72f), out bool hp)) { Host.MaxSpeed = false; Host.SpeedIndex = paused ? (_resumeSpeed > 0 ? _resumeSpeed : 1) : 0; }
             if (hp) TipAt(_pauseRect, paused ? "Let the world go on  (Space)" : "Hold the world still  (Space)", false);
             x += 34f + gap;
             // the ladder: seven speeds and as fast as it goes, each a bar taller than the last; lit up to the speed chosen
@@ -80,7 +80,7 @@ namespace TC2.Game
             if (sk != _skipMenu) { _skipMenu = sk; AudioView.Ui("click"); }
             if (_skipBtn.Contains(Event.current.mousePosition) && !_skipMenu) TipAt(_skipBtn, "Leap years ahead and watch the planet age from orbit", false);
         }
-        int _resumeSpeed = 3;
+        int _resumeSpeed = 1;   // (session 32: as it is lived)
         GUIStyle _skipStyle;
 
         Rect _followChip;

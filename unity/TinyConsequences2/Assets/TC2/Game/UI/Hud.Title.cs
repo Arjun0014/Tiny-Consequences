@@ -12,7 +12,7 @@ namespace TC2.Game
     public sealed partial class Hud
     {
         bool _titleAsked, _titleOn;
-        int _titleSpeed = 3;
+        int _titleSpeed = 1;   // (session 32, Arjun: the world begins as it is lived)
         float _titleBorn, _titleLeft = -1f;
         GUIStyle _titleTag, _titleWorld, _menuWord, _menuWordOn, _menuWordOff, _menuWordBig, _menuWordBigOn, _menuSub, _pageTitle2, _mnText, _mnTextDim, _pageCap, _busyWord;
         int _titleHover = -1;
@@ -34,7 +34,7 @@ namespace TC2.Game
         void TitleEnter()
         {
             _titleOn = true; _titleBorn = Time.unscaledTime; _titleLeft = -1f; _menuOn = false; _menuPage = MenuMain;
-            _titleSpeed = Host.SpeedIndex == 0 ? (_resumeSpeed > 0 ? _resumeSpeed : 3) : Host.SpeedIndex;
+            _titleSpeed = Host.SpeedIndex == 0 ? (_resumeSpeed > 0 ? _resumeSpeed : 1) : Host.SpeedIndex;
             Host.SpeedIndex = 0; Host.MaxSpeed = false;
             if (Rig != null) Rig.TitleBegin();
         }
@@ -123,7 +123,7 @@ namespace TC2.Game
             if (!_titleAsked)
             {
                 _titleAsked = true;
-                if (WantsTitle()) { _titleSpeed = Host.SpeedIndex == 0 ? 3 : Host.SpeedIndex; _titleOn = true; _titleBorn = Time.unscaledTime; Host.SpeedIndex = 0; if (Rig != null) Rig.TitleBegin(); }
+                if (WantsTitle()) { _titleSpeed = Host.SpeedIndex == 0 ? 1 : Host.SpeedIndex; _titleOn = true; _titleBorn = Time.unscaledTime; Host.SpeedIndex = 0; if (Rig != null) Rig.TitleBegin(); }
             }
             if (!_titleOn)
             {
@@ -166,7 +166,7 @@ namespace TC2.Game
             y += lh + 2f;
             Ornament(new Rect(colX, y, colW * 0.82f, 26f));
             y += 34f;
-            Edged(new Rect(colX + 2f, y, colW, 58f), "A tiny world that lives and remembers without you.\nWatch it, read its history - and reach in.", _titleTag);
+            Edged(new Rect(colX + 2f, y, colW, 58f), "A world that lives and remembers without you.\nWatch it, read its history - and reach in.", _titleTag);
             y += 78f;
             // the words: the way in first and larger, then the rest
             float itemW = Mathf.Min(colW, 420f), itemH = 44f;

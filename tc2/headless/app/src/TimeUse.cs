@@ -32,7 +32,13 @@ namespace TC2.Headless
                 w.AdvanceTo(next0 + SimTime.Hour);
             }
             else w = WorldGenerator.Create(ConfigFrom(a));
-            w.AdvanceTo(w.Now + SimTime.Days(a.Double("from-day", 1)));
+            {
+                // (session 32 QA) `--skip`: reach the first day as the player's Skip does (SimHost.BeginSkip: COARSE from the next midnight, lived again
+                // for the last two days - OfflineProgress.PlanCatchUp, Living) - to see what people do just after a skip
+                long target = w.Now + SimTime.Days(a.Double("from-day", 1));
+                if (a.Has("skip")) Console.WriteLine("skip planned COARSE: " + TC2.Core.Persistence.OfflineProgress.PlanCatchUp(w, target, TC2.Core.Persistence.OfflineMode.Living));
+                w.AdvanceTo(target);
+            }
             long end = w.Now + SimTime.Days(a.Double("days", 4));
             long every = a.Int("every", 300);
             bool daylight = a.Has("daylight"), stages = a.Has("stages");
