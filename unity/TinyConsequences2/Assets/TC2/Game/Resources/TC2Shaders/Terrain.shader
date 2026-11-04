@@ -45,6 +45,7 @@ Shader "TC2/Terrain"
             float _TC2Year;   // the world's year (whole years since it began): which strips rest turns with it
             float _TC2SeaRadius;
             float _TC2LandVary;    // (session 31: x the land's broad warm and cool drift)
+            float _TC2StandFar, _TC2StandGrain;   // (session 32: where the stands give way to the woods' share from afar; x the far stand grain)
             float _TC2Unbranched;   // (session 27, tools: 1 runs every branch below as if taken - the frame's cost of the branches measured; 0 in the game)
 
             struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; half4 color : COLOR; float2 uv0 : TEXCOORD0; float2 uv1 : TEXCOORD1; float4 uv2 : TEXCOORD2; float4 uv3 : TEXCOORD3; float3 uv4 : TEXCOORD4; float4 uv5 : TEXCOORD5; float2 uv6 : TEXCOORD6; float4 uv7 : TEXCOORD7; float4 tangentOS : TANGENT; };
@@ -320,7 +321,7 @@ Shader "TC2/Terrain"
                     // else a glade or meadow - the stands cover the share; thin woods stay scattered trees; where a pixel spans most of a
                     // stand (far off) the share itself (no shimmer)
                     {
-                        half sw = smoothstep(0.12h, 0.35h, dens) * (1.0h - smoothstep(45.0h, 110.0h, (half)pxw));
+                        half sw = smoothstep(0.12h, 0.35h, dens) * (1.0h - smoothstep((half)_TC2StandFar, (half)_TC2StandFar * 2.4h, (half)pxw));
                         UNITY_BRANCH
                         if (sw > 0.0h || every)
                         {
@@ -451,7 +452,7 @@ Shader "TC2/Terrain"
                                                lerp(half3(0.026h, 0.068h, 0.032h), half3(0.70h, 0.72h, 0.76h), snowy * 0.35h), con) * 0.70h;
                         // stands of a few hundred metres, older and darker or younger and lighter: the far woods' own grain (from orbit too)
                         half stand = TriG(i.positionWS, ub, 1.0 / 1700.0, dpx, dpy);
-                        meanCrown *= lerp(1.0h, 0.72h + 0.56h * stand, saturate(fade * 1.5h));
+                        meanCrown *= lerp(1.0h, 0.72h + 0.56h * stand, saturate(fade * 1.5h) * (half)_TC2StandGrain);
                         meanCrown = lerp(meanCrown, meanCrown * half3(0.80h, 0.96h, 1.18h), saturate(stand * 2.0h - 1.0h) * fade);
                         half floorShadeF = 1.0h - 0.5h * saturate((fcs - fc) * 2.0h);
                         farCol = lerp(litter * floorShadeF, meanCrown, fc);

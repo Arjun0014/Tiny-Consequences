@@ -963,7 +963,8 @@ namespace TC2.Game
             _handRect = Rect.zero; _noteRect = Rect.zero;
             if (!_book && !lapse && _pageRect.width <= 0f && !_history) YourHand(w, sw, sh);   // (session 29: the History panel holds its place while open)   // (what came of your casts, live: session 27; not over a person's or a place's page - s27book5)
             NewsLine(w, sw, sh, lapse);   // (session 31: a line over the bar, no box)
-            if (!_book && !lapse) DrawCastNote(sw);   // (the last cast's word, beside Your hand: session 29)
+            if (!_book && !lapse) DrawCastNote(sw);
+            if (!lapse) ImpactCard(w, sw, sh);   // (session 32: what a cast did, in seconds)   // (the last cast's word, beside Your hand: session 29)
             if (!_book && !lapse) LapseSummaryLeaf(w, sw, sh); else _summaryRect = Rect.zero;   // (what the years did: Hud.Lapse.cs)
             GuideDraw(w, sw, sh);   // (session 31: the first minutes - Hud.Guide.cs)
             HintDraw(sw, sh);
@@ -974,12 +975,12 @@ namespace TC2.Game
             AudioView.Duck = _menuOn ? 0.55f : _book ? 0.5f : 1f;   // (session 31: the world quieter behind the book and the menu)
             Vector2 m = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y) / _scale;
             bool overLapse = lapse && PointerOverUi;   // (the overlay's own rects, set as it drew)
-            PointerOverUi = _menuOn || _followChip.Contains(m) || _guideCard.Contains(m) || overLapse || _skipRect.Contains(m) || _summaryRect.Contains(m) || _settingsRect.Contains(m) || _powersRect.Contains(m) || _left.Contains(m) || _toggles.Contains(m) || _right.Contains(m) || worldRect.Contains(m) || realmsRect.Contains(m) || _bottom.Contains(m) || _ticker.Contains(m) || (showInsp && (_building != 0 ? insp.Contains(m) : card.Contains(m))) || (_book && _bookRect.Contains(m)) || _pageRect.Contains(m);
+            PointerOverUi = _menuOn || _followChip.Contains(m) || _guideCard.Contains(m) || overLapse || _skipRect.Contains(m) || _summaryRect.Contains(m) || _settingsRect.Contains(m) || _powersRect.Contains(m) || _left.Contains(m) || _toggles.Contains(m) || _right.Contains(m) || worldRect.Contains(m) || realmsRect.Contains(m) || _bottom.Contains(m) || _ticker.Contains(m) || (showInsp && (_building != 0 ? insp.Contains(m) : card.Contains(m))) || (_book && _bookRect.Contains(m)) || _pageRect.Contains(m) || _impactRect.Contains(m);
             if (!_book && !_menuOn) HoverTag(w, sw, sh);
             _uiRects.Clear();
             _uiRects.Add(_left); _uiRects.Add(_toggles); _uiRects.Add(_right); _uiRects.Add(worldRect); _uiRects.Add(realmsRect); _uiRects.Add(_bottom); _uiRects.Add(_ticker);
             _uiRects.Add(_powersRect); _uiRects.Add(_handRect); _uiRects.Add(_summaryRect); _uiRects.Add(_settingsRect); _uiRects.Add(_pageRect); _uiRects.Add(_tagRect);
-            _uiRects.Add(_aimRect); _uiRects.Add(_tipShown); _uiRects.Add(_noteRect); _uiRects.Add(_guideCard); _uiRects.Add(_followChip); _uiRects.Add(_hintRect);
+            _uiRects.Add(_aimRect); _uiRects.Add(_tipShown); _uiRects.Add(_noteRect); _uiRects.Add(_guideCard); _uiRects.Add(_followChip); _uiRects.Add(_hintRect); _uiRects.Add(_impactRect);
             if (lapse) LapseRects();
             if (showInsp) _uiRects.Add(_building != 0 ? insp : card);
             // (session 27) who is ringed on the ground: the person whose page is open, the one under the pointer, the chosen home's household

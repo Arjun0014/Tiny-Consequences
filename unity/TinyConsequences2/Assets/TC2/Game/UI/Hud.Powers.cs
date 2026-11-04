@@ -118,6 +118,7 @@ namespace TC2.Game
             // (the meteor: the stone seen falling to where the world strikes - the cell's heart, where its fires and its scar will be - and the burst and the
             // shaking when it lands)
             AudioView.Ui("cast");
+            _impactCast = 0; _impactAt = Time.unscaledTime; _impactFrom = w.Now; _impactPower = _aim; _impactText = null;   // (session 32: the impact card)
             float shake = pw.Kind == CommandKind.GodMeteor ? 1f : pw.Kind == CommandKind.GodQuake ? 0.85f : pw.Kind == CommandKind.GodEruption ? 0.7f : pw.Kind == CommandKind.GodStorm ? 0.3f : pw.Kind == CommandKind.GodLightning ? 0.25f : 0.1f;
             bool meteor = pw.Kind == CommandKind.GodMeteor;
             // (session 32) where the world strikes: the heart of the cell aimed at (the world knows cells) - the burst, the stone's fall and the ring all there
@@ -238,6 +239,78 @@ namespace TC2.Game
             GUILayout.EndArea();
         }
         Rect _handOpen; long _handNewest; float _handShowUntil;
+
+        // (session 32: a cast read in seconds) the impact card: for a few seconds after a cast, at the top of the screen, what the ledger says it did - its first
+        // record in words, what has come of it so far by count - and how many of the people it touched are running from it or lie hurt now (their own state);
+        // a click opens its tree. Read twice a second; nothing written.
+        long _impactCast, _impactFrom; float _impactAt = -99f, _impactRead; int _impactPower = -1; string _impactText; GUIStyle _impactStyle; Rect _impactRect;
+        const float ImpactShow = 16f;
+
+        void ImpactCard(World w, float sw, float sh)
+        {
+            bool over = _impactRect.Contains(Event.current.mousePosition);
+            _impactRect = Rect.zero;
+            float age = Time.unscaledTime - _impactAt;
+            if (_impactPower < 0 || age > ImpactShow || _book || _treeOn) return;
+            if (Time.unscaledTime - _impactRead > 0.5f || _impactText == null)
+            {
+                _impactRead = Time.unscaledTime;
+                var h = w.History;
+                if (_impactCast == 0)
+                    for (int i = h.Count - 1; i >= 0 && i > h.Count - 4000; i--)
+                    {
+                        var e = h.RefAt(i);
+                        if (e.Time < _impactFrom) break;
+                        if (e.Kind == TC2.Core.History.HistoryKind.GodCommand) { _impactCast = e.Id; break; }
+                    }
+                if (_impactCast == 0) { _impactText = null; return; }
+                // its first record that is not the cast itself (the stone's strike, the quake, the strike...) in the book's words
+                string first = null;
+                int ci = h.IndexOf(_impactCast);
+                for (int i = ci + 1; i >= 1 && i < h.Count && i < ci + 400 && first == null; i++)
+                {
+                    var e = h.RefAt(i);
+                    if (e.Root == _impactCast && e.Kind != TC2.Core.History.HistoryKind.PersonDied) first = TC2.Core.History.HistoryText.Describe(w, in e);
+                }
+                string came = TC2.Core.History.HistoryBook.CameOf(w, _impactCast, out int n);
+                // the people its shock or its harm reached, now: running or keeping together, abed with wounds
+                int running = 0, together = 0, hurt = 0;
+                for (int id = w.People.First(); id != 0; id = w.People.Next(id))
+                {
+                    ref var p = ref w.People.Get(id);
+                    if (!p.Alive || p.Alarm == 0 || w.Now - p.AlarmT > 3 * TC2.Core.Foundation.SimTime.Day) continue;
+                    if (!h.TryGet(p.Alarm, out var ae) || (ae.Id != _impactCast && ae.Root != _impactCast)) continue;
+                    if (p.Why == TC2.Core.Agents.WhyCode.Shock) { if (p.Act == TC2.Core.Agents.ActivityKind.Flee) running++; else together++; }
+                    else if (p.Act == TC2.Core.Agents.ActivityKind.Ill && p.Why == TC2.Core.Agents.WhyCode.Hurt) hurt++;
+                }
+                var sb = new System.Text.StringBuilder();
+                var pw = Powers[_impactPower];
+                sb.Append("<size=21><b>").Append(pw.Name.ToUpperInvariant()).Append("</b></size>");
+                if (first != null) sb.Append("\n<size=16>").Append(first).Append("</size>");
+                if (came.Length > 0) sb.Append("\n<size=14><color=#e9d9b4>So far: ").Append(came).Append("</color></size>");
+                if (running + together + hurt > 0)
+                {
+                    sb.Append("\n<size=14><color=#f2c35f>");
+                    var bits = new System.Collections.Generic.List<string>();
+                    if (running > 0) bits.Add(running + " running for open ground");
+                    if (together > 0) bits.Add(together + " keeping together until it passes");
+                    if (hurt > 0) bits.Add(hurt + " abed with wounds");
+                    sb.Append(string.Join(" - ", bits.ToArray())).Append("</color></size>");
+                }
+                sb.Append("\n<size=13><i><color=#c9c3b4>Click to see what came of it</color></i></size>");
+                _impactText = sb.ToString();
+            }
+            if (_impactText == null) return;
+            if (_impactStyle == null) _impactStyle = new GUIStyle(_mapTag) { wordWrap = true, richText = true, alignment = TextAnchor.UpperCenter, padding = new RectOffset(16, 16, 10, 12) };
+            var c = new GUIContent(_impactText);
+            float tw = Mathf.Min(620f, sw - 40f), th = _impactStyle.CalcHeight(c, tw);
+            _impactRect = new Rect((sw - tw) * 0.5f, 78f, tw, th);
+            float a = Mathf.Clamp01(age / 0.25f) * (over ? 1f : Mathf.Clamp01((ImpactShow - age) / 2f));
+            if (over) _impactAt = Mathf.Max(_impactAt, Time.unscaledTime - ImpactShow + 2.5f);
+            var old = GUI.color; GUI.color = new Color(1f, 1f, 1f, a);
+            if (GUI.Button(_impactRect, c, _impactStyle) && _impactCast != 0) { OpenConsequences(_impactCast); AudioView.Ui("page"); _impactPower = -1; }
+            GUI.color = old;
+        }
 
         /// <summary>(session 31) Why a power aimed here would touch nothing, by the world's own measure (null: it would): a sickness or a blight wants a village in reach
         /// (a blight a standing crop); bounty, tired fields. The aim shows it in grey and its words say so.</summary>

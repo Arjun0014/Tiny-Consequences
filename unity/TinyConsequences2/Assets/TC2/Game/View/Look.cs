@@ -32,6 +32,8 @@ namespace TC2.Game
         public static float GradeExposure = 0.06f;
         public static float GradeGreen = 0.34f;  // how far greens' saturation is taken down (0.5 none): the living green of leaves, not a screen's
         public static float LandVary = 1f;       // x the land's broad warm and cool drift (0 none)
+        public static float StandFar = 45f;      // (session 32) the metres a pixel spans where the woods' stands and glades begin to give way to their share (gone at x2.4): from orbit they read as camouflage
+        public static float StandGrain = 1f;     // (session 32) x the far woods' stand grain (older darker, younger lighter, ~1.7 km)
         public static float SeaTrue = 1f;        // (session 30) the sea drawn where its true sphere is (0: on its mesh's faces, as before - a shot's "before")
 
         static readonly float[] Defaults = { AtmoH, AtmoTop, AtmoTau, AtmoMie, AtmoSun, AtmoGround, CloudDeck, CloudCu, CloudStretch, CloudShade, CloudTile, CloudShadow, NightFar, SeaTrue };
@@ -64,6 +66,13 @@ namespace TC2.Game
                 case "CloudShadow": CloudShadow = v; return true;
                 case "NightFar": NightFar = v; return true;
                 case "SeaTrue": SeaTrue = v; return true;
+                case "GradeSat": GradeSat = v; return true;   // (session 32: the grade and the land judged live in the Web build - bridge "tune")
+                case "GradeContrast": GradeContrast = v; return true;
+                case "GradeExposure": GradeExposure = v; return true;
+                case "GradeGreen": GradeGreen = v; return true;
+                case "LandVary": LandVary = v; return true;
+                case "StandFar": StandFar = v; return true;
+                case "StandGrain": StandGrain = v; return true;
                 case "ShadowLite": Sky.ShadowLite = v > 0f; return true;   // (the frame pass's shadow cascades, 14 §7: judged in real shots before chosen)
             }
             return false;

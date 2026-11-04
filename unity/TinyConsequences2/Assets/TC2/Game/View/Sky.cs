@@ -47,6 +47,7 @@ namespace TC2.Game
         static readonly int NightLift = Shader.PropertyToID("_TC2NightLift");
         Volume _volume;
         static readonly int LandVaryId = Shader.PropertyToID("_TC2LandVary");
+        static readonly int StandFarId = Shader.PropertyToID("_TC2StandFar"), StandGrainId = Shader.PropertyToID("_TC2StandGrain");
         public Color Horizon;
 
         void Start()
@@ -182,6 +183,7 @@ namespace TC2.Game
             Vector3 cam = Rig.Cam.transform.position;
             if (_ca != null) { _ca.saturation.value = Look.GradeSat; _ca.contrast.value = Look.GradeContrast; _ca.postExposure.value = Look.GradeExposure; if (_gradeGreen != Look.GradeGreen) SetGreenCurve(Look.GradeGreen); }
             Shader.SetGlobalFloat(LandVaryId, Look.LandVary);
+            Shader.SetGlobalFloat(StandFarId, Look.StandFar); Shader.SetGlobalFloat(StandGrainId, Look.StandGrain);   // (session 32)
             float R = (float)w.Planet.Radius;
             float altitude = cam.magnitude - R;
             Vector3 up = cam.normalized, toSun = -Sun.transform.forward;
