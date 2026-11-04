@@ -96,6 +96,7 @@ namespace TC2.Game
             _v.Clear(); _c.Clear(); _t.Clear();
             Vector3 camPos = Rig.Cam.transform.position;
             float alt = camPos.magnitude - (float)P.Radius;
+            _fillK = Mathf.Lerp(0.15f, 1f, Mathf.InverseLerp(600f, 3500f, alt));   // (session 32: inside a spell, close to the ground, its wash had greyed the whole village - s32pow5)
             float lift = Mathf.Max(2f, alt * 0.0025f);
             Spells(w, now, lift);
             Blights(w, now, lift);
@@ -268,6 +269,8 @@ namespace TC2.Game
         }
 
         /// <summary>A spell's colours now: faint over the land it holds, stronger toward its edge, the edge alive in its way.</summary>
+        float _fillK = 1f;
+
         void Draw(Geo g, byte kind, Color col, float fade, float t, float lift)
         {
             int b0 = _v.Count, n = g.Pos.Length;
@@ -275,7 +278,7 @@ namespace TC2.Game
             for (int k = 0; k < n; k++)
             {
                 float rf = g.Rf[k], a = g.Ang[k];
-                float fill = 0.06f + 0.05f * rf * rf;
+                float fill = (0.06f + 0.05f * rf * rf) * _fillK;
                 float edge = rf < 0.9f ? 0f : rf <= 1f ? Mathf.SmoothStep(0f, 1f, (rf - 0.9f) / 0.1f) : 1f - Mathf.SmoothStep(0f, 1f, (rf - 1f) / 0.04f);
                 if (rf > 1f) fill = 0f;
                 float alpha, white = 0f;
