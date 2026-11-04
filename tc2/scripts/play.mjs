@@ -79,6 +79,21 @@ try {
       case 'cmd': await cmd(rest.join(' ')); break;
       case 'wait': await wait(n[0]); break;
       case 'shot': { const f = path.join(outDir, `${rest[0]}.png`); await page.screenshot({ path: f }); report.shots.push(f); console.log(`shot ${rest[0]} (+${((Date.now() - t0) / 1000).toFixed(1)} s)`); break; }
+      // (session 32: store clips) `burst NAME N [MS]`: N frames as fast as the page gives them (at least MS apart), JPEG, into NAME/ with their times
+      case 'burst': {
+        const dir = path.join(outDir, rest[0]); fs.mkdirSync(dir, { recursive: true });
+        const count = Number(rest[1] || 30), gap = Number(rest[2] || 0), times = [];
+        const b0 = Date.now();
+        for (let k = 0; k < count; k++) {
+          const s0 = Date.now();
+          await page.screenshot({ path: path.join(dir, String(k).padStart(3, '0') + '.jpg'), type: 'jpeg', quality: 92 });
+          times.push(Date.now() - b0);
+          const left = gap - (Date.now() - s0); if (left > 0) await wait(left);
+        }
+        fs.writeFileSync(path.join(dir, 'times.json'), JSON.stringify(times));
+        console.log(`burst ${rest[0]}: ${count} frames in ${((Date.now() - b0) / 1000).toFixed(1)} s (+${((Date.now() - t0) / 1000).toFixed(1)} s)`);
+        break;
+      }
       case 'move': await page.mouse.move(n[0], n[1], { steps: 4 }); break;
       case 'click': await page.mouse.move(n[0], n[1], { steps: 3 }); await wait(120); await page.mouse.down(); await wait(90); await page.mouse.up(); await wait(100); break;
       case 'rclick': await page.mouse.move(n[0], n[1], { steps: 3 }); await wait(100); await page.mouse.down({ button: 'right' }); await wait(90); await page.mouse.up({ button: 'right' }); break;
