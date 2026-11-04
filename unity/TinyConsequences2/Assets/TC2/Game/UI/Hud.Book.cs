@@ -213,6 +213,7 @@ namespace TC2.Game
                     }
                     GUILayout.EndHorizontal();
                     if (!string.IsNullOrEmpty(ch.Sub)) GUILayout.Label(ch.Sub, _bkSub);
+                    if (_bookPart == HistoryBook.YourActionsPart && ch.Blocks.Count > 0 && ch.Blocks[0].Kind == BookKind.Line && GUILayout.Button("what came of it, as a tree  ›", _bkNav, GUILayout.ExpandWidth(false))) { OpenConsequences(ch.Blocks[0].Event, true); }   // (session 32: Hud.Consequences.cs)
                     OrnRule();
                     _bookScroll = GUILayout.BeginScrollView(_bookScroll, GUIStyle.none, GUI.skin.verticalScrollbar, GUILayout.Height(Mathf.Max(120f, right.height - 200f) * (_line != 0 ? 0.62f : 1f)));   // (room left for the leaf's foot: it was clipped at 720 px)
                     if (_bookChapter == 0 && !string.IsNullOrEmpty(part.Intro)) GUILayout.Label(part.Intro, _bkNote);

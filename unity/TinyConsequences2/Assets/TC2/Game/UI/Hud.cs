@@ -120,6 +120,7 @@ namespace TC2.Game
             {
                 if (_menuOn) { if (_menuPage != MenuMain) _menuPage = MenuMain; else _menuOn = false; }
                 else if (_aim >= 0) { /* (PowersInput stops the aim) */ }
+                else if (_treeOn) CloseConsequences();   // (session 32: what came of a cast - Hud.Consequences.cs)
                 else if (_book) _book = false;
                 else if (_personPage) { _personPage = false; _pgBack.Clear(); }
                 else if (_placeSid != 0) _placeSid = 0;
@@ -863,6 +864,7 @@ namespace TC2.Game
             if (Title(sw, sh)) { KeepSettings(); return; }   // (the opening: F11.1)
 
             if (_hidden) { PointerOverUi = false; WorldObjectsView.Chosen = WorldObjectsView.Pointed = WorldObjectsView.ChosenHome = WorldObjectsView.PointedHome = 0; return; }
+            if (TreeHolds(w, sw, sh)) return;   // (session 32: a cast's tree of what came of it holds the screen - Hud.Consequences.cs)
             // (the names take no input: laid out and drawn on the repaint only - session 27, context 4: every IMGUI event had placed and measured them all
             // again, the map's names 3.6 ms of the region view's frame in s27prof1)
             if (!_book && Event.current.type == EventType.Repaint) { MapNames(w, sw, sh); WorkNames(w, sw, sh); PeopleNames(w, sw, sh); }
