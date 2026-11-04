@@ -110,7 +110,7 @@ namespace TC2.Game
             if (!GroundUnder(Input.mousePosition, out var aimDir, out int cell)) { CastNote("Aim at the ground - the sky has nothing to strike", false); return; }
             var pw = Powers[_aim];
             // (session 31) a cast that could touch nothing is not spent: it says why
-            string refused = Refused(w, aimDir, pw);
+            string refused = Refused(w, aimDir, cell, pw);
             if (refused != null) { CastNote(refused, false); AudioView.Ui("tick"); return; }
             // (session 32) a stone strikes when it is seen to land: the world applies it the fall's real seconds later at the speed the world runs (the town had
             // fallen while the stone was still in the sky)
@@ -330,8 +330,16 @@ namespace TC2.Game
 
         /// <summary>(session 31) Why a power aimed here would touch nothing, by the world's own measure (null: it would): a sickness or a blight wants a village in reach
         /// (a blight a standing crop); bounty, tired fields. The aim shows it in grey and its words say so.</summary>
-        static string Refused(World w, Vec3d dir, in Power pw)
+        static string Refused(World w, Vec3d dir, int cell, in Power pw)
         {
+            // (session 32, every power checked: half a year-300 world's villages have no hunting beasts within the cull's reach - it took nothing, told nothing
+            // and spent five years) a cull that would take nothing says so; read once a cell and a day (World.CullWouldTake scans the world's cells)
+            if (pw.Kind == CommandKind.GodCull)
+            {
+                long day = w.Now / SimTime.Day;
+                if (cell != _cullCell || day != _cullDay || w != _cullWorld) { _cullCell = cell; _cullDay = day; _cullWorld = w; _cullTake = w.CullWouldTake(cell); }
+                return _cullTake < 0.5 ? "No hunting beasts within its reach here: a cull would take nothing" : null;
+            }
             if (pw.Kind != CommandKind.GodPlague && pw.Kind != CommandKind.GodBlight && pw.Kind != CommandKind.GodBounty) return null;
             bool any = false, crop = false, tired = false;
             for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
@@ -347,6 +355,8 @@ namespace TC2.Game
             if (pw.Kind == CommandKind.GodBounty && !tired) return "The fields within its reach are not tired: there is nothing to renew";
             return null;
         }
+
+        static int _cullCell = -1; static long _cullDay = -1; static World _cullWorld; static double _cullTake;
 
         /// <summary>(session 27) The places a power aimed here would reach, by the world's own measure: the villages within its reach (the nearest
         /// within it for a sickness), with their people - what the player is about to touch.</summary>
@@ -453,7 +463,7 @@ namespace TC2.Game
             if (_aim < 0 || PointerOverUi || !GroundUnder(Input.mousePosition, out var dir, out int cell)) return;
             // (session 27) its reach laid on the ground (AimView), and the villages it would reach named
             var P = w.Planet; var pwr = Powers[_aim];
-            string nothing = Refused(w, dir, pwr);
+            string nothing = Refused(w, dir, cell, pwr);
             // (session 32) the ring where the world will strike: the heart of the cell under the pointer (a meteor aimed at a house had come down 100 m off
             // behind the town, at its cell's heart; the ring now steps from cell to cell, eased)
             AimView.Aim(P.Grid.Center[cell], pwr.Reach, nothing != null ? new Color(0.62f, 0.60f, 0.58f) : pwr.Col);   // (grey: it would touch nothing here)
