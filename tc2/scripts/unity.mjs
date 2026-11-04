@@ -55,7 +55,8 @@ function tail(file, pattern) {
 // generated csproj files and references - a worktree has no Library of its own (session 23: a landing branch's Game code checked before it lands).
 function compileCheck() {
   const dotnet = path.join(path.dirname(unity), 'Data', 'DotNetSdk', 'dotnet.exe');
-  const cc = path.join(outDir, 'cc').replace(/\\/g, '/');
+  // (session 32) --ccdir NAME: its own folder under tc2/out, so two checks can run at once (parallel worktrees) without clobbering each other's projects
+  const cc = path.join(outDir, opt('--ccdir', 'cc')).replace(/\\/g, '/');
   const proj = project.replace(/\\/g, '/');
   const src = path.resolve(opt('--src', project)).replace(/\\/g, '/');
   if (!existsSync(path.join(src, 'Assets', 'TC2'))) { console.log('no Assets/TC2 under ' + src); return 1; }
