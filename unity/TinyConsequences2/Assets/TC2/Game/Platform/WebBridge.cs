@@ -87,6 +87,7 @@ namespace TC2.Game
                 case "closepages": { var hud = Object.FindFirstObjectByType<Hud>(); if (hud != null) hud.ClosePages(); break; }   // (the book and every page closed)
                 case "info": { var hud = Object.FindFirstObjectByType<Hud>(); if (hud != null) hud.Info(a.Length < 2 || a[1] == "on"); break; }   // (session 29) the world now
                 case "history": { var hud = Object.FindFirstObjectByType<Hud>(); if (hud != null) hud.HistoryPanel(a.Length < 2 || a[1] == "on"); break; }   // (session 29) the History panel
+                case "tree": { var hud = Object.FindFirstObjectByType<Hud>(); if (hud != null) { if (a.Length > 1 && a[1] == "off") hud.CloseConsequences(); else hud.OpenConsequences(a.Length > 1 && a[1] != "last" ? long.Parse(a[1], inv) : TC2.Core.History.Consequences.LatestCast(Host.World)); } break; }   // (session 32) "tree CASTID|last|off": a cast's tree of what came of it
                 case "feedline": { var hud = Object.FindFirstObjectByType<Hud>(); if (hud != null) hud.OpenFeedLine(a.Length > 1 ? int.Parse(a[1], inv) : 0); break; }   // (session 29) a feed line opened in the book
                 case "building":
                     {

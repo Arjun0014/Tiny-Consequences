@@ -215,7 +215,7 @@ namespace TC2.Game
             _handRect = seal;
             if (!show) { _handOpen = Rect.zero; return; }
             float hw = Mathf.Min(Mathf.Max(300f, _powersRect.x - 24f), 420f), inner = hw - _box.padding.horizontal;
-            const string head = "<b>Your hand</b>  <i>what has come of it so far</i>";
+            const string head = "<b>Your hand</b>  <i>what has come of it so far - click one for its tree</i>";
             float hh = _small.CalcHeight(new GUIContent(head), inner) + _box.padding.vertical + 4f;
             if (_handText.Length < _hand.Count) _handText = new string[3];
             for (int k = 0; k < _hand.Count; k++)
@@ -234,7 +234,7 @@ namespace TC2.Game
             GUILayout.BeginArea(r, _box);
             GUILayout.Label(head, _small);
             for (int k = 0; k < _hand.Count; k++)
-                if (GUILayout.Button(_handText[k], _handLine)) { OpenBookAt(TC2.Core.History.HistoryBook.YourActionsPart, k); AudioView.Ui("page"); }
+                if (GUILayout.Button(_handText[k], _handLine)) OpenConsequences(_hand[k].id);   // (session 32: what came of it, as a tree - Hud.Consequences.cs)
             GUILayout.EndArea();
         }
         Rect _handOpen; long _handNewest; float _handShowUntil;
