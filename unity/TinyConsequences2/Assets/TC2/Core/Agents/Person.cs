@@ -77,6 +77,7 @@ namespace TC2.Core.Agents
         Thresh = 49,      // the store's threshed grain runs short of its people's need and its days ahead; its sheaves wait (C3.7b)
         Muck = 50,        // the yards' muck waits to go out on the fields before the ploughing (C3.7c)
         Tribute = 51,     // carrying a load of the lord's tenth to its store (C10.6)
+        Shock = 52,       // a shock felt where they are - a stone from the sky, the ground shaking, a bolt at the door: run clear, keep together until it passes (WhyArg its HistoryKind; session 32)
     }
 
     public static class Sex { public const byte Female = 0, Male = 1; }

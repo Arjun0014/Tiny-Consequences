@@ -135,6 +135,7 @@ namespace TC2.Core.History
                 case HistoryKind.MeteorStruck: kicker = "A falling star"; rank = 2; break;
                 case HistoryKind.IceAge: case HistoryKind.IceAgeEnded: kicker = "The climate"; rank = 2; break;
                 case HistoryKind.HomesDrowned: kicker = "The sea"; rank = 1; break;
+                case HistoryKind.HomesShaken: kicker = "The quake"; rank = 1; break;
                 case HistoryKind.Extinction: kicker = "Gone from the world"; rank = 1; break;
             }
             // what the player's hand set going: its great consequences come up as theirs, whatever their kind

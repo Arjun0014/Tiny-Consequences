@@ -339,6 +339,9 @@ namespace TC2.Core.Simulation
         public const int DroughtDays = 16;
         /// <summary>(F9.4) A meteor: what its blast flattens (m), within which those at home die, and the strength of the fire it lights.</summary>
         public const double BlastM = 140.0, KillM = 70.0, MeteorFire = 4.0;
+        /// <summary>(session 32) How far round a stone's fall the villages feel it (m: they see it, hear it and feel the ground jump) and round a bolt
+        /// (a strike at the door).</summary>
+        public const double ShockM = 1200.0, BoltShockM = 260.0;
 
         /// <summary>Whether the god's drought withholds the rain from a cell today (any drought held over it).</summary>
         public bool RainWithheld(int cell) => Spell(cell, 0);
@@ -425,13 +428,14 @@ namespace TC2.Core.Simulation
                 int bid = _meteorFall[i];
                 if (!Buildings.Exists(bid)) continue;
                 ref var b = ref Buildings.Get(bid);
-                if (Places.Structures.IsHome(b.Kind) && b.Household != 0 && Households.Exists(b.Household) && Households.Get(b.Household).Building == bid) { Places.Homes.Burnt(this, b.Household); continue; }
+                if (Places.Structures.IsHome(b.Kind) && b.Household != 0 && Households.Exists(b.Household) && Households.Get(b.Household).Building == bid) { Places.Homes.Burnt(this, b.Household, ev); continue; }
                 ref var b2 = ref Buildings.Get(bid);
                 b2.Household = 0; b2.Left = Now - DMath.ToLong(Places.Homes.FallYears(in b2) * SimTime.Year) - 1;   // (fallen at once)
                 if (!Places.Structures.IsHome(b2.Kind)) Places.Structures.Lost(this, bid);
             }
             Fx.Add(Now, cell, FxKind.Stone, _meteorFall.Count);   // (for the view: the stone falling, the flash, the dust)
             Fire.TryIgnite(this, cell, ev, RootKind.You, MeteorFire);
+            Hazards.ShockAt(this, at, ShockM, ev);   // (session 32: the villages round it see and hear it fall - they run)
             GodQuake(cell, ev, 5);
         }
         readonly List<int> _meteorDie = new List<int>(), _meteorHurt = new List<int>(), _meteorFall = new List<int>();
@@ -1042,6 +1046,7 @@ namespace TC2.Core.Simulation
                 Kind = HistoryKind.Eruption, Time = Now, Cell = c, Settlement = NearestSettlement(c, 8000), RootKind = RootKind.Nature, Cause1 = cause,
                 Tier = vei >= 4 ? Tier.Historical : Tier.Local, Magnitude = vei, ArgA = vt.Id, Subject = new EntityRef(EntityKind.Place, vt.Id),
             });
+            Hazards.ShockAt(this, g.Center[c], 1500.0 + 700.0 * vei, ev);   // (session 32: the villages under the mountain see it and run)
             // the cone it piles up joins the relief at the next tectonic step, where the drainage is rebuilt
             vt.Cone = (float)(vt.Cone + 22.0 * vei);
             // lava down the steepest way
@@ -1110,6 +1115,10 @@ namespace TC2.Core.Simulation
             Quake(cell, cause);
         }
 
+        readonly HashSet<int> _quakeFall = new HashSet<int>();
+        readonly List<int> _quakeFallOrder = new List<int>();
+        readonly List<int> _quakeHomes = new List<int>(), _quakeHomeN = new List<int>(), _quakeWorkN = new List<int>();
+
         public void Quake(int c0, long cause = 0)
         {
             var P = Planet;
@@ -1154,7 +1163,27 @@ namespace TC2.Core.Simulation
             if (M >= TC2.Core.Planet.Quakes.MinRecord || cause != 0) Cause();
             double Shake(int c) => _qstamp[c] == _qstampNow ? TC2.Core.Planet.Quakes.Intensity(M, Vec3d.ArcDistance(g.Center[c], g.Center[_qsrc[c]], PlanetState.GeoRadius)) : 0.0;
 
-            // people: indoors, houses fall on them (most are indoors at night)
+            // (session 32) buildings fall where the shaking is strong: each by the shaking at its village and how it is built - a hut of poles sways, a
+            // house on stone footings stands a little better, a stone house falls worst (unbound stone); found first, so those inside them are known
+            _quakeFall.Clear(); _quakeFallOrder.Clear();
+            for (int sid = Settlements.First(); sid != 0; sid = Settlements.Next(sid))
+            {
+                ref var s = ref Settlements.Get(sid);
+                if (!s.Inhabited) continue;
+                double mmi = Shake(s.Cell);
+                if (mmi < 7.5) continue;
+                var bl = BuildingsOf(sid);
+                for (int i = 0; i < bl.Count; i++)
+                {
+                    ref var b = ref Buildings.Get(bl[i]);
+                    if (b.Done == 0 || Places.Homes.Fallen(in b, Now) || Places.Boats.IsBoat(b.Kind)) continue;
+                    double built = b.Kind == Places.Construction.Hut ? 0.5 : b.Mat == 2 ? 1.35 : b.Mat == 1 ? 0.85 : 1.0;
+                    double pf = DMath.Min(0.7, 0.09 * (mmi - 7.0) * (mmi - 7.0) * built);
+                    if (KeyedRng.Unit(Seed, RngStream.Tectonics, (ulong)bl[i], (ulong)Now, 76) < pf) { _quakeFall.Add(bl[i]); _quakeFallOrder.Add(bl[i]); }
+                }
+            }
+            // people: indoors, houses fall on them (most are indoors at night) - those at home under a roof that falls die or are hurt; elsewhere the
+            // shaking's own odds (things falling, a wall in the lane)
             for (int id = People.First(); id != 0; id = People.Next(id))
             {
                 ref var p = ref People.Get(id);
@@ -1165,10 +1194,50 @@ namespace TC2.Core.Simulation
                 long local = SimTime.FloorMod(Now + PlanetState.LocalOffset(at), SimTime.Day);
                 bool night = local < 6 * SimTime.Hour || local >= 21 * SimTime.Hour;
                 bool indoors = KeyedRng.Unit(Seed, RngStream.Death, (ulong)id, (ulong)Now, 61) < (night ? 0.9 : 0.35);
+                bool underFall = indoors && p.At != 0 && p.At == p.Home && Households.Exists(p.Household) && _quakeFall.Contains(Households.Get(p.Household).Building);
                 double x = mmi - 7.5;
-                double risk = (indoors ? 0.04 : 0.008) * x * x;
-                if (KeyedRng.Unit(Seed, RngStream.Death, (ulong)id, (ulong)Now, 62) < risk) { Agents.Kill(ref p, Cause(), 5); Metrics.QuakeDeaths++; }
+                double risk = underFall ? 0.3 : (indoors ? 0.02 : 0.006) * x * x;
+                double u = KeyedRng.Unit(Seed, RngStream.Death, (ulong)id, (ulong)Now, 62);
+                if (u < risk) { Agents.Kill(ref p, Cause(), 5); Metrics.QuakeDeaths++; }
+                else if (underFall || u < risk * 4.0) p.Hurt = (float)DMath.Max(p.Hurt, underFall ? 0.55 : 0.3);   // (pulled from the rubble, or struck)
             }
+            // the fallen: homes' households go to an empty home or camp (their larder dug out), works stop
+            if (_quakeFallOrder.Count > 0)
+            {
+                _quakeHomes.Clear();
+                for (int i = 0; i < _quakeFallOrder.Count; i++)
+                {
+                    int bid = _quakeFallOrder[i];
+                    if (!Buildings.Exists(bid)) continue;
+                    ref var b = ref Buildings.Get(bid);
+                    int sid = b.Settlement;
+                    bool home = Places.Structures.IsHome(b.Kind);
+                    int k = _quakeHomes.IndexOf(sid);
+                    if (k < 0) { _quakeHomes.Add(sid); _quakeHomeN.Add(0); _quakeWorkN.Add(0); k = _quakeHomes.Count - 1; }
+                    if (home) _quakeHomeN[k]++; else _quakeWorkN[k]++;
+                    if (home && b.Household != 0 && Households.Exists(b.Household) && Households.Get(b.Household).Building == bid) { Places.Homes.Fell(this, b.Household, Cause()); continue; }
+                    ref var b2 = ref Buildings.Get(bid);
+                    b2.Household = 0; b2.Left = Now - DMath.ToLong(Places.Homes.FallYears(in b2) * SimTime.Year) - 1;   // (fallen at once)
+                    if (!home) Places.Structures.Lost(this, bid);
+                }
+                for (int k = 0; k < _quakeHomes.Count; k++)
+                {
+                    int sid = _quakeHomes[k];
+                    Record(new HistoryEvent
+                    {
+                        Kind = HistoryKind.HomesShaken, Time = Now, Cell = Settlements.Get(sid).Cell, Settlement = sid, Subject = EntityRef.Settlement(sid),
+                        ArgA = _quakeHomeN[k], ArgB = _quakeWorkN[k], Cause1 = Cause(), Rel1 = CauseRel.CausedBy,
+                    });
+                }
+                _quakeHomeN.Clear(); _quakeWorkN.Clear();
+            }
+            // (session 32) the villages that felt it strongly run out of doors: those there are startled and keep together until it passes
+            if (M >= 4.0)
+                for (int sid = Settlements.First(); sid != 0; sid = Settlements.Next(sid))
+                {
+                    ref var s = ref Settlements.Get(sid);
+                    if (s.Inhabited && Shake(s.Cell) >= 6.0) Hazards.ShockAt(this, s.Anchor, 1.0, Cause());
+                }
             // stores spill and spoil
             for (int sid = Settlements.First(); sid != 0; sid = Settlements.Next(sid))
             {
@@ -1446,6 +1515,7 @@ namespace TC2.Core.Simulation
             long strike = Record(new HistoryEvent { Kind = HistoryKind.LightningStrike, Time = Now, Cell = cell, Settlement = SettlementAtCell(cell), Cause1 = cause, Rel1 = CauseRel.CausedBy, RootKind = root });
             Fire.TryIgnite(this, cell, strike, root, strength);
             Fx.Add(Now, cell, FxKind.Bolt, (float)strength);   // (for the view: the bolt)
+            Hazards.ShockAt(this, Planet.Grid.Center[cell], BoltShockM, strike);   // (session 32: a bolt at the door startles those there)
         }
 
         // ------------------------------------------------------------- time

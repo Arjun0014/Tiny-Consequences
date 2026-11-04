@@ -264,7 +264,7 @@ namespace TC2.Core.Places
         /// A household without a home takes the best standing empty home of its village - a house before a hut, the soundest
         /// first, ties by id - and mends it as it moves in. True if it found one; history tells whose it was.
         /// </summary>
-        public static bool TakeEmpty(World w, int hid)
+        public static bool TakeEmpty(World w, int hid, long cause = 0)
         {
             ref var hh = ref w.Households.Get(hid);
             var list = w.BuildingsOf(hh.Settlement);
@@ -288,7 +288,7 @@ namespace TC2.Core.Places
             {
                 Kind = HistoryKind.HomeTaken, Time = w.Now, Cell = w.Settlements.Get(hh.Settlement).Cell, Settlement = hh.Settlement,
                 Subject = EntityRef.Household(hid), Object = last != 0 && last != hid ? EntityRef.Household(last) : default, ArgA = t.Kind,
-                RootKind = RootKind.People,
+                Cause1 = cause, Rel1 = cause != 0 ? CauseRel.CausedBy : default, RootKind = cause != 0 ? RootKind.Unknown : RootKind.People,   // (session 32: a home taken because a quake or a stone took theirs)
             });
             w.Metrics.HomesTaken++;
             return true;
@@ -304,7 +304,7 @@ namespace TC2.Core.Places
         /// street frontage is divided into plots half as wide (C13.3, D2-118). A lot is free where the ground it keeps meets no building, ruin, camp,
         /// street, lane, ring, green or market place (`Footprints.HomeFits`: D2-116's 6 m between lots let houses stand in each other).
         /// </summary>
-        public static void FreeLot(World w, int sid, int forHid, out float x, out float y)
+        public static void FreeLot(World w, int sid, int forHid, out float x, out float y, long cause = 0)
         {
             Streets.Refresh(w, sid);   // (its ways worn to paths laid as streets)
             Streets.OpenLanes(w, sid);   // (and lanes opened where nothing stands in them now: C13.3)
@@ -349,12 +349,12 @@ namespace TC2.Core.Places
                 }
             }
             ref var s2 = ref w.Settlements.Get(sid);
-            if (front) { x = fx; y = fy; ClearRuinsAt(w, sid, forHid, x, y); return; }
+            if (front) { x = fx; y = fy; ClearRuinsAt(w, sid, forHid, x, y, cause); return; }
             if (spiral >= 0)
             {
                 if (spiral >= s2.Lots) s2.Lots = spiral + 1;
                 x = sx; y = sy;
-                ClearRuinsAt(w, sid, forHid, x, y);
+                ClearRuinsAt(w, sid, forHid, x, y, cause);
                 return;
             }
             s2.LotPosition(s2.Lots++, out x, out y);   // (nothing free within reach: the next lot)
@@ -387,7 +387,7 @@ namespace TC2.Core.Places
         /// house of the household that lived there last cleared for the new one. So a living village rebuilds on its old plots, as medieval tofts were,
         /// and does not grow outward round lots its ruins kept for centuries.
         /// </summary>
-        static void ClearRuinsAt(World w, int sid, int forHid, float x, float y)
+        static void ClearRuinsAt(World w, int sid, int forHid, float x, float y, long cause = 0)
         {
             if (OldRuins) return;
             ref var s = ref w.Settlements.Get(sid);
@@ -408,7 +408,8 @@ namespace TC2.Core.Places
                 w.Record(new HistoryEvent
                 {
                     Kind = HistoryKind.HomeCleared, Time = w.Now, Cell = s2.Cell, Settlement = sid, Subject = last != 0 ? EntityRef.Household(last) : default,
-                    Object = new EntityRef(EntityKind.Building, bid), Other = forHid != 0 ? EntityRef.Household(forHid) : default, ArgA = 5, Magnitude = (float)stone, RootKind = RootKind.People,
+                    Object = new EntityRef(EntityKind.Building, bid), Other = forHid != 0 ? EntityRef.Household(forHid) : default, ArgA = 5, Magnitude = (float)stone,
+                    Cause1 = cause, Rel1 = cause != 0 ? CauseRel.CausedBy : default, RootKind = cause != 0 ? RootKind.Unknown : RootKind.People,   // (session 32: cleared for those a quake or a stone left homeless)
                 });
                 if (RuinTally != null) { RuinTally[0]++; if (stone > 0) { RuinTally[1]++; RuinTally[2] += stone; } }
             }
@@ -467,7 +468,7 @@ namespace TC2.Core.Places
         /// pots and half its gear burn with it; the household takes an empty home of its village or camps on the innermost free lot and raises its own again.
         /// Returns what was lost to them in FU: the labour that raised the home (`Conflict.LabourWorth` an hour) and the food that burned.
         /// </summary>
-        public static double Burnt(World w, int hid)
+        public static double Burnt(World w, int hid, long cause = 0)
         {
             ref var hh = ref w.Households.Get(hid);
             int bid = hh.Building;
@@ -483,8 +484,28 @@ namespace TC2.Core.Places
             h2.Larder = 0; h2.Ready = 0; h2.Pots = 0f; h2.Gear = (float)(h2.Gear * 0.5); if (h2.Wares > h2.Gear) h2.Wares = h2.Gear;
             h2.Building = 0; h2.Shelter = Construction.Camp; h2.Build = 0f; h2.Rebuild = 0;
             int sid = h2.Settlement;
-            if (!TakeEmpty(w, hid)) { FreeLot(w, sid, hid, out float x, out float y); ref var h3 = ref w.Households.Get(hid); h3.HomeX = x; h3.HomeY = y; }
+            if (!TakeEmpty(w, hid, cause)) { FreeLot(w, sid, hid, out float x, out float y, cause); ref var h3 = ref w.Households.Get(hid); h3.HomeX = x; h3.HomeY = y; }
             return worth;
+        }
+
+        /// <summary>
+        /// (session 32) A household's home brought down by a quake: the building falls at once, a ruin that fades as any; its larder is dug out, its pots are
+        /// broken and a part of its gear lost; the household takes an empty home of its village or camps on the innermost free lot and raises its own again.
+        /// </summary>
+        public static void Fell(World w, int hid, long cause)
+        {
+            ref var hh = ref w.Households.Get(hid);
+            int bid = hh.Building;
+            if (bid != 0 && w.Buildings.Exists(bid))
+            {
+                ref var b = ref w.Buildings.Get(bid);
+                b.Household = 0; b.Left = w.Now - DMath.ToLong(FallYears(in b) * SimTime.Year) - 1;   // (fallen at once)
+            }
+            ref var h2 = ref w.Households.Get(hid);
+            h2.Pots = 0f; h2.Gear = (float)(h2.Gear * 0.8); if (h2.Wares > h2.Gear) h2.Wares = h2.Gear;
+            h2.Building = 0; h2.Shelter = Construction.Camp; h2.Build = 0f; h2.Rebuild = 0;
+            int sid = h2.Settlement;
+            if (!TakeEmpty(w, hid, cause)) { FreeLot(w, sid, hid, out float x, out float y, cause); ref var h3 = ref w.Households.Get(hid); h3.HomeX = x; h3.HomeY = y; }
         }
 
         static readonly System.Collections.Generic.List<int> _gone = new System.Collections.Generic.List<int>();

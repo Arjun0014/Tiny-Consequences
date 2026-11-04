@@ -347,7 +347,7 @@ namespace TC2.Core.History
                     case HistoryKind.TributeEnded: if (e.Subject.Kind == EntityKind.Settlement && e.Subject.Id == home) text = HistoryText.Describe(w, e); break;
                     case HistoryKind.WallBuilt: text = HistoryText.Describe(w, e); weight = 0; break;
                     case HistoryKind.Raid: if (e.Object.Kind == EntityKind.Settlement && e.Object.Id == home && e.Magnitude >= 20f) { text = HistoryText.Describe(w, e); weight = 1; } break;
-                    case HistoryKind.Quake: case HistoryKind.Eruption: case HistoryKind.Tsunami: case HistoryKind.MeteorStruck: case HistoryKind.StormLandfall: case HistoryKind.HomesDrowned:
+                    case HistoryKind.Quake: case HistoryKind.Eruption: case HistoryKind.Tsunami: case HistoryKind.MeteorStruck: case HistoryKind.StormLandfall: case HistoryKind.HomesDrowned: case HistoryKind.HomesShaken:
                         text = HistoryText.Describe(w, e); weight = (byte)(e.Kind == HistoryKind.MeteorStruck || e.Kind == HistoryKind.Tsunami ? 2 : 1); break;
                     case HistoryKind.HeadmanRose: if (!(e.Subject.Kind == EntityKind.Person && e.Subject.Id == pid)) { text = HistoryText.Describe(w, e); weight = 0; } break;
                 }

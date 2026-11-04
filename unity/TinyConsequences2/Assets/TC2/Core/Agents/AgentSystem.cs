@@ -371,6 +371,40 @@ namespace TC2.Core.Agents
             Decide(ref p);
         }
 
+        /// <summary>
+        /// (session 32) The shock step: while a shock felt here holds (<see cref="Hazards.ShockHold"/> from when it was felt), the unhurt run to open ground
+        /// clear of where it struck - the village's green, or past it when it struck near the green - and keep together there until it has passed, then
+        /// go back to their day. The badly hurt are left to the step that takes them abed. False when no shock holds them.
+        /// </summary>
+        bool ShockStep(ref Person p, RandomSequence rs)
+        {
+            var w = _w;
+            long now = w.Now;
+            if (p.At == 0 || !w.Settlements.Exists(p.At) || p.Voyage != 0 || p.Act == ActivityKind.Infant) return false;
+            if (!w.History.TryGet(p.Alarm, out var e)) return false;
+            long hold = Hazards.ShockHold(e.Kind);
+            if (hold == 0 || now - p.AlarmT >= hold || e.Cell < 0) return false;
+            if (p.Hurt >= TC2.Core.Society.Conflict.AbedHurt) return false;
+            ref var s = ref w.Settlements.Get(p.At);
+            s.SphereToLocal(w.Planet.Grid.Center[e.Cell], w.Planet.Radius, out double ix, out double iy);
+            Green(p.At, out double gx, out double gy);
+            double dx = gx - ix, dy = gy - iy, d = DMath.Sqrt(dx * dx + dy * dy);
+            double rx = gx, ry = gy;
+            if (d < 180.0)
+            {
+                double ux = d > 1.0 ? dx / d : 1.0, uy = d > 1.0 ? dy / d : 0.0;
+                rx = ix + ux * 220.0; ry = iy + uy * 220.0;
+            }
+            LocalAt(p, now, out double px, out double py);
+            double near = DMath.Sqrt((px - rx) * (px - rx) + (py - ry) * (py - ry));
+            // each their own spot round the refuge: a crowd, not a point
+            double ax = rx + (rs.NextUnit() - 0.5) * 30.0, ay = ry + (rs.NextUnit() - 0.5) * 30.0;
+            long left = p.AlarmT + hold - now;
+            if (near > 40.0) BeginLocal(ref p, ActivityKind.Flee, WhyCode.Shock, (int)e.Kind, ax, ay, Math.Min(left, 10 * SimTime.Minute), 0, 2.2);   // (running)
+            else BeginLocal(ref p, ActivityKind.Social, WhyCode.Shock, (int)e.Kind, ax, ay, Math.Max(60L, left));
+            return true;
+        }
+
         public void OnInterrupt(int pid, int ver, long a, long cause)
         {
             var w = _w;
@@ -381,6 +415,17 @@ namespace TC2.Core.Agents
             int place = (int)(a >> 8);
             if (reason == InterruptReason.FireSeenOnRoad && ver != p.ActVer) { w.Metrics.Stale++; return; }
             if (reason == InterruptReason.FireSeenAtPlace && p.At != place) { w.Metrics.Stale++; return; }
+            if (reason == InterruptReason.ShockFelt)
+            {
+                // (session 32) a shock felt where they are: one already shaken by a shock that holds as long goes on as they were (a stone's fall and its
+                // own tremor are one fright)
+                if (p.At != place) { w.Metrics.Stale++; return; }
+                if (p.Alarm != 0 && w.Now - p.AlarmT < 10 * SimTime.Minute && w.History.TryGet(p.Alarm, out var was) && w.History.TryGet(cause, out var now2) &&
+                    Hazards.ShockHold(was.Kind) >= Hazards.ShockHold(now2.Kind)) return;
+            }
+            // (session 32) a fire seen by one already running from a shock (the stone's own fire): they are clear of it and keep together; once the shock has
+            // passed, the fire's rule keeps them to shelter while it burns near
+            else if (p.Alarm != 0 && w.History.TryGet(p.Alarm, out var held) && w.Now - p.AlarmT < Hazards.ShockHold(held.Kind)) return;
             p.Alarm = cause; p.AlarmT = w.Now;
             w.Metrics.InterruptsHandled++;
             if (p.Step == StepKind.Travel)
@@ -943,6 +988,10 @@ namespace TC2.Core.Agents
             Green(p.At, out double homeX, out double homeY);
             if (atHome && w.Households.Exists(p.Household)) { ref var hh = ref w.Households.Get(p.Household); homeX = hh.HomeX; homeY = hh.HomeY; }
             var rs = NextRandom(ref p);
+
+            // 0'. (session 32) a shock felt here a little while ago - a stone from the sky, the ground shaking, a bolt at the door: run clear of where it
+            //     struck, then keep together on open ground with the others until it has passed; the badly hurt are taken in (abed, below)
+            if (p.Alarm != 0 && now - p.AlarmT < 4 * SimTime.Hour && ShockStep(ref p, rs)) return;
 
             // 0. danger seen and still burning near this place: keep to shelter
             if (p.Alarm != 0 && now - p.AlarmT < 8 * SimTime.Hour && w.FireNearSettlement(p.At, w.Config.FirePerceptionRange))

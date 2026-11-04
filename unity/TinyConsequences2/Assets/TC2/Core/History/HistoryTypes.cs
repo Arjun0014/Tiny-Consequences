@@ -97,6 +97,7 @@ namespace TC2.Core.History
         BeastsBrought = 110,    // the god brought game (or a shoal) to the land or the waters round a place (Subject the species; Magnitude the animals; ArgA 1 at sea; Cause1 the cast: F9.8)
         WarmAir = 111,          // the god's warm air over a land (ArgA its days, Magnitude the degrees; Cause1 the cast: F9.9)
         ColdAir = 112,          // the god's cold air over a land (ArgA its days, Magnitude the degrees; Cause1 the cast: F9.9)
+        HomesShaken = 113,     // a quake brought down buildings of a village (Settlement; ArgA homes fallen, ArgB works fallen; Cause1 the quake; session 32)
         RainBrought = 103,      // the god's rain came over a land (ArgA its days; Cause1 the cast: F9.5)
         MeteorStruck = 102,     // a meteor struck (ArgA buildings flattened, ArgB people killed; Cause1 the god's cast: F9.4)
         CropsBlighted = 101,    // a blight took most of a village's standing crop (Magnitude the share; Cause1 its cause - the god's blight: F9.3)
@@ -217,6 +218,7 @@ namespace TC2.Core.History
                 case HistoryKind.IceAgeEnded: return Tier.Epochal;
                 case HistoryKind.CoastChanged: return Tier.Local;
                 case HistoryKind.HomesDrowned: return Tier.Local;
+                case HistoryKind.HomesShaken: return Tier.Local;
                 case HistoryKind.Eruption: return Tier.Historical;
                 case HistoryKind.VentBorn: return Tier.Historical;
                 case HistoryKind.IslandRose: return Tier.Historical;
@@ -328,6 +330,7 @@ namespace TC2.Core.History
                 case HistoryKind.IceAgeEnded: b = 40; break;
                 case HistoryKind.CoastChanged: b = 4; break;
                 case HistoryKind.HomesDrowned: b = 4; break;
+                case HistoryKind.HomesShaken: b = 6; break;
                 case HistoryKind.Eruption: b = 0.6 * DMath.Exp(0.8 * magnitude); break; // VEI 2 ~5, VEI 4 ~26, VEI 6 ~140
                 case HistoryKind.VentBorn: b = 3; break;
                 case HistoryKind.IslandRose: b = 8; break;

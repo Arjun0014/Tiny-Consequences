@@ -119,6 +119,8 @@ namespace TC2.Core.History
                 case HistoryKind.Rationing: return subj + " began to ration its grain (" + F(e.Magnitude * 100.0, "0") + "% portions) to last until the harvest.";
                 case HistoryKind.WildFood: return "The people of " + subj + " turned to the woods and the shore for food.";
                 case HistoryKind.HomeBuilt: return "The " + Plural(subj) + " raised " + (e.ArgA >= 2 ? "a house" : "a hut") + " in " + place + ".";
+                case HistoryKind.HomesShaken:
+                    return "The quake brought down " + (e.ArgA == 0 ? "" : e.ArgA == 1 ? "a home" : e.ArgA + " homes") + (e.ArgA > 0 && e.ArgB > 0 ? " and " : "") + (e.ArgB == 0 ? "" : e.ArgB == 1 ? "a work" : e.ArgB + " works") + " in " + place + ": " + (e.ArgA > 0 ? "their households dug out what they could and took shelter where they found it." : "what they were for stops until they are raised again.");
                 case HistoryKind.HomesDrowned:
                     return "The sea took " + (e.ArgA == 1 ? "a home" : e.ArgA + " homes") + " of " + place + ": their people made new homes on higher ground.";
                 case HistoryKind.HomeTaken:
@@ -298,6 +300,11 @@ namespace TC2.Core.History
         /// What a person is doing and why, as a sentence (the inspector's "why", section 8): the activity, the reason it won
         /// (the WhyCode the decision recorded) and its place - read from state, nothing invented.
         /// </summary>
+        /// <summary>(session 32) What a shock felt was, for those it startled (WhyArg: the record's kind).</summary>
+        static string ShockWords(int kind) =>
+            kind == (int)HistoryKind.MeteorStruck ? "a stone fell from the sky close by" : kind == (int)HistoryKind.Quake ? "the ground shook and may shake again" :
+            kind == (int)HistoryKind.Eruption ? "the mountain is spewing fire" : kind == (int)HistoryKind.LightningStrike ? "lightning struck close by" : "something struck close by";
+
         public static string Doing(World w, in Person p)
         {
             var H = w.History;
@@ -321,7 +328,9 @@ namespace TC2.Core.History
                 case ActivityKind.Watch: return "keeping watch at " + home + "'s store through the night: grain has been taken from it";
                 case ActivityKind.Craft: return "making and mending at home - spinning, weaving, sewing, tools: the household's clothes and tools are wearing thin";
                 case ActivityKind.Cook: return p.Why == WhyCode.Hungry ? "making a meal: hungry, and nothing is cooked at home" : "grinding grain and cooking for the household: the next meals are not made";
-                case ActivityKind.Social: return "on the square with the neighbours, the day's work done";
+                case ActivityKind.Social:
+                    if (p.Why == WhyCode.Shock) return "keeping together with the others on open ground: " + ShockWords(p.WhyArg) + " - they wait until it has passed";
+                    return "on the square with the neighbours, the day's work done";
                 case ActivityKind.Idle:
                     {
                         // rest has its why too: a long day's work behind them, or nothing pressing in the fields or at home
@@ -352,7 +361,9 @@ namespace TC2.Core.History
                         return "at " + at + ", come over the water in the household's " + (dug ? "dugout: they paddle" : "boat: they row") + " home when the boat's business is done";
                     }
                     return "visiting " + at;
-                case ActivityKind.Flee: return "keeping to shelter: a fire is near";
+                case ActivityKind.Flee:
+                    if (p.Why == WhyCode.Shock) return "running clear: " + ShockWords(p.WhyArg);
+                    return "keeping to shelter: a fire is near";
                 case ActivityKind.Wait: return "waiting on the road for the fire ahead to burn out";
                 case ActivityKind.Hunt:
                 case ActivityKind.Fish:

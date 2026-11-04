@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using TC2.Core.Foundation;
+using TC2.Core.History;
 using TC2.Core.Scheduling;
 using TC2.Core.Simulation;
 
@@ -12,6 +13,8 @@ namespace TC2.Core.Agents
         public const int FireSeenOnRoad = 1;
         /// <summary>Seen while at a settlement (valid while the person is still there; A carries the settlement in bits 8+).</summary>
         public const int FireSeenAtPlace = 2;
+        /// <summary>(session 32) A shock felt at a place - a stone from the sky, the ground shaking, a bolt at the door (A carries the settlement in bits 8+).</summary>
+        public const int ShockFelt = 3;
     }
 
     /// <summary>
@@ -104,6 +107,56 @@ namespace TC2.Core.Agents
                 if (outdoors || atDoor) _alarm.Add((pid, w.Now, sid));
             }
         }
+
+        /// <summary>
+        /// (session 32) A shock felt at every inhabited place within <paramref name="reach"/> m of a point - a stone from the sky, the ground
+        /// shaking, a bolt at the door: everyone there, awake or asleep, indoors or out (the noise and the shaking reach them all), is interrupted
+        /// a moment later by their own start and decides again with it on their mind (Decide's shock step: clear of it, together until it passes).
+        /// Travellers on the roads and crews at sea are not stopped. Nothing is felt in deep time (no one is out and about).
+        /// </summary>
+        public void ShockAt(World w, Vec3d at, double reach, long cause)
+        {
+            if (w.Resolution == Resolution.Coarse || cause == 0) return;
+            var P = w.Planet;
+            _alarm.Clear();
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid))
+            {
+                ref var s = ref w.Settlements.Get(sid);
+                if (!s.Inhabited || Vec3d.ArcDistance(s.Anchor, at, P.Radius) > reach) continue;
+                AddShaken(w, sid, w.Residents(sid));
+                AddShaken(w, sid, w.Visitors(sid));
+            }
+            if (_alarm.Count == 0) return;
+            _alarm.Sort((a, b) => a.person.CompareTo(b.person));
+            int last = 0;
+            for (int i = 0; i < _alarm.Count; i++)
+            {
+                var (pid, _, place) = _alarm[i];
+                if (pid == last) continue;
+                last = pid;
+                ref var p = ref w.People.Get(pid);
+                long react = 4 + (long)(40 * (1.0 - p.Curious / 255.0));   // (a start: seconds, not the minutes a far fire takes to be noticed)
+                w.Queue.Push(w.Now + react, Phase.Agent, EventKind.AgentInterrupt, pid, -1, InterruptReason.ShockFelt | ((long)place << 8), cause);
+                w.Metrics.Interrupts++;
+            }
+        }
+
+        void AddShaken(World w, int sid, IntList list)
+        {
+            for (int i = 0; i < list.Count; i++)
+            {
+                int pid = list[i];
+                ref var p = ref w.People.Get(pid);
+                if (!p.Alive || p.At != sid || p.Act == ActivityKind.Infant || p.Voyage != 0) continue;   // (babies are carried; a crew keeps to its boat)
+                _alarm.Add((pid, w.Now, sid));
+            }
+        }
+
+        /// <summary>(session 32) How long a shock holds those who felt it from their day (s; 0: the record is no shock): a stone from the sky three hours, a
+        /// quake two (the ground may shake again), an eruption four, a bolt at the door half an hour.</summary>
+        public static long ShockHold(HistoryKind k) =>
+            k == HistoryKind.MeteorStruck ? 3 * SimTime.Hour : k == HistoryKind.Quake ? 2 * SimTime.Hour : k == HistoryKind.Eruption ? 4 * SimTime.Hour :
+            k == HistoryKind.LightningStrike ? 30 * SimTime.Minute : 0;
 
         /// <summary>When a new travel leg begins, it may pass near fires already burning (the traveller will see them).</summary>
         public void CheckNewLeg(World w, int pid, List<(int cell, long tEnter)> legCells)

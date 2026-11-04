@@ -933,7 +933,7 @@ namespace TC2.Core.History
                     }
                 case HistoryKind.EpidemicEnded: return (byte)(e.Magnitude >= 100f ? 2 : 1);
                 case HistoryKind.Famine: case HistoryKind.EpidemicArrived: case HistoryKind.VillageSplit: case HistoryKind.TributeEnded: case HistoryKind.Wildfire: case HistoryKind.HarvestFailed:
-                case HistoryKind.HomesDrowned: case HistoryKind.CoastChanged: case HistoryKind.OreFound: case HistoryKind.OreRevealed: case HistoryKind.ArmsMade:
+                case HistoryKind.HomesDrowned: case HistoryKind.HomesShaken: case HistoryKind.CoastChanged: case HistoryKind.OreFound: case HistoryKind.OreRevealed: case HistoryKind.ArmsMade:
                     return 1;
                 case HistoryKind.Raid: case HistoryKind.BandRaised: case HistoryKind.HeadmanRose: case HistoryKind.WorkBuilt: case HistoryKind.PartySetOut: case HistoryKind.WayWorn:
                 case HistoryKind.Taken: case HistoryKind.TakingSeen: case HistoryKind.Struck: case HistoryKind.ClaimRefused: case HistoryKind.AmendsMade: case HistoryKind.FireStarted:
@@ -1459,7 +1459,7 @@ namespace TC2.Core.History
                 {
                     var e = w.History.At(i);
                     bool big = e.Kind == HistoryKind.Eruption && e.Magnitude >= 3f || e.Kind == HistoryKind.Quake && e.Magnitude >= 6f || e.Kind == HistoryKind.Tsunami || e.Kind == HistoryKind.StormLandfall ||
-                               e.Kind == HistoryKind.StormSurge || e.Kind == HistoryKind.IceAge || e.Kind == HistoryKind.IceAgeEnded || e.Kind == HistoryKind.HomesDrowned ||
+                               e.Kind == HistoryKind.StormSurge || e.Kind == HistoryKind.IceAge || e.Kind == HistoryKind.IceAgeEnded || e.Kind == HistoryKind.HomesDrowned || e.Kind == HistoryKind.HomesShaken ||
                                e.Kind == HistoryKind.Wildfire && e.Magnitude >= 40f || e.Kind == HistoryKind.CoastChanged || e.Kind == HistoryKind.VentBorn || e.Kind == HistoryKind.IslandRose || e.Kind == HistoryKind.Extinction;
                     if (big) evs.Add(e);
                 }
@@ -2177,6 +2177,7 @@ namespace TC2.Core.History
                 case HistoryKind.FieldsBurned: return Plural(n, "village's fields burned", "villages' fields burned");
                 case HistoryKind.BuildingBurned: return Plural(n, "home burned", "homes burned");
                 case HistoryKind.HomesDrowned: return Plural(n, "village's homes drowned", "villages' homes drowned");
+                case HistoryKind.HomesShaken: return Plural(n, "village's buildings brought down", "villages' buildings brought down");
                 case HistoryKind.CropsFlattened: return Plural(n, "village's crop flattened", "villages' crops flattened");
                 case HistoryKind.CropsBlighted: return Plural(n, "village's crop blighted", "villages' crops blighted");
                 case HistoryKind.MeteorStruck: return Plural(n, "stone from the sky", "stones from the sky");
