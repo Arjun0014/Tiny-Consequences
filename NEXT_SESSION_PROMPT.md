@@ -1,6 +1,7 @@
 # Next session — start here
 
 ## FIRST - session 32 (4 Nov 2026): Arjun's FINAL SHIP PUSH (powers with real reactions, the butterfly tree, camera, look, opening). Read `docs/tc2/SESSION_HANDOFF.md` "Session 32" first - it overrides the session 31 lines below.
+- **State at the 18:05 context handoff**: everything committed on `wip/s27-int` (worktree `C:/Game Dev/tc-s27int`), main fast-forwarded to it; Web build g building into `tc2/web-build/web_next` (swaps itself in). All P0/P1 items of Arjun's brief are built and seen in Web builds b-f (powers' reactions, the tree, the grab, the look, the opening); what remains is the final QA loop and the submission build - SESSION_HANDOFF "Session 32" "Next, in order". Submission ~22:50 IST.
 
 ## FIRST - the state at the end of session 31 (1 Nov 2026; these lines override everything below)
 - **Arjun stopped the session.** He played the build of f301037 (new interface, old world look) and said "so many issues" without listing them, then asked to stop the server and close every process the session started: done, nothing of ours runs. **Ask him what the issues were before doing anything else.** Do not start a build, a server or a heavy job on your own.
