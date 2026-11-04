@@ -1053,7 +1053,7 @@ namespace TC2.Core.Simulation
                 Kind = HistoryKind.Eruption, Time = Now, Cell = c, Settlement = NearestSettlement(c, 8000), RootKind = RootKind.Nature, Cause1 = cause,
                 Tier = vei >= 4 ? Tier.Historical : Tier.Local, Magnitude = vei, ArgA = vt.Id, Subject = new EntityRef(EntityKind.Place, vt.Id),
             });
-            Hazards.ShockAt(this, g.Center[c], 1500.0 + 700.0 * vei, ev);   // (session 32: the villages under the mountain see it and run)
+            Hazards.ShockAt(this, g.Center[c], 600.0 + 300.0 * vei, ev);   // (session 32: the villages under the mountain see it and run - 1.5 km for a VEI 3, 3.6 km before: Arjun, too wide)
             // the cone it piles up joins the relief at the next tectonic step, where the drainage is rebuilt
             vt.Cone = (float)(vt.Cone + 22.0 * vei);
             // lava down the steepest way
