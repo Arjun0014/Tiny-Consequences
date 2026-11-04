@@ -32,7 +32,7 @@ namespace TC2.EditorTools
             QualitySettings.SetQualityLevel(QualitySettings.names.Length - 1, false);
 
             PlayerSettings.companyName = "Tiny Consequences";
-            PlayerSettings.productName = "Tiny Consequences 2";
+            PlayerSettings.productName = "A Tiny World";   // (session 32: the game's name, Arjun - the page's title)
             PlayerSettings.colorSpace = ColorSpace.Linear;
             PlayerSettings.runInBackground = true;
             PlayerSettings.SetScriptingBackend(UnityEditor.Build.NamedBuildTarget.WebGL, ScriptingImplementation.IL2CPP);

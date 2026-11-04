@@ -703,13 +703,13 @@ def gold_fill(h):
 
 
 def logo():
-    """The title: "Tiny Consequences" in IM FELL English, gold with a dark edge; a small globe for the o of Consequences - the world in its name; a fine rule."""
+    """The title: "A Tiny World" in IM FELL English, gold with a dark edge; a small globe for the o of World - the world in its name (session 32: the game's name, Arjun)."""
     fonts = os.path.join(RES, "Fonts")
     S = 3
     W, H = 1800 * S, 330 * S
     font = ImageFont.truetype(os.path.join(fonts, "IMFellEnglish.ttf"), 170 * S)
     small = ImageFont.truetype(os.path.join(fonts, "IMFellEnglish.ttf"), 44 * S)
-    text = "Tiny Consequences"
+    text = "A Tiny World"
     track_px = 5 * S
     # measure, with the globe standing for the o
     total = 0
@@ -782,10 +782,7 @@ def logo():
     out = Image.alpha_composite(soft_img, shadow)
     out = Image.alpha_composite(out, deep)
     out = Image.alpha_composite(out, goldi)
-    # the second part's numeral: small, raised, in rubric with a gold edge
-    nx = x0 + total + 12 * S
-    d2 = ImageDraw.Draw(out)
-    d2.text((nx, base - 84 * S), "II", font=small, fill=(232, 184, 110, 255), anchor="ls", stroke_width=2 * S, stroke_fill=(16, 10, 8, 235))
+    # (session 32: no numeral - the game is "A Tiny World")
     # cropped close, scaled to its size
     bbox = out.getbbox()
     out = out.crop((max(0, bbox[0] - 6), max(0, bbox[1] - 6), min(W, bbox[2] + 6), min(H, bbox[3] + 6)))
