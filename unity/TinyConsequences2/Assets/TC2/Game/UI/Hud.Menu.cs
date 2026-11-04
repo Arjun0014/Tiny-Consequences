@@ -18,6 +18,7 @@ namespace TC2.Game
         string _seedText, _copyNote;
         Vector2 _menuScroll;
         Rect _menuRect;
+        int _menuDrawnFrame = -9;
 
         /// <summary>Tools and tests (firstrun.mjs plays by them): the state of the opening, and where its parts stand on the screen, in pixels from the top left.</summary>
         public void ToolsState(System.Text.StringBuilder sb)
@@ -49,6 +50,8 @@ namespace TC2.Game
         void GameMenu(TC2.Core.Simulation.World w, float sw, float sh)
         {
             TitleStyles();
+            if (Time.frameCount - _menuDrawnFrame > 2) AudioView.Ui("leaf");   // (session 32: the menu heard as it opens)
+            _menuDrawnFrame = Time.frameCount;
             _menuRect = new Rect(0, 0, sw, sh);
             if (Event.current.type == EventType.Repaint)
             {
