@@ -59,6 +59,10 @@ namespace TC2.Game
             float alt = cam.magnitude - (float)P.Radius;
             int c = P.Grid.CellOf(new Vec3d(cam.x, cam.y, cam.z).Normalized);
             float rain = Mathf.Clamp01(P.RainToday[c] / 1.4f);
+            // (session 32, Arjun: the god's rain heard but not seen) the rain where the eye looks too - a camera a few hundred metres off the village it
+            // watches stands over another cell
+            Vector3 fp = Rig.FocusPoint;
+            if (fp.sqrMagnitude > 1f) { int fc = P.Grid.CellOf(new Vec3d(fp.x, fp.y, fp.z).Normalized); rain = Mathf.Max(rain, Mathf.Clamp01(P.RainToday[fc] / 1.4f)); }
             float wind = 0f;
             for (int k = 0; k < P.Storms.Count; k++)
             {

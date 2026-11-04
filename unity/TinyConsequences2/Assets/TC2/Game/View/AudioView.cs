@@ -378,7 +378,8 @@ namespace TC2.Game
             float rain = Mathf.Clamp01(P.RainToday[cell] / 1.2f);
             float cold = Mathf.Clamp01((2f - (float)P.Temp[cell]) / 8f);
             // (session 32) the god's rain and cold heard where they are held from the moment they are cast (the day's weather catches up later)
-            rain = Mathf.Max(rain, 0.9f * SpellNear(w, dir, 1));
+            // (session 32: the sky's last cast rules - a rain under a drought cast after it is not heard; today's rain is set at the cast now, as it is seen)
+            if (w.SkyAt(cell) >= 0) rain = Mathf.Max(rain, 0.9f * SpellNear(w, dir, 1)); else rain = 0f;
             cold = Mathf.Max(cold, 0.7f * SpellNear(w, dir, 3));
             // a storm near: by its distance and its strength, whether its rain has fallen here yet or not (before: any storm on the planet, with rain here)
             float stormNear = 0f;

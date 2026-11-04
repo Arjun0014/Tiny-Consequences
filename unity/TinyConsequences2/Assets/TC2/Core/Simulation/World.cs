@@ -346,7 +346,38 @@ namespace TC2.Core.Simulation
         public const double StormCoverWind = 24.0;
 
         /// <summary>Whether the god's drought withholds the rain from a cell today (any drought held over it).</summary>
-        public bool RainWithheld(int cell) => Spell(cell, 0);
+        public bool RainWithheld(int cell) => SkyAt(cell) < 0;
+
+        /// <summary>(session 32, Arjun: a rain and a drought cast on one place - the last cast rules) The god's sky over a cell now: -1 the rain withheld,
+        /// +1 rain brought, 0 neither - of the droughts and rains held over it, the one cast last (the spells are kept in the order they were cast).</summary>
+        public int SkyAt(int cell)
+        {
+            if (DrySpells.Count == 0) return 0;
+            Vec3d p = Planet.Grid.Center[cell];
+            int sky = 0;
+            for (int i = 0; i < DrySpells.Count; i++)
+            {
+                var sp = DrySpells[i];
+                if (sp.Kind > 1 || Now >= sp.Until || Vec3d.ArcDistance(p, Planet.Grid.Center[sp.Cell], Planet.Radius) > sp.Reach) continue;
+                sky = sp.Kind == 0 ? -1 : 1;
+            }
+            return sky;
+        }
+
+        /// <summary>(session 32: the rain was heard at once but fell only at the next weather day - up to a day of the world later) A cast's sky on today's
+        /// rain at once: the cells in its reach rain as hard as the god's rain, or not at all under a drought (the next weather day keeps it so).</summary>
+        void SkyNow(int at, double reach)
+        {
+            var P = Planet;
+            Vec3d a = P.Grid.Center[at];
+            for (int c = 0; c < P.Cells; c++)
+            {
+                if (Vec3d.ArcDistance(a, P.Grid.Center[c], P.Radius) > reach) continue;
+                int sky = SkyAt(c);
+                if (sky < 0) P.RainToday[c] = 0f;
+                else if (sky > 0 && P.RainToday[c] < RainFall) P.RainToday[c] = (float)RainFall;
+            }
+        }
 
         /// <summary>(session 32: every power checked) The record of the god's drought withholding the rain from a cell today (the first held over it), 0 none.</summary>
         public long DroughtOver(int cell)
@@ -359,7 +390,7 @@ namespace TC2.Core.Simulation
         }
 
         /// <summary>(F9.5) Whether the god's rain falls on a cell today (any rain brought over it).</summary>
-        public bool RainBrought(int cell) => Spell(cell, 1);
+        public bool RainBrought(int cell) => SkyAt(cell) > 0;
 
         /// <summary>(F9.9) The god's warmth or cold: how far round the place the air is changed (m), for how many days (a summer, as a drought), by how much (C).</summary>
         public const double AirReach = 1200.0, AirBy = 5.0;   // (session 32: 4 km before)
@@ -753,6 +784,7 @@ namespace TC2.Core.Simulation
                         long ev = Record(new HistoryEvent { Kind = HistoryKind.GodCommand, Time = Now, Cell = c.Cell, Settlement = VillageNear(c.Cell, GodReach), RootKind = RootKind.You, ArgA = (int)c.Kind });
                         long dev = Record(new HistoryEvent { Kind = HistoryKind.Drought, Time = Now, Cell = c.Cell, Settlement = VillageNear(c.Cell, DroughtReach), Cause1 = ev, Rel1 = CauseRel.CausedBy, ArgA = DroughtDays, RootKind = RootKind.You });
                         DrySpells.Add(new DrySpell { Cell = c.Cell, Reach = DroughtReach, Until = Now + DroughtDays * SimTime.Day, Event = dev });
+                        SkyNow(c.Cell, DroughtReach);   // (session 32: today's rain withheld at once - the last cast rules)
                         Vec3d at = Planet.Grid.Center[c.Cell];
                         for (int sid = Settlements.First(); sid != 0; sid = Settlements.Next(sid))
                         {
@@ -768,6 +800,7 @@ namespace TC2.Core.Simulation
                         long ev = Record(new HistoryEvent { Kind = HistoryKind.GodCommand, Time = Now, Cell = c.Cell, Settlement = VillageNear(c.Cell, GodReach), RootKind = RootKind.You, ArgA = (int)c.Kind });
                         long rev = Record(new HistoryEvent { Kind = HistoryKind.RainBrought, Time = Now, Cell = c.Cell, Settlement = VillageNear(c.Cell, RainReach), Cause1 = ev, Rel1 = CauseRel.CausedBy, ArgA = RainDays, RootKind = RootKind.You });
                         DrySpells.Add(new DrySpell { Kind = 1, Cell = c.Cell, Reach = RainReach, Until = Now + RainDays * SimTime.Day, Event = rev });
+                        SkyNow(c.Cell, RainReach);   // (session 32: it rains at once, not from the next weather day - the last cast rules)
                         break;
                     }
                 case CommandKind.GodWarm:

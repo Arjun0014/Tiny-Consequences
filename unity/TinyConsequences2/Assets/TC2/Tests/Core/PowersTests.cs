@@ -193,6 +193,34 @@ namespace TC2.Tests.Core
         }
 
         [Test]
+        public void RainFallsAtOnceAndTheLastOfRainAndDroughtRules()
+        {
+            // (session 32, Arjun: the rain was heard but did not fall; a rain and a drought on one place - the last cast wins) the god's rain falls in the
+            // hour it is cast (it had waited for the next weather day), a drought cast after it withholds it at once, a rain cast after that brings it back
+            var w = TestWorlds.Make(617);
+            Coarse(w);
+            w.AdvanceTo(w.Now + SimTime.Days(2) + SimTime.Hours(3));
+            int cell = w.Settlements.Get(w.Settlements.First()).Cell;
+            w.Planet.RainToday[cell] = 0f;
+            w.Issue(new Command { Time = w.Now, Kind = CommandKind.GodRain, Cell = cell });
+            w.AdvanceTo(w.Now + SimTime.Minutes(5));
+            Assert.GreaterOrEqual(w.Planet.RainToday[cell], (float)World.RainFall - 1e-6f, "it rains there at once");
+            Assert.AreEqual(1, w.SkyAt(cell));
+            w.Issue(new Command { Time = w.Now, Kind = CommandKind.GodDrought, Cell = cell });
+            w.AdvanceTo(w.Now + SimTime.Minutes(5));
+            Assert.AreEqual(0f, w.Planet.RainToday[cell], "the drought cast after the rain withholds it at once");
+            Assert.IsTrue(w.RainWithheld(cell)); Assert.IsFalse(w.RainBrought(cell));
+            w.AdvanceTo(w.Now + SimTime.Day);
+            Assert.AreEqual(0f, w.Planet.RainToday[cell], "and the next weather day keeps it withheld");
+            w.Issue(new Command { Time = w.Now, Kind = CommandKind.GodRain, Cell = cell });
+            w.AdvanceTo(w.Now + SimTime.Minutes(5));
+            Assert.IsTrue(w.RainBrought(cell), "a rain cast after the drought rules");
+            Assert.GreaterOrEqual(w.Planet.RainToday[cell], (float)World.RainFall - 1e-6f);
+            w.AdvanceTo(w.Now + SimTime.Day);
+            Assert.GreaterOrEqual(w.Planet.RainToday[cell], (float)World.RainFall - 1e-6f, "and the next weather day keeps it raining");
+        }
+
+        [Test]
         public void RainFallsOnTheLandForItsDaysAndIsTold()
         {
             var w = TestWorlds.Make(617);
