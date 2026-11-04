@@ -83,6 +83,7 @@ namespace TC2.Core.History
         public string Title, Sub;
         public int Year;
         public readonly List<string> Preface = new List<string>();
+        public readonly List<string> Contents = new List<string>();   // (session 32) each part in a line for the contents page, in PartTitles' order
         public readonly List<BookPart> Parts = new List<BookPart>();
     }
 
@@ -174,6 +175,7 @@ namespace TC2.Core.History
                 Book = new WorldBook { Year = YearOf(w.Now), Title = "The History of the World" };
                 Book.Sub = _c.Years > 0 ? "An account of its " + F(_c.Years) + " years, from the first settlers to year " + Book.Year : "Its first days";
                 Preface(_c, Book);
+                Contents(_c, Book);
                 LastMs = t.Elapsed.TotalMilliseconds;
             }
 
@@ -237,6 +239,7 @@ namespace TC2.Core.History
             public readonly List<HistoryEvent> Refusals = new List<HistoryEvent>();              // askings refused (C10.8)
             public readonly List<HistoryEvent> Judgments = new List<HistoryEvent>();             // amends made at a lord's judgment (C10.10)
             public List<War> WarList;
+            public int Casts;   // (session 32) the god's casts the ledger keeps
 
             public Ctx(World w)
             {
@@ -289,6 +292,7 @@ namespace TC2.Core.History
                         case HistoryKind.AmendsMade:
                             if (e.ArgB != 0) Judgments.Add(e);
                             break;
+                        case HistoryKind.GodCommand: Casts++; break;
                     }
                 }
                 YearByYear();
@@ -475,6 +479,56 @@ namespace TC2.Core.History
                                  (nowLords > 0 ? "Today " + Plural(nowLords, "lord takes", "lords take") + " tribute from " + Plural(nowPaying, "village", "villages") + "." : "Today no village pays tribute to another."));
             }
             book.Preface.Add("Every line of the book stands on a record of the ledger: follow it to its causes, back to where its chain began - in nature, in people's choices, or in yours.");
+        }
+
+        /// <summary>(session 32) What each part holds, a line apiece for the contents page - from what the ledger was read for at once (no part written).</summary>
+        static void Contents(Ctx c, WorldBook book)
+        {
+            var w = c.W;
+            var a = w.Annals;
+            long hunger = 0, sick = 0, disaster = 0, raids = 0;
+            for (int i = 0; i < a.Count; i++) { hunger += a[i].Hunger; sick += a[i].Sick; disaster += a[i].Disaster; raids += a[i].Raids; }
+            int places = 0, gone = 0;
+            for (int sid = w.Settlements.First(); sid != 0; sid = w.Settlements.Next(sid)) { if (w.Settlements.Get(sid).Inhabited) places++; else gone++; }
+            string realms = c.RealmOrder.Count == 0 ? "no village has yet bowed to another" :
+                Plural(c.RealmOrder.Count, "realm", "realms") + "; the greatest, " + Name(w, c.Realms[c.RealmOrder[0]].Seat) + "'s, " + Plural(c.Realms[c.RealmOrder[0]].Peak + 1, "village", "villages") + " at its height in year " + c.Realms[c.RealmOrder[0]].PeakYear;
+            string[] lines =
+            {
+                "The years in ages, each found where what marked it changed - " + Plural(c.Years, "year", "years") + " in all",
+                "Each lordship from its rise to its end, the houses that led it and their reigns - " + realms,
+                "Who fell on whom, when, and how it ended - " + Plural(raids, "raid", "raids") + " in all",
+                "The greatest places, their founding, their people and their fall - " + Plural(places, "place stands", "places stand") + (gone > 0 ? ", " + Num(gone) + " abandoned" : ""),
+                "The peoples of the world and the ways they live",
+                "The hungry years, the plagues and the violence of the earth and the sky - " + F(hunger) + " dead of hunger, " + F(sick) + " of sickness, " + F(disaster) + " in the earth's and the sky's violence",
+                "The crafts first found and the works raised",
+                "The lives that shaped it: rulers, founders, war leaders, finders",
+                "The longest chains of cause, from their root to their last effect",
+                "The years in order, century by century",
+                c.Casts == 0 ? "What you have done to the world - nothing yet" : "What you did to the world and what came of it - " + Plural(c.Casts, "cast", "casts") + ", each with its tree of consequences",
+            };
+            book.Contents.AddRange(lines);
+        }
+
+        /// <summary>(session 32) One of your casts for the book's first page: its record, its words, its year, what came of it so far (as "your hand" counts it)
+        /// and its chapter in Your Actions (newest first; -1 beyond the part's forty).</summary>
+        public struct CastLine { public long Id; public int Year, Count, Chapter, Power; public string Title, Came; }
+
+        /// <summary>(session 32) Your newest casts, newest first (at most <paramref name="max"/>), with what came of each so far. Reads the ledger from its end.</summary>
+        public static List<CastLine> YourHand(World w, int max = 4)
+        {
+            var list = new List<CastLine>();
+            var h = w.History;
+            for (int i = h.Count - 1, k = 0; i >= 0 && list.Count < max; i--)
+            {
+                if (h.RefAt(i).Kind != HistoryKind.GodCommand) continue;
+                var ce = h.At(i);
+                string what = HistoryText.Describe(w, in ce).TrimEnd('.');
+                if (what.StartsWith("You ", System.StringComparison.Ordinal)) what = char.ToUpperInvariant(what[4]) + what.Substring(5);
+                string came = CameOf(w, ce.Id, out int n);
+                list.Add(new CastLine { Id = ce.Id, Year = YearOf(ce.Time), Count = n, Chapter = k < 40 ? k : -1, Power = ce.ArgA, Title = what, Came = came });
+                k++;
+            }
+            return list;
         }
 
         // ================================================================== I. the ages
@@ -2030,6 +2084,9 @@ namespace TC2.Core.History
                 foreach (var kind in order) { string s = Followed(kind, counts[kind]); if (s != null) parts.Add(s); }
                 int last = YearOf(w.History.At(fol[fol.Count - 1]).Time);
                 ch.Para("What came of it" + (last > YearOf(ce.Time) ? ", to year " + last : "") + ": " + (parts.Count > 0 ? Join(parts) : Plural(fol.Count, "record", "records")) + ".", ce.Settlement);
+                // (session 32) what came of it by when - at once, in the days and seasons after, years on - as the tree of its consequences tells it (the
+                // newest casts: each tree reads the ledger from its cast on)
+                if (part.Chapters.Count < 6) ByWhen(w, ch, ce);
                 // (session 27) the dead told together when there are more than a few - a meteor's 36 had filled the chapter one line each, "... and 27
                 // records more" (s27book4): how many, who (the eldest first), the households that lost most - each name a PersonDied record of the cast
                 var dead = new List<int>();
@@ -2069,6 +2126,31 @@ namespace TC2.Core.History
                 part.Chapters.Add(ch);
             }
             return part;
+        }
+
+        /// <summary>(session 32) A cast's consequences by when they came, from its tree (Consequences): the weightiest cards of each tier named, the rest counted.</summary>
+        static void ByWhen(World w, BookChapter ch, in HistoryEvent ce)
+        {
+            var tree = Consequences.Build(w, ce.Id);
+            if (tree == null || tree.Nodes.Count < 2) return;
+            var byTier = new List<ConsequenceNode>[4];
+            for (int k = 0; k < 4; k++) byTier[k] = new List<ConsequenceNode>();
+            foreach (var n in tree.Nodes) if (n.Index > 0 && !n.More) byTier[(int)n.Tier].Add(n);
+            bool any = false;
+            string[] names = { "", "At once", "In the days and seasons after", "Years on" };
+            for (int k = 1; k < 4; k++)
+            {
+                var l = byTier[k];
+                if (l.Count == 0) continue;
+                l.Sort((p, q) => { int x = (q.Detail ? q.Count : q.Total).CompareTo(p.Detail ? p.Count : p.Total); return x != 0 ? x : p.Index.CompareTo(q.Index); });   // (a stone's flattened buildings by their count)
+                if (!any) { ch.Heading("What came of it, by when"); any = true; }
+                var sb = new StringBuilder(names[k]).Append(": ");
+                int shown = System.Math.Min(4, l.Count);
+                for (int j = 0; j < shown; j++) { if (j > 0) sb.Append("; "); sb.Append(j > 0 ? Lower(l[j].Title) : l[j].Title); }
+                if (l.Count > shown) sb.Append("; and ").Append(Plural(l.Count - shown, "thing more", "things more"));
+                sb.Append('.');
+                ch.Note(sb.ToString(), ce.Settlement);
+            }
         }
 
         /// <summary>(session 27) A cast's dead told together, from their PersonDied records (ledger indices): how many, the eldest first by name and age (a
