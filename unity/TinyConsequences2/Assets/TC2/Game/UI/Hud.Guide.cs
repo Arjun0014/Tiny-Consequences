@@ -131,6 +131,7 @@ namespace TC2.Game
             {
                 case GWorld:
                     _book = false; _personPage = false; _placeSid = 0; _building = 0; _selected = 0;
+                    Host.MaxSpeed = false; Host.SpeedIndex = GuidePace;   // (again here: begun from the menu, the menu's hold gives back the old pace after GuideStart)
                     _guideSid = GreatestPlace(w);
                     Rig.FlyTo(_guideSid != 0 ? PlaceCentres.Of(w, _guideSid, Host.WorldVersion) : Vec3d.FromLatLon(Rig.Lat, Rig.Lon), w.Planet.Radius * 2.2, 2.8f);
                     _guideTitleText = "This world does not wait for you";
