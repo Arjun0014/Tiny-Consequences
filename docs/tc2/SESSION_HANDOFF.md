@@ -10,7 +10,7 @@
 - **Servers for Arjun (node `serve.mjs`, this session's)**: build g (288051d) at http://127.0.0.1:8700/ from the copy `tc2/web-build/web_g`; candidate 1 (e5e9520) at http://127.0.0.1:8701/ from `tc2/web-build/web_c1`. The final build is served from its own copy too (so a rebuild into `web` never breaks his play).
 - **QA on build g**: `firstrun.mjs --tag s32first3` 8/8; `headless.mjs floatcheck` (main rebuilt, clean) then `webtest.mjs --tag s32web2` 9/9 (browser = headless bit-identical; reload continues; settings kept; a day away ~96 years; the title holds still; no console errors). Judged `s32pages1` (card, person page + family, place Place/Now/Why?, a work, the book's ages - good; the magenta figures are a first household's livery), `s32first3`, `s32pow4` (the tree), `s32menu1`, `s32look3`.
 - **Fixed (presentation only, `unity.mjs cc` clean)**: 563f0b7 lone rain forest emergents (40 m poles in the farmland) only over a closed canopy (share 0.5+); e5e9520 the cast's word above the guide's card; 77c8728 the tree's cards hold their words (92 px, word cut + ellipsis, place shortened). Checked, no change needed: "(M 7.1)" is already "(magnitude 7.1)" in the code; the menu's two markers were the script's parked pointer.
-- **Builds**: candidate 1 = e5e9520 (`$SP2/final_build.sh final1`, 8:30, 0 shader/CS errors, integrated Radeon; the stale `web_next.*` of build g removed from `web/Build`); 77c8728 (`final2`) served at http://127.0.0.1:8702/ (`web_final2`) - superseded by Arjun's report. `$SP2` = `C:/Users/aswin/AppData/Local/Temp/claude/f68d9ed74c677f45/7a6732ee-583c-48a1-b217-1f4b0a7264be/scratchpad` (`final_build.sh TAG`; play scripts `final2.txt` every power on the year-300 town + a 5-year skip + the trees and Your Actions, `book1.txt` the book's wheel and the tree's seal, `erupt1.txt`, `still1.txt`).
+- **Builds**: candidate 1 = e5e9520 (`$SP2/final_build.sh final1`, 8:30, 0 shader/CS errors, integrated Radeon; the stale `web_next.*` of build g removed from `web/Build`); 77c8728 (`final2`) served at http://127.0.0.1:8702/ (`web_final2`) - superseded by Arjun's report. `$SP2` = `C:/Users/<user>/AppData/Local/Temp/claude/f68d9ed74c677f45/7a6732ee-583c-48a1-b217-1f4b0a7264be/scratchpad` (`final_build.sh TAG`; play scripts `final2.txt` every power on the year-300 town + a 5-year skip + the trees and Your Actions, `book1.txt` the book's wheel and the tree's seal, `erupt1.txt`, `still1.txt`).
 - **Arjun's report at ~19:13 (ten points: D2-207)** - all worked: (1) default speed 1 (bc73f34); (2) reach shrunk (87118c6); (3) the eruption's cracks and lava (23626fc); (4)/(5) measured - no sim fault (stillness audit, `timeuse --skip`), shock crowds face what struck (d1ab665); (6) checked by tests now and by `final2.txt` on the build; (7) the 23-step guide (subagent, merged 4edf1ff; `firstrun.mjs --tag s32first5` 14/14 on build h); (8) "A Tiny World" (e7b21c4); (9) the book's wheel and last lines (subagent 8af854d); (10) the tree years and decades on, from the top, a seal at the top right (subagent 32984a1, d9de267; merged bd95918). Merged tip 7ee04f4: ConsequencesTests 4/4, HistoryBookTests 8/8, PowersTests 13/13, SaveLoad 8/8, Determinism 7/7, ShockTests 10/10, Quake 4/4, Volcanism 6/6, Storm 3/3, floatcheck clean. Known limit told to Arjun: a meteor's/quake's tree ends with its days (rebuilt homes and migrations are recorded without a cause).
 - **Build h** (ab207f9) for the guide's first test (`s32first5` 14/14). **Build i** (7ee04f4): `s32first6` 14/14, `s32web3` 9/9, `s32final2` (every power + five years), `s32book1`, `s32erupt2`. **Build j** (01b40b4: the eruption felt within 1.5 km and split where pointed): `s32first7` 14/14, `s32web4` 9/9, `s32judge1` (a judge's first minutes and 30 years: nothing broken, no console errors). **Build k** (608a126): the shader compiled; `s32alive1`.
 - **Build L (0e1c394)**: built 21:12-21:20 (7:42, integrated Radeon, 0 shader/CS errors); checks: see PROGRESS CURRENT STATE (first-run `s32first8`, Web regression `s32web5`, every power `s32final3`, the full headless suite).
@@ -25,7 +25,7 @@
 - **Web builds** (side folder `tc2/web-build/web_next`, swapped into `web` when no play test holds `$SP/testing.lock`: scratchpad `webbuild2.sh TAG`): a (drag), b (shocks, VFX, tree: s32pow2), c (impact card, spells, face, book: s32pow3, s32first2 8/8 - "21 running for open ground" in a new world, s32look1, s32cam1), d (look: s32look2 - StandFar 8 chosen, s32look3, s32pow4 - the crater seen), e (audio, book2: s32menu1 - loading page, How to Play, Credits), f (the COARSE-load fix, review fixes, text QA, StandFar 8) building at 17:40.
 - **Found and fixed this session beyond the brief**: a world loaded from a save made in deep time stayed COARSE for ever (SimHost continue path - no one out, no shock felt); the review subagent's 4 shock bugs (gale sleepers, the sick, quake re-homing into homes it toppled, the burnt roof's cause); text QA (species plurals, 0-values, jargon, tense).
 - **Merged subagent branches**: wip/s32-tree, -spells, -face, -book, -audio, -book2, -review, -text. Running: wip/s32-qa (the full suite on the merged tip).
-- **At 18:05 (context handoff)**: Web build **g** (main 7d86809+..: the names filter `wip/s32-names`, the spell wash fading near the ground, the news line giving way to the cast's word) FINISHED after the handoff (Succeeded in 8:47, integrated Radeon, swapped into `tc2/web-build/web`: its files are named `web_next.*`; it lacks only f9cd929) - built via scratchpad `webbuild2.sh g` (log `$SP/build_g.log`, `$SP/done_g` when finished; it swaps into `web` itself when `$SP/testing.lock` is absent). `SP` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Users-aswin--claude-spares-spare-teKswW/96506e8d-2507-4a95-8768-c2f876809edc/scratchpad` (play scripts pow1-5, look1-3, cam1, menu1, pages1 there). Build f verified: webtest `s32web1` 9/9 (browser = headless bit-identical), `s32pow5` (the year-300 town: "521 running for open ground - 86 keeping together"; drought/cold labels, the god's copper glint, plague tree), `s32pages1` (person/place/building pages, book realms/wars - shots taken, not yet judged). **Full headless suite on 8cb290c (the merged tip before the names filter): 537 passed, 0 failed, 0 skipped** (subagent, ~24 min), floatcheck clean; then `wip/s32-qa` f9cd929 (a wound's words told by what dealt it; ShockTests 10/10, Biography, Defence, Taking, Lives, Sworn pass) MERGED into wip/s27-int after the handoff (Unity C# compiles). Build g does not contain f9cd929 - the final build will.
+- **At 18:05 (context handoff)**: Web build **g** (main 7d86809+..: the names filter `wip/s32-names`, the spell wash fading near the ground, the news line giving way to the cast's word) FINISHED after the handoff (Succeeded in 8:47, integrated Radeon, swapped into `tc2/web-build/web`: its files are named `web_next.*`; it lacks only f9cd929) - built via scratchpad `webbuild2.sh g` (log `$SP/build_g.log`, `$SP/done_g` when finished; it swaps into `web` itself when `$SP/testing.lock` is absent). `SP` = `C:/Users/<user>/AppData/Local/Temp/claude/C--Users-<user>--claude-spares-spare-teKswW/96506e8d-2507-4a95-8768-c2f876809edc/scratchpad` (play scripts pow1-5, look1-3, cam1, menu1, pages1 there). Build f verified: webtest `s32web1` 9/9 (browser = headless bit-identical), `s32pow5` (the year-300 town: "521 running for open ground - 86 keeping together"; drought/cold labels, the god's copper glint, plague tree), `s32pages1` (person/place/building pages, book realms/wars - shots taken, not yet judged). **Full headless suite on 8cb290c (the merged tip before the names filter): 537 passed, 0 failed, 0 skipped** (subagent, ~24 min), floatcheck clean; then `wip/s32-qa` f9cd929 (a wound's words told by what dealt it; ShockTests 10/10, Biography, Defence, Taking, Lives, Sworn pass) MERGED into wip/s27-int after the handoff (Unity C# compiles). Build g does not contain f9cd929 - the final build will.
 - **Next, in order**: (1) when build g is in: `node tc2/scripts/firstrun.mjs --tag s32first3` (8/8), `node tc2/scripts/webtest.mjs --tag s32web2` (9/9; rebuild main's headless first: `node tc2/scripts/headless.mjs floatcheck` in main), judge `s32pages1`; (2) (done: suite 537/0/0, wip/s32-qa merged); (3) final submission build straight into `tc2/web-build/web` (`webbuild.sh` not `webbuild2.sh`, so the files are named `web.*`), then firstrun + webtest + one powers play (`pow5.txt`) on it; (4) PROGRESS/D2-206/handoff final; commit; do not push unless Arjun asks.
 - **Test notes**: the tools' year-300 save is COARSE until its next midnight in builds before f (use `speed 5` to Day 2 09:00 before casting); `speed 6` lifts the camera into the lapse; `home big ALT` needs the first household housed (falls back to the anchor from build e on).
 
@@ -124,7 +124,7 @@ D2-203 (19) "Open".
 - **Code**: all of it on `wip/s27-int` (worktree `C:/Game Dev/tc-s27int`, where every edit is made), tip = the handoff docs commit after 0c35860. **main
   = 92b75fd at the handoff, BEHIND the branch** (the Unity shots job `0_qe_shots_s29v` holds main's checkout from 23:39): once it ends, fast-forward -
   `git -C "C:/Game Dev/tiny-consequences" merge --ff-only wip/s27-int` - and verify `git log -1 main` = `git log -1 wip/s27-int`. Sim **108** unchanged all session (presentation and observers only).
-- **The queue** (`Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`; the runner
+- **The queue** (`Q` = `C:/Users/<user>/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`; the runner
   `bash tc2/out/tools/s23/runq.sh` started this session (task `bp3fvcitn`) keeps running; follow with a Monitor on
   `tail -n 0 -F $Q/runq.log $Q/log/<job>.log | grep --line-buffered -E "^end |^start |exit|FAIL|pictures"`). Done: `0_qb_web_s27prof2`, `0_qc_web_s29a`,
   `0_qd_web_s29b` (rc 0 at 23:39: `s29web2` 9/9, `s29book1`, `s29lapse2`, `s29perf2` - the road cache x1.115 on a running village view, RoadAt 4.04 ->
@@ -315,7 +315,7 @@ D2-203 (19) "Open".
   (`s27perf2`): region ~30 fps (was 12.4), village ~16 (was 8.4); fardetail x1.89/x1.14, the graded shadows x1.06/x1.31, cloud shadows ~1, names ~1;
   **the terrain x0.59/x0.66 - the next cost** (Terrain.shader: canopy, plots, cover per pixel). D2-195 written.
 - **The queue at the handoff (14:49 IST)** (runner `tc2/out/tools/s23/runq.sh`, background task `bbgjl1nqj` - reuse it, never start a second;
-  `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`; follow with
+  `Q` = `C:/Users/<user>/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`; follow with
   `tail -n 0 -F $Q/runq.log | grep --line-buffered -E "^end |runner stopped"`): running **`N_d_land_tests`** (the landing worktree `tc-s27land`: build,
   floatcheck, cc, ProspectTests, Mining, Iron, OreSites, Forge, Determinism, SaveLoad, HistoryBook - passes when `$N/s27land_ok` exists and its log ends
   "s27land ok"); then **`P_a_shots_s27c`** (Unity shots on main's checkout: `s27p7` seed 42 region/orbit - the soft lumpy cumulus; `s27f6` seed 2 mixed
@@ -376,7 +376,7 @@ D2-203 (19) "Open".
     a burst + camera shake on casting, **Your hand** (the last three casts and what came of each, live: `HistoryBook.CameOf`, tested in PowersTests), the
     power bar with colours and recharge bars, **the HUD skin** (dark glass panels with a gold edge, gold-warming buttons, the date in IM FELL); shots
     `--aim R`. PowersTests 13/13, Unity C# compiles. Never shot or seen in the Web build yet.
-- **Running: the job queue** (runner `bash tc2/out/tools/s23/runq.sh` started 11:11, `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-
+- **Running: the job queue** (runner `bash tc2/out/tools/s23/runq.sh` started 11:11, `Q` = `C:/Users/<user>/AppData/Local/Temp/claude/C--Game-Dev-tiny-
   consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`; the session's background task `bbgjl1nqj`, a Monitor `baxiwgpkg` on `$Q/runq.log`).
   Now: `0_r1_web_s27web1` (the Web build of main b2370ae from 12:00, then `webtest --tag s27web1`, then `bookshots --tag s27book1` with parts
   `-1,0:3,0:9,1:0,4:0,8:0,8:1,9:0,-2`; old reader). Next in `$Q/todo`: `0_q2_shots_people` (`s27q2`: low/standard/street/standard@18 at seed 2's lord
@@ -464,7 +464,7 @@ D2-203 (19) "Open".
   queued job's binaries and runs were checked consistent at the handoff.
 
 ### Running at the handoff (leave them; read their results)
-- **The job queue runner**: `bash tc2/out/tools/s23/runq.sh` (this session's background task `bj4o96476`), `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/
+- **The job queue runner**: `bash tc2/out/tools/s23/runq.sh` (this session's background task `bj4o96476`), `Q` = `C:/Users/<user>/AppData/Local/Temp/claude/
   C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q` (the old session's scratchpad, still live; `lib.sh`'s `S`/`N` point there).
   Order (todo): `0_zh_a2` (stone tests), `0_zh_b`, `0_zh_c` x10, `0_zh_d`, `0_zi_a`, `0_zi_b`, `0_zj_a`, `0_zk_a`, `0_zk_b`, `0_zk_c` x10, `0_zk_d`, `K_b_ac3_s7`
   (the third acceptance run's seed 7, sim 98, `bin_m12`). ~2 hours in all. Held: `K_ba_siege_s47`, `N_a_ways_s2`. Watch: `tail -n 0 -F $Q/runq.log | grep
@@ -499,7 +499,7 @@ D2-203 (19) "Open".
   3. **C11.1b a people's ways** - `wip/c111b-ways` 1069a6d (`C:/Game Dev/tc-bways`, on the old `wip/harry`, sim 101): verified (control `--oldhouseways` =
      `_hyr` byte for byte; ways on: annals identical; `ways/ways_s4_bw2_y300.txt`); merge `wip/harry` into it, rebuild, land; D2-181 from
      `tc2/out/tools/s25/ways/d2181.md` (open refinement: copy a lord only after the bond has stood a generation). `N_a_ways_s2` (1,000 years) in `todo`.
-- **The queue** (`Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`, runner
+- **The queue** (`Q` = `C:/Users/<user>/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`, runner
   `tc2/out/tools/s23/runq.sh`): **`$Q/stop` is set** - the runner ends after `0_ze`. Left in `$Q/todo`: `0_zf_*` (the harrying), `K_b_ac3_s7` (the third
   run's seed 7), `K_ba_siege_s47`, `N_a_ways_s2`. To restart: `rm $Q/stop` and run `bash tc2/out/tools/s23/runq.sh` in the background (one heavy job at a time,
   RAM < 86 %, CPU < 85 %; Claude Code may stop idle background shells when memory is short - then check in the foreground).
@@ -614,7 +614,7 @@ checks (`0_ze`, `0_zf_*`) build these tips. Land: `git merge --no-ff wip/rain` w
      village's standing palisade burns 3 % of its standing crop a raider (at most 60 %), caused by the raid. Evaluation `M_a`-`M_d` (control `--oldharry`
      = `_rn1`, which also measures the old rules with `--harrytally`; ten seeds `_hy1` against `_bn1`; `results/cmp_bn1_hy1.txt`). Land after rain if
      the ten seeds hold (a lean past |t| 2 in people: a matched placebo or a mechanism); write D2-180.
-- **The queue** (runner PID 9632, `tc2/out/tools/s23/runq.sh`; `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`;
+- **The queue** (runner PID 9632, `tc2/out/tools/s23/runq.sh`; `Q` = `C:/Users/<user>/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`;
   generators in `tc2/out/tools/s25/c36g/`: `make_final.sh`, `make_c81a.sh`): running **`K_b_ac3_s2`** (since 14:03; ~40 min), then `K_b_ac3_s4`, `K_b_ac3_s7`
   (the third 1,000-year run on main's final rules: `$O/s*_ac3/world_y{50,150,300,500,600,800,1000}.tc2`, books `tc2/out/tools/s25/accept/book3_*`),
   `K_c_web_s25web3` (Web build of main; webtest with the power cast by a real click, Your Actions and the title; bookshots over `s2_ac3` y1,000; realmsperf
@@ -704,7 +704,7 @@ powers (meteor, drought); 25 §6 judged on `_ac3`.
   in one thing (`Names.DriftTongue`); places, first families and the born are named in it (`Settlement.Tongue`); the book's Places begins with The Peoples.
   TongueTests 4/4, HistoryBookTests 5/5, Determinism, SaveLoad, `cc --src`; **seed 4's annals = `_lp1` byte for byte** (names change nothing else). Ready to
   land after the peace's decision (the peace 93 first, then the tongue 94; if the peace is not landed, the tongue lands as 94 anyway).
-- **The queue** (task brw7xh61a, runner `tc2/out/tools/s23/runq.sh`; `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`):
+- **The queue** (task brw7xh61a, runner `tc2/out/tools/s23/runq.sh`; `Q` = `C:/Users/<user>/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`):
   running `8_f8_pcp_*` (ten placebo seeds), then `8_f9_cmp_pcp` (the lean judged: `results/cmp_lp1_pcp.txt`, `cmp_pcp_pc1.txt`; raids by realm in
   `tc2/out/tools/s25/results/peace_s*_{lp1,pc1}.txt`). **Held** in `$Q/hold`: `8_g_fullsuite_m7`, `8_h_shots_realms`, `8_i_web` (superseded by the
   post-landing checks below), `8_a*`, `8_b*`, `9_*` of session 24 (attribution only). `$Q/dropped`: the peace's first seeds against C10.8.
@@ -730,7 +730,7 @@ powers (meteor, drought); 25 §6 judged on `_ac3`.
 - **Validated on main**: full suite 442/442 (e290217, before this session's observer/presentation changes); HistoryBookTests 5/5 (with the timeline);
   real shots `s25a`-`s25d` judged; **Web `s25web1` 6/6** (5b91710) and the HUD over the year-300/900 worlds in the browser (`tc2/out/webtest/s25web1b900`,
   `s25web1b300`: names, the book's parts). Not yet in a Web build: works/people names, the book's buttons, names clear of the bars, the Timeline page.
-- **The queue** (task brw7xh61a; `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`):
+- **The queue** (task brw7xh61a; `Q` = `C:/Users/<user>/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`):
   running **`7_j_fullsuite_dm3`** (C10.8's branch tip, rebuilt as `bin_dm3`: `fs_dm3_ok` only with 0 failed, 0 skipped; `results/fullsuite_dm3.txt`), then
   **C10.9's evaluation** `8_c_build_lp1` (bin_lp1 from `C:/Game Dev/tc-lapse`, its test classes -> `lp1_ok`), `8_d_ctl_lp0_s4` (control `--oldlapse` =
   `_dm1` byte for byte -> `lp_ctl_ok`), `8_e_lp1_*` (ten seeds `_lp1`, saved at year 300), `8_f_cmp_lp1` (`results/cmp_dm1_lp1.txt`). Held: `8_a*`, `8_b*`,
@@ -769,7 +769,7 @@ powers (meteor, drought); 25 §6 judged on `_ac3`.
   **`s24web2` 6/6** (3344bf0, with the save fix; Mono = dotnet; browser = headless); the year-900 world's heap flat at 1,053 MB through autosaves
   (was OOM); real shots `s24p` (sworn men at practice), `s24q`, `s24t` -> `s24u` -> `s24v` (realms; two faults fixed). **First thing next: the full
   suite on main's tip** (it has not run since the save fix and the dyes; ~18 min: build main's headless, `tc2.dll test`, 0 failed and 0 skipped).
-- **The queue** (task bcbn62z2b; `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`;
+- **The queue** (task bcbn62z2b; `Q` = `C:/Users/<user>/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`;
   `touch $Q/stop` done at 06:01: the runner exits after the job running then): **`7_f_l9dm1_s4`** (C10.8's 900 years, seed 4) was at year 360 of 900 at
   06:01 - **it finished (06:18, rc 0) and the runner stopped cleanly** (`runner stopped 06:18:57`): seed 4 at year 900 - Krailddal 24 of 35
   villages paying, depth 4; 198 bonds made, 166 ended; raids 1,415 (the integrated rules' 681); 10,873 people (12,071) - in `d2168.md`. **Left in `$Q/todo`**: `7_g_lords_l9dm1` (C10.8's lordships at years 300/600/900 -> `results/lordships_s{2,4}_dm1_y*.txt`),
@@ -870,7 +870,7 @@ powers (meteor, drought); 25 §6 judged on `_ac3`.
   `-tc2realms`, `unity.mjs shots --realms`, WebBridge `on realms`, webtest `3b_region_realms`). Not ours: `.claude/launch.json` (modified),
   `Assets/Resources.meta` (untracked) - leave them.
 - **RUNNING: the job queue** - `bash tc2/out/tools/s23/runq.sh` (background task **bcbn62z2b**, started 22:04; one low-priority job at a time, each gated
-  RAM < 86 %, CPU < 85 %). `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`
+  RAM < 86 %, CPU < 85 %). `Q` = `C:/Users/<user>/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/60b1de9e-5c98-4df9-9e8b-0a263e6d1792/scratchpad/q`
   (`runq.log`; `log/<job>.log`; `todo`, `done`; `touch $Q/stop` ends it after the current job). `lib.sh`/`runq.sh` point at that scratchpad (`S` = `N` = its
   parent; backups `*.bak_s23`). Job copies: `tc2/out/tools/s24/`; results: `tc2/out/tools/s23/results/`. A monitor (task b2hef5r43) reports failed jobs only.
   **Left in `$Q/todo` at 01:25, in order (~3 h)**: `4_e_b_i2_s2/s4` (the integrated rules - the landing branch, `bin_i2`, sim 90 - seeds 2 and 4, saved at
@@ -958,7 +958,7 @@ powers (meteor, drought); 25 §6 judged on `_ac3`.
   `_a7`), `6_9_f_sx1_01..10` (ten seeds `_sx1`), `6_9_g_cmp_sx1` (`results/cmp_a7_sx1.txt`), `6_a_g2_05..10` + `6_b_cmp_g2` (D2-161's attribution), `6_c_1..3`
   (C10.7a's 900 years on `bin_a9`: `_l9k0` from the control world `s2_k0`, `_l9a7` from `s2_a7` and `s4_a7` -> `results/lordships_s*_l9*_y600.txt`; the file
   names say `l9k1`, the tags inside `l9a7`), `6_d_1..2` (C10.7b's 900 years `_l9sx1` on `bin_s2`, gated on `s2_ok`), `6_e_profile_sx1` - about three hours. **To restart**: `rm $Q/stop`, then `bash tc2/out/tools/s23/runq.sh` in the background. `Q` =
-  `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/db1b5af7-2c1c-4e6f-a5ff-c8b25b1a81c2/scratchpad/q`; the binaries (`bin_a8`,
+  `C:/Users/<user>/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/db1b5af7-2c1c-4e6f-a5ff-c8b25b1a81c2/scratchpad/q`; the binaries (`bin_a8`,
   `bin_s2`, `bin_c1`, `bin_m4`, ...) live in its parent. **If that scratchpad is gone**: rebuild each binary from its worktree (the `build` lines at the top
   of `6_8_x_rebuild_s2.sh`, `6_8_z_rebuild_c1.sh`, `6_9_d_int_fullsuite.sh` in `tc2/out/tools/s23/`), set `S`/`N`/`Q` in `lib.sh` and `runq.sh`, and
   requeue the jobs above - never the superseded first C10.7b version's copies there (`6_8_b_w1_*`, `6_d_*_l9w1_*`, `6_e_profile_sw1`: kept in `$Q/hold`). The saves the jobs read (`tc2/out/civ/s*_y1/`, `s*_a7/`) are in the repo's ignored `tc2/out`, not the scratchpad.
@@ -1047,7 +1047,7 @@ powers (meteor, drought); 25 §6 judged on `_ac3`.
   dugouts, trades 174 -> 618, hunger deaths 1,752 -> 1,283. `lordships` on the `_x2` saves: no lordship bound across water at year 300 (no shot target
   for the tenth by boat; the shots frame any boat on a voyage).
 - **RUNNING at the handoff: the session-23 job queue** (`bash tc2/out/tools/s23/runq.sh`, task bc2qpqxfq; `Q` =
-  `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/db1b5af7-2c1c-4e6f-a5ff-c8b25b1a81c2/scratchpad/q`, its log `runq.log`, job logs
+  `C:/Users/<user>/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/db1b5af7-2c1c-4e6f-a5ff-c8b25b1a81c2/scratchpad/q`, its log `runq.log`, job logs
   `log/<job>.log`; `touch $Q/stop` ends it after the current job; copies of every job in `tc2/out/tools/s23/`). In order (the full suite done: 433/433): `6_7_c5_might_measure` (C10.7a measured first: builds `tc-arms` - the WIP - to `bin_a7`, runs
   `lordships --might` on the ten `_y1` saves -> `results/might_s*_y1.txt`: villages' lasting strength a head, bonds held by heads and by lasting
   strength), `6_7_d_shots_cross` (real shots `s23m5` seed 5's archipelago, `s23m4` seed 4: `voyage`, `voyagenear`, `voyagestay`, `region`; the log tells
@@ -1098,7 +1098,7 @@ powers (meteor, drought); 25 §6 judged on `_ac3`.
   premise (CS0177, fixed 39b7ce4) - NOT YET BUILT OR TESTED since; `5_e2_0` (build, floatcheck, ten test classes -> `x1_ok`) and `5_e2_1` (control
   `--oldacross` = `_g1`) are requeued; its ten seeds `5_e2_2_*` and `5_e2_3_cmp_x1` are held in `$Q/hold` for the lord's fetch.
 - **RUNNING at the handoff: the session-23 job queue** - `bash tc2/out/tools/s23/runq.sh` (background task bc2qpqxfq; a monitor bh5wj1q6y on its log
-  expires by itself). `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/db1b5af7-2c1c-4e6f-a5ff-c8b25b1a81c2/scratchpad/q`
+  expires by itself). `Q` = `C:/Users/<user>/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/db1b5af7-2c1c-4e6f-a5ff-c8b25b1a81c2/scratchpad/q`
   (`runq.log`, `log/<job>.log`, `todo`, `done`, `hold`; `touch $Q/stop` ends it after the current job; copies of the jobs in `tc2/out/tools/s23/`).
   Running: `5_e_l9g1_s2` (from 23:59: the landed code's 900-year check, seed 2 -> `results/lordships_s2_l9g1_y600.txt`, `tc2/out/civ/s2_l9g1.txt`; compare
   with C10.5's `lordships_s2_l9z1_y600.txt`: lordships with the carried tenth over centuries, the ways, the bonds with no way on foot). Then, in order:
@@ -1132,7 +1132,7 @@ powers (meteor, drought); 25 §6 judged on `_ac3`.
 - **Decision drafts with their evidence** (write them into DECISIONS when landing): `tc2/out/tools/s23/d2159.md` (C10.5 - FILL the 900-year check),
   `d2160.md` (D2-160 - complete), `d2161.md` (C10.6 - FILL the control, ten seeds, the ways, the shots).
 - **RUNNING: the session-23 job queue** - `bash tc2/out/tools/s23/runq.sh` (background task bc2qpqxfq; a monitor bf5ldakdg on its log expires by itself).
-  Queue dir `Q` = `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/db1b5af7-2c1c-4e6f-a5ff-c8b25b1a81c2/scratchpad/q` (`todo`,
+  Queue dir `Q` = `C:/Users/<user>/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/db1b5af7-2c1c-4e6f-a5ff-c8b25b1a81c2/scratchpad/q` (`todo`,
   `done`, `log/<job>.log`, `runq.log`; `touch $Q/stop` ends it after the current job; copies of every job in `tc2/out/tools/s23/`). Binaries in that
   scratchpad: `bin_m1` (main), `bin_t2` (tools), `bin_c2`/`bin_c3` (C10.5; c3 with the indexed kin test), `bin_r2` (D2-160), `bin_i1` (integration).
   Remaining at 21:25, in order (about two hours): `3_d_l9z1_s2/s4` (C10.5's 900-year check -> `tc2/out/tools/s23/results/lordships_s*_l9z1_y600.txt`:
@@ -1224,7 +1224,7 @@ powers (meteor, drought); 25 §6 judged on `_ac3`.
   `wet --doy`, `crowds`, 905d3d6 Unity metas (FieldSpots/Stubble/StubbleTests), 0e93fb7-180ad85 shot views `muck`/`mucklow` and **the muck heap
   placed clear of the croft's beds, the pen and the woodpile/cart** (`WorldObjectsView`), 161fa63 docs (`26` §2k session 21, `08` culls, `27` §9).
 - **RUNNING: the session-21 job queue** - `bash tc2/out/tools/s21/runq.sh` (background task `ba1sj2iw2`), queue dir `Q` =
-  `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/4c5113ad-667d-4fde-9df2-13e8ffdf1a90/scratchpad/q` (jobs in `todo`,
+  `C:/Users/<user>/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/4c5113ad-667d-4fde-9df2-13e8ffdf1a90/scratchpad/q` (jobs in `todo`,
   `done`, `log`, `runq.log`; `touch $Q/stop` ends it after the current job). At 22:10 29 jobs left (~55 min; the dry-way binary's tests
   `1_zz_tests_s6` passed), `6_u7_*` (18 seeds left, the branch's final rules, `--stocktally`),
   `7_zz_cmp_c6_r4`, `8_c6_*` (control seeds 9-19), `9_zz_cmp_c6_u7_10`, `9_zz_cmp_c6_u7_20`. Outputs: `tc2/out/civ/s*_{c6,u7,r4}.{txt,csv}`;
@@ -1469,7 +1469,7 @@ without a panel - then **W-FOREST pass 2**, then the roadmap; presentation and s
 - **Runs** (`tc2/out/civ`): `s7/s8/s42_s2` (the soil's last seeds), `s4/s42_n0` (= `_s2`), `s*_n1` (the niche, ten seeds), `s5_v1` (= `_s2`: the
   view code changes nothing); queue 3 (`scratchpad/q3.sh`, log `q3.log`): controls `_c0` (`--noniche --nowallworks --noworkclear` must = `_s2`),
   `_c1` (`--nowallworks --noworkclear` must = `_n1`), ten seeds `_v3` (the final binary), `cmp_n1_v3.txt`, then the full suite (`suite_v3.txt`).
-- Scratchpad: `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/9bd81d71-36cd-4497-a09b-0b3d9ad0e072/scratchpad` (`bld.sh`
+- Scratchpad: `C:/Users/<user>/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/9bd81d71-36cd-4497-a09b-0b3d9ad0e072/scratchpad` (`bld.sh`
   BIN/TESTS/GATE builds and tests; `gwrun.sh`; `q1-3.sh`; `v75.py` sets a save's sim version; `sv/` v75 copies of the `_s2` saves for the audits;
   `rates.py TAG seeds`; `p_*.py` patches).
 
@@ -1520,7 +1520,7 @@ incumbent, the same person stays first with nothing recorded; and a household's 
   `s17web1` 6/6** (the day away to year 96 in 106 s, 487 people in 16 places = headless ACTIVITY's 488 in 16).
 - Runs (`tc2/out/civ`): `s*_j1` (D2-137, = `_e1`), `s*_k1` (D2-138 first form, clients and no contest), `s*_k2` (D2-138 final, the absorbing household
   the incumbent). Browser exports: `tc2/out/webtest/s17exp/` (away_start.tc2, catchup_y30/y34.tc2, sim version 71).
-- Scratchpad (this context): `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/6dc4a248-f0c6-410d-a245-27452f45cb7d/scratchpad`
+- Scratchpad (this context): `C:/Users/<user>/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/6dc4a248-f0c6-410d-a245-27452f45cb7d/scratchpad`
   (`wrun.sh` pointed here; `j1batch.sh`, `k2batch.sh`, `k1wait.sh` - waits for RAM under 84 % then runs ten seeds one batch at a time; `p_*.py` patches;
   `d2137.md`, `d2138.md`). **Resource Governor LOW since 23:10 (CPU 50 %, RAM 75 %, one heavy job)**; the machine's RAM sits at 80-90 % from other
   applications (Chrome, WebView, other Claude sessions): `gate.sh CMD` runs a command once RAM is under 72 %; `webgate.sh TAG` (build + Web test).
@@ -1593,7 +1593,7 @@ landless choose to go but in full lands find nowhere, and the land concentrates:
   planned/done/added - and `land hours` by crop stage; `AgentSystem.LandHours`, `SettlementSystem.LandTally`). `TilthTests` 4.
 - Runs: `tc2/out/civ/s*_t1` (the slice, `--landtally`, saves 100/200/300) and `s*_t0` (`--notilth --landtally`, the control = `_m2`); lived year
   checks `scratchpad/lived_s5_t1.txt`/`_t0.txt`; the survey before the code `scratchpad/land_s4.txt`, `land_s5.txt` (bin_t1 on the `_m2` saves).
-- Scratchpad (this context): `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/75232637-109e-4256-9e55-bbecfdd2e0eb/scratchpad`
+- Scratchpad (this context): `C:/Users/<user>/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/75232637-109e-4256-9e55-bbecfdd2e0eb/scratchpad`
   (`wrun.sh` pointed here, `pt.py` - line-ending-aware patching: `exec(open(pt).read()); patch(path, [(old, new)])` with LF texts - patch scripts
   `p_*.py`, `d2131.md`). **Never `sed -i` a CRLF file here: Git Bash's sed strips the CRs** (SettlementSystem.cs had to be restored).
 
@@ -1664,7 +1664,7 @@ Arjun's judgement; the next simulation slice is C3.6 land (`26` §3, measured, n
   `Gazetteer.Life` merges `HistoryLedger.PlaceEventsOf` (a page-only index of `HeadmanRose`/`VillageSplit` by village: not the entity index, which
   the storm code reads); `LeadersTests` 7 (a save keeps a faction looking for land; both villages' pages tell the split); `LeadersTests.cs.meta`
   (Unity configure).
-- Scratchpad (this context): `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/83fa9e96-395d-4137-b152-8cc71ac55fa5/scratchpad`
+- Scratchpad (this context): `C:/Users/<user>/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/83fa9e96-395d-4137-b152-8cc71ac55fa5/scratchpad`
   (`wrun.sh`, `bind.sh TAG` -> `binding_TAG.csv`, `bindcmp.py A B` - village sizes and binding by size and year, `splits_l5.txt`, `d2128.md`,
   `p_gaz.py`; copies of the new tools in `tc2/out/tools/`).
 
@@ -1717,7 +1717,7 @@ Arjun's judgement; the next simulation slice is C3.6 land (`26` §3, measured, n
   test now switches hard times and headmen off). Runs `_l1` (Hold 0.67, no tribute rule), `_l2` (+ tribute), `_l3` (the slice; saves 100/200/300).
   `Conflict.FitAt` made public (tests).
 - **The Web build in `tc2/web-build/web` is of an intermediate state** (Unity imported C10.2 sources mid-build): rebuild before any Web test.
-- Scratchpad (session 16): `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/c30873bf-a161-4a50-b46c-76e150e4ddf3/scratchpad`
+- Scratchpad (session 16): `C:/Users/<user>/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/c30873bf-a161-4a50-b46c-76e150e4ddf3/scratchpad`
   (`wrun.sh`, `hold.py`, `forms.py`, `leaders.py`, `ly.py`, `lycf.py`, `patch.py` - a line-ending-aware replace: `python patch.py FILE OLD NEW`;
   copies in `tc2/out/tools/`). Shell heredocs with backslashes or nested quotes break here: write texts to files.
 
@@ -1766,7 +1766,7 @@ Arjun's judgement; the next simulation slice is C3.6 land (`26` §3, measured, n
 - **Machine**: Control Room's Resource Governor LOW (CPU 50 %, RAM 75 % for all work; one heavy job at a time). The machine's own baseline sits at
   ~73-75 % RAM (the Claude apps ~2.5 GB, an `oracle` process); a Unity run takes it to ~85-88 % while it runs. A `chrome-headless-shell` not started
   by this session took ~70 % CPU for an hour (left alone). `dotnet build-server shutdown` frees this session's compiler servers.
-- Scratchpad (session 15): `C:/Users/aswin/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/31c113f7-7357-46b4-9c76-c4b097feb4cb/scratchpad`
+- Scratchpad (session 15): `C:/Users/<user>/AppData/Local/Temp/claude/C--Game-Dev-tiny-consequences/31c113f7-7357-46b4-9c76-c4b097feb4cb/scratchpad`
   (`wrun.sh`, `smith.py` - the metal chain between two tags; copies of both in `tc2/out/tools/`).
 
 ### Next, in order
@@ -2025,7 +2025,7 @@ Short session: Arjun asked to stop and hand off at 19:13. No code changed; HEAD 
   years, two-storey houses 125-302 (36 on seed 4 without rebuilding), but **hall-houses 54-129 - too many** (each rebuild by whoever is best off
   that year adds a hall: cap it - one standing hall a village, or one per ~150 people); people at year 200-299 +0-10 %, famines up on all three
   (74->99, 111->163, 107->131) - judge only with all ten against `_d5s` and the placebo's spread.
-- Scratchpad (session 9): `C:\Users\aswin\AppData\Local\Temp\claude\C--Game-Dev-tiny-consequences\9cd1c516-cc19-4358-8f6c-acaaf0252961\scratchpad`
+- Scratchpad (session 9): `C:\Users\<user>\AppData\Local\Temp\claude\C--Game-Dev-tiny-consequences\9cd1c516-cc19-4358-8f6c-acaaf0252961\scratchpad`
   (`wrun.sh`, `cmp.py`; copies in `tc2/out/tools/`).
 
 ### Next, in order
@@ -2059,7 +2059,7 @@ Short session: Arjun asked to stop and hand off at 19:13. No code changed; HEAD 
   (exported to `Game/Resources/TC2Models`; `boat` is the plank boat); view `_beachedP/_afloatP`, the shed turned mouth to the water.
 - **Runs**: `tc2/out/civ/s*_c91j` (pre-fix), `_c91k` (C9.1 final), `_c91m` (4 seeds, final rule), `_c92a/_c92b` (C9.2a tries), `_c92c` (C9.2a
   final), `_c92p/_c92q` (C9.2b tries), `_c92r` (C9.2b final). Shots `boats2`-`boats6`, `planks1`, `planks2`.
-- **Scratchpad (session 8)**: `C:\Users\aswin\AppData\Local\Temp\claude\C--Game-Dev-tiny-consequences\79f297a9-c9c6-41f5-a86c-efdd067a4516\scratchpad`
+- **Scratchpad (session 8)**: `C:\Users\<user>\AppData\Local\Temp\claude\C--Game-Dev-tiny-consequences\79f297a9-c9c6-41f5-a86c-efdd067a4516\scratchpad`
   (`wrun.sh`, `cmp.py` - the `boats_made` regex fixed: before it read "given up half-made"; `boats_given_up` added; plank columns). Copies of
   both in `tc2/out/tools/` (fix `SCR=` in `wrun.sh` to the new scratchpad).
 - **Headless additions**: `boats:` line - plank boats, villages that build them, sheds, plank boats made and their fish, boats in the water /
@@ -2085,7 +2085,7 @@ Short session: Arjun asked to stop and hand off at 19:13. No code changed; HEAD 
   means at par); the lord's half-share was a second wrong - replaced by the lord answering its tributaries' wrongs at half, its band's loot
   settling the tributary's wrong (`Band.Motive` 2, `Band.For`; metric `LordsAnswered`; history ArgB 2 "they answer the wrongs it did X").
   Sim version 48; 244 tests. Runs `tc2/out/civ/s*_c108a` (and `s{1,3,5,6,8,11}_c54a/_c101a` added for the comparison).
-- **Scratchpad (session 7)**: `C:\Users\aswin\AppData\Local\Temp\claude\C--Game-Dev-tiny-consequences\dd8879ca-9abf-4584-bd64-5ba72f80ce6a\scratchpad`:
+- **Scratchpad (session 7)**: `C:\Users\<user>\AppData\Local\Temp\claude\C--Game-Dev-tiny-consequences\dd8879ca-9abf-4584-bd64-5ba72f80ce6a\scratchpad`:
   `wrun.sh` (BIN = a folder in this or the session-6 scratchpad, or a path), `cmp.py TAG_A TAG_B seeds...` (paired log-ratios of annals
   and report lines: judge mechanisms by century means, never the last year), `bin_c108a`.
 - **D2-109 done** (the Web frame rate): the frame was CPU-bound in draw submission (one draw per colour group, world-sized bounds, into all
@@ -2134,7 +2134,7 @@ Short session: Arjun asked to stop and hand off at 19:13. No code changed; HEAD 
   page); C1.2 timber from the woods (`Woods.cs`); C1.3 stone (`Stone.cs`); C1.4 the smithy and arms (`Forge.cs`); C1.5 training grounds and
   `Person.SkFight` (`Training.cs`); C1.6 markets and rings on dry ground; C1.7 tier-A pressure worlds read through `run --civ`. Sim version
   38; 207 tests. Structures keep their history while they exist (HistoryLedger local-tier keep).
-- **Tools**: scratchpad (session 6) `C:\Users\aswin\AppData\Local\Temp\claude\C--Game-Dev-tiny-consequences\2b3f3bc2-f71a-43e5-9ab3-082850348dfd\scratchpad`:
+- **Tools**: scratchpad (session 6) `C:\Users\<user>\AppData\Local\Temp\claude\C--Game-Dev-tiny-consequences\2b3f3bc2-f71a-43e5-9ab3-082850348dfd\scratchpad`:
   `wrun.sh` (BIN=bin_x TAG=_x YEARS SNAP MODE EXTRA; DEEP 12 runs with the scale report, annals and saves into `tc2/out/civ/s<seed><TAG>`),
   `sheet.py` (contact sheets), patch and doc scripts. Headless `run` report lines: `works:`, `woods:`, `stone:`, `markets:`, `training:`,
   `force:`; `run --civ N` prints the N largest villages' civilisation timelines with causes (`#id` for shots). Shots: `--village big|ID`,
@@ -2212,7 +2212,7 @@ Short session: Arjun asked to stop and hand off at 19:13. No code changed; HEAD 
   392cf8631e08dc36). Old saves keep their radius. Tools: headless `--radius M`, `run --scale` (`ScaleReport.cs`, `Core/Diagnostics/
   ScaleTally.cs`), shots `--radius`, multi-world shot folders named by save folder. Study data: `tc2/out/scale/` (`table.txt`, runs,
   saves `r<R>_s<seed>/world_y100|300.tc2`); shots `tc2/out/shots/scale1`, `scale2` (contact sheets `sheet_*.png`). Scratchpad (session 5):
-  `C:\Users\aswin\AppData\Local\Temp\claude\C--Game-Dev-tiny-consequences\a14b045d-19c2-46a3-b3ef-213aae01eceb\scratchpad`
+  `C:\Users\<user>\AppData\Local\Temp\claude\C--Game-Dev-tiny-consequences\a14b045d-19c2-46a3-b3ef-213aae01eceb\scratchpad`
   (`scale_runs.sh`, `scale_table.mjs`, `sheet.py` contact sheets, `runs.sh`, `bin_b`).
 - **Visual slice 1 of D2-084** (session 4's code: stands, palette, relief, rivers, tree kinds) compiled for the first time in the scale
   shots and is committed with D2-085; it is not yet judged on its own - judge it on 6 km.
@@ -2327,7 +2327,7 @@ Short session: Arjun asked to stop and hand off at 19:13. No code changed; HEAD 
   coarse terrain can still step far off; shrubs at a wood's edge are one size; flowers only from ~100 m; animals at the village view
   are still specks (herds read as groups only when white); kitchen gardens (not simulated: not drawn).
 - Machine: shared and loaded by others (see PROGRESS session 3); wait with `scratchpad/quiet.ps1`, run with `scratchpad/lowrun.cmd`
-  (scratchpad = `C:\Users\aswin\AppData\Local\Temp\claude\C--Game-Dev-tiny-consequences\1e4f3b75-2f3f-4d81-b3ff-5dffc75a3c54\scratchpad`).
+  (scratchpad = `C:\Users\<user>\AppData\Local\Temp\claude\C--Game-Dev-tiny-consequences\1e4f3b75-2f3f-4d81-b3ff-5dffc75a3c54\scratchpad`).
 - No TC2 process running between shot rounds.
 
 ## Session 2 (5 Oct 2026) — closed (see PROGRESS.md CURRENT STATE)

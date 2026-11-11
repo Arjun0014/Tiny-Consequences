@@ -130,7 +130,7 @@ Claude Code: read this first in every session. Keep "Current state" accurate; ap
 ## Environment (verified 27 Sep)
 
 - Windows 11, Git Bash. Node 22.14, npm 10.9, Java 26 (Oracle), Git 2.46.
-- LuaJIT 2.1 installed with `winget install DEVCOM.LuaJIT` to `C:\Users\aswin\AppData\Local\Programs\LuaJIT\bin\luajit.exe` (on the user PATH for new shells; `scripts/lua.mjs` resolves it anyway). No lua5.1 (optional; W06 now proves LuaJIT and the HTML5 Lua 5.1 runtime produce identical state hashes).
+- LuaJIT 2.1 installed with `winget install DEVCOM.LuaJIT` to `C:\Users\<user>\AppData\Local\Programs\LuaJIT\bin\luajit.exe` (on the user PATH for new shells; `scripts/lua.mjs` resolves it anyway). No lua5.1 (optional; W06 now proves LuaJIT and the HTML5 Lua 5.1 runtime produce identical state hashes).
 - Defold 1.13.1 bob in `tools/bob/bob.jar` (`npm run setup` re-downloads). Bob platform flag is `wasm-web` (not `js-web`). The bundle lands in `dist/web/app/`.
 - Python is `python` (3.13), not `python3`; set `PYTHONUTF8=1` when writing files with it. Git Bash heredocs containing apostrophes break in this harness: write patch scripts with a file.
 
