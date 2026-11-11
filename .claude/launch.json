@@ -6,6 +6,12 @@
       "runtimeExecutable": "node",
       "runtimeArgs": ["scripts/serve.mjs", "--port", "8080"],
       "port": 8080
+    },
+    {
+      "name": "tc2",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["tc2/scripts/serve.mjs", "--port", "8642"],
+      "port": 8642
     }
   ]
 }
